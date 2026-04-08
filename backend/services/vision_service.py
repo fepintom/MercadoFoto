@@ -1,137 +1,71 @@
-from google.cloud import vision
-import re
-from services.description_service import generar_descripcion_corta
-import difflib
-from services.gemini_service import gemini_titulo_producto
-from services.classification_rules import is_generic_or_low_confidence
+import base64
+import json
+import os
+from openai import OpenAI
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
-DOMINIOS_CHILE = [
-    "mercadolibre.cl",
-    "falabella.com",
-    "sodimac.cl",
-    "paris.cl",
-    "ripley.cl",
-    "ikea.cl"
-]
+def detectar_producto(original_bytes: bytes):
+    try:
+        imagen_b64 = base64.b64encode(original_bytes).decode("utf-8")
 
+        prompt = """
+Eres un experto en ecommerce latinoamericano.
 
-def limpiar_texto(texto):
-    texto = re.sub(r"[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]", "", texto)
-    return texto.strip()
+Analiza esta imagen de un producto y responde SOLO en JSON con este formato exacto:
+{
+    "titulo": "...",
+    "descripcion": "...",
+    "dimensiones": "..."
+}
 
-def normalizar_titulo(titulo):
-    traducciones = {
-        "mug": "Taza",
-        "cup": "Taza",
-        "coffee cup": "Taza",
-        "glass": "Vaso",
-        "bottle": "Botella"
-    }
+Reglas:
+- Título corto, máximo 6 palabras, en español
+- Descripción clara y orientada a venta, máximo 60 palabras, en español
+- Dimensiones: estimación visual aproximada en cm (ej: "30 x 20 x 10 cm"). Si no puedes estimarlas escribe "No determinado"
+- No inventes datos que no puedas ver
+- Si no reconoces el producto responde con titulo: "Producto" y descripción genérica
+- Sin emojis
+- Sin comillas internas
+"""
 
-    t = titulo.lower()
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{imagen_b64}",
+                                "detail": "low",
+                            },
+                        },
+                        {
+                            "type": "text",
+                            "text": prompt,
+                        },
+                    ],
+                }
+            ],
+            max_tokens= 300,
+            temperature=0.3,
+        )
 
-    if t in traducciones:
-        return traducciones[t]
+        content = response.choices[0].message.content.strip()
+        print("GPT-4o Vision respondió:", content)
 
-    return titulo
+        content = content.replace("```json", "").replace("```", "").strip()
 
-def detectar_producto(original_bytes):
+        data = json.loads(content)
+        titulo = data.get("titulo", "Producto").strip()
+        descripcion = data.get("descripcion", "").strip()
+        dimensiones = data.get("dimensiones", "No determinado").strip()
 
-    used_gemini = 0
+        return titulo, descripcion, dimensiones
 
-    client = vision.ImageAnnotatorClient()
-    image = vision.Image(content=original_bytes)
-
-    titulo = None
-    mejor_score = None
-
-    # --------------------------------------------------
-    # 1️⃣ OBJECT DETECTION (PRIORIDAD MÁXIMA)
-    # --------------------------------------------------
-    obj_response = client.object_localization(image=image)
-    objetos = obj_response.localized_object_annotations
-
-    print("OBJETOS DETECTADOS:")
-    for obj in objetos:
-        print(obj.name, obj.score)
-
-    if objetos:
-        objetos_ordenados = sorted(objetos, key=lambda x: x.score, reverse=True)
-        mejor_objeto = objetos_ordenados[0]
-
-        mejor_score = mejor_objeto.score
-
-        if mejor_objeto.score > 0.5:
-            titulo = limpiar_texto(mejor_objeto.name)
-
-    # --------------------------------------------------
-    # 2️⃣ WEB DETECTION
-    # --------------------------------------------------
-    if not titulo:
-        web_response = client.web_detection(image=image)
-        web = web_response.web_detection
-
-        print("WEB ENTITIES:")
-        if web and web.web_entities:
-            for e in web.web_entities:
-                print(e.description, e.score)
-
-            entidades_validas = [
-                e for e in web.web_entities
-                if e.description and e.score and e.score > 0.5
-            ]
-
-            if entidades_validas:
-                entidades_validas.sort(key=lambda x: x.score, reverse=True)
-                mejor_entidad = entidades_validas[0]
-                titulo = limpiar_texto(mejor_entidad.description)
-                mejor_score = mejor_entidad.score
-
-    # --------------------------------------------------
-    # 3️⃣ OCR (ÚLTIMO RECURSO)
-    # --------------------------------------------------
-    if not titulo:
-        text_response = client.text_detection(image=image)
-        texts = text_response.text_annotations
-
-        if texts:
-            texto_detectado = texts[0].description
-            lineas = texto_detectado.split("\n")
-
-            lineas_validas = [
-                limpiar_texto(l) for l in lineas
-                if len(l.strip()) > 3
-            ]
-
-            if lineas_validas:
-                titulo = lineas_validas[0]
-
-    # --------------------------------------------------
-    # 4️⃣ Fallback final
-    # --------------------------------------------------
-    if not titulo:
-        titulo = "Producto no identificado"
-
-    titulo = normalizar_titulo(titulo)
-
-    print("Vision detectó:", titulo)
-
-    # --------------------------------------------------
-    # 5️⃣ DECISIÓN OPTIMIZADA GEMINI
-    # --------------------------------------------------
-    usar_gemini = is_generic_or_low_confidence(titulo, mejor_score)
-
-    if usar_gemini:
-        mime_type = "image/jpeg"
-        titulo_gemini = gemini_titulo_producto(original_bytes, mime_type)
-
-        print("Gemini detectó:", titulo_gemini)
-
-        if titulo_gemini and titulo_gemini.strip():
-            titulo = titulo_gemini.strip()
-            used_gemini = 1
-
-    descripcion = generar_descripcion_corta(titulo)
-
-    return titulo, descripcion, used_gemini
+    except Exception as e:
+        print("ERROR GPT-4o Vision:", e)
+        return "Producto", "Producto en buen estado disponible para la venta.", "No determinado"

@@ -4,12 +4,12 @@ import 'package:http/http.dart' as http;
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
+import '../theme/app_theme.dart';
 
 import 'vender_screen.dart' as vender;
 import 'marketplace_screen.dart';
-import 'registro_screen.dart';
 import 'mi_cuenta_screen.dart';
-import 'login_screen.dart';
+import '../widgets/registro_form_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -33,7 +33,6 @@ class _HomeScreenState extends State<HomeScreen> {
     await cargarUsuario();
   }
 
-  /// SESIÓN GUEST
   Future<void> iniciarSesion() async {
     final usuarioRegistrado = await SessionService.obtenerUser();
     if (usuarioRegistrado != null) return;
@@ -41,107 +40,191 @@ class _HomeScreenState extends State<HomeScreen> {
     final guest = await SessionService.obtenerGuest();
     if (guest != null && guest.toString().isNotEmpty) return;
 
-    try {
-      final response = await http.get(Uri.parse("${ApiService.baseUrl}/guest"));
+    final response = await http.get(Uri.parse("${ApiService.baseUrl}/guest"));
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final guestId = data["guest_id"]?.toString();
-
-        if (guestId != null && guestId.isNotEmpty) {
-          await SessionService.guardarGuest(guestId);
-        }
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final guestId = data["guest_id"]?.toString();
+      if (guestId != null && guestId.isNotEmpty) {
+        await SessionService.guardarGuest(guestId);
       }
-    } catch (e) {
-      debugPrint("Error en iniciarSesion(): $e");
     }
   }
 
-  /// CARGAR USUARIO
   Future<void> cargarUsuario() async {
     final id = await SessionService.obtenerUser();
     final nombre = await SessionService.obtenerNombre();
-
     if (!mounted) return;
-
     setState(() {
       userId = id;
       nombreUsuario = nombre ?? "Usuario invitado";
     });
   }
 
+  Future<void> abrirRegistroModal() async {
+    await showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.4),
+      builder: (_) => _buildModal(
+        isLogin: false,
+        onSubmit: (email, password) async {
+          final guestId = await SessionService.obtenerGuest();
+          final response = await http.post(
+            Uri.parse("${ApiService.baseUrl}/registro"),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({
+              "email": email,
+              "password": password,
+              "guest_id": guestId,
+            }),
+          );
+          final data = jsonDecode(response.body);
+          if (response.statusCode == 200) {
+            await SessionService.guardarUser(data["user_id"]);
+            await SessionService.guardarNombre(data["nombre"]);
+            await SessionService.guardarGuest("");
+            Navigator.pop(context);
+            await inicializarHome();
+            setState(() {});
+          } else {
+            _mostrarError(data["detail"]);
+          }
+        },
+      ),
+    );
+  }
+
+  Future<void> abrirLoginModal() async {
+    await showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.4),
+      builder: (_) => _buildModal(
+        isLogin: true,
+        onSubmit: (email, password) async {
+          final response = await http.post(
+            Uri.parse("${ApiService.baseUrl}/login"),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({
+              "email": email,
+              "password": password,
+            }),
+          );
+          final data = jsonDecode(response.body);
+          if (response.statusCode == 200) {
+            await SessionService.guardarUser(data["user_id"]);
+            await SessionService.guardarNombre(data["nombre"]);
+            Navigator.pop(context);
+            await inicializarHome();
+            setState(() {});
+          } else {
+            _mostrarError(data["detail"]);
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildModal({
+    required Function(String, String) onSubmit,
+    bool isLogin = false,
+  }) {
+    return GestureDetector(
+      onTap: () => Navigator.pop(context),
+      child: Material(
+        color: Colors.transparent,
+        child: Center(
+          child: GestureDetector(
+            onTap: () {},
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.9,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: RegistroFormWidget(
+                onSubmit: onSubmit,
+                isLogin: isLogin,
+                onToggle: () {
+                  Navigator.pop(context);
+                  if (isLogin) {
+                    abrirRegistroModal();
+                  } else {
+                    abrirLoginModal();
+                  }
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _mostrarError(String? msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg ?? "Error"),
+        backgroundColor: AppColors.primary,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F7),
+      backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Stack(
+        child: Column(
           children: [
-            /// SCROLL
-            SingleChildScrollView(
-              child: Column(
-                children: [
-                  const SizedBox(height: 110),
-
-                  /// BANNER
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 10),
-                    height: 140,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      image: const DecorationImage(
-                        image: AssetImage(
-                          "assets/images/banner_publicidad.jpg",
-                        ),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
+            // ── HEADER ──────────────────────────────────────────
+            Container(
+              padding: const EdgeInsets.fromLTRB(15, 10, 15, 10),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppColors.divider,
+                    width: 0.5,
                   ),
-
-                  const SizedBox(height: 10),
-
-                  /// MARKETPLACE
-                  SizedBox(
-                    height: MediaQuery.of(context).size.height,
-                    child: const MarketplaceScreen(),
-                  ),
-
-                  const SizedBox(height: 100),
-                ],
+                ),
               ),
-            ),
-
-            /// HEADER FIJO
-            Positioned(
-              top: 10,
-              left: 15,
-              right: 15,
               child: Row(
                 children: [
-                  /// LOGO
-                  Image.asset('assets/images/logo.png', height: 60),
-
+                  Image.asset('assets/images/logo.png', height: 44),
                   const SizedBox(width: 10),
-
-                  /// BUSCADOR
                   Expanded(
                     child: Container(
                       height: 40,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
+                        color: AppColors.background,
                         borderRadius: BorderRadius.circular(25),
+                        border: Border.all(
+                          color: AppColors.divider,
+                          width: 0.5,
+                        ),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          Icon(Icons.search, color: Colors.grey),
-                          SizedBox(width: 8),
+                          Icon(Icons.search,
+                              color: AppColors.grayMid, size: 18),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: TextField(
-                              decoration: InputDecoration(
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: AppColors.textPrimary,
+                              ),
+                              decoration: const InputDecoration(
                                 hintText: "Buscar productos...",
+                                hintStyle: TextStyle(
+                                  color: AppColors.grayMid,
+                                  fontSize: 14,
+                                ),
                                 border: InputBorder.none,
+                                isDense: true,
+                                contentPadding: EdgeInsets.zero,
                               ),
                             ),
                           ),
@@ -149,22 +232,28 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-
                   const SizedBox(width: 10),
-
-                  /// USUARIO / REGISTRO
                   userId == null
                       ? OutlinedButton(
-                          onPressed: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const RegistroScreen(),
-                              ),
-                            );
-
-                            await cargarUsuario();
-                          },
+                          onPressed: abrirRegistroModal,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.primary,
+                            side: const BorderSide(
+                              color: AppColors.primary,
+                              width: 1,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           child: const Text("Registrarse"),
                         )
                       : GestureDetector(
@@ -178,13 +267,30 @@ class _HomeScreenState extends State<HomeScreen> {
                           },
                           child: Row(
                             children: [
-                              const Icon(Icons.person),
+                              Container(
+                                width: 34,
+                                height: 34,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.background,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.person,
+                                  color: AppColors.carbon,
+                                  size: 20,
+                                ),
+                              ),
                               const SizedBox(width: 6),
                               SizedBox(
-                                width: 100,
+                                width: 80,
                                 child: Text(
                                   nombreUsuario,
                                   overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.textPrimary,
+                                  ),
                                 ),
                               ),
                             ],
@@ -194,61 +300,122 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            /// FOOTER FIJO
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                height: 80,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  boxShadow: [BoxShadow(blurRadius: 10, color: Colors.black26)],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+            // ── CONTENIDO SCROLLABLE ─────────────────────────────
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
                   children: [
-                    /// LOGIN / LOGOUT
-                    userId == null
-                        ? ElevatedButton(
-                            onPressed: () async {
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const LoginScreen(),
+                    // Banner
+                    Container(
+                      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                      height: 130,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        color: AppColors.carbon,
+                        image: const DecorationImage(
+                          image:
+                              AssetImage("assets/images/banner_publicidad.jpg"),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Marketplace como contenido puro
+                    const MarketplaceScreen(),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ),
+
+            // ── FOOTER FIJO ──────────────────────────────────────
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                border: Border(
+                  top: BorderSide(
+                    color: AppColors.divider,
+                    width: 0.5,
+                  ),
+                ),
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+              child: SafeArea(
+                top: false,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: userId == null
+                          ? OutlinedButton(
+                              onPressed: abrirLoginModal,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.carbon,
+                                side: const BorderSide(
+                                  color: AppColors.carbon,
+                                  width: 1,
                                 ),
-                              );
-
-                              await cargarUsuario();
-                            },
-                            child: const Text("Ingresar"),
-                          )
-                        : ElevatedButton(
-                            onPressed: () async {
-                              await SessionService.cerrarSesion();
-
-                              if (!mounted) return;
-
-                              /// 🔥 SOLUCIÓN REAL
-                              await inicializarHome();
-                            },
-                            child: const Text("Cerrar sesión"),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 13),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                textStyle: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              child: const Text("Ingresar"),
+                            )
+                          : OutlinedButton(
+                              onPressed: () async {
+                                await SessionService.cerrarSesion();
+                                await inicializarHome();
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.grayMid,
+                                side: const BorderSide(
+                                  color: AppColors.divider,
+                                  width: 1,
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 13),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                textStyle: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              child: const Text("Cerrar sesión"),
+                            ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const vender.VenderScreen(),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: AppColors.textOnPrimary,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
                           ),
-
-                    const SizedBox(width: 15),
-
-                    /// VENDER
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const vender.VenderScreen(),
+                          textStyle: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
                           ),
-                        );
-                      },
-                      child: const Text("Vender"),
+                        ),
+                        child: const Text("Vender"),
+                      ),
                     ),
                   ],
                 ),

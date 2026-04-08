@@ -1,88 +1,127 @@
-# backend/services/gemini_service.py
 import os
 import json
 import re
 from typing import Optional
 
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 
-MODEL = os.getenv("GEMINI_VISION_MODEL", "gemini-3-flash-preview")
+# 🔥 FORZAMOS MODELO (SIN ENV PARA EVITAR ERRORES)
+MODEL = "gemini-1.0-pro"
+
 
 _SYSTEM = (
     "Eres un clasificador de productos para un marketplace.\n"
     "Identifica el objeto físico principal de la foto.\n"
+    "Genera un título atractivo para vender el producto.\n"
     "Reglas estrictas:\n"
-    "1) Ignora TODO texto visible (no uses OCR para decidir marca o modelo).\n"
-    "2) Si la MARCA es claramente reconocible por diseño (logo visible o forma icónica), "
-    "inclúyela después del objeto.\n"
+    "1) Puedes usar OCR para decidir marca o modelo, pero sólo del producto principal identificado.\n"
+    "2) Si la MARCA es claramente reconocible por diseño (logo visible o forma icónica), inclúyela después del objeto.\n"
     "3) No inventes modelo ni versión.\n"
-    "4) Máximo 2 palabras: <Objeto> o <Objeto Marca>.\n"
-    "5) Español, sin explicación.\n"
+    "4) Máximo 4 palabras.\n"
+    "5) Español.\n"
 )
 
 _USER = 'Responde SOLO en JSON válido: {"titulo":"<MAXIMO_2_PALABRAS>"}'
+
+
+# 🔥 LIMPIEZA FUERTE DE TEXTO (CLAVE)
+def _fix_encoding(text: str) -> str:
+    if not text:
+        return text
+
+    # caso típico UTF8 mal interpretado
+    try:
+        text = text.encode("latin1").decode("utf-8")
+    except:
+        pass
+
+    # reemplazos manuales (casos comunes)
+    reemplazos = {
+        "Ã¡": "á",
+        "Ã©": "é",
+        "Ã­": "í",
+        "Ã³": "ó",
+        "Ãº": "ú",
+        "Ã±": "ñ",
+        "Ã": "í",
+    }
+
+    for k, v in reemplazos.items():
+        text = text.replace(k, v)
+
+    return text
 
 
 def _extract_json_title(text: str) -> Optional[str]:
     if not text:
         return None
 
-    # intenta parse directo
     try:
         data = json.loads(text)
-        t = (data.get("titulo") or "").strip()
-        return t or None
-    except Exception:
+        return (data.get("titulo") or "").strip()
+    except:
         pass
 
-    # fallback: encontrar el primer JSON en el texto
-    m = re.search(r"\{.*\}", text, flags=re.DOTALL)
-    if not m:
-        return None
-    try:
-        data = json.loads(m.group(0))
-        t = (data.get("titulo") or "").strip()
-        return t or None
-    except Exception:
+    match = re.search(r"\{.*\}", text, re.DOTALL)
+    if not match:
         return None
 
+    try:
+        data = json.loads(match.group(0))
+        return (data.get("titulo") or "").strip()
+    except:
+        return None
 
 
 def gemini_titulo_producto(image_bytes: bytes, mime_type: str) -> Optional[str]:
-    """
-    Devuelve <Objeto> o <Objeto Marca> en español.
-    Máximo 2 palabras.
-    Requiere env var: GEMINI_API_KEY
-    """
-    client = genai.Client()  # Usa GEMINI_API_KEY del entorno
 
-    resp = client.models.generate_content(
-        model=MODEL,
-        contents=[
-            types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
-            _USER,
-        ],
-        config=types.GenerateContentConfig(
-            system_instruction=_SYSTEM,
-            temperature=0,
-        ),
-    )
+    api_key = os.getenv("GEMINI_API_KEY")
 
-    raw = (resp.text or "").strip()
+    if not api_key:
+        print("ERROR GEMINI: API KEY no configurada")
+        return None
+
+    genai.configure(api_key=api_key)
+
+    print("MODELO GEMINI USADO:", MODEL)
+
+    raw = ""
+
+    try:
+        model = genai.GenerativeModel(MODEL)
+
+        response = model.generate_content(
+            [
+                _SYSTEM,
+                _USER,
+                {
+                    "mime_type": mime_type,
+                    "data": image_bytes,
+                },
+            ],
+            generation_config={"temperature": 0},
+        )
+
+        raw = (response.text or "").strip()
+
+    except Exception as e:
+        print("ERROR GEMINI SERVICE:", e)
+        return None
+
     titulo = _extract_json_title(raw)
 
     if not titulo:
         return None
 
-    # Limpieza básica
+    # 🔥 FIX FUERTE
+    titulo = _fix_encoding(titulo)
+
     titulo = titulo.strip()
 
-    # Limitar a máximo 2 palabras
-    palabras = titulo.split()
-    titulo = " ".join(palabras[:2])
+    # máximo 2 palabras
+    titulo = " ".join(titulo.split()[:2])
 
-    # Capitalizar correctamente (Ratón Apple)
+    # capitalizar
     titulo = titulo.title()
 
     return titulo

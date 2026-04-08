@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   runApp(const MercadoFotoApp());
@@ -10,9 +11,11 @@ class MercadoFotoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: HomeScreen(),
+      title: 'OK Venta',
+      theme: AppTheme.theme,
+      home: const HomeScreen(),
     );
   }
 }

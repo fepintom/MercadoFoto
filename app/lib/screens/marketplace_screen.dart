@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
-import '../services/session_service.dart';
+import '../theme/app_theme.dart';
 import 'producto_detalle_screen.dart';
 
 class MarketplaceScreen extends StatefulWidget {
@@ -18,68 +18,29 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   List publicaciones = [];
   bool loading = true;
 
-  bool usuarioRegistrado = false;
-  String nombreUsuario = "";
-  String apellidoUsuario = "";
-
   @override
   void initState() {
     super.initState();
-    init();
-  }
-
-  Future<void> init() async {
-    await cargarUsuario();
-    await cargarPublicaciones();
-  }
-
-  Future<void> cargarUsuario() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    final userId = prefs.getInt("user_id");
-    final nombre = prefs.getString("nombre");
-    final apellido = prefs.getString("apellido");
-
-    if (userId != null) {
-      usuarioRegistrado = true;
-      nombreUsuario = nombre ?? "";
-      apellidoUsuario = apellido ?? "";
-    }
+    cargarPublicaciones();
   }
 
   Future<void> cargarPublicaciones() async {
     try {
-      final session = await SessionService.obtenerSesion();
-      final userId = session["user_id"];
+      final response = await http.get(
+        Uri.parse("${ApiService.baseUrl}/publicaciones"),
+      );
 
-      http.Response response;
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
 
-      /// 🔥 USUARIO REGISTRADO → SOLO SUS PRODUCTOS
-      if (userId != null) {
-        response = await http.get(
-          Uri.parse("${ApiService.baseUrl}/vendedor/$userId"),
-        );
+      if (!mounted) return;
 
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-
-        setState(() {
-          publicaciones = data["publicaciones"] ?? [];
-          loading = false;
-        });
-      } else {
-        /// 🔥 INVITADO → MARKETPLACE GENERAL
-        response = await http.get(
-          Uri.parse("${ApiService.baseUrl}/publicaciones"),
-        );
-
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-
-        setState(() {
-          publicaciones = data;
-          loading = false;
-        });
-      }
+      setState(() {
+        publicaciones = List<Map<String, dynamic>>.from(data);
+        loading = false;
+      });
     } catch (e) {
+      debugPrint("ERROR MARKETPLACE: $e");
+      if (!mounted) return;
       setState(() {
         publicaciones = [];
         loading = false;
@@ -87,218 +48,180 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    /// LOADING
-    if (loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
+  Widget _itemProducto(Map item) {
+    final imagenUrl = item['imagen_url'] ?? "";
+    final titulo = item['titulo'] ?? "";
+    final precio = item['precio'] ?? 0;
+    final vendedor = item['nombre_vendedor'] ?? "Usuario invitado";
+    final bool registrado = item['user_id'] != null;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          /// 🔥 HEADER LIMPIO (SIN LOGO DUPLICADO)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 40, 12, 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  usuarioRegistrado ? "Mis publicaciones" : "Marketplace",
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProductoDetalleScreen(producto: item),
+          ),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.divider, width: 0.5),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── IMAGEN ───────────────────────────────────────
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(12),
+              ),
+              child: Image.network(
+                "${ApiService.baseUrl}$imagenUrl",
+                height: 140,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  height: 140,
+                  color: AppColors.background,
+                  child: const Icon(
+                    Icons.image_not_supported,
+                    color: AppColors.grayMid,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  usuarioRegistrado
-                      ? "$nombreUsuario $apellidoUsuario"
-                      : "Usuario invitado",
-                  style: const TextStyle(fontSize: 14, color: Colors.black54),
+              ),
+            ),
+
+            // ── INFO ─────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    titulo,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    "\$${precio.toString()}",
+                    style: const TextStyle(
+                      fontSize: 17,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(
+                        registrado ? Icons.verified_user : Icons.person_outline,
+                        size: 12,
+                        color:
+                            registrado ? AppColors.carbon : AppColors.grayMid,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          vendedor,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: registrado
+                                ? AppColors.carbon
+                                : AppColors.grayMid,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) {
+      return const Padding(
+        padding: EdgeInsets.all(40),
+        child: Center(
+          child: CircularProgressIndicator(
+            color: AppColors.primary,
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── HEADER ───────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "Marketplace",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
                 ),
-              ],
+              ),
+              Text(
+                "${publicaciones.length} productos",
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.grayMid,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // ── SIN PRODUCTOS ─────────────────────────────────────
+        if (publicaciones.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(40),
+            child: Center(
+              child: Text(
+                "No hay productos disponibles",
+                style: TextStyle(color: AppColors.grayMid),
+              ),
             ),
           ),
 
-          /// 🔥 SIN PRODUCTOS
-          if (publicaciones.isEmpty)
-            const Expanded(
-              child: Center(
-                child: Text(
-                  "Aquí verás tus productos publicados",
-                  style: TextStyle(color: Colors.black45),
-                ),
-              ),
+        // ── GRID ─────────────────────────────────────────────
+        if (publicaciones.isNotEmpty)
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 0.72,
             ),
-
-          /// 🔥 GRID PRODUCTOS
-          if (publicaciones.isNotEmpty)
-            Expanded(
-              child: GridView.builder(
-                padding: const EdgeInsets.all(10),
-
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: 0.60,
-                ),
-
-                itemCount: publicaciones.length,
-
-                itemBuilder: (context, index) {
-                  final item = publicaciones[index];
-
-                  final imagenUrl = item['imagen_url'] ?? "";
-                  final titulo = item['titulo'] ?? "";
-                  final descripcion = item['descripcion'] ?? "";
-                  final precio = item['precio'] ?? 0;
-                  final vendedor =
-                      item['nombre_vendedor'] ?? "Usuario invitado";
-
-                  final userId = item['user_id'];
-                  final bool registrado = userId != null;
-
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ProductoDetalleScreen(producto: item),
-                        ),
-                      );
-                    },
-
-                    child: Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          /// 🔥 IMAGEN
-                          ClipRRect(
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(12),
-                            ),
-                            child: Image.network(
-                              "${ApiService.baseUrl}$imagenUrl",
-                              height: 150,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  height: 150,
-                                  color: Colors.grey[200],
-                                  child: const Icon(Icons.image_not_supported),
-                                );
-                              },
-                            ),
-                          ),
-
-                          Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                /// TITULO
-                                Text(
-                                  titulo,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-
-                                const SizedBox(height: 5),
-
-                                /// DESCRIPCION
-                                Text(
-                                  descripcion,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.black54,
-                                  ),
-                                ),
-
-                                const SizedBox(height: 8),
-
-                                /// PRECIO
-                                Text(
-                                  "\$${precio.toStringAsFixed(0)}",
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-
-                                const SizedBox(height: 6),
-
-                                /// VENDEDOR
-                                Row(
-                                  children: [
-                                    const Icon(Icons.storefront, size: 14),
-                                    const SizedBox(width: 4),
-                                    Expanded(
-                                      child: Text(
-                                        "Vendido por $vendedor",
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontSize: 11),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-
-                                const SizedBox(height: 6),
-
-                                /// ESTADO
-                                Row(
-                                  children: [
-                                    Icon(
-                                      registrado
-                                          ? Icons.verified_user
-                                          : Icons.person_outline,
-                                      size: 14,
-                                      color: registrado
-                                          ? Colors.green
-                                          : Colors.orange,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      registrado ? "Registrado" : "Invitado",
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: registrado
-                                            ? Colors.green
-                                            : Colors.orange,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-        ],
-      ),
+            itemCount: publicaciones.length,
+            itemBuilder: (_, i) => _itemProducto(publicaciones[i]),
+          ),
+      ],
     );
   }
 }

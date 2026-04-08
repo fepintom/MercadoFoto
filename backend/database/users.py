@@ -2,15 +2,15 @@ import sqlite3
 import os
 
 # --------------------------------------------------
-# DB PATH (CORRECTO → users.db)
+# DB PATH (UNIFICADO → publicaciones.db)
 # --------------------------------------------------
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB = os.path.join(BASE_DIR, "database", "users.db")
+DB = os.path.join(BASE_DIR, "database", "publicaciones.db")
 
 
 # --------------------------------------------------
-# INIT USERS TABLE
+# INIT USERS TABLE (CORREGIDO → users)
 # --------------------------------------------------
 
 def init_users_db():
@@ -19,12 +19,13 @@ def init_users_db():
     cursor = conn.cursor()
 
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS usuarios (
+    CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         rut TEXT UNIQUE,
         nombre TEXT,
         email TEXT UNIQUE,
         password TEXT,
+        google_id TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
@@ -42,54 +43,29 @@ def normalizar_rut(rut):
 
 
 # --------------------------------------------------
-# VALIDAR RUT (MODULO 11)
-# --------------------------------------------------
-
-def validar_rut(rut):
-
-    rut = normalizar_rut(rut)
-
-    if len(rut) < 2:
-        return False
-
-    cuerpo = rut[:-1]
-    dv = rut[-1]
-
-    if not cuerpo.isdigit():
-        return False
-
-    suma = 0
-    multiplo = 2
-
-    for c in reversed(cuerpo):
-        suma += int(c) * multiplo
-        multiplo += 1
-        if multiplo > 7:
-            multiplo = 2
-
-    resto = 11 - (suma % 11)
-
-    if resto == 11:
-        dv_calc = "0"
-    elif resto == 10:
-        dv_calc = "K"
-    else:
-        dv_calc = str(resto)
-
-    return dv == dv_calc
-
-
-# --------------------------------------------------
-# CREAR USUARIO
+# CREAR USUARIO (REGISTRO INTELIGENTE)
 # --------------------------------------------------
 
 def crear_usuario(rut, nombre, email, password):
 
-    rut = normalizar_rut(rut)
-
     conn = sqlite3.connect(DB)
     cursor = conn.cursor()
 
+    # 🔥 1. BUSCAR SI YA EXISTE
+    cursor.execute("""
+        SELECT id, nombre, email
+        FROM users
+        WHERE email = ?
+    """, (email,))
+
+    existente = cursor.fetchone()
+
+    if existente:
+        conn.close()
+        # 🔥 LOGIN AUTOMÁTICO
+        return existente[0]
+
+    # 🔥 2. CREAR NUEVO
     try:
         cursor.execute("""
             INSERT INTO users (rut, nombre, email, password)
@@ -102,55 +78,14 @@ def crear_usuario(rut, nombre, email, password):
         return user_id
 
     except sqlite3.IntegrityError as e:
-        error_msg = str(e).lower()
-
-        if "rut" in error_msg:
-            raise ValueError("El RUT ya está registrado")
-
-        elif "email" in error_msg:
-            raise ValueError("El correo ya está registrado")
-
-        else:
-            raise ValueError("Error de integridad en la base de datos")
+        raise ValueError("Error al crear usuario")
 
     finally:
         conn.close()
 
 
 # --------------------------------------------------
-# LOGIN USUARIO (POR RUT)
-# --------------------------------------------------
-
-def obtener_usuario_por_rut(rut):
-
-    rut = normalizar_rut(rut)
-
-    conn = sqlite3.connect(DB)
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT id, rut, nombre, email, password
-        FROM usuarios
-        WHERE rut = ?
-    """, (rut,))
-
-    row = cursor.fetchone()
-    conn.close()
-
-    if not row:
-        return None
-
-    return {
-        "id": row[0],
-        "rut": row[1],
-        "nombre": row[2],
-        "email": row[3],
-        "password": row[4]
-    }
-
-
-# --------------------------------------------------
-# LOGIN USUARIO (POR EMAIL)
+# OBTENER USUARIO POR EMAIL
 # --------------------------------------------------
 
 def obtener_usuario_por_email(email):
@@ -159,8 +94,8 @@ def obtener_usuario_por_email(email):
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT id, rut, nombre, email, password
-        FROM usuarios
+        SELECT id, nombre, email, password
+        FROM users
         WHERE email = ?
     """, (email,))
 
@@ -172,10 +107,9 @@ def obtener_usuario_por_email(email):
 
     return {
         "id": row[0],
-        "rut": row[1],
-        "nombre": row[2],
-        "email": row[3],
-        "password": row[4]
+        "nombre": row[1],
+        "email": row[2],
+        "password": row[3]
     }
 
 
@@ -190,7 +124,7 @@ def obtener_usuario_por_id(user_id):
 
     cursor.execute("""
         SELECT id, nombre, email
-        FROM usuarios
+        FROM users
         WHERE id = ?
     """, (user_id,))
 

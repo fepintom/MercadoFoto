@@ -28,9 +28,16 @@ def init_publicaciones_db():
         guest_id TEXT,
         user_id INTEGER,
         estado TEXT DEFAULT 'disponible',
+        dimensiones TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
+
+    # Migración segura: agrega columna si ya existe la tabla sin ella
+    try:
+        cursor.execute("ALTER TABLE publicaciones ADD COLUMN dimensiones TEXT")
+    except Exception:
+        pass
 
     conn.commit()
     conn.close()
@@ -46,7 +53,8 @@ def guardar_publicacion(
     precio,
     imagen_url,
     guest_id=None,
-    user_id=None
+    user_id=None,
+    dimensiones=None,
 ):
 
     conn = sqlite3.connect(DB)
@@ -59,16 +67,18 @@ def guardar_publicacion(
             precio,
             imagen_url,
             guest_id,
-            user_id
+            user_id,
+            dimensiones
         )
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (
         titulo,
         descripcion,
         precio,
         imagen_url,
         guest_id,
-        user_id
+        user_id,
+        dimensiones,
     ))
 
     conn.commit()
@@ -94,6 +104,7 @@ def obtener_publicaciones():
         p.guest_id,
         p.user_id,
         p.estado,
+        p.dimensiones,
         CASE
             WHEN u.nombre IS NOT NULL AND TRIM(u.nombre) <> ''
             THEN u.nombre
@@ -113,7 +124,7 @@ def obtener_publicaciones():
     for row in rows:
 
         user_id = row[6]
-        nombre_vendedor = row[8]
+        nombre_vendedor = row[9]
         emoji = "🙂" if user_id else "🙁"
 
         publicaciones.append({
@@ -125,11 +136,13 @@ def obtener_publicaciones():
             "guest_id": row[5],
             "user_id": row[6],
             "estado": row[7],
+            "dimensiones": row[8],
             "seller_status": emoji,
-            "nombre_vendedor": nombre_vendedor
+            "nombre_vendedor": nombre_vendedor,
         })
 
     return publicaciones
+
 
 # --------------------------------------------------
 # FUNCION CAMBIAR ESTADO
@@ -148,6 +161,7 @@ def cambiar_estado_publicacion(publicacion_id, estado):
 
     conn.commit()
     conn.close()
+
 
 # --------------------------------------------------
 # MIGRAR PUBLICACIONES GUEST → USER
@@ -184,46 +198,12 @@ def obtener_vendedor_publicacion(publicacion_id):
     """, (publicacion_id,))
 
     row = cursor.fetchone()
-
     conn.close()
 
     if not row:
         return None
 
     return row[0]
-
-# --------------------------------------------------
-# PUBLICACIONES POR VENDEDOR
-# --------------------------------------------------
-
-def obtener_publicaciones_vendedor(user_id):
-
-    conn = sqlite3.connect(DB)
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT id, titulo, descripcion, precio, imagen_url
-        FROM publicaciones
-        WHERE user_id = ?
-        ORDER BY id DESC
-    """, (user_id,))
-
-    rows = cursor.fetchall()
-
-    conn.close()
-
-    data = []
-
-    for r in rows:
-        data.append({
-            "id": r[0],
-            "titulo": r[1],
-            "descripcion": r[2],
-            "precio": r[3],
-            "imagen_url": r[4]
-        })
-
-    return data
 
 
 # --------------------------------------------------
@@ -235,7 +215,6 @@ def obtener_productos_similares(publicacion_id):
     conn = sqlite3.connect(DB)
     cursor = conn.cursor()
 
-    # obtener título de referencia
     cursor.execute("""
         SELECT titulo
         FROM publicaciones
@@ -249,8 +228,6 @@ def obtener_productos_similares(publicacion_id):
         return []
 
     titulo = row[0]
-
-    # buscar palabras clave del título
     palabra = titulo.split(" ")[0]
 
     cursor.execute("""
@@ -262,7 +239,6 @@ def obtener_productos_similares(publicacion_id):
     """, (f"%{palabra}%", publicacion_id))
 
     rows = cursor.fetchall()
-
     conn.close()
 
     data = []
@@ -272,7 +248,7 @@ def obtener_productos_similares(publicacion_id):
             "id": r[0],
             "titulo": r[1],
             "precio": r[2],
-            "imagen_url": r[3]
+            "imagen_url": r[3],
         })
 
     return data
