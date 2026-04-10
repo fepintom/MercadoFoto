@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 class RegistroFormWidget extends StatefulWidget {
-  final Function(String email, String password) onSubmit;
+  final Future<void> Function(String email, String password) onSubmit;
+  final Future<void> Function()? onGoogleSignIn;
   final bool isLogin;
   final VoidCallback? onToggle;
 
   const RegistroFormWidget({
     super.key,
     required this.onSubmit,
+    this.onGoogleSignIn,
     this.isLogin = false,
     this.onToggle,
   });
@@ -18,44 +21,66 @@ class RegistroFormWidget extends StatefulWidget {
 
 class _RegistroFormWidgetState extends State<RegistroFormWidget> {
   final emailCtrl = TextEditingController();
-  final passCtrl = TextEditingController();
+  final passCtrl  = TextEditingController();
 
-  bool loading = false;
+  bool _loading       = false;
+  bool _loadingGoogle = false;
 
-  void submit() async {
-    final email = emailCtrl.text.trim();
+  @override
+  void dispose() {
+    emailCtrl.dispose();
+    passCtrl.dispose();
+    super.dispose();
+  }
+
+  // ── Email/Password submit ─────────────────────────────────────────────
+  Future<void> _submit() async {
+    final email    = emailCtrl.text.trim();
     final password = passCtrl.text.trim();
 
     if (!email.contains("@")) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Ingresa un correo válido")),
-      );
+      _snack("Ingresa un correo válido");
       return;
     }
-
     if (password.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("La contraseña debe tener al menos 6 caracteres"),
-        ),
-      );
+      _snack("La contraseña debe tener al menos 6 caracteres");
       return;
     }
 
-    setState(() => loading = true);
-
+    setState(() => _loading = true);
     try {
       await widget.onSubmit(email, password);
     } finally {
-      if (mounted) {
-        setState(() => loading = false);
-      }
+      if (mounted) setState(() => _loading = false);
     }
   }
 
+  // ── Google submit ─────────────────────────────────────────────────────
+  Future<void> _submitGoogle() async {
+    if (widget.onGoogleSignIn == null) return;
+    setState(() => _loadingGoogle = true);
+    try {
+      await widget.onGoogleSignIn!();
+    } finally {
+      if (mounted) setState(() => _loadingGoogle = false);
+    }
+  }
+
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: AppColors.carbon,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final titulo = widget.isLogin ? "Ingresar" : "Crear cuenta";
+    final titulo     = widget.isLogin ? "Ingresar" : "Crear cuenta";
     final textoBoton = widget.isLogin ? "Ingresar" : "Registrarse";
 
     return Column(
@@ -64,34 +89,32 @@ class _RegistroFormWidgetState extends State<RegistroFormWidget> {
       children: [
         const SizedBox(height: 10),
 
-        /// HANDLE
+        // Handle
         Center(
           child: Container(
             width: 40,
-            height: 5,
+            height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(10),
+              color: AppColors.divider,
+              borderRadius: BorderRadius.circular(2),
             ),
           ),
         ),
 
         const SizedBox(height: 20),
 
-        /// HEADER
+        // Header
         Row(
           children: [
-            Image.asset(
-              'assets/images/logo.png',
-              height: 30,
-            ),
+            Image.asset('assets/images/logo.png', height: 30),
             Expanded(
               child: Center(
                 child: Text(
                   titulo,
                   style: const TextStyle(
                     fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ),
@@ -102,50 +125,102 @@ class _RegistroFormWidgetState extends State<RegistroFormWidget> {
 
         const SizedBox(height: 20),
 
-        /// EMAIL
+        // Email
         TextField(
           controller: emailCtrl,
           keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(
-            labelText: "Correo",
-            border: OutlineInputBorder(),
+          style: const TextStyle(
+              fontSize: 15, color: AppColors.textPrimary),
+          decoration: InputDecoration(
+            labelText: "Correo electrónico",
+            labelStyle: const TextStyle(
+                color: AppColors.grayMid, fontSize: 14),
+            filled: true,
+            fillColor: AppColors.background,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide:
+                  const BorderSide(color: AppColors.divider, width: 0.5),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide:
+                  const BorderSide(color: AppColors.divider, width: 0.5),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide:
+                  const BorderSide(color: AppColors.primary, width: 1.5),
+            ),
           ),
         ),
 
-        const SizedBox(height: 15),
+        const SizedBox(height: 12),
 
-        /// PASSWORD
+        // Password
         TextField(
           controller: passCtrl,
           obscureText: true,
-          decoration: const InputDecoration(
+          style: const TextStyle(
+              fontSize: 15, color: AppColors.textPrimary),
+          decoration: InputDecoration(
             labelText: "Contraseña",
-            border: OutlineInputBorder(),
+            labelStyle: const TextStyle(
+                color: AppColors.grayMid, fontSize: 14),
+            filled: true,
+            fillColor: AppColors.background,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide:
+                  const BorderSide(color: AppColors.divider, width: 0.5),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide:
+                  const BorderSide(color: AppColors.divider, width: 0.5),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide:
+                  const BorderSide(color: AppColors.primary, width: 1.5),
+            ),
           ),
         ),
 
         const SizedBox(height: 20),
 
-        /// BOTÓN
+        // Botón email/pass
         SizedBox(
           width: double.infinity,
           height: 50,
           child: ElevatedButton(
-            onPressed: loading ? null : submit,
+            onPressed: _loading ? null : _submit,
             style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.surface,
+              elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(25),
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: loading
-                ? const CircularProgressIndicator(color: Colors.white)
-                : Text(textoBoton),
+            child: _loading
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                        color: AppColors.surface, strokeWidth: 2.5),
+                  )
+                : Text(
+                    textoBoton,
+                    style: const TextStyle(
+                        fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
           ),
         ),
 
         const SizedBox(height: 10),
 
-        /// 🔥 TOGGLE LOGIN / REGISTRO
+        // Toggle login ↔ registro
         Center(
           child: TextButton(
             onPressed: widget.onToggle,
@@ -153,55 +228,78 @@ class _RegistroFormWidgetState extends State<RegistroFormWidget> {
               widget.isLogin
                   ? "¿No tienes cuenta? Regístrate"
                   : "¿Ya tienes cuenta? Ingresa",
+              style: const TextStyle(color: AppColors.primary),
             ),
           ),
         ),
 
-        const SizedBox(height: 10),
-
-        /// DIVISOR
+        // Divisor
         Row(
           children: [
-            Expanded(child: Divider(color: Colors.grey[300])),
+            Expanded(
+                child: Divider(
+                    color: AppColors.divider.withOpacity(0.8))),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 10),
-              child: Text("o"),
+              child: Text(
+                "o",
+                style: TextStyle(
+                    color: AppColors.grayMid, fontSize: 13),
+              ),
             ),
-            Expanded(child: Divider(color: Colors.grey[300])),
+            Expanded(
+                child: Divider(
+                    color: AppColors.divider.withOpacity(0.8))),
           ],
         ),
 
-        const SizedBox(height: 15),
+        const SizedBox(height: 12),
 
-        /// GOOGLE
+        // Botón Google
         SizedBox(
           width: double.infinity,
           height: 50,
           child: OutlinedButton(
-            onPressed: () {
-              // TODO: Google login
-            },
+            onPressed: (_loadingGoogle || widget.onGoogleSignIn == null)
+                ? null
+                : _submitGoogle,
             style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Colors.grey),
+              side: const BorderSide(color: AppColors.divider),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(25),
+                borderRadius: BorderRadius.circular(12),
               ),
-              backgroundColor: Colors.white,
+              backgroundColor: AppColors.surface,
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Image.network(
-                  "https://developers.google.com/identity/images/g-logo.png",
-                  height: 20,
-                ),
-                const SizedBox(width: 10),
-                const Text(
-                  "Continuar con Google",
-                  style: TextStyle(color: Colors.black87),
-                ),
-              ],
-            ),
+            child: _loadingGoogle
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                        color: AppColors.primary, strokeWidth: 2.5),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.network(
+                        "https://developers.google.com/identity/images/g-logo.png",
+                        height: 20,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.g_mobiledata_rounded,
+                          color: AppColors.carbon,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        "Continuar con Google",
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ],
+                  ),
           ),
         ),
 

@@ -10,7 +10,7 @@ DB = os.path.join(BASE_DIR, "database", "publicaciones.db")
 
 
 # --------------------------------------------------
-# INIT USERS TABLE (CORREGIDO → users)
+# INIT USERS TABLE
 # --------------------------------------------------
 
 def init_users_db():
@@ -26,9 +26,17 @@ def init_users_db():
         email TEXT UNIQUE,
         password TEXT,
         google_id TEXT,
+        firebase_uid TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
+
+    # Migraciones seguras para columnas nuevas
+    for col in ["google_id TEXT", "firebase_uid TEXT"]:
+        try:
+            cursor.execute(f"ALTER TABLE users ADD COLUMN {col}")
+        except Exception:
+            pass
 
     conn.commit()
     conn.close()
@@ -43,7 +51,7 @@ def normalizar_rut(rut):
 
 
 # --------------------------------------------------
-# CREAR USUARIO (REGISTRO INTELIGENTE)
+# CREAR USUARIO (email/password — flujo legacy)
 # --------------------------------------------------
 
 def crear_usuario(rut, nombre, email, password):
@@ -51,21 +59,14 @@ def crear_usuario(rut, nombre, email, password):
     conn = sqlite3.connect(DB)
     cursor = conn.cursor()
 
-    # 🔥 1. BUSCAR SI YA EXISTE
-    cursor.execute("""
-        SELECT id, nombre, email
-        FROM users
-        WHERE email = ?
-    """, (email,))
-
+    # Buscar si ya existe
+    cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
     existente = cursor.fetchone()
 
     if existente:
         conn.close()
-        # 🔥 LOGIN AUTOMÁTICO
         return existente[0]
 
-    # 🔥 2. CREAR NUEVO
     try:
         cursor.execute("""
             INSERT INTO users (rut, nombre, email, password)
@@ -73,15 +74,81 @@ def crear_usuario(rut, nombre, email, password):
         """, (rut, nombre, email, password))
 
         conn.commit()
-        user_id = cursor.lastrowid
+        return cursor.lastrowid
 
-        return user_id
-
-    except sqlite3.IntegrityError as e:
+    except sqlite3.IntegrityError:
         raise ValueError("Error al crear usuario")
 
     finally:
         conn.close()
+
+
+# --------------------------------------------------
+# CREAR O RECUPERAR USUARIO VÍA FIREBASE
+# --------------------------------------------------
+
+def crear_o_obtener_usuario_firebase(firebase_uid: str, email: str, nombre: str) -> dict:
+    """
+    Busca usuario por firebase_uid. Si no existe, busca por email.
+    Si tampoco existe, lo crea. Devuelve dict con id y nombre.
+    """
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+
+    try:
+        # 1. Buscar por firebase_uid
+        cursor.execute(
+            "SELECT id, nombre FROM users WHERE firebase_uid = ?",
+            (firebase_uid,)
+        )
+        row = cursor.fetchone()
+        if row:
+            return {"id": row[0], "nombre": row[1]}
+
+        # 2. Buscar por email (login previo con email/password)
+        cursor.execute(
+            "SELECT id, nombre FROM users WHERE email = ?",
+            (email,)
+        )
+        row = cursor.fetchone()
+        if row:
+            # Vincular firebase_uid al usuario existente
+            cursor.execute(
+                "UPDATE users SET firebase_uid = ? WHERE id = ?",
+                (firebase_uid, row[0])
+            )
+            conn.commit()
+            return {"id": row[0], "nombre": row[1]}
+
+        # 3. Crear usuario nuevo
+        cursor.execute("""
+            INSERT INTO users (nombre, email, firebase_uid, rut)
+            VALUES (?, ?, ?, ?)
+        """, (nombre, email, firebase_uid, ""))
+
+        conn.commit()
+        return {"id": cursor.lastrowid, "nombre": nombre}
+
+    finally:
+        conn.close()
+
+
+# --------------------------------------------------
+# OBTENER USUARIO POR FIREBASE UID
+# --------------------------------------------------
+
+def obtener_usuario_por_firebase_uid(firebase_uid: str):
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id, nombre, email FROM users WHERE firebase_uid = ?",
+        (firebase_uid,)
+    )
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None
+    return {"id": row[0], "nombre": row[1], "email": row[2]}
 
 
 # --------------------------------------------------

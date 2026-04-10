@@ -47,6 +47,7 @@ from database.users import (
     init_users_db,
     crear_usuario,
     obtener_usuario_por_id,
+    crear_o_obtener_usuario_firebase,
 )
 
 from database.chat import (
@@ -90,6 +91,91 @@ from database.guest_sessions import (
     init_guest_db,
     crear_guest,
 )
+
+# --------------------------------------------------
+# CATEGORIZACIÓN AUTOMÁTICA (keyword-based, sin dependencias externas)
+# --------------------------------------------------
+
+_CATEGORIA_MAP = [
+    {
+        "categoria": "Electrónica",
+        "keywords": ["laptop", "computador", "notebook", "celular", "iphone", "samsung",
+                     "tablet", "television", "tv", "monitor", "teclado", "mouse",
+                     "impresora", "auricular", "audifonos", "cargador", "cable", "usb",
+                     "camara", "drone", "smartwatch", "router", "disco"],
+        "subcategorias": {
+            "Computación": ["laptop", "computador", "notebook", "monitor", "teclado", "mouse", "disco"],
+            "Impresión 3D": ["impresora 3d", "filamento", "3d"],
+            "Celulares": ["celular", "iphone", "samsung", "smartphone", "telefono"],
+            "TV": ["tv", "television", "smart tv", "pantalla"],
+        },
+    },
+    {
+        "categoria": "Automotriz",
+        "keywords": ["auto", "carro", "vehiculo", "motor", "repuesto", "llanta", "moto",
+                     "camion", "freno", "aceite", "filtro", "bujia", "bateria auto",
+                     "parabrisas", "espejo retrovisor", "carroceria"],
+        "subcategorias": {
+            "Repuestos": ["repuesto", "freno", "llanta", "aceite", "filtro", "bujia"],
+            "Autos": ["auto", "carro", "sedan", "suv", "camioneta"],
+            "Motos": ["moto", "motocicleta", "scooter"],
+            "Camiones": ["camion", "truck", "trailer"],
+        },
+    },
+    {
+        "categoria": "Hogar",
+        "keywords": ["silla", "mesa", "sofa", "cama", "refrigerador", "lavadora",
+                     "microondas", "cocina", "mueble", "decoracion", "lampara",
+                     "cuadro", "alfombra", "cortina", "colchon", "escritorio",
+                     "estante", "ropero", "vajilla", "ollas"],
+        "subcategorias": {
+            "Muebles": ["silla", "mesa", "sofa", "cama", "mueble", "estante", "escritorio", "ropero", "colchon"],
+            "Decoración": ["decoracion", "lampara", "cuadro", "alfombra", "cortina", "florero", "espejo"],
+            "Electrodomésticos": ["refrigerador", "lavadora", "microondas", "cocina", "lavavajillas", "horno"],
+        },
+    },
+    {
+        "categoria": "Ocio",
+        "keywords": ["bicicleta", "pelota", "juego", "juguete", "consola", "playstation",
+                     "xbox", "nintendo", "libro", "deporte", "raqueta", "guante",
+                     "pesas", "kayak", "surf", "ski", "guitarra", "piano"],
+        "subcategorias": {
+            "Deportes": ["bicicleta", "pelota", "raqueta", "guante", "deporte", "futbol", "tenis", "pesas", "kayak"],
+            "Juguetes": ["juguete", "muñeca", "lego", "puzzle", "peluche"],
+            "Entretenimiento": ["consola", "playstation", "xbox", "nintendo", "libro", "guitarra", "piano"],
+        },
+    },
+    {
+        "categoria": "Mascotas",
+        "keywords": ["perro", "gato", "mascota", "alimento", "collar", "jaula",
+                     "acuario", "correa", "croqueta", "arena gato", "pecera"],
+        "subcategorias": {
+            "Alimentos": ["alimento", "comida", "croqueta", "snack"],
+            "Accesorios": ["collar", "correa", "jaula", "acuario", "pecera", "cama mascota"],
+            "Servicios": ["veterinario", "peluqueria", "guarderia"],
+        },
+    },
+]
+
+
+def detectar_categoria(titulo: str) -> tuple:
+    """Detecta categoría y subcategoría a partir del título del producto."""
+    t = titulo.lower()
+
+    for cat_data in _CATEGORIA_MAP:
+        for keyword in cat_data["keywords"]:
+            if keyword in t:
+                # Buscar subcategoría más específica
+                for sub_nombre, sub_keys in cat_data["subcategorias"].items():
+                    for sk in sub_keys:
+                        if sk in t:
+                            return cat_data["categoria"], sub_nombre
+                # Subcategoría por defecto (primera)
+                primera = next(iter(cat_data["subcategorias"]))
+                return cat_data["categoria"], primera
+
+    return "General", "Otros"
+
 
 # --------------------------------------------------
 # RANKING
@@ -193,6 +279,49 @@ class Mensaje(BaseModel):
     mensaje: str
 
 
+class FirebaseLoginRequest(BaseModel):
+    firebase_uid: str
+    email: str
+    nombre: Optional[str] = None
+    guest_id: Optional[str] = None
+
+
+# --------------------------------------------------
+# LOGIN FIREBASE (Google Sign-In + Email/Password vía Firebase)
+# --------------------------------------------------
+
+@app.post("/login/firebase")
+def login_firebase(data: FirebaseLoginRequest):
+    """
+    Recibe firebase_uid + email + nombre desde Flutter después de que
+    Firebase autentica al usuario. Crea o recupera el user_id del backend
+    y migra las publicaciones guest si se provee guest_id.
+    """
+    try:
+        nombre = data.nombre or (data.email.split("@")[0] if data.email else "Usuario")
+
+        usuario = crear_o_obtener_usuario_firebase(
+            firebase_uid=data.firebase_uid,
+            email=data.email,
+            nombre=nombre,
+        )
+
+        if data.guest_id and data.guest_id.strip():
+            migrar_publicaciones_guest(data.guest_id, usuario["id"])
+
+        return {
+            "user_id": usuario["id"],
+            "nombre": usuario["nombre"],
+            "email": data.email,
+            "mensaje": "Sesión iniciada correctamente",
+        }
+
+    except Exception as e:
+        print("ERROR EN /login/firebase:", repr(e))
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # --------------------------------------------------
 # ANALIZAR IMAGEN
 # --------------------------------------------------
@@ -216,6 +345,9 @@ async def analizar_producto(file: UploadFile = File(...)):
             # Guardar en cache
             save_cached_analisis(image_hash, titulo, descripcion, False)
 
+        # Categorización automática por palabras clave
+        categoria, subcategoria = detectar_categoria(titulo)
+
         # Quitar fondo y guardar imagen
         imagen_procesada = quitar_fondo(original_bytes)
         imagen_url = guardar_imagen_procesada(imagen_procesada)
@@ -225,6 +357,8 @@ async def analizar_producto(file: UploadFile = File(...)):
             "descripcion": descripcion,
             "dimensiones": dimensiones,
             "imagen_url": imagen_url,
+            "categoria": categoria,
+            "subcategoria": subcategoria,
         }
 
     except Exception as e:
@@ -239,9 +373,14 @@ async def publicar_producto(
     descripcion: str = Form(...),
     precio: float = Form(...),
     file: UploadFile = File(...),
+    file2: Optional[UploadFile] = File(None),
+    file3: Optional[UploadFile] = File(None),
+    file4: Optional[UploadFile] = File(None),
     guest_id: Optional[str] = Form(None),
     user_id: Optional[int] = Form(None),
     dimensiones: Optional[str] = Form(None),
+    categoria: Optional[str] = Form(None),
+    subcategoria: Optional[str] = Form(None),
 ):
     if not guest_id and not user_id:
         raise HTTPException(
@@ -250,9 +389,27 @@ async def publicar_producto(
         )
 
     try:
+        # Procesar imagen principal
         image_bytes = await file.read()
         imagen_sin_fondo = quitar_fondo(image_bytes)
         imagen_url = guardar_imagen_procesada(imagen_sin_fondo)
+
+        # Procesar imágenes extras (hasta 3 adicionales)
+        import json as _json
+        imagenes_extra_urls = []
+        for extra_file in [file2, file3, file4]:
+            if extra_file is not None:
+                extra_bytes = await extra_file.read()
+                if extra_bytes:
+                    extra_sin_fondo = quitar_fondo(extra_bytes)
+                    extra_url = guardar_imagen_procesada(extra_sin_fondo)
+                    imagenes_extra_urls.append(extra_url)
+
+        imagenes_extra = _json.dumps(imagenes_extra_urls) if imagenes_extra_urls else None
+
+        # Si no viene categoría del cliente, detectar automáticamente
+        if not categoria:
+            categoria, subcategoria = detectar_categoria(titulo)
 
         guardar_publicacion(
             titulo,
@@ -262,55 +419,17 @@ async def publicar_producto(
             guest_id,
             user_id,
             dimensiones,
+            categoria,
+            subcategoria,
+            imagenes_extra,
         )
 
         return {
             "mensaje": "Producto publicado correctamente",
             "imagen_url": imagen_url,
-        }
-
-    except Exception as e:
-        print("ERROR EN /publicar:", repr(e))
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# --------------------------------------------------
-# PUBLICAR PRODUCTO
-# --------------------------------------------------
-
-@app.post("/publicar")
-async def publicar_producto(
-    titulo: str = Form(...),
-    descripcion: str = Form(...),
-    precio: float = Form(...),
-    file: UploadFile = File(...),
-    guest_id: Optional[str] = Form(None),
-    user_id: Optional[int] = Form(None),
-):
-    if not guest_id and not user_id:
-        raise HTTPException(
-            status_code=400,
-            detail="Se requiere guest_id o user_id",
-        )
-
-    try:
-        image_bytes = await file.read()
-        imagen_sin_fondo = quitar_fondo(image_bytes)
-        imagen_url = guardar_imagen_procesada(imagen_sin_fondo)
-
-        guardar_publicacion(
-            titulo,
-            descripcion,
-            precio,
-            imagen_url,
-            guest_id,
-            user_id,
-        )
-
-        return {
-            "mensaje": "Producto publicado correctamente",
-            "imagen_url": imagen_url,
+            "imagenes_urls": [imagen_url] + imagenes_extra_urls,
+            "categoria": categoria,
+            "subcategoria": subcategoria,
         }
 
     except Exception as e:
@@ -324,9 +443,26 @@ async def publicar_producto(
 # --------------------------------------------------
 
 @app.get("/publicaciones")
-def listar_publicaciones():
+def listar_publicaciones(
+    categoria: Optional[str] = None,
+    subcategoria: Optional[str] = None,
+):
     try:
-        return obtener_publicaciones()
+        publicaciones = obtener_publicaciones()
+
+        if categoria:
+            publicaciones = [
+                p for p in publicaciones
+                if p.get("categoria", "").lower() == categoria.lower()
+            ]
+
+        if subcategoria:
+            publicaciones = [
+                p for p in publicaciones
+                if p.get("subcategoria", "").lower() == subcategoria.lower()
+            ]
+
+        return publicaciones
 
     except Exception as e:
         print("ERROR EN /publicaciones:", repr(e))

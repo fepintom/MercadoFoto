@@ -29,15 +29,19 @@ def init_publicaciones_db():
         user_id INTEGER,
         estado TEXT DEFAULT 'disponible',
         dimensiones TEXT,
+        categoria TEXT,
+        subcategoria TEXT,
+        imagenes_extra TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
 
-    # Migración segura: agrega columna si ya existe la tabla sin ella
-    try:
-        cursor.execute("ALTER TABLE publicaciones ADD COLUMN dimensiones TEXT")
-    except Exception:
-        pass
+    # Migraciones seguras para columnas nuevas
+    for col in ["dimensiones TEXT", "categoria TEXT", "subcategoria TEXT", "imagenes_extra TEXT"]:
+        try:
+            cursor.execute(f"ALTER TABLE publicaciones ADD COLUMN {col}")
+        except Exception:
+            pass
 
     conn.commit()
     conn.close()
@@ -55,6 +59,9 @@ def guardar_publicacion(
     guest_id=None,
     user_id=None,
     dimensiones=None,
+    categoria=None,
+    subcategoria=None,
+    imagenes_extra=None,
 ):
 
     conn = sqlite3.connect(DB)
@@ -68,9 +75,12 @@ def guardar_publicacion(
             imagen_url,
             guest_id,
             user_id,
-            dimensiones
+            dimensiones,
+            categoria,
+            subcategoria,
+            imagenes_extra
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         titulo,
         descripcion,
@@ -79,6 +89,9 @@ def guardar_publicacion(
         guest_id,
         user_id,
         dimensiones,
+        categoria,
+        subcategoria,
+        imagenes_extra,
     ))
 
     conn.commit()
@@ -105,6 +118,9 @@ def obtener_publicaciones():
         p.user_id,
         p.estado,
         p.dimensiones,
+        p.categoria,
+        p.subcategoria,
+        p.imagenes_extra,
         CASE
             WHEN u.nombre IS NOT NULL AND TRIM(u.nombre) <> ''
             THEN u.nombre
@@ -124,7 +140,7 @@ def obtener_publicaciones():
     for row in rows:
 
         user_id = row[6]
-        nombre_vendedor = row[9]
+        nombre_vendedor = row[12]
         emoji = "🙂" if user_id else "🙁"
 
         publicaciones.append({
@@ -137,6 +153,9 @@ def obtener_publicaciones():
             "user_id": row[6],
             "estado": row[7],
             "dimensiones": row[8],
+            "categoria": row[9],
+            "subcategoria": row[10],
+            "imagenes_extra": row[11],
             "seller_status": emoji,
             "nombre_vendedor": nombre_vendedor,
         })

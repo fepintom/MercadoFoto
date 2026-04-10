@@ -15,9 +15,16 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # Core app
-  http: ^0.13.6
+  http: ^1.1.0
   image_picker: ^1.0.7
   shared_preferences: ^2.2.2
+  firebase_core: ^2.32.0
+  firebase_auth: ^4.20.0
+  google_sign_in: ^6.2.1
+
+  # Compartir (WhatsApp deep-link, etc.)
+  # Descomentar cuando se configure url_launcher en iOS/Android:
+  # url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:

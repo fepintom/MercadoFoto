@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "537815017333",
+    "project_id": "okventa-403e4",
+    "storage_bucket": "okventa-403e4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:537815017333:android:03d4beed71bdd1a70c153c",
+        "android_client_info": {
+          "package_name": "com.example.mercadofoto_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBI14JKDX5UXnlrL095EzurbgdO4M1eQmw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

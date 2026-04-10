@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/auth_service.dart';
 import '../services/session_service.dart';
+import '../theme/app_theme.dart';
+import 'mis_publicaciones_screen.dart';
 
 class MiCuentaScreen extends StatefulWidget {
   const MiCuentaScreen({super.key});
@@ -11,9 +14,6 @@ class MiCuentaScreen extends StatefulWidget {
 }
 
 class _MiCuentaScreenState extends State<MiCuentaScreen> {
-  // -------------------------
-  // CONTROLLERS
-  // -------------------------
   final nombreCtrl = TextEditingController();
   final apellidoCtrl = TextEditingController();
   final emailCtrl = TextEditingController();
@@ -21,15 +21,14 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
   final direccionCtrl = TextEditingController();
   final comunaCtrl = TextEditingController();
   final ciudadCtrl = TextEditingController();
-
   final razonSocialCtrl = TextEditingController();
-
   final bancoCtrl = TextEditingController();
   final tipoCuentaCtrl = TextEditingController();
   final numeroCuentaCtrl = TextEditingController();
   final correoBancoCtrl = TextEditingController();
 
   String tipoUsuario = "persona";
+  String nombreMostrado = "";
 
   @override
   void initState() {
@@ -37,12 +36,8 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
     cargarDatos();
   }
 
-  // -------------------------
-  // CARGAR DATOS
-  // -------------------------
   Future<void> cargarDatos() async {
     final prefs = await SharedPreferences.getInstance();
-
     setState(() {
       nombreCtrl.text = prefs.getString("nombre") ?? "";
       apellidoCtrl.text = prefs.getString("apellido") ?? "";
@@ -51,24 +46,18 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
       direccionCtrl.text = prefs.getString("direccion") ?? "";
       comunaCtrl.text = prefs.getString("comuna") ?? "";
       ciudadCtrl.text = prefs.getString("ciudad") ?? "";
-
       tipoUsuario = prefs.getString("tipo_usuario") ?? "persona";
-
       razonSocialCtrl.text = prefs.getString("razon_social") ?? "";
-
       bancoCtrl.text = prefs.getString("banco") ?? "";
       tipoCuentaCtrl.text = prefs.getString("tipo_cuenta") ?? "";
       numeroCuentaCtrl.text = prefs.getString("numero_cuenta") ?? "";
       correoBancoCtrl.text = prefs.getString("correo_banco") ?? "";
+      nombreMostrado = prefs.getString("nombre") ?? "";
     });
   }
 
-  // -------------------------
-  // GUARDAR DATOS
-  // -------------------------
   Future<void> guardarDatos() async {
     final prefs = await SharedPreferences.getInstance();
-
     await prefs.setString("nombre", nombreCtrl.text);
     await prefs.setString("apellido", apellidoCtrl.text);
     await prefs.setString("email", emailCtrl.text);
@@ -76,180 +65,242 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
     await prefs.setString("direccion", direccionCtrl.text);
     await prefs.setString("comuna", comunaCtrl.text);
     await prefs.setString("ciudad", ciudadCtrl.text);
-
     await prefs.setString("tipo_usuario", tipoUsuario);
     await prefs.setString("razon_social", razonSocialCtrl.text);
-
     await prefs.setString("banco", bancoCtrl.text);
     await prefs.setString("tipo_cuenta", tipoCuentaCtrl.text);
     await prefs.setString("numero_cuenta", numeroCuentaCtrl.text);
     await prefs.setString("correo_banco", correoBancoCtrl.text);
 
+    if (!mounted) return;
+    Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Datos guardados")),
+      const SnackBar(
+        content: Text("Datos guardados correctamente"),
+        backgroundColor: AppColors.carbon,
+      ),
     );
+    await cargarDatos();
   }
 
-  // -------------------------
-  // INPUT MODERNO
-  // -------------------------
-  Widget input({
+  Widget _input({
     required String label,
     required IconData icon,
     required TextEditingController controller,
+    TextInputType? keyboardType,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
+      padding: const EdgeInsets.only(bottom: 14),
       child: TextField(
         controller: controller,
+        keyboardType: keyboardType,
+        style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
         decoration: InputDecoration(
-          prefixIcon: Icon(icon),
+          prefixIcon: Icon(icon, color: AppColors.grayMid, size: 20),
           labelText: label,
+          labelStyle: const TextStyle(color: AppColors.grayMid, fontSize: 14),
+          filled: true,
+          fillColor: AppColors.surface,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
+            borderRadius: BorderRadius.circular(12),
+            borderSide:
+                const BorderSide(color: AppColors.divider, width: 0.5),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide:
+                const BorderSide(color: AppColors.divider, width: 0.5),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide:
+                const BorderSide(color: AppColors.primary, width: 1.5),
           ),
         ),
       ),
     );
   }
 
-  // -------------------------
-  // SELECTOR
-  // -------------------------
-  Widget selectorTipo() {
+  Widget _selectorTipo() {
     return Row(
       children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: () => setState(() => tipoUsuario = "persona"),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color:
-                    tipoUsuario == "persona" ? Colors.blue : Colors.grey[200],
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Center(
-                child: Text(
-                  "PERSONA",
-                  style: TextStyle(
-                    color:
-                        tipoUsuario == "persona" ? Colors.white : Colors.black,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: GestureDetector(
-            onTap: () => setState(() => tipoUsuario = "empresa"),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color:
-                    tipoUsuario == "empresa" ? Colors.blue : Colors.grey[200],
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Center(
-                child: Text(
-                  "EMPRESA",
-                  style: TextStyle(
-                    color:
-                        tipoUsuario == "empresa" ? Colors.white : Colors.black,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
+        Expanded(child: _selectorBtn("persona", "Persona")),
+        const SizedBox(width: 8),
+        Expanded(child: _selectorBtn("empresa", "Empresa")),
       ],
     );
   }
 
-  // -------------------------
-  // ABRIR FORM
-  // -------------------------
+  Widget _selectorBtn(String key, String label) {
+    final selected = tipoUsuario == key;
+    return GestureDetector(
+      onTap: () => setState(() => tipoUsuario = key),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : AppColors.background,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected ? AppColors.primary : AppColors.divider,
+            width: 0.5,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              color: selected ? Colors.white : AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _abrirFormularioPerfil() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: _formPerfil(),
-        );
-      },
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: _formPerfil(),
+      ),
     );
   }
 
-  // -------------------------
-  // FORM PERFIL
-  // -------------------------
   Widget _formPerfil() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          selectorTipo(),
+          // Handle
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.divider,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
           const SizedBox(height: 20),
+
+          const Text(
+            "Mis datos",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          _selectorTipo(),
+          const SizedBox(height: 16),
+
           if (tipoUsuario == "persona") ...[
-            input(label: "Nombre", icon: Icons.person, controller: nombreCtrl),
-            input(
+            _input(
+                label: "Nombre",
+                icon: Icons.person_outline,
+                controller: nombreCtrl),
+            _input(
                 label: "Apellidos",
                 icon: Icons.person_outline,
                 controller: apellidoCtrl),
-            input(label: "RUT", icon: Icons.badge, controller: rutCtrl),
-          ],
-          if (tipoUsuario == "empresa") ...[
-            input(
-                label: "RUT Empresa",
-                icon: Icons.business,
+            _input(
+                label: "RUT",
+                icon: Icons.badge_outlined,
                 controller: rutCtrl),
-            input(
+          ],
+
+          if (tipoUsuario == "empresa") ...[
+            _input(
+                label: "RUT Empresa",
+                icon: Icons.business_outlined,
+                controller: rutCtrl),
+            _input(
                 label: "Razón Social",
-                icon: Icons.business_center,
+                icon: Icons.business_center_outlined,
                 controller: razonSocialCtrl),
           ],
-          input(
-              label: "Dirección", icon: Icons.home, controller: direccionCtrl),
-          input(
+
+          _input(
+              label: "Dirección",
+              icon: Icons.home_outlined,
+              controller: direccionCtrl),
+          _input(
               label: "Comuna",
-              icon: Icons.location_city,
+              icon: Icons.location_city_outlined,
               controller: comunaCtrl),
-          input(label: "Ciudad", icon: Icons.map, controller: ciudadCtrl),
-          const SizedBox(height: 10),
-          input(
+          _input(
+              label: "Ciudad",
+              icon: Icons.map_outlined,
+              controller: ciudadCtrl),
+
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              "Datos bancarios",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+
+          _input(
               label: "Banco",
-              icon: Icons.account_balance,
+              icon: Icons.account_balance_outlined,
               controller: bancoCtrl),
-          input(
+          _input(
               label: "Tipo de Cuenta",
-              icon: Icons.credit_card,
+              icon: Icons.credit_card_outlined,
               controller: tipoCuentaCtrl),
-          input(
+          _input(
               label: "Número de Cuenta",
-              icon: Icons.confirmation_number,
-              controller: numeroCuentaCtrl),
+              icon: Icons.numbers_outlined,
+              controller: numeroCuentaCtrl,
+              keyboardType: TextInputType.number),
           if (tipoUsuario == "persona")
-            input(
+            _input(
                 label: "Correo Banco",
-                icon: Icons.email,
-                controller: correoBancoCtrl),
-          const SizedBox(height: 20),
+                icon: Icons.email_outlined,
+                controller: correoBancoCtrl,
+                keyboardType: TextInputType.emailAddress),
+
+          const SizedBox(height: 8),
+
           SizedBox(
             width: double.infinity,
-            height: 50,
             child: ElevatedButton(
               onPressed: guardarDatos,
-              child: const Text("Guardar"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                "Guardar cambios",
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
         ],
@@ -257,121 +308,244 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
     );
   }
 
-  // -------------------------
-  // ITEM LISTA
-  // -------------------------
-  Widget itemCuenta(IconData icon, String titulo, VoidCallback onTap) {
+  Widget _itemMenu(IconData icon, String titulo, VoidCallback onTap) {
     return Column(
       children: [
         ListTile(
-          leading: Icon(icon),
-          title: Text(titulo),
-          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          contentPadding: EdgeInsets.zero,
+          leading: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: AppColors.carbon, size: 20),
+          ),
+          title: Text(
+            titulo,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          trailing: const Icon(
+            Icons.arrow_forward_ios_rounded,
+            size: 14,
+            color: AppColors.grayMid,
+          ),
           onTap: onTap,
         ),
-        Divider(color: Colors.grey[300]),
+        const Divider(height: 1, thickness: 0.5),
       ],
     );
   }
 
-  // -------------------------
-  // LOGOUT
-  // -------------------------
-  Future<void> cerrarSesion() async {
-    await SessionService.cerrarSesion();
+  Future<void> _cerrarSesion() async {
+    await AuthService.cerrarSesion(); // Firebase + Google + SharedPreferences
     if (!mounted) return;
     Navigator.pop(context);
   }
 
-  // -------------------------
-  // UI PRINCIPAL
-  // -------------------------
   @override
   Widget build(BuildContext context) {
+    final inicial = nombreMostrado.isNotEmpty
+        ? nombreMostrado[0].toUpperCase()
+        : "U";
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              /// HEADER
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                border: Border(
+                  bottom: BorderSide(color: AppColors.divider, width: 0.5),
+                ),
+              ),
+              child: Row(
                 children: [
-                  Image.asset('assets/images/logo.png', height: 50),
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundColor: Colors.grey[300],
-                    child: const Icon(Icons.person),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: const Icon(Icons.arrow_back_ios_new_rounded,
+                        size: 20, color: AppColors.carbon),
+                  ),
+                  const SizedBox(width: 12),
+                  Image.asset('assets/images/logo.png', height: 38),
+                  const Spacer(),
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: const BoxDecoration(
+                      color: AppColors.carbon,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        inicial,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
+            ),
 
-              const SizedBox(height: 20),
-
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  "Mi Cuenta",
-                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              /// CONTENIDO
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      /// CARD PERFIL
-                      GestureDetector(
-                        onTap: _abrirFormularioPerfil,
-                        child: Container(
-                          padding: const EdgeInsets.all(15),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: Row(
-                            children: const [
-                              Icon(Icons.person, size: 30, color: Colors.blue),
-                              SizedBox(width: 15),
-                              Expanded(
-                                child: Text(
-                                  "Completa tus datos personales",
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                              Icon(Icons.arrow_forward_ios, size: 16),
-                            ],
+            // Contenido
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Mi cuenta",
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    if (nombreMostrado.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          "Hola, $nombreMostrado",
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppColors.grayMid,
                           ),
                         ),
                       ),
 
-                      const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
-                      itemCuenta(Icons.store, "Mis publicaciones", () {}),
-                      itemCuenta(Icons.favorite, "Favoritos", () {}),
-                      itemCuenta(Icons.history, "Historial", () {}),
-                    ],
+                    // Card editar perfil
+                    GestureDetector(
+                      onTap: _abrirFormularioPerfil,
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                              color: AppColors.divider, width: 0.5),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.edit_outlined,
+                                  color: AppColors.primary, size: 22),
+                            ),
+                            const SizedBox(width: 14),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Mis datos personales",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    "Editar perfil y datos bancarios",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.grayMid,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.arrow_forward_ios_rounded,
+                                size: 14, color: AppColors.grayMid),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Menú
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                            color: AppColors.divider, width: 0.5),
+                      ),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        children: [
+                          _itemMenu(Icons.store_outlined, "Mis publicaciones",
+                              () {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      const MisPublicacionesScreen()),
+                            );
+                          }),
+                          _itemMenu(Icons.favorite_border_rounded,
+                              "Favoritos", () {}),
+                          _itemMenu(
+                              Icons.history_rounded, "Historial", () {}),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Logout
+            Padding(
+              padding:
+                  const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: _cerrarSesion,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side:
+                        const BorderSide(color: AppColors.primary, width: 1),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    "Cerrar sesión",
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
-
-              /// LOGOUT
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                  onPressed: cerrarSesion,
-                  child: const Text("Cerrar sesión"),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

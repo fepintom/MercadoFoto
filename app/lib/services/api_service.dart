@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String baseUrl = "http://192.168.1.82:8000";
+  static const String baseUrl = "http://192.168.1.83:8000";
 
   static Future<Map<String, dynamic>> enviarImagen(File file) async {
     var request = http.MultipartRequest('POST', Uri.parse('$baseUrl/analizar'));
