@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/space_invaders_widget.dart';
 import 'mis_publicaciones_screen.dart';
 
 class VentaManualScreen extends StatefulWidget {
@@ -184,6 +185,60 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
+  // ── Pantalla de espera con Space Invaders ─────────────────────────────────
+  Widget _buildPublicando() {
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+          color: AppColors.surface,
+          child: const Column(
+            children: [
+              Text(
+                "Publicando tu producto…",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                "Mientras suben las fotos, ¡juega un poco!",
+                style: TextStyle(fontSize: 13, color: AppColors.grayMid),
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1, thickness: 0.5),
+        const Expanded(child: SpaceInvadersWidget()),
+        Container(
+          color: AppColors.surface,
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                "Procesando y subiendo imágenes…",
+                style: TextStyle(fontSize: 12, color: AppColors.grayMid),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -206,20 +261,8 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
         ),
       ),
       body: _publicando
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: AppColors.primary),
-                  SizedBox(height: 16),
-                  Text(
-                    "Procesando y publicando...",
-                    style: TextStyle(
-                        color: AppColors.grayMid, fontSize: 14),
-                  ),
-                ],
-              ),
-            )
+          ? _buildPublicando()
+
           : ListView(
               padding: const EdgeInsets.all(20),
               children: [

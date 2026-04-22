@@ -9,6 +9,8 @@ import '../services/cart_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/registro_form_widget.dart';
+import 'chat_screen.dart';
+import 'editar_publicacion_screen.dart';
 
 // ── Modelo para opciones de compartir (fácil de extender) ─────────────────
 class _OpcionCompartir {
@@ -39,6 +41,9 @@ class ProductoDetalleScreen extends StatefulWidget {
 
 class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   int? userId;
+  bool _esFavorito = false;
+  bool _toggleandoFavorito = false;
+  bool _registrandoInteres = false;
   bool _campoEstado = false;
   bool _campoCodigo = false;
   bool _campoSKU = false;
@@ -76,6 +81,148 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     final id = await SessionService.obtenerUser();
     if (!mounted) return;
     setState(() => userId = id);
+    if (id != null) {
+      final pubId = widget.producto["id"] as int?;
+      if (pubId != null) {
+        final fav = await ApiService.esFavorito(id, pubId);
+        if (!mounted) return;
+        setState(() => _esFavorito = fav);
+      }
+    }
+  }
+
+  Future<void> _toggleFavorito() async {
+    if (userId == null) {
+      _abrirRegistroModal();
+      return;
+    }
+    final pubId = widget.producto["id"] as int?;
+    if (pubId == null || _toggleandoFavorito) return;
+    setState(() => _toggleandoFavorito = true);
+    try {
+      if (_esFavorito) {
+        await ApiService.quitarFavorito(userId!, pubId);
+      } else {
+        await ApiService.guardarFavorito(userId!, pubId);
+      }
+      if (!mounted) return;
+      setState(() => _esFavorito = !_esFavorito);
+    } catch (e) {
+      debugPrint("ERROR favorito: $e");
+    } finally {
+      if (mounted) setState(() => _toggleandoFavorito = false);
+    }
+  }
+
+  void _abrirChat() {
+    if (userId == null) {
+      _abrirRegistroModal();
+      return;
+    }
+    final pubId = widget.producto["id"] as int? ?? 0;
+    final vendedorId = widget.producto["user_id"] as int? ?? 0;
+    final titulo = _safeDecode(widget.producto["titulo"] ?? "Producto");
+    final imagenUrl = widget.producto["imagen_url"]?.toString() ?? "";
+    final nombreVendedor =
+        widget.producto["nombre_vendedor"]?.toString() ?? "Vendedor";
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(
+          publicacionId: pubId,
+          tituloProducto: titulo,
+          imagenUrl: imagenUrl,
+          vendedorId: vendedorId,
+          nombreVendedor: nombreVendedor,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _registrarInteres() async {
+    if (userId == null) {
+      _abrirRegistroModal();
+      return;
+    }
+    final pubId = widget.producto["id"] as int?;
+    if (pubId == null || _registrandoInteres) return;
+
+    setState(() => _registrandoInteres = true);
+    try {
+      await ApiService.registrarInteres(
+        publicacionId: pubId,
+        compradorId: userId!,
+      );
+      if (!mounted) return;
+      _mostrarConfirmacionInteres();
+    } catch (e) {
+      debugPrint("ERROR interes: $e");
+    } finally {
+      if (mounted) setState(() => _registrandoInteres = false);
+    }
+  }
+
+  void _mostrarConfirmacionInteres() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56, height: 56,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE8F5E9),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check_circle_outline,
+                  size: 32, color: Color(0xFF2E7D32)),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              "¡Interés registrado!",
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Le avisamos al vendedor que quieres este producto. Puedes coordinar los detalles por chat.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: AppColors.grayMid, fontSize: 14, height: 1.5),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _abrirChat();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text("Ir al chat",
+                    style: TextStyle(
+                        color: AppColors.textOnPrimary,
+                        fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   String _safeDecode(String text) {
@@ -673,9 +820,27 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.carbon),
         actions: [
+          // Botón favorito
+          _toggleandoFavorito
+              ? const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppColors.primary),
+                  ),
+                )
+              : IconButton(
+                  icon: Icon(
+                    _esFavorito ? Icons.favorite : Icons.favorite_border,
+                    color: _esFavorito ? AppColors.primary : AppColors.carbon,
+                  ),
+                  onPressed: _toggleFavorito,
+                  tooltip: _esFavorito ? "Quitar de favoritos" : "Guardar",
+                ),
           IconButton(
-            icon: const Icon(Icons.share_outlined,
-                color: AppColors.carbon),
+            icon: const Icon(Icons.share_outlined, color: AppColors.carbon),
             onPressed: _abrirCompartir,
             tooltip: "Compartir",
           ),
@@ -1039,52 +1204,103 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
 
                   // Comprador registrado
                   if (!esInvitado && !esDueno)
-                    Row(
+                    Column(
                       children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _abrirPreguntar,
-                            icon: const Icon(
-                                Icons.chat_bubble_outline_rounded,
-                                size: 18),
-                            label: const Text("Preguntar"),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.carbon,
-                              side: const BorderSide(
-                                  color: AppColors.carbon, width: 1),
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(12)),
-                              textStyle: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
+                        // Fila: Chat + Preguntar + Ofertar
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _abrirChat,
+                                icon: const Icon(Icons.chat_rounded, size: 16),
+                                label: const Text("Chat"),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.carbon,
+                                  side: const BorderSide(
+                                      color: AppColors.carbon, width: 1),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
+                                  textStyle: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600),
+                                ),
                               ),
                             ),
-                          ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: _abrirPreguntar,
+                                icon: const Icon(
+                                    Icons.help_outline_rounded, size: 16),
+                                label: const Text("Preguntar"),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.carbon,
+                                  side: const BorderSide(
+                                      color: AppColors.carbon, width: 1),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
+                                  textStyle: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: _abrirOfertar,
+                                icon: const Icon(
+                                    Icons.local_offer_rounded, size: 16),
+                                label: const Text("Ofertar"),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.carbon,
+                                  foregroundColor: AppColors.surface,
+                                  elevation: 0,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
+                                  textStyle: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
+                        const SizedBox(height: 10),
+                        // Botón principal: Quiero comprar
+                        SizedBox(
+                          width: double.infinity,
                           child: ElevatedButton.icon(
-                            onPressed: _abrirOfertar,
-                            icon: const Icon(
-                                Icons.local_offer_rounded,
-                                size: 18),
-                            label: const Text("Ofertar"),
+                            onPressed:
+                                _registrandoInteres ? null : _registrarInteres,
+                            icon: _registrandoInteres
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white),
+                                  )
+                                : const Icon(
+                                    Icons.shopping_cart_checkout_rounded,
+                                    size: 18),
+                            label: const Text("Quiero comprar"),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: AppColors.surface,
                               elevation: 0,
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 14),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(12)),
+                                  borderRadius: BorderRadius.circular(12)),
                               textStyle: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
+                                  fontSize: 15, fontWeight: FontWeight.w700),
                             ),
                           ),
                         ),
@@ -1098,19 +1314,31 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
-                            onPressed: () {},
-                            icon: const Icon(Icons.edit_outlined,
-                                size: 18),
+                            onPressed: () async {
+                              final result = await Navigator.push<bool>(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => EditarPublicacionScreen(
+                                    producto: Map<String, dynamic>.from(
+                                        widget.producto),
+                                  ),
+                                ),
+                              );
+                              if (result == true) {
+                                if (!mounted) return;
+                                Navigator.pop(context, true);
+                              }
+                            },
+                            icon: const Icon(Icons.edit_outlined, size: 18),
                             label: const Text("Editar publicación"),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.carbon,
                               foregroundColor: AppColors.surface,
                               elevation: 0,
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 14),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(12)),
+                                  borderRadius: BorderRadius.circular(12)),
                             ),
                           ),
                         ),
@@ -1118,20 +1346,133 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton.icon(
-                            onPressed: () {},
-                            icon: const Icon(
-                                Icons.delete_outline_rounded,
+                            onPressed: () async {
+                              final confirmar =
+                                  await showModalBottomSheet<bool>(
+                                context: context,
+                                backgroundColor: AppColors.surface,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.vertical(
+                                      top: Radius.circular(20)),
+                                ),
+                                builder: (_) => Padding(
+                                  padding: const EdgeInsets.all(24),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 40, height: 4,
+                                        decoration: BoxDecoration(
+                                          color: AppColors.divider,
+                                          borderRadius: BorderRadius.circular(2),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 20),
+                                      const Icon(Icons.delete_outline,
+                                          size: 44, color: AppColors.primary),
+                                      const SizedBox(height: 12),
+                                      const Text(
+                                        "¿Eliminar esta publicación?",
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.textPrimary),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      const Text(
+                                        "Esta acción no se puede deshacer.",
+                                        style: TextStyle(
+                                            color: AppColors.grayMid,
+                                            fontSize: 13),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: OutlinedButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context, false),
+                                              style: OutlinedButton.styleFrom(
+                                                side: const BorderSide(
+                                                    color: AppColors.divider),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        vertical: 14),
+                                                shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12)),
+                                              ),
+                                              child: const Text("Cancelar",
+                                                  style: TextStyle(
+                                                      color: AppColors
+                                                          .textSecondary)),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: ElevatedButton(
+                                              onPressed: () =>
+                                                  Navigator.pop(context, true),
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    AppColors.primary,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        vertical: 14),
+                                                shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12)),
+                                              ),
+                                              child: const Text("Eliminar",
+                                                  style: TextStyle(
+                                                      color: AppColors
+                                                          .textOnPrimary)),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                              if (confirmar != true || !mounted) return;
+                              final nav = Navigator.of(context);
+                              final messenger = ScaffoldMessenger.of(context);
+                              try {
+                                await ApiService.eliminarPublicacion(
+                                  widget.producto["id"] as int,
+                                  userId: userId,
+                                );
+                              } catch (e) {
+                                // Mostramos el error pero igualmente volvemos
+                                // — el producto ya no existe o hay error de red
+                                if (mounted) {
+                                  messenger.showSnackBar(SnackBar(
+                                    content: Text("Aviso: $e"),
+                                    backgroundColor: AppColors.carbon,
+                                    behavior: SnackBarBehavior.floating,
+                                    duration: const Duration(seconds: 2),
+                                  ));
+                                }
+                              } finally {
+                                // Siempre salimos y recargamos la lista
+                                if (mounted) nav.pop(true);
+                              }
+                            },
+                            icon: const Icon(Icons.delete_outline_rounded,
                                 size: 18),
                             label: const Text("Eliminar publicación"),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.primary,
                               side: const BorderSide(
                                   color: AppColors.primary, width: 1),
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 14),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(12)),
+                                  borderRadius: BorderRadius.circular(12)),
                             ),
                           ),
                         ),

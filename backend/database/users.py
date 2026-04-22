@@ -32,7 +32,7 @@ def init_users_db():
     """)
 
     # Migraciones seguras para columnas nuevas
-    for col in ["google_id TEXT", "firebase_uid TEXT"]:
+    for col in ["google_id TEXT", "firebase_uid TEXT", "lat REAL", "lng REAL", "direccion TEXT", "comuna TEXT", "ciudad TEXT"]:
         try:
             cursor.execute(f"ALTER TABLE users ADD COLUMN {col}")
         except Exception:
@@ -205,4 +205,49 @@ def obtener_usuario_por_id(user_id):
         "id": row[0],
         "nombre": row[1],
         "email": row[2]
+    }
+
+
+# --------------------------------------------------
+# ACTUALIZAR UBICACIÓN USUARIO
+# --------------------------------------------------
+
+def actualizar_ubicacion_usuario(user_id, lat, lng, direccion=None, comuna=None, ciudad=None):
+
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE users
+        SET lat = ?, lng = ?, direccion = ?, comuna = ?, ciudad = ?
+        WHERE id = ?
+    """, (lat, lng, direccion, comuna, ciudad, user_id))
+
+    conn.commit()
+    conn.close()
+
+
+# --------------------------------------------------
+# OBTENER UBICACIÓN USUARIO
+# --------------------------------------------------
+
+def obtener_ubicacion_usuario(user_id):
+
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT lat, lng, direccion, comuna, ciudad
+        FROM users WHERE id = ?
+    """, (user_id,))
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    return {
+        "lat": row[0], "lng": row[1],
+        "direccion": row[2], "comuna": row[3], "ciudad": row[4],
     }

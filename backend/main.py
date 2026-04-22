@@ -5,6 +5,40 @@
 import hashlib
 import traceback
 import sqlite3
+import json
+import os
+
+# --------------------------------------------------
+# PRODUCCIÓN: cargar credenciales Google desde env var
+# Funciona en Render (y cualquier cloud) sin archivos
+# --------------------------------------------------
+
+def _setup_google_credentials():
+    """
+    Si existe la variable GOOGLE_CREDENTIALS_JSON (contenido del JSON),
+    la escribe en /tmp y configura GOOGLE_APPLICATION_CREDENTIALS.
+    En local, si ya existe el archivo credentials/, no hace nada.
+    """
+    json_content = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+    if json_content:
+        tmp_path = "/tmp/google-credentials.json"
+        try:
+            # Validar que sea JSON válido antes de escribir
+            json.loads(json_content)
+            with open(tmp_path, "w") as f:
+                f.write(json_content)
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = tmp_path
+            print(f"[startup] Google credentials cargadas desde env var → {tmp_path}")
+        except Exception as e:
+            print(f"[startup] ERROR al configurar Google credentials: {e}")
+    elif not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+        # Fallback local: buscar el archivo en credentials/
+        local_key = os.path.join(os.path.dirname(__file__), "credentials", "vision_key.json")
+        if os.path.exists(local_key):
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = local_key
+            print(f"[startup] Google credentials desde archivo local: {local_key}")
+
+_setup_google_credentials()
 
 # --------------------------------------------------
 # THIRD PARTY
@@ -35,11 +69,15 @@ from database.publicaciones import (
     init_publicaciones_db,
     guardar_publicacion,
     obtener_publicaciones,
+    obtener_publicacion_por_id,
     migrar_publicaciones_guest,
     obtener_vendedor_publicacion,
     cambiar_estado_publicacion,
     obtener_productos_similares,
     actualizar_precio,
+    editar_publicacion,
+    eliminar_publicacion,
+    obtener_publicaciones_cercanas,
 )
 
 from database.users import (
@@ -48,6 +86,8 @@ from database.users import (
     crear_usuario,
     obtener_usuario_por_id,
     crear_o_obtener_usuario_firebase,
+    actualizar_ubicacion_usuario,
+    obtener_ubicacion_usuario,
 )
 
 from database.chat import (
@@ -59,7 +99,10 @@ from database.chat import (
 from database.favoritos import (
     init_favoritos_db,
     guardar_favorito,
+    eliminar_favorito,
+    es_favorito,
     obtener_favoritos,
+    obtener_favoritos_completos,
     obtener_usuarios_favorito,
 )
 
@@ -286,6 +329,17 @@ class FirebaseLoginRequest(BaseModel):
     guest_id: Optional[str] = None
 
 
+# EditarPublicacion: ahora usa Form + File (multipart) — ver endpoint PUT /publicaciones/{id}
+
+
+class UbicacionUsuario(BaseModel):
+    lat: float
+    lng: float
+    direccion: Optional[str] = None
+    comuna: Optional[str] = None
+    ciudad: Optional[str] = None
+
+
 # --------------------------------------------------
 # LOGIN FIREBASE (Google Sign-In + Email/Password vía Firebase)
 # --------------------------------------------------
@@ -381,6 +435,8 @@ async def publicar_producto(
     dimensiones: Optional[str] = Form(None),
     categoria: Optional[str] = Form(None),
     subcategoria: Optional[str] = Form(None),
+    lat: Optional[float] = Form(None),
+    lng: Optional[float] = Form(None),
 ):
     if not guest_id and not user_id:
         raise HTTPException(
@@ -422,6 +478,8 @@ async def publicar_producto(
             categoria,
             subcategoria,
             imagenes_extra,
+            lat,
+            lng,
         )
 
         return {
@@ -779,3 +837,150 @@ def enviar_mensaje(data: Mensaje):
 @app.get("/chat/{publicacion_id}")
 def ver_chat(publicacion_id: int):
     return obtener_chat(publicacion_id)
+
+
+# --------------------------------------------------
+# EDITAR PUBLICACION
+# --------------------------------------------------
+
+@app.put("/publicaciones/{publicacion_id}")
+async def editar_pub(
+    publicacion_id: int,
+    titulo: str = Form(...),
+    descripcion: str = Form(...),
+    precio: float = Form(...),
+    fotos_mantener: Optional[str] = Form(None),   # JSON array de URLs a conservar
+    file1: Optional[UploadFile] = File(None),
+    file2: Optional[UploadFile] = File(None),
+    file3: Optional[UploadFile] = File(None),
+):
+    import json as _json
+
+    pub = obtener_publicacion_por_id(publicacion_id)
+    if not pub:
+        raise HTTPException(status_code=404, detail="Publicación no encontrada")
+
+    # ── Fotos existentes que el usuario quiere conservar ──
+    urls_mantener = _json.loads(fotos_mantener) if fotos_mantener else []
+
+    # ── Nuevas fotos: procesar con rembg ──
+    nuevas_urls = []
+    for f in [file1, file2, file3]:
+        if f is not None:
+            data_bytes = await f.read()
+            if data_bytes:
+                procesada = quitar_fondo(data_bytes)
+                url = guardar_imagen_procesada(procesada)
+                nuevas_urls.append(url)
+
+    # ── Combinar (mantener primero, nuevas después) ──
+    todas = urls_mantener + nuevas_urls
+
+    if todas:
+        imagen_url    = todas[0]
+        imagenes_extra = _json.dumps(todas[1:]) if len(todas) > 1 else None
+        editar_publicacion(publicacion_id, titulo, descripcion, precio,
+                           imagen_url, imagenes_extra)
+    else:
+        # Sin cambio de fotos — solo actualizar texto
+        editar_publicacion(publicacion_id, titulo, descripcion, precio)
+
+    return {"mensaje": "Publicación actualizada"}
+
+
+# --------------------------------------------------
+# ELIMINAR PUBLICACION
+# --------------------------------------------------
+
+@app.delete("/publicaciones/{publicacion_id}")
+def eliminar_pub(publicacion_id: int, user_id: Optional[int] = None):
+    pub = obtener_publicacion_por_id(publicacion_id)
+    if not pub:
+        # Ya fue eliminada antes — respuesta idempotente
+        return {"mensaje": "Publicación eliminada"}
+    if user_id and pub["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    eliminar_publicacion(publicacion_id)
+    return {"mensaje": "Publicación eliminada"}
+
+
+# --------------------------------------------------
+# PUBLICACIONES CERCANAS
+# --------------------------------------------------
+
+@app.get("/publicaciones/cercanas")
+def publicaciones_cercanas(lat: float, lng: float, radio_km: float = 5.0):
+    try:
+        return obtener_publicaciones_cercanas(lat, lng, radio_km)
+    except Exception as e:
+        print("ERROR /publicaciones/cercanas:", repr(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --------------------------------------------------
+# ACTUALIZAR UBICACIÓN USUARIO
+# --------------------------------------------------
+
+@app.put("/usuarios/{user_id}/ubicacion")
+def actualizar_ubicacion(user_id: int, data: UbicacionUsuario):
+    actualizar_ubicacion_usuario(user_id, data.lat, data.lng, data.direccion, data.comuna, data.ciudad)
+    return {"mensaje": "Ubicación actualizada"}
+
+
+@app.get("/usuarios/{user_id}/ubicacion")
+def ver_ubicacion(user_id: int):
+    return obtener_ubicacion_usuario(user_id) or {}
+
+
+# --------------------------------------------------
+# TOGGLE FAVORITO (guardar / quitar)
+# --------------------------------------------------
+
+@app.delete("/favorito")
+def quitar_favorito(user_id: int, publicacion_id: int):
+    eliminar_favorito(user_id, publicacion_id)
+    return {"mensaje": "Quitado de favoritos"}
+
+
+@app.get("/favorito/check")
+def check_favorito(user_id: int, publicacion_id: int):
+    return {"es_favorito": es_favorito(user_id, publicacion_id)}
+
+
+@app.get("/favoritos/{user_id}/completos")
+def ver_favoritos_completos(user_id: int):
+    return obtener_favoritos_completos(user_id)
+
+
+# --------------------------------------------------
+# INTERÉS DE COMPRA (comprador interesado → notifica vendedor)
+# --------------------------------------------------
+
+@app.post("/interes_compra/{publicacion_id}")
+def registrar_interes(publicacion_id: int, comprador_id: int):
+    """El comprador marca interés en un producto. Se notifica al vendedor."""
+    pub = obtener_publicacion_por_id(publicacion_id)
+    if not pub:
+        raise HTTPException(status_code=404, detail="Publicación no encontrada")
+
+    vendedor_id = pub.get("user_id")
+    if vendedor_id:
+        crear_notificacion(
+            vendedor_id,
+            "interes_compra",
+            f"¡Alguien quiere comprar '{pub['titulo']}'! Revisa el chat para coordinar.",
+        )
+
+    return {"mensaje": "Interés registrado. El vendedor fue notificado."}
+
+
+# --------------------------------------------------
+# PUBLICACION POR ID
+# --------------------------------------------------
+
+@app.get("/publicaciones/{publicacion_id}")
+def obtener_pub(publicacion_id: int):
+    pub = obtener_publicacion_por_id(publicacion_id)
+    if not pub:
+        raise HTTPException(status_code=404, detail="Publicación no encontrada")
+    return pub

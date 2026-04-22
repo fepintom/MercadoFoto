@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -11,23 +13,9 @@ import '../theme/app_theme.dart';
 import 'vender_screen.dart' as vender;
 import 'marketplace_screen.dart';
 import 'mi_cuenta_screen.dart';
+import 'encontrar_screen.dart';
+import 'favoritos_screen.dart';
 import '../widgets/registro_form_widget.dart';
-
-// ---------------------------------------------------------------------------
-// MODELO DE CATEGORÍAS
-// ---------------------------------------------------------------------------
-
-class Categoria {
-  final String nombre;
-  final IconData icono;
-  final List<String> subcategorias;
-
-  const Categoria({
-    required this.nombre,
-    required this.icono,
-    required this.subcategorias,
-  });
-}
 
 // ---------------------------------------------------------------------------
 // HOME SCREEN
@@ -41,54 +29,31 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Estado de navegación: 0=Inicio, 1=Alertas, 2=Buscar
+  // Estado de navegación: 0=Inicio, 1=Alertas, 2=Encontrar, 3=Mi OkVenta, 4=Vender
   int _tab = 0;
   int? userId;
   String nombreUsuario = "";
-  String? _categoriaSeleccionada;
-  String? _subcategoriaSeleccionada;
 
-  final _searchController = TextEditingController();
+  // ── UBICACIÓN / RADIO ──────────────────────────────────────────────────────
+  Position? _miPosicion;
+  bool _cargandoUbicacion = false;
+  double _radioKm = 50.0;
+  bool _filtroUbicacionActivo = false;
 
-  // ── CATEGORÍAS ─────────────────────────────────────────────────────────────
-  static const List<Categoria> _categorias = [
-    Categoria(
-      nombre: "Automotriz",
-      icono: Icons.directions_car_rounded,
-      subcategorias: ["Repuestos", "Autos", "Motos", "Camiones"],
-    ),
-    Categoria(
-      nombre: "Electrónica",
-      icono: Icons.devices_rounded,
-      subcategorias: ["Computación", "Impresión 3D", "Celulares", "TV"],
-    ),
-    Categoria(
-      nombre: "Hogar",
-      icono: Icons.weekend_rounded,
-      subcategorias: ["Muebles", "Decoración", "Electrodomésticos"],
-    ),
-    Categoria(
-      nombre: "Ocio",
-      icono: Icons.sports_soccer_rounded,
-      subcategorias: ["Deportes", "Juguetes", "Entretenimiento"],
-    ),
-    Categoria(
-      nombre: "Mascotas",
-      icono: Icons.pets_rounded,
-      subcategorias: ["Alimentos", "Accesorios", "Servicios"],
-    ),
-  ];
+  static const _kRadio  = 'mkt_radio_km';
+  static const _kActivo = 'mkt_ubicacion_activo';
 
   // ── INIT ───────────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
     _inicializar();
+    _cargarPrefsUbicacion();
+    _obtenerUbicacion();
   }
 
   @override
   void dispose() {
-    _searchController.dispose();
     super.dispose();
   }
 
@@ -96,6 +61,48 @@ class _HomeScreenState extends State<HomeScreen> {
     await _iniciarSesion();
     await _cargarUsuario();
   }
+
+  // ── Preferencias de ubicación ─────────────────────────────────────────────
+  Future<void> _cargarPrefsUbicacion() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _radioKm = prefs.getDouble(_kRadio) ?? 50.0;
+      _filtroUbicacionActivo = prefs.getBool(_kActivo) ?? false;
+    });
+  }
+
+  Future<void> _guardarPrefsUbicacion() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_kRadio, _radioKm);
+    await prefs.setBool(_kActivo, _filtroUbicacionActivo);
+  }
+
+  // ── GPS ───────────────────────────────────────────────────────────────────
+  Future<void> _obtenerUbicacion() async {
+    setState(() => _cargandoUbicacion = true);
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        if (mounted) setState(() => _cargandoUbicacion = false);
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.low,
+      );
+      if (!mounted) return;
+      setState(() { _miPosicion = pos; _cargandoUbicacion = false; });
+    } catch (_) {
+      if (mounted) setState(() => _cargandoUbicacion = false);
+    }
+  }
+
+  String _formatRadio(double km) =>
+      km < 10 ? "${km.toStringAsFixed(1)} km" : "${km.toStringAsFixed(0)} km";
 
   Future<void> _iniciarSesion() async {
     final user = await SessionService.obtenerUser();
@@ -249,6 +256,14 @@ class _HomeScreenState extends State<HomeScreen> {
       } else {
         _abrirLoginModal();
       }
+      return;
+    }
+    if (index == 2) {
+      // Encontrar — mapa de productos cercanos
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const EncontrarScreen()),
+      );
       return;
     }
     setState(() => _tab = index);
@@ -415,126 +430,99 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── BARRA DE CATEGORÍAS ────────────────────────────────────────────────────
-  Widget _buildCategoryBar() {
-    final catActual = _categorias.where(
-      (c) => c.nombre == _categoriaSeleccionada,
-    );
-    final subcats =
-        catActual.isNotEmpty ? catActual.first.subcategorias : <String>[];
+  // ── SLIDER DE RADIO (barra fija inferior, reemplaza categorías) ───────────
+  Widget _buildSliderRadio() {
+    final bool sinGps = _miPosicion == null && !_cargandoUbicacion;
+    final bool activo = _filtroUbicacionActivo && !sinGps;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Categorías principales
-        Container(
-          height: 46,
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            border: Border(
-              top: BorderSide(color: AppColors.divider, width: 0.5),
-            ),
-          ),
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            itemCount: _categorias.length,
-            itemBuilder: (_, i) {
-              final cat = _categorias[i];
-              final selected = _categoriaSeleccionada == cat.nombre;
-              return GestureDetector(
-                onTap: () => setState(() {
-                  _categoriaSeleccionada =
-                      selected ? null : cat.nombre;
-                  _subcategoriaSeleccionada = null;
-                }),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(
-                    color: selected ? AppColors.primary : AppColors.background,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color:
-                          selected ? AppColors.primary : AppColors.divider,
-                      width: 0.5,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        cat.icono,
-                        size: 13,
-                        color: selected ? Colors.white : AppColors.grayMid,
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        cat.nombre,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: selected
-                              ? Colors.white
-                              : AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.divider, width: 0.5)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      height: 50,
+      child: Row(
+        children: [
+          // Icono-toggle
+          GestureDetector(
+            onTap: () {
+              if (_cargandoUbicacion) return;
+              if (sinGps) { Geolocator.openAppSettings(); return; }
+              setState(() => _filtroUbicacionActivo = !_filtroUbicacionActivo);
+              _guardarPrefsUbicacion();
             },
-          ),
-        ),
-
-        // Subcategorías (cuando hay categoría seleccionada)
-        if (_categoriaSeleccionada != null && subcats.isNotEmpty)
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            height: 36,
-            color: AppColors.background,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              itemCount: subcats.length,
-              itemBuilder: (_, i) {
-                final sub = subcats[i];
-                final selected = _subcategoriaSeleccionada == sub;
-                return GestureDetector(
-                  onTap: () => setState(() {
-                    _subcategoriaSeleccionada = selected ? null : sub;
-                  }),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    margin: const EdgeInsets.only(right: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: selected ? AppColors.carbon : AppColors.surface,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: selected ? AppColors.carbon : AppColors.divider,
-                        width: 0.5,
-                      ),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 30, height: 30,
+              decoration: BoxDecoration(
+                color: activo ? AppColors.primary.withValues(alpha: 0.10) : AppColors.background,
+                shape: BoxShape.circle,
+              ),
+              child: _cargandoUbicacion
+                  ? const Padding(
+                      padding: EdgeInsets.all(7),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.grayMid),
+                    )
+                  : Icon(
+                      sinGps ? Icons.location_off_outlined : Icons.near_me_rounded,
+                      size: 15,
+                      color: activo ? AppColors.primary : AppColors.grayMid,
                     ),
-                    child: Center(
-                      child: Text(
-                        sub,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: selected
-                              ? Colors.white
-                              : AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
             ),
           ),
-      ],
+
+          const SizedBox(width: 8),
+
+          // Slider o mensaje sin GPS
+          Expanded(
+            child: sinGps
+                ? GestureDetector(
+                    onTap: () => Geolocator.openAppSettings(),
+                    child: const Text(
+                      "GPS no disponible — toca para activar",
+                      style: TextStyle(fontSize: 12, color: AppColors.grayMid),
+                    ),
+                  )
+                : SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      trackHeight: 3,
+                      thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                      overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+                      activeTrackColor: activo ? AppColors.primary : AppColors.grayMid.withValues(alpha: 0.4),
+                      inactiveTrackColor: AppColors.divider,
+                      thumbColor: activo ? AppColors.primary : AppColors.grayMid,
+                      overlayColor: AppColors.primary.withValues(alpha: 0.12),
+                    ),
+                    child: Slider(
+                      value: _radioKm,
+                      min: 1,
+                      max: 2000,
+                      onChanged: (v) => setState(() {
+                        _radioKm = v;
+                        if (!_filtroUbicacionActivo) _filtroUbicacionActivo = true;
+                      }),
+                      onChangeEnd: (_) => _guardarPrefsUbicacion(),
+                    ),
+                  ),
+          ),
+
+          // Valor km
+          if (!sinGps && !_cargandoUbicacion)
+            SizedBox(
+              width: 58,
+              child: Text(
+                _formatRadio(_radioKm),
+                textAlign: TextAlign.right,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: activo ? AppColors.primary : AppColors.grayMid,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -563,7 +551,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               _navItem(0, Icons.home_rounded, "Inicio"),
               _navItem(1, Icons.notifications_outlined, "Alertas"),
-              _navItem(2, Icons.search_rounded, "Buscar"),
+              _navItem(2, Icons.explore_outlined, "Encontrar"),
               _navItem(3, Icons.person_outline_rounded, "Mi OkVenta"),
               _navVender(),
             ],
@@ -678,10 +666,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 8),
           MarketplaceScreen(
-            key: ValueKey(
-                "$_categoriaSeleccionada-$_subcategoriaSeleccionada"),
-            categoriaFiltro: _categoriaSeleccionada,
-            subcategoriaFiltro: _subcategoriaSeleccionada,
+            miLat: _miPosicion?.latitude,
+            miLng: _miPosicion?.longitude,
+            radioKm: _radioKm,
+            filtroUbicacionActivo: _filtroUbicacionActivo && _miPosicion != null,
           ),
           const SizedBox(height: 20),
         ],
@@ -712,6 +700,10 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _abrirLoginModal,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.textOnPrimary,
+                ),
                 child: const Text("Ingresar"),
               ),
             ],
@@ -720,125 +712,135 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    return Center(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.notifications_outlined,
-              size: 64, color: AppColors.grayMid),
-          const SizedBox(height: 16),
+          // Accesos rápidos
           const Text(
-            "Sin notificaciones",
+            "Mis guardados",
             style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
               color: AppColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _accesoRapido(
+                  icono: Icons.favorite_outline,
+                  label: "Favoritos",
+                  sublabel: "Productos que guardaste",
+                  color: AppColors.primary,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const FavoritosScreen()),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _accesoRapido(
+                  icono: Icons.explore_outlined,
+                  label: "Encontrar",
+                  sublabel: "Productos cerca de ti",
+                  color: AppColors.carbon,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const EncontrarScreen()),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          // Notificaciones
           const Text(
-            "Cuando tengas actividad, aparecerá aquí",
-            style: TextStyle(fontSize: 14, color: AppColors.grayMid),
+            "Notificaciones",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Center(
+            child: Column(
+              children: [
+                Icon(Icons.notifications_outlined,
+                    size: 56, color: AppColors.grayMid.withOpacity(0.4)),
+                const SizedBox(height: 12),
+                const Text(
+                  "Sin notificaciones",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  "Cuando tengas actividad, aparecerá aquí",
+                  style: TextStyle(fontSize: 13, color: AppColors.grayMid),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBuscar() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Campo búsqueda
-          Container(
-            height: 48,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.divider, width: 0.5),
+  Widget _accesoRapido({
+    required IconData icono,
+    required String label,
+    required String sublabel,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.divider, width: 0.5),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icono, color: color, size: 20),
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.search_rounded,
-                    color: AppColors.grayMid, size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    autofocus: true,
-                    decoration: const InputDecoration(
-                      hintText: "Buscar productos, marcas...",
-                      hintStyle:
-                          TextStyle(color: AppColors.grayMid, fontSize: 15),
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    onSubmitted: (_) {
-                      // TODO: implementar búsqueda
-                    },
-                  ),
-                ),
-              ],
+            const SizedBox(height: 10),
+            Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: AppColors.textPrimary,
+              ),
             ),
-          ),
-
-          const SizedBox(height: 28),
-
-          const Text(
-            "Categorías",
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+            const SizedBox(height: 2),
+            Text(
+              sublabel,
+              style: const TextStyle(
+                  fontSize: 11, color: AppColors.grayMid),
             ),
-          ),
-          const SizedBox(height: 12),
-
-          // Grid de categorías
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _categorias.map((cat) {
-              return GestureDetector(
-                onTap: () => setState(() {
-                  _tab = 0;
-                  _categoriaSeleccionada = cat.nombre;
-                  _subcategoriaSeleccionada = null;
-                }),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                        color: AppColors.divider, width: 0.5),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(cat.icono,
-                          size: 20, color: AppColors.carbon),
-                      const SizedBox(width: 10),
-                      Text(
-                        cat.nombre,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -962,6 +964,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             _buildHeader(),
@@ -971,11 +974,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   _buildInicio(),
                   _buildAlertas(),
-                  _buildBuscar(),
                 ],
               ),
             ),
-            if (_tab == 0) _buildCategoryBar(),
+            if (_tab == 0) _buildSliderRadio(),
             _buildBottomNav(),
           ],
         ),

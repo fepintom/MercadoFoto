@@ -30,8 +30,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
 
   String tipoUsuario = "persona";
   String nombreMostrado = "";
-  bool _biometricAvailable = false;
-  bool _biometricEnabled   = false;
+  bool _biometricEnabled = false;
 
   @override
   void initState() {
@@ -41,19 +40,24 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
   }
 
   Future<void> _cargarBiometria() async {
-    final available = await BiometricService.isAvailable();
-    final enabled   = await BiometricService.isEnabled();
-    if (mounted) {
-      setState(() {
-        _biometricAvailable = available;
-        _biometricEnabled   = enabled;
-      });
-    }
+    final enabled = await BiometricService.isEnabled();
+    if (mounted) setState(() => _biometricEnabled = enabled);
   }
 
   Future<void> _toggleFaceId(bool value) async {
     if (value) {
-      // Verificar biometría antes de activar
+      final disponible = await BiometricService.isAvailable();
+      if (!disponible) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text(
+              "Face ID no está disponible. Verifica que esté configurado en Ajustes del dispositivo."),
+          backgroundColor: AppColors.carbon,
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 3),
+        ));
+        return;
+      }
       final ok = await BiometricService.authenticate(
         reason: 'Confirma tu Face ID para activarlo en OkVenta',
       );
@@ -578,7 +582,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                               "Favoritos", () {}),
                           _itemMenu(
                               Icons.history_rounded, "Historial", () {}),
-                          if (_biometricAvailable) _itemFaceId(),
+                          _itemFaceId(),
                         ],
                       ),
                     ),

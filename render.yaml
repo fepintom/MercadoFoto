@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: okventa-backend
+    runtime: python
+    rootDir: backend
+
+    # Pre-descarga el modelo rembg (~170 MB) en build para que
+    # el primer request no tarde 30 segundos extra.
+    buildCommand: |
+      pip install -r requirements.txt &&
+      python -c "import rembg; rembg.new_session('u2net'); print('Modelo rembg descargado OK')"
+
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+
+    # Plan mínimo recomendado: Standard ($25/mes)
+    # rembg + onnxruntime necesitan al menos 1 GB de RAM.
+    # Con el plan Starter (512 MB) puede funcionar pero es justo.
+    plan: standard
+
+    envVars:
+      # ── OpenAI ───────────────────────────────────────────
+      - key: OPENAI_API_KEY
+        sync: false          # se ingresa manualmente en el dashboard
+
+      # ── Google Cloud (contenido completo del JSON) ───────
+      - key: GOOGLE_CREDENTIALS_JSON
+        sync: false
+
+      # ── Google Cloud Project ─────────────────────────────
+      - key: GOOGLE_CLOUD_PROJECT
+        value: gen-lang-client-0075779061

@@ -37,7 +37,14 @@ def init_publicaciones_db():
     """)
 
     # Migraciones seguras para columnas nuevas
-    for col in ["dimensiones TEXT", "categoria TEXT", "subcategoria TEXT", "imagenes_extra TEXT"]:
+    for col in [
+        "dimensiones TEXT",
+        "categoria TEXT",
+        "subcategoria TEXT",
+        "imagenes_extra TEXT",
+        "lat REAL",
+        "lng REAL",
+    ]:
         try:
             cursor.execute(f"ALTER TABLE publicaciones ADD COLUMN {col}")
         except Exception:
@@ -62,6 +69,8 @@ def guardar_publicacion(
     categoria=None,
     subcategoria=None,
     imagenes_extra=None,
+    lat=None,
+    lng=None,
 ):
 
     conn = sqlite3.connect(DB)
@@ -78,9 +87,11 @@ def guardar_publicacion(
             dimensiones,
             categoria,
             subcategoria,
-            imagenes_extra
+            imagenes_extra,
+            lat,
+            lng
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         titulo,
         descripcion,
@@ -92,6 +103,8 @@ def guardar_publicacion(
         categoria,
         subcategoria,
         imagenes_extra,
+        lat,
+        lng,
     ))
 
     conn.commit()
@@ -125,7 +138,9 @@ def obtener_publicaciones():
             WHEN u.nombre IS NOT NULL AND TRIM(u.nombre) <> ''
             THEN u.nombre
             ELSE 'Usuario invitado'
-        END
+        END,
+        p.lat,
+        p.lng
     FROM publicaciones p
     LEFT JOIN users u
     ON p.user_id = u.id
@@ -158,6 +173,8 @@ def obtener_publicaciones():
             "imagenes_extra": row[11],
             "seller_status": emoji,
             "nombre_vendedor": nombre_vendedor,
+            "lat": row[13],
+            "lng": row[14],
         })
 
     return publicaciones
@@ -306,3 +323,148 @@ def actualizar_precio(publicacion_id, nuevo_precio):
     conn.close()
 
     return precio_anterior
+
+
+# --------------------------------------------------
+# OBTENER PUBLICACION POR ID
+# --------------------------------------------------
+
+def obtener_publicacion_por_id(publicacion_id):
+
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT
+        p.id, p.titulo, p.descripcion, p.precio, p.imagen_url,
+        p.guest_id, p.user_id, p.estado, p.dimensiones,
+        p.categoria, p.subcategoria, p.imagenes_extra,
+        CASE WHEN u.nombre IS NOT NULL AND TRIM(u.nombre) <> ''
+             THEN u.nombre ELSE 'Usuario invitado' END,
+        p.lat, p.lng
+    FROM publicaciones p
+    LEFT JOIN users u ON p.user_id = u.id
+    WHERE p.id = ?
+    """, (publicacion_id,))
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    return {
+        "id": row[0], "titulo": row[1], "descripcion": row[2],
+        "precio": row[3], "imagen_url": row[4], "guest_id": row[5],
+        "user_id": row[6], "estado": row[7], "dimensiones": row[8],
+        "categoria": row[9], "subcategoria": row[10],
+        "imagenes_extra": row[11],
+        "seller_status": "🙂" if row[6] else "🙁",
+        "nombre_vendedor": row[12],
+        "lat": row[13], "lng": row[14],
+    }
+
+
+# --------------------------------------------------
+# EDITAR PUBLICACION
+# --------------------------------------------------
+
+def editar_publicacion(publicacion_id, titulo, descripcion, precio,
+                       imagen_url=None, imagenes_extra=None):
+
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+
+    if imagen_url is not None:
+        cursor.execute("""
+            UPDATE publicaciones
+            SET titulo = ?, descripcion = ?, precio = ?,
+                imagen_url = ?, imagenes_extra = ?
+            WHERE id = ?
+        """, (titulo, descripcion, precio,
+              imagen_url, imagenes_extra, publicacion_id))
+    else:
+        cursor.execute("""
+            UPDATE publicaciones
+            SET titulo = ?, descripcion = ?, precio = ?
+            WHERE id = ?
+        """, (titulo, descripcion, precio, publicacion_id))
+
+    conn.commit()
+    conn.close()
+
+
+# --------------------------------------------------
+# ELIMINAR PUBLICACION
+# --------------------------------------------------
+
+def eliminar_publicacion(publicacion_id):
+
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM publicaciones WHERE id = ?", (publicacion_id,))
+
+    conn.commit()
+    conn.close()
+
+
+# --------------------------------------------------
+# PUBLICACIONES CERCANAS (Haversine)
+# --------------------------------------------------
+
+def obtener_publicaciones_cercanas(lat, lng, radio_km=5.0):
+    """Retorna publicaciones disponibles dentro del radio (km) usando fórmula Haversine."""
+    import math
+
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT
+        p.id, p.titulo, p.descripcion, p.precio, p.imagen_url,
+        p.guest_id, p.user_id, p.estado, p.dimensiones,
+        p.categoria, p.subcategoria, p.imagenes_extra,
+        CASE WHEN u.nombre IS NOT NULL AND TRIM(u.nombre) <> ''
+             THEN u.nombre ELSE 'Usuario invitado' END,
+        p.lat, p.lng
+    FROM publicaciones p
+    LEFT JOIN users u ON p.user_id = u.id
+    WHERE p.estado = 'disponible'
+      AND p.lat IS NOT NULL
+      AND p.lng IS NOT NULL
+    """)
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    R = 6371  # Radio de la Tierra en km
+
+    resultado = []
+    for row in rows:
+        p_lat, p_lng = row[13], row[14]
+        if p_lat is None or p_lng is None:
+            continue
+
+        dlat = math.radians(p_lat - lat)
+        dlng = math.radians(p_lng - lng)
+        a = (math.sin(dlat / 2) ** 2
+             + math.cos(math.radians(lat))
+             * math.cos(math.radians(p_lat))
+             * math.sin(dlng / 2) ** 2)
+        distancia_km = R * 2 * math.asin(math.sqrt(a))
+
+        if distancia_km <= radio_km:
+            resultado.append({
+                "id": row[0], "titulo": row[1], "descripcion": row[2],
+                "precio": row[3], "imagen_url": row[4],
+                "user_id": row[6], "estado": row[7],
+                "categoria": row[9], "subcategoria": row[10],
+                "imagenes_extra": row[11],
+                "nombre_vendedor": row[12],
+                "lat": p_lat, "lng": p_lng,
+                "distancia_km": round(distancia_km, 2),
+            })
+
+    resultado.sort(key=lambda x: x["distancia_km"])
+    return resultado
