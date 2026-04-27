@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -53,6 +54,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   List<Map<String, dynamic>> _todas = [];
   List<Map<String, dynamic>> _filtradas = [];
   bool _loading = true;
+  bool _errorConexion = false;
 
   // ── Búsqueda y precio ─────────────────────────────────────────────────────
   final _searchCtrl = TextEditingController();
@@ -103,8 +105,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   // ── Carga (siempre todos, el filtro de categoría es client-side) ──────────
 
   Future<void> cargarPublicaciones() async {
+    setState(() { _loading = true; _errorConexion = false; });
     try {
-      final response = await http.get(Uri.parse("${ApiService.baseUrl}/publicaciones"));
+      final response = await http.get(
+        Uri.parse("${ApiService.baseUrl}/publicaciones"),
+      ).timeout(const Duration(seconds: 10));
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       if (!mounted) return;
       setState(() {
@@ -115,7 +120,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     } catch (e) {
       debugPrint("ERROR MARKETPLACE: $e");
       if (!mounted) return;
-      setState(() { _todas = []; _filtradas = []; _loading = false; });
+      setState(() {
+        _todas = [];
+        _filtradas = [];
+        _loading = false;
+        _errorConexion = true;
+      });
     }
   }
 
@@ -684,7 +694,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           ),
         ),
 
-        // ── 5. Sin resultados ────────────────────────────────────────────────
+        // ── 5. Sin resultados / error ────────────────────────────────────────
         if (_filtradas.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 40),
@@ -692,22 +702,50 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
               child: Column(
                 children: [
                   Icon(
-                    _radioActivo ? Icons.explore_off_rounded : Icons.inventory_2_outlined,
-                    size: 48, color: AppColors.grayMid,
+                    _errorConexion
+                        ? Icons.wifi_off_rounded
+                        : _radioActivo
+                            ? Icons.explore_off_rounded
+                            : Icons.inventory_2_outlined,
+                    size: 48,
+                    color: _errorConexion ? AppColors.primary : AppColors.grayMid,
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    _radioActivo
-                        ? "Sin productos en ${_formatRadio(widget.radioKm)} de tu ubicación"
-                        : _searchCtrl.text.isNotEmpty
-                            ? "Sin resultados para \"${_searchCtrl.text}\""
-                            : _categoriaSeleccionada != null
-                                ? "Sin productos en esta categoría"
-                                : "No hay productos disponibles",
+                    _errorConexion
+                        ? "Sin conexión al servidor"
+                        : _radioActivo
+                            ? "Sin productos en ${_formatRadio(widget.radioKm)} de tu ubicación"
+                            : _searchCtrl.text.isNotEmpty
+                                ? "Sin resultados para \"${_searchCtrl.text}\""
+                                : _categoriaSeleccionada != null
+                                    ? "Sin productos en esta categoría"
+                                    : "No hay productos disponibles",
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.grayMid, fontSize: 14),
+                    style: TextStyle(
+                      color: _errorConexion ? AppColors.textPrimary : AppColors.grayMid,
+                      fontSize: 14,
+                      fontWeight: _errorConexion ? FontWeight.w600 : FontWeight.normal,
+                    ),
                   ),
-                  if (_radioActivo)
+                  if (_errorConexion) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      "Verifica que el servidor esté activo\n(${ApiService.baseUrl})",
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AppColors.grayMid, fontSize: 12),
+                    ),
+                    const SizedBox(height: 16),
+                    TextButton.icon(
+                      onPressed: cargarPublicaciones,
+                      icon: const Icon(Icons.refresh_rounded,
+                          size: 18, color: AppColors.primary),
+                      label: const Text("Reintentar",
+                          style: TextStyle(color: AppColors.primary,
+                              fontWeight: FontWeight.w600)),
+                    ),
+                  ],
+                  if (_radioActivo && !_errorConexion)
                     const Padding(
                       padding: EdgeInsets.only(top: 8),
                       child: Text("Ajusta el radio en la barra inferior",

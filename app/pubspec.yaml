@@ -25,11 +25,15 @@ dependencies:
   http: 0.13.6
   local_auth: ^2.3.0
 
+  # Geolocalización
+  geolocator: ^12.0.0
 
+  # Mapa (OpenStreetMap, sin API key)
+  flutter_map: ^4.0.0
+  latlong2: ^0.8.2
 
-  # Compartir (WhatsApp deep-link, etc.)
-  # Descomentar cuando se configure url_launcher en iOS/Android:
-  # url_launcher: ^6.3.0
+  # Compartir / deep-links (WhatsApp, etc.)
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:

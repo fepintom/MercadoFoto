@@ -8,6 +8,10 @@ import sqlite3
 import json
 import os
 
+# Centraliza paths (DB y uploads) — debe importarse antes que todo lo demás
+import config  # noqa: F401  (crea los directorios al importarse)
+from config import UPLOADS_DIR
+
 # --------------------------------------------------
 # PRODUCCIÓN: cargar credenciales Google desde env var
 # Funciona en Render (y cualquier cloud) sin archivos
@@ -78,6 +82,7 @@ from database.publicaciones import (
     editar_publicacion,
     eliminar_publicacion,
     obtener_publicaciones_cercanas,
+    obtener_publicaciones_por_usuario,
 )
 
 from database.users import (
@@ -245,7 +250,7 @@ def ranking_producto(producto):
 app = FastAPI()
 
 # Exponer carpeta uploads como pública
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 # Inicializar bases de datos
 init_publicaciones_db()
@@ -389,15 +394,22 @@ async def analizar_producto(file: UploadFile = File(...)):
         cached = get_cached_analisis(image_hash)
 
         if cached:
-            titulo, descripcion, _ = cached
+            titulo, descripcion, _, precio_min, precio_max, moneda, confianza = cached
             dimensiones = "No determinado"
-            print("Cache hit:", titulo)
+            print(f"Cache hit: {titulo} | precio {precio_min}–{precio_max} {moneda}")
         else:
-            # GPT-4o Vision detecta, titula, describe y estima dimensiones
-            titulo, descripcion, dimensiones = detectar_producto(original_bytes)
+            # GPT-4o Vision detecta, titula, describe, estima dimensiones y precio
+            titulo, descripcion, dimensiones, precio_min, precio_max, moneda, confianza = \
+                detectar_producto(original_bytes)
 
-            # Guardar en cache
-            save_cached_analisis(image_hash, titulo, descripcion, False)
+            # Guardar en cache (incluyendo precio)
+            save_cached_analisis(
+                image_hash, titulo, descripcion, False,
+                precio_min=precio_min,
+                precio_max=precio_max,
+                moneda=moneda,
+                confianza=confianza,
+            )
 
         # Categorización automática por palabras clave
         categoria, subcategoria = detectar_categoria(titulo)
@@ -407,12 +419,16 @@ async def analizar_producto(file: UploadFile = File(...)):
         imagen_url = guardar_imagen_procesada(imagen_procesada)
 
         return {
-            "titulo": titulo,
-            "descripcion": descripcion,
-            "dimensiones": dimensiones,
-            "imagen_url": imagen_url,
-            "categoria": categoria,
+            "titulo":       titulo,
+            "descripcion":  descripcion,
+            "dimensiones":  dimensiones,
+            "imagen_url":   imagen_url,
+            "categoria":    categoria,
             "subcategoria": subcategoria,
+            "precio_min":   precio_min,
+            "precio_max":   precio_max,
+            "moneda":       moneda,
+            "confianza":    confianza,
         }
 
     except Exception as e:
@@ -984,3 +1000,27 @@ def obtener_pub(publicacion_id: int):
     if not pub:
         raise HTTPException(status_code=404, detail="Publicación no encontrada")
     return pub
+
+
+# --------------------------------------------------
+# PERFIL PÚBLICO DEL VENDEDOR
+# --------------------------------------------------
+
+@app.get("/usuarios/{user_id}/perfil_publico")
+def perfil_publico(user_id: int):
+    """
+    Retorna nombre del usuario y sus publicaciones activas.
+    NO expone email, teléfono, dirección ni datos bancarios.
+    """
+    usuario = obtener_usuario_por_id(user_id)
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    nombre = usuario.get("nombre") or "Usuario"
+    publicaciones = obtener_publicaciones_por_usuario(user_id)
+
+    return {
+        "user_id": user_id,
+        "nombre": nombre,
+        "publicaciones": publicaciones,
+    }

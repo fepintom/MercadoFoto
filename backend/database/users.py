@@ -1,12 +1,6 @@
 import sqlite3
 import os
-
-# --------------------------------------------------
-# DB PATH (UNIFICADO → publicaciones.db)
-# --------------------------------------------------
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB = os.path.join(BASE_DIR, "database", "publicaciones.db")
+from config import PUBLICACIONES_DB as DB
 
 
 # --------------------------------------------------

@@ -39,6 +39,12 @@
 	<string>Necesitamos acceso a la cámara para publicar productos</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Usa Face ID para ingresar a tu cuenta de forma rápida y segura</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>OkVenta usa tu ubicación para mostrarte productos cerca de ti y calcular distancias con vendedores</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>OkVenta usa tu ubicación para mostrarte productos cerca de ti y calcular distancias con vendedores</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Necesitamos acceso a tus fotos para publicar productos</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

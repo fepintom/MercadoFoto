@@ -1,11 +1,6 @@
 import os
 import uuid
-
-# Ruta base del backend
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-# Carpeta uploads dentro de backend
-UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+from config import UPLOADS_DIR as UPLOAD_DIR
 
 
 def guardar_imagen_procesada(image_bytes: bytes) -> str:

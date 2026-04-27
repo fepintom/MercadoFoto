@@ -6,6 +6,7 @@ import '../services/biometric_service.dart';
 import '../theme/app_theme.dart';
 import 'auth/login_screen.dart';
 import 'mis_publicaciones_screen.dart';
+import 'perfil_info_screen.dart';
 
 class MiCuentaScreen extends StatefulWidget {
   const MiCuentaScreen({super.key});
@@ -503,7 +504,11 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
 
                     // Card editar perfil
                     GestureDetector(
-                      onTap: _abrirFormularioPerfil,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const PerfilInfoScreen()),
+                      ).then((_) => cargarDatos()),
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(

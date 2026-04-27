@@ -3,7 +3,12 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String baseUrl = "http://192.168.1.83:8000";
+  // ── URL del servidor ─────────────────────────────────────────────────────
+  // 🌐 Producción / pruebas remotas (Render):
+  static const String baseUrl = "https://okventa-backend.onrender.com";
+
+  // 💻 Desarrollo local (WiFi): descomenta esta línea y comenta la de arriba
+  // static const String baseUrl = "http://192.168.1.82:8000";
 
   // ──────────────────────────────────────────────
   // ANÁLISIS IA
@@ -61,9 +66,9 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/publicaciones/$id');
     final request = http.MultipartRequest('PUT', uri);
 
-    request.fields['titulo']      = titulo;
+    request.fields['titulo'] = titulo;
     request.fields['descripcion'] = descripcion;
-    request.fields['precio']      = precio.toString();
+    request.fields['precio'] = precio.toString();
 
     if (fotosMantener.isNotEmpty) {
       request.fields['fotos_mantener'] = jsonEncode(fotosMantener);
@@ -76,8 +81,8 @@ class ApiService {
       );
     }
 
-    final streamed  = await request.send();
-    final response  = await http.Response.fromStream(streamed);
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
     if (response.statusCode != 200) {
       throw Exception("Error al editar publicación: ${response.body}");
     }

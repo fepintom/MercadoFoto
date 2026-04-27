@@ -1,7 +1,7 @@
 import sqlite3
 from typing import Optional
 
-DB_PATH = "database/publicaciones.db"
+from config import PUBLICACIONES_DB as DB_PATH
 
 def init_categorias_db():
     conn = sqlite3.connect(DB_PATH)

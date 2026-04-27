@@ -283,39 +283,8 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           // Logo
           Image.asset('assets/images/logo.png', height: 44),
-          const SizedBox(width: 10),
 
-          // Barra de búsqueda
-          Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _tab = 2),
-              child: Container(
-                height: 40,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(25),
-                  border: Border.all(color: AppColors.divider, width: 0.5),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.search_rounded,
-                        color: AppColors.grayMid, size: 18),
-                    SizedBox(width: 8),
-                    Text(
-                      "Buscar en OkVenta...",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppColors.grayMid,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 10),
+          const Spacer(),
 
           // Carrito
           ValueListenableBuilder<List<Map<String, dynamic>>>(

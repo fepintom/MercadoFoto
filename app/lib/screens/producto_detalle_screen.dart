@@ -11,6 +11,7 @@ import '../theme/app_theme.dart';
 import '../widgets/registro_form_widget.dart';
 import 'chat_screen.dart';
 import 'editar_publicacion_screen.dart';
+import 'perfil_publico_screen.dart';
 
 // ── Modelo para opciones de compartir (fácil de extender) ─────────────────
 class _OpcionCompartir {
@@ -249,6 +250,95 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
       } catch (_) {}
     }
     return urls;
+  }
+
+  // ── VISOR FOTO COMPLETA ───────────────────────────────────────────────
+  // ── Perfil público del vendedor ──────────────────────────────────────────
+  void _irAPerfilVendedor(
+      BuildContext context, int userId, String nombre) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Perfil del vendedor',
+          style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary),
+        ),
+        content: RichText(
+          text: TextSpan(
+            style: const TextStyle(
+                fontSize: 14, color: AppColors.textSecondary, height: 1.4),
+            children: [
+              const TextSpan(text: '¿Ir al perfil de '),
+              TextSpan(
+                text: nombre,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary),
+              ),
+              const TextSpan(text: '?'),
+            ],
+          ),
+        ),
+        actionsPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar',
+                style: TextStyle(color: AppColors.grayMid)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => PerfilPublicoScreen(
+                    userId: userId,
+                    nombre: nombre,
+                  ),
+                ),
+              );
+            },
+            child: const Text('Ver perfil'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _verFotoCompleta(List<String> imagenes, int indiceInicial) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierColor: Colors.black,
+        barrierDismissible: false,
+        pageBuilder: (_, animation, __) {
+          return _FotoViewer(
+            imagenes: imagenes,
+            indiceInicial: indiceInicial,
+            baseUrl: ApiService.baseUrl,
+            animation: animation,
+          );
+        },
+        transitionsBuilder: (_, animation, __, child) =>
+            FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 220),
+      ),
+    );
   }
 
   // ── COMPARTIR ─────────────────────────────────────────────────────────
@@ -865,16 +955,19 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                       itemCount: imagenes.length,
                       onPageChanged: (i) =>
                           setState(() => _imgPagina = i),
-                      itemBuilder: (ctx, i) => Image.network(
-                        "${ApiService.baseUrl}${imagenes[i]}",
-                        height: 300,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
+                      itemBuilder: (ctx, i) => GestureDetector(
+                        onTap: () => _verFotoCompleta(imagenes, i),
+                        child: Image.network(
+                          "${ApiService.baseUrl}${imagenes[i]}",
                           height: 300,
-                          color: AppColors.background,
-                          child: const Icon(Icons.image_not_supported,
-                              color: AppColors.grayMid, size: 48),
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            height: 300,
+                            color: AppColors.background,
+                            child: const Icon(Icons.image_not_supported,
+                                color: AppColors.grayMid, size: 48),
+                          ),
                         ),
                       ),
                     ),
@@ -905,16 +998,19 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                 ],
               )
             else
-              Image.network(
-                "${ApiService.baseUrl}${imagenes.isNotEmpty ? imagenes[0] : ''}",
-                height: 300,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+              GestureDetector(
+                onTap: () => _verFotoCompleta(imagenes, 0),
+                child: Image.network(
+                  "${ApiService.baseUrl}${imagenes.isNotEmpty ? imagenes[0] : ''}",
                   height: 300,
-                  color: AppColors.background,
-                  child: const Icon(Icons.image_not_supported,
-                      color: AppColors.grayMid, size: 48),
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    height: 300,
+                    color: AppColors.background,
+                    child: const Icon(Icons.image_not_supported,
+                        color: AppColors.grayMid, size: 48),
+                  ),
                 ),
               ),
 
@@ -987,29 +1083,46 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
 
                   const SizedBox(height: 6),
 
-                  // Vendedor
-                  Row(
-                    children: [
-                      Icon(
-                        ownerId != null
-                            ? Icons.verified_user_rounded
-                            : Icons.person_outline_rounded,
-                        size: 14,
-                        color: ownerId != null
-                            ? AppColors.carbon
-                            : AppColors.grayMid,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        vendedor,
-                        style: TextStyle(
-                          fontSize: 13,
+                  // Vendedor — tappable si tiene user_id
+                  GestureDetector(
+                    onTap: ownerId != null
+                        ? () => _irAPerfilVendedor(
+                            context, ownerId!, vendedor)
+                        : null,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          ownerId != null
+                              ? Icons.verified_user_rounded
+                              : Icons.person_outline_rounded,
+                          size: 14,
                           color: ownerId != null
                               ? AppColors.carbon
                               : AppColors.grayMid,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 4),
+                        Text(
+                          vendedor,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: ownerId != null
+                                ? AppColors.carbon
+                                : AppColors.grayMid,
+                            decoration: ownerId != null
+                                ? TextDecoration.underline
+                                : TextDecoration.none,
+                            decorationColor: AppColors.carbon,
+                          ),
+                        ),
+                        if (ownerId != null) ...[
+                          const SizedBox(width: 3),
+                          Icon(Icons.chevron_right_rounded,
+                              size: 14,
+                              color: AppColors.carbon.withOpacity(0.5)),
+                        ],
+                      ],
+                    ),
                   ),
 
                   const SizedBox(height: 16),
@@ -1485,6 +1598,188 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VISOR DE FOTO A PANTALLA COMPLETA
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _FotoViewer extends StatefulWidget {
+  final List<String> imagenes;
+  final int indiceInicial;
+  final String baseUrl;
+  final Animation<double> animation;
+
+  const _FotoViewer({
+    required this.imagenes,
+    required this.indiceInicial,
+    required this.baseUrl,
+    required this.animation,
+  });
+
+  @override
+  State<_FotoViewer> createState() => _FotoViewerState();
+}
+
+class _FotoViewerState extends State<_FotoViewer> {
+  late PageController _pageCtrl;
+  late int _paginaActual;
+  // TransformationController por página para resetear el zoom al cambiar
+  final Map<int, TransformationController> _transformControllers = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _paginaActual = widget.indiceInicial;
+    _pageCtrl     = PageController(initialPage: widget.indiceInicial);
+    // Ocultar barra de estado para inmersión total
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  }
+
+  @override
+  void dispose() {
+    _pageCtrl.dispose();
+    for (final c in _transformControllers.values) {
+      c.dispose();
+    }
+    // Restaurar UI del sistema al salir
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    super.dispose();
+  }
+
+  TransformationController _ctrlForPage(int index) {
+    return _transformControllers.putIfAbsent(
+        index, () => TransformationController());
+  }
+
+  void _cerrar() => Navigator.of(context).pop();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          // ── PageView con InteractiveViewer por foto ──────────────────
+          PageView.builder(
+            controller: _pageCtrl,
+            itemCount: widget.imagenes.length,
+            onPageChanged: (i) {
+              // Resetear zoom de la página anterior
+              _ctrlForPage(_paginaActual).value = Matrix4.identity();
+              setState(() => _paginaActual = i);
+            },
+            itemBuilder: (_, i) {
+              return InteractiveViewer(
+                transformationController: _ctrlForPage(i),
+                minScale: 0.8,
+                maxScale: 5.0,
+                child: Center(
+                  child: Image.network(
+                    "${widget.baseUrl}${widget.imagenes[i]}",
+                    fit: BoxFit.contain,
+                    loadingBuilder: (_, child, progress) {
+                      if (progress == null) return child;
+                      return Center(
+                        child: CircularProgressIndicator(
+                          value: progress.expectedTotalBytes != null
+                              ? progress.cumulativeBytesLoaded /
+                                  progress.expectedTotalBytes!
+                              : null,
+                          color: Colors.white54,
+                          strokeWidth: 2,
+                        ),
+                      );
+                    },
+                    errorBuilder: (_, __, ___) => const Center(
+                      child: Icon(Icons.broken_image_outlined,
+                          color: Colors.white38, size: 64),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+
+          // ── Botón cerrar ──────────────────────────────────────────────
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: GestureDetector(
+                  onTap: _cerrar,
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white24, width: 1),
+                    ),
+                    child: const Icon(Icons.close_rounded,
+                        color: Colors.white, size: 20),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // ── Contador (solo si hay más de 1 foto) ─────────────────────
+          if (widget.imagenes.length > 1)
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      "${_paginaActual + 1} / ${widget.imagenes.length}",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // ── Dots de navegación ────────────────────────────────────────
+          if (widget.imagenes.length > 1)
+            Positioned(
+              bottom: 30,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(widget.imagenes.length, (i) {
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: i == _paginaActual ? 20 : 8,
+                    height: 8,
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    decoration: BoxDecoration(
+                      color: i == _paginaActual
+                          ? Colors.white
+                          : Colors.white38,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  );
+                }),
+              ),
+            ),
+        ],
       ),
     );
   }

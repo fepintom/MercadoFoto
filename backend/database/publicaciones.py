@@ -1,12 +1,6 @@
 import sqlite3
 import os
-
-# --------------------------------------------------
-# DB PATH
-# --------------------------------------------------
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB = os.path.join(BASE_DIR, "database", "publicaciones.db")
+from config import PUBLICACIONES_DB as DB
 
 
 # --------------------------------------------------
@@ -468,3 +462,39 @@ def obtener_publicaciones_cercanas(lat, lng, radio_km=5.0):
 
     resultado.sort(key=lambda x: x["distancia_km"])
     return resultado
+
+
+# --------------------------------------------------
+# PUBLICACIONES POR USUARIO (perfil público)
+# --------------------------------------------------
+
+def obtener_publicaciones_por_usuario(user_id: int):
+    """Retorna las publicaciones disponibles de un usuario (para perfil público)."""
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT
+        p.id, p.titulo, p.precio, p.imagen_url,
+        p.categoria, p.subcategoria, p.estado
+    FROM publicaciones p
+    WHERE p.user_id = ?
+      AND p.estado = 'disponible'
+    ORDER BY p.id DESC
+    """, (user_id,))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    return [
+        {
+            "id": r[0],
+            "titulo": r[1],
+            "precio": r[2],
+            "imagen_url": r[3],
+            "categoria": r[4],
+            "subcategoria": r[5],
+            "estado": r[6],
+        }
+        for r in rows
+    ]

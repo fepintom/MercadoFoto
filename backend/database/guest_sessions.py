@@ -1,7 +1,7 @@
 import sqlite3
 import uuid
 
-DB = "database/publicaciones.db"
+from config import PUBLICACIONES_DB as DB
 
 
 def init_guest_db():

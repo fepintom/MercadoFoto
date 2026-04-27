@@ -17,6 +17,15 @@ services:
     # Con el plan Starter (512 MB) puede funcionar pero es justo.
     plan: standard
 
+    # ── Disco persistente ────────────────────────────────────────
+    # Almacena SQLite (publicaciones.db, etc.) e imágenes subidas.
+    # Sin esto, los datos se pierden en cada redeploy.
+    # Costo: $0.25/GB/mes (~$0.25/mes con 1 GB)
+    disk:
+      name: okventa-data
+      mountPath: /data
+      sizeGB: 1
+
     envVars:
       # ── OpenAI ───────────────────────────────────────────
       - key: OPENAI_API_KEY

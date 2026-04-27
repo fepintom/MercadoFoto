@@ -1,7 +1,7 @@
 import sqlite3
 from datetime import datetime, timedelta
 
-DB_PATH = "database/cache.db"
+from config import GENERAL_CACHE_DB as DB_PATH
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)

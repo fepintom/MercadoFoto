@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
@@ -94,6 +95,14 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
   String _categoria    = "";
   String _subcategoria = "";
 
+  // ── Precio sugerido ───────────────────────────────────────────────────
+  double _precioMin    = 0;
+  double _precioMax    = 0;
+  String _moneda       = "CLP";
+  String _confianza    = "";       // "alta" | "media" | "baja" | ""
+  double _precioActual = 0;        // espejo numérico del controller
+  double _dragAcumulado = 0;       // px acumulados entre eventos de drag
+
   // ── Multi-foto ────────────────────────────────────────────────────────
   late List<File> _imagenes;
   int _paginaActual = 0;
@@ -119,6 +128,17 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
     descripcion      = TextEditingController(text: jsonData["descripcion"] ?? "");
     _categoria       = jsonData["categoria"]    ?? "";
     _subcategoria    = jsonData["subcategoria"] ?? "";
+
+    // ── Precio sugerido ──────────────────────────────────────────────
+    _precioMin  = (jsonData["precio_min"]  as num?)?.toDouble() ?? 0;
+    _precioMax  = (jsonData["precio_max"]  as num?)?.toDouble() ?? 0;
+    _moneda     = jsonData["moneda"]    ?? "CLP";
+    _confianza  = jsonData["confianza"] ?? "";
+    // Pre-poblar con el mínimo sugerido (o vacío si no hay sugerencia)
+    if (_precioMin > 0) {
+      _precioActual = _precioMin;
+      precio.text   = _precioMin.toInt().toString();
+    }
 
     // Auto-detectar talla desde las dimensiones generadas por IA
     final dimIA = jsonData["dimensiones"] ?? "";
@@ -232,6 +252,18 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
 
     setState(() => _publicando = true);
 
+    // ── Intentar obtener GPS silenciosamente ──────────────────────────
+    Position? _pos;
+    try {
+      final perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.always ||
+          perm == LocationPermission.whileInUse) {
+        _pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.low,
+        ).timeout(const Duration(seconds: 5));
+      }
+    } catch (_) { /* sin GPS: se publica igual, sin coordenadas */ }
+
     try {
       final request = http.MultipartRequest(
         "POST",
@@ -244,6 +276,11 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
       request.fields["dimensiones"]  = _getDimensiones();
       if (_categoria.isNotEmpty)    request.fields["categoria"]    = _categoria;
       if (_subcategoria.isNotEmpty) request.fields["subcategoria"] = _subcategoria;
+      // Coordenadas GPS (si están disponibles)
+      if (_pos != null) {
+        request.fields["lat"] = _pos.latitude.toString();
+        request.fields["lng"] = _pos.longitude.toString();
+      }
 
       // Foto principal + extras
       request.files.add(
@@ -462,6 +499,324 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
             ),
           );
         }),
+      ),
+    );
+  }
+
+  // ── PRECIO INTERACTIVO ────────────────────────────────────────────────
+  /// Incremento por cada 10 px de arrastre vertical (ajustable según rango)
+  double get _paso {
+    if (_precioMax <= 0) return 500;
+    final rango = _precioMax - _precioMin;
+    if (rango <= 5000)   return 100;
+    if (rango <= 20000)  return 500;
+    if (rango <= 100000) return 1000;
+    return 5000;
+  }
+
+  void _onDragUpdate(DragUpdateDetails d) {
+    // Arrastrar hacia ARRIBA (dy negativo) → precio sube
+    _dragAcumulado -= d.delta.dy;
+    while (_dragAcumulado >= 10) {
+      _dragAcumulado -= 10;
+      setState(() {
+        _precioActual = (_precioActual + _paso).clamp(0, double.infinity);
+        precio.text   = _precioActual.toInt().toString();
+      });
+    }
+    while (_dragAcumulado <= -10) {
+      _dragAcumulado += 10;
+      setState(() {
+        _precioActual = (_precioActual - _paso).clamp(0, double.infinity);
+        precio.text   = _precioActual.toInt().toString();
+      });
+    }
+  }
+
+  Widget _buildPrecioInteractivo() {
+    final tieneSugerencia = _precioMin > 0 && _precioMax > 0;
+    final colorConfianza  = _confianza == "alta"
+        ? const Color(0xFF34C759)
+        : _confianza == "media"
+            ? const Color(0xFFFF9500)
+            : const Color(0xFFFF3B30);
+    final labelConfianza  = _confianza == "alta"
+        ? "Alta confianza"
+        : _confianza == "media"
+            ? "Confianza media"
+            : _confianza == "baja"
+                ? "Baja confianza"
+                : "";
+
+    final formatter = (double v) {
+      if (v >= 1000) {
+        // Formatea con punto de miles: 15000 → "15.000"
+        final s = v.toInt().toString();
+        final buf = StringBuffer();
+        for (int i = 0; i < s.length; i++) {
+          if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+          buf.write(s[i]);
+        }
+        return buf.toString();
+      }
+      return v.toInt().toString();
+    };
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Label + badge confianza ──────────────────────────────
+          Row(
+            children: [
+              const Icon(Icons.sell_outlined, size: 15, color: AppColors.grayMid),
+              const SizedBox(width: 6),
+              const Text(
+                "Precio",
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              if (tieneSugerencia && labelConfianza.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: colorConfianza.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.auto_awesome, size: 10, color: colorConfianza),
+                      const SizedBox(width: 3),
+                      Text(
+                        labelConfianza,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: colorConfianza,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // ── Widget principal de precio ───────────────────────────
+          GestureDetector(
+            onVerticalDragUpdate: _onDragUpdate,
+            onVerticalDragStart: (_) => _dragAcumulado = 0,
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.35),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  // Precio actual grande
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Columna izquierda: signo + precio
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Moneda y valor
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.baseline,
+                                textBaseline: TextBaseline.alphabetic,
+                                children: [
+                                  Text(
+                                    "\$",
+                                    style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.primary.withOpacity(0.7),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: TextField(
+                                      controller: precio,
+                                      keyboardType: TextInputType.number,
+                                      style: const TextStyle(
+                                        fontSize: 36,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.textPrimary,
+                                        letterSpacing: -1,
+                                      ),
+                                      decoration: const InputDecoration(
+                                        border: InputBorder.none,
+                                        isDense: true,
+                                        contentPadding: EdgeInsets.zero,
+                                        hintText: "0",
+                                        hintStyle: TextStyle(
+                                          color: AppColors.divider,
+                                          fontSize: 36,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      onChanged: (v) {
+                                        final parsed = double.tryParse(v) ?? 0;
+                                        setState(() => _precioActual = parsed);
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                _moneda,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.grayMid,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Flechas de arrastre
+                        Column(
+                          children: [
+                            Icon(Icons.keyboard_arrow_up_rounded,
+                                color: AppColors.primary.withOpacity(0.6), size: 28),
+                            const SizedBox(height: 2),
+                            Icon(Icons.keyboard_arrow_down_rounded,
+                                color: AppColors.primary.withOpacity(0.6), size: 28),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ── Rango sugerido ───────────────────────────────
+                  if (tieneSugerencia) ...[
+                    const Divider(height: 1, thickness: 0.5, color: AppColors.divider),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.insights_rounded,
+                              size: 14, color: AppColors.grayMid),
+                          const SizedBox(width: 6),
+                          const Text(
+                            "Precio sugerido IA:",
+                            style: TextStyle(
+                                fontSize: 12, color: AppColors.grayMid),
+                          ),
+                          const SizedBox(width: 8),
+                          // Chip mínimo
+                          _precioChip(
+                            label: "\$${formatter(_precioMin)}",
+                            onTap: () => setState(() {
+                              _precioActual = _precioMin;
+                              precio.text   = _precioMin.toInt().toString();
+                            }),
+                            active: _precioActual == _precioMin,
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 4),
+                            child: Text("–",
+                                style: TextStyle(
+                                    color: AppColors.grayMid, fontSize: 12)),
+                          ),
+                          // Chip máximo
+                          _precioChip(
+                            label: "\$${formatter(_precioMax)}",
+                            onTap: () => setState(() {
+                              _precioActual = _precioMax;
+                              precio.text   = _precioMax.toInt().toString();
+                            }),
+                            active: _precioActual == _precioMax,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
+                  // ── Hint deslizar ────────────────────────────────
+                  if (tieneSugerencia)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.swipe_vertical_rounded,
+                              size: 13,
+                              color: AppColors.grayMid.withOpacity(0.6)),
+                          const SizedBox(width: 4),
+                          Text(
+                            "Desliza ↑↓ para ajustar  ·  Toca para escribir",
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.grayMid.withOpacity(0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _precioChip({
+    required String label,
+    required VoidCallback onTap,
+    bool active = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        decoration: BoxDecoration(
+          color: active
+              ? AppColors.primary.withOpacity(0.12)
+              : AppColors.background,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: active
+                ? AppColors.primary.withOpacity(0.5)
+                : AppColors.divider,
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: active ? AppColors.primary : AppColors.textSecondary,
+          ),
+        ),
       ),
     );
   }
@@ -908,39 +1263,8 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                       // ── Selector de Talla ─────────────────────────
                       _buildTallaSection(),
 
-                      // Precio
-                      TextField(
-                        controller: precio,
-                        keyboardType: TextInputType.number,
-                        style: const TextStyle(
-                            fontSize: 15, color: AppColors.textPrimary),
-                        decoration: InputDecoration(
-                          labelText: "Precio",
-                          labelStyle: const TextStyle(
-                              color: AppColors.grayMid, fontSize: 14),
-                          prefixText: "\$ ",
-                          prefixStyle: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w600),
-                          filled: true,
-                          fillColor: AppColors.surface,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
-                                color: AppColors.divider, width: 0.5),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
-                                color: AppColors.divider, width: 0.5),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                            borderSide: const BorderSide(
-                                color: AppColors.primary, width: 1.5),
-                          ),
-                        ),
-                      ),
+                      // ── Precio interactivo con sugerencia IA ──────
+                      _buildPrecioInteractivo(),
 
                       const SizedBox(height: 28),
 
