@@ -4,11 +4,11 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   // ── URL del servidor ─────────────────────────────────────────────────────
-  // 💻 Desarrollo local (WiFi) ← activo ahora
-  static const String baseUrl = "http://192.168.1.82:8000";
+  // 💻 Desarrollo local (WiFi)
+  // static const String baseUrl = "http://192.168.1.82:8000";
 
-  // 🌐 Producción / pruebas remotas (Render): descomenta cuando el servicio esté activo
-  // static const String baseUrl = "https://okventa-backend.onrender.com";
+  // 🌐 Producción (Render)
+  static const String baseUrl = "https://okventa-backend.onrender.com";
 
   // ──────────────────────────────────────────────
   // ANÁLISIS IA
