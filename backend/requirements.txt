@@ -9,7 +9,7 @@ openai>=1.30.0
 
 # ── Procesamiento de imagen (rembg + fondo) ──────────────
 rembg==2.0.75
-pillow==11.3.0
+pillow>=12.1.0,<13.0.0
 numpy>=1.24.0
 
 # ── HTTP / Datos / Email ─────────────────────────────────
