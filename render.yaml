@@ -27,14 +27,5 @@ services:
       sizeGB: 1
 
     envVars:
-      # ── OpenAI ───────────────────────────────────────────
       - key: OPENAI_API_KEY
         sync: false          # se ingresa manualmente en el dashboard
-
-      # ── Google Cloud (contenido completo del JSON) ───────
-      - key: GOOGLE_CREDENTIALS_JSON
-        sync: false
-
-      # ── Google Cloud Project ─────────────────────────────
-      - key: GOOGLE_CLOUD_PROJECT
-        value: gen-lang-client-0075779061

@@ -12,37 +12,6 @@ import os
 import config  # noqa: F401  (crea los directorios al importarse)
 from config import UPLOADS_DIR
 
-# --------------------------------------------------
-# PRODUCCIÓN: cargar credenciales Google desde env var
-# Funciona en Render (y cualquier cloud) sin archivos
-# --------------------------------------------------
-
-def _setup_google_credentials():
-    """
-    Si existe la variable GOOGLE_CREDENTIALS_JSON (contenido del JSON),
-    la escribe en /tmp y configura GOOGLE_APPLICATION_CREDENTIALS.
-    En local, si ya existe el archivo credentials/, no hace nada.
-    """
-    json_content = os.environ.get("GOOGLE_CREDENTIALS_JSON")
-    if json_content:
-        tmp_path = "/tmp/google-credentials.json"
-        try:
-            # Validar que sea JSON válido antes de escribir
-            json.loads(json_content)
-            with open(tmp_path, "w") as f:
-                f.write(json_content)
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = tmp_path
-            print(f"[startup] Google credentials cargadas desde env var → {tmp_path}")
-        except Exception as e:
-            print(f"[startup] ERROR al configurar Google credentials: {e}")
-    elif not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
-        # Fallback local: buscar el archivo en credentials/
-        local_key = os.path.join(os.path.dirname(__file__), "credentials", "vision_key.json")
-        if os.path.exists(local_key):
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = local_key
-            print(f"[startup] Google credentials desde archivo local: {local_key}")
-
-_setup_google_credentials()
 
 # --------------------------------------------------
 # THIRD PARTY
@@ -61,7 +30,6 @@ from typing import Optional
 
 from services.background_service import quitar_fondo
 from services.storage_service import guardar_imagen_procesada
-from services.translation_service import traducir_a_es
 from services.vision_service import detectar_producto
 from services.trust_score_service import calcular_trust_score
 

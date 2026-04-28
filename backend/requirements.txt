@@ -12,10 +12,6 @@ rembg==2.0.61
 pillow==11.3.0
 numpy>=1.24.0
 
-# ── Google Cloud (traducción) ────────────────────────────
-google-cloud-translate==3.24.0
-google-auth==2.48.0
-
 # ── HTTP / Datos / Email ─────────────────────────────────
 requests==2.32.5
 openpyxl==3.1.5
