@@ -30,7 +30,7 @@ Analiza esta imagen de un producto y responde SOLO en JSON con este formato exac
 
 Reglas generales:
 - Título corto, máximo 6 palabras, en español
-- Descripción clara y orientada a venta, máximo 60 palabras, en español
+- Descripción clara y orientada a venta, máximo 60 caracteres, en español, sin repetir el título
 - Dimensiones: estimación visual aproximada en cm (ej: "30 x 20 x 10 cm"). Si no puedes estimarlas escribe "No determinado"
 - No inventes datos que no puedas ver
 - Si no reconoces el producto responde con titulo: "Producto" y descripción genérica
