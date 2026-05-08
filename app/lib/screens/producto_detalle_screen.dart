@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import '../services/cart_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/format_utils.dart';
 import '../widgets/registro_form_widget.dart';
 import 'chat_screen.dart';
 import 'editar_publicacion_screen.dart';
@@ -658,7 +659,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Precio publicado: \$${widget.producto["precio"]}",
+              "Precio publicado: ${formatPrecio(widget.producto["precio"])}",
               style: const TextStyle(
                   fontSize: 13, color: AppColors.grayMid),
             ),
@@ -1141,7 +1142,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          "\$${precio.toString()}",
+                          formatPrecio(precio),
                           style: const TextStyle(
                             fontSize: 28,
                             color: AppColors.primary,

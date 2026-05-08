@@ -24,6 +24,18 @@ class _VenderScreenState extends State<VenderScreen> {
   String _estado = 'selector';
   bool _loading = false;
   String _loadingMsg = "Analizando imagen con IA...";
+  bool _usuarioRegistrado = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _verificarRegistro();
+  }
+
+  Future<void> _verificarRegistro() async {
+    final userId = await SessionService.obtenerUser();
+    if (mounted) setState(() => _usuarioRegistrado = userId != null);
+  }
 
   // ── Análisis de imagen ────────────────────────────────────────────────
   Future<void> _analizarImagen(File imagen) async {
@@ -420,8 +432,8 @@ class _VenderScreenState extends State<VenderScreen> {
 
           const SizedBox(height: 14),
 
-          // ── CARGA MASIVA ─────────────────────────────────────────
-          GestureDetector(
+          // ── CARGA MASIVA (solo usuarios registrados) ──────────────
+          if (_usuarioRegistrado) GestureDetector(
             onTap: _mostrarDialogoCargaMasiva,
             child: Container(
               width: double.infinity,

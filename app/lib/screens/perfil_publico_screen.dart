@@ -320,11 +320,16 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
                 borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(14)),
                 child: imagenUrl.isNotEmpty
-                    ? Image.network(
-                        imagenUrl,
-                        fit: BoxFit.cover,
+                    ? Container(
                         width: double.infinity,
-                        errorBuilder: (_, __, ___) => _imagenPlaceholder(),
+                        color: Colors.white,
+                        child: Image.network(
+                          imagenUrl,
+                          fit: BoxFit.contain,
+                          width: double.infinity,
+                          alignment: const Alignment(0, -0.4),
+                          errorBuilder: (_, __, ___) => _imagenPlaceholder(),
+                        ),
                       )
                     : _imagenPlaceholder(),
               ),

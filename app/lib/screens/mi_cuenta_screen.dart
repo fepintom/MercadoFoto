@@ -32,6 +32,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
   String tipoUsuario = "persona";
   String nombreMostrado = "";
   String _fotoUrl = "";
+  int? _userId;
   bool _biometricEnabled = false;
 
   @override
@@ -87,6 +88,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
       correoBancoCtrl.text = prefs.getString("correo_banco") ?? "";
       nombreMostrado = prefs.getString("nombre") ?? "";
       _fotoUrl = prefs.getString("foto_url") ?? "";
+      _userId = prefs.getInt("user_id");
     });
   }
 
@@ -499,6 +501,25 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                             fontSize: 14,
                             color: AppColors.grayMid,
                           ),
+                        ),
+                      ),
+                    if (_userId != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.tag_rounded,
+                                size: 13, color: AppColors.grayMid),
+                            const SizedBox(width: 4),
+                            Text(
+                              "ID de usuario: $_userId",
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.grayMid,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
 

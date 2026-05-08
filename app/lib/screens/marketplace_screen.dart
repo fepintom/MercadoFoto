@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../utils/format_utils.dart';
 
 import '../services/api_service.dart';
 import '../services/cart_service.dart';
@@ -458,12 +459,17 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                  child: Image.network(
-                    "${ApiService.baseUrl}$imagenUrl",
-                    height: 140, width: double.infinity, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      height: 140, color: AppColors.background,
-                      child: const Icon(Icons.image_not_supported, color: AppColors.grayMid),
+                  child: Container(
+                    height: 140, width: double.infinity,
+                    color: Colors.white,
+                    child: Image.network(
+                      "${ApiService.baseUrl}$imagenUrl",
+                      height: 140, width: double.infinity, fit: BoxFit.contain,
+                      alignment: Alignment(0, -0.4),
+                      errorBuilder: (_, __, ___) => Container(
+                        height: 140, color: Colors.white,
+                        child: const Icon(Icons.image_not_supported, color: AppColors.grayMid),
+                      ),
                     ),
                   ),
                 ),
@@ -509,7 +515,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       maxLines: 2, overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary)),
                   const SizedBox(height: 6),
-                  Text("\$${precio.toString()}",
+                  Text(formatPrecio(precio),
                       style: const TextStyle(fontSize: 17, color: AppColors.primary, fontWeight: FontWeight.w700)),
                   const SizedBox(height: 8),
                   Row(
@@ -642,10 +648,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
             padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
             child: _chipFiltro(
               label: _precioMin != null && _precioMax != null
-                  ? "\$${_precioMin!.toStringAsFixed(0)} — \$${_precioMax!.toStringAsFixed(0)}"
+                  ? "${formatPrecio(_precioMin)} — ${formatPrecio(_precioMax)}"
                   : _precioMin != null
-                      ? "Desde \$${_precioMin!.toStringAsFixed(0)}"
-                      : "Hasta \$${_precioMax!.toStringAsFixed(0)}",
+                      ? "Desde ${formatPrecio(_precioMin)}"
+                      : "Hasta ${formatPrecio(_precioMax)}",
               onClear: () => setState(() { _precioMin = null; _precioMax = null; cargarPublicaciones(); }),
             ),
           ),

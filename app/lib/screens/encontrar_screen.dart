@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
+import '../utils/format_utils.dart';
 import '../theme/app_theme.dart';
 import 'producto_detalle_screen.dart';
 
@@ -324,12 +325,7 @@ class _EncontrarScreenState extends State<EncontrarScreen>
     );
   }
 
-  String _formatPrecio(dynamic precio) {
-    final n = (precio as num).toInt();
-    if (n >= 1000000) return "${(n / 1000000).toStringAsFixed(1)}M";
-    if (n >= 1000) return "${(n / 1000).toStringAsFixed(0)}k";
-    return n.toString();
-  }
+  String _formatPrecio(dynamic precio) => formatPrecio(precio);
 
   // ── Tarjeta inferior cuando hay producto seleccionado ─────────────────────
   Widget _buildTarjetaSeleccionada(Map<String, dynamic> p) {
@@ -368,17 +364,21 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                         builder: (_) => ProductoDetalleScreen(producto: p))),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  child: Image.network(
-                    "${ApiService.baseUrl}$imagenUrl",
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                  child: Container(
+                    width: 80, height: 80, color: Colors.white,
+                    child: Image.network(
+                      "${ApiService.baseUrl}$imagenUrl",
                       width: 80,
                       height: 80,
-                      color: AppColors.background,
-                      child: const Icon(Icons.image_outlined,
-                          color: AppColors.grayMid),
+                      fit: BoxFit.contain,
+                      alignment: const Alignment(0, -0.4),
+                      errorBuilder: (_, __, ___) => Container(
+                        width: 80,
+                        height: 80,
+                        color: Colors.white,
+                        child: const Icon(Icons.image_outlined,
+                            color: AppColors.grayMid),
+                      ),
                     ),
                   ),
                 ),
@@ -435,7 +435,7 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                       children: [
                         if (precio != null)
                           Text(
-                            "\$${precio.toString()}",
+                            formatPrecio(precio),
                             style: const TextStyle(
                                 fontSize: 16,
                                 color: AppColors.primary,

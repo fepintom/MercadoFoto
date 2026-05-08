@@ -23,6 +23,9 @@ import sys
 import time
 import traceback
 from email.header import decode_header
+
+from services.email_service import enviar_confirmacion_carga_masiva
+from database.users import obtener_ubicacion_usuario, obtener_usuario_por_email
 from pathlib import Path
 from typing import Optional
 
@@ -56,17 +59,17 @@ def cargar_config(path: Path) -> dict:
 
 # Para cada campo destino, lista de posibles nombres de cabecera (en minúsculas)
 COLUMN_VARIANTS: dict[str, list[str]] = {
-    "titulo":      ["titulo", "título", "nombre", "producto", "name", "title"],
-    "precio":      ["precio", "price", "valor", "costo", "monto"],
-    "descripcion": ["descripcion", "descripción", "description", "detalle", "desc", "observaciones"],
-    "categoria":   ["categoria", "categoría", "category", "tipo", "rubro"],
-    "subcategoria":["subcategoria", "subcategoría", "subcategory", "subtipo", "subrubro"],
-    "user_id":     ["user_id", "userid", "usuario_id", "id_usuario", "id", "usuario"],
-    "imagen":      ["imagen", "image", "foto", "photo", "archivo", "file", "imagen1", "foto1"],
-    "imagen2":     ["imagen2", "foto2", "image2", "photo2"],
-    "imagen3":     ["imagen3", "foto3", "image3", "photo3"],
-    "lat":         ["lat", "latitud", "latitude"],
-    "lng":         ["lng", "lon", "longitud", "longitude"],
+    "titulo":           ["titulo", "título", "nombre", "producto", "name", "title"],
+    "precio":           ["precio", "price", "valor", "costo", "monto"],
+    "estado":           ["estado", "condicion", "condición", "state", "condition"],
+    "descripcion":      ["descripcion", "descripción", "description", "detalle", "desc", "observaciones"],
+    "categoria":        ["categoria", "categoría", "category", "tipo", "rubro"],
+    "subcategoria":     ["subcategoria", "subcategoría", "subcategory", "subtipo", "subrubro"],
+    "imagen":           ["imagen_url", "imagen", "image", "foto", "photo", "imagen1", "foto1", "url_imagen", "link_imagen"],
+    "imagen2":          ["imagen_url2", "imagen2", "foto2", "image2", "photo2"],
+    "imagen3":          ["imagen_url3", "imagen3", "foto3", "image3", "photo3"],
+    "sku":              ["sku", "codigo_interno", "cod_interno", "referencia"],
+    "codigo_universal": ["codigo universal", "codigo_universal", "barcode", "ean", "upc", "gtin"],
 }
 
 
@@ -111,6 +114,7 @@ def buscar_fila_cabecera(ws) -> Optional[int]:
 def leer_productos_excel(
     contenido_excel: bytes,
     imagenes_adjuntas: dict[str, bytes],
+    email_remitente: str = "",
 ) -> list[dict]:
     """
     Parsea el Excel y devuelve una lista de dicts con los campos del producto.
@@ -160,40 +164,35 @@ def leer_productos_excel(
             print(f"  ⚠  Fila {row_num}: precio inválido, se omite.")
             continue
 
-        descripcion = str(get("descripcion", titulo)).strip() or titulo
-        categoria   = str(get("categoria",  "")).strip() or None
-        subcategoria= str(get("subcategoria","")).strip() or None
-        user_id_raw = get("user_id")
-        lat_raw     = get("lat")
-        lng_raw     = get("lng")
+        descripcion  = str(get("descripcion", titulo)).strip() or titulo
+        categoria    = str(get("categoria",  "")).strip() or None
+        subcategoria = str(get("subcategoria","")).strip() or None
 
+        # Usuario identificado por email del remitente
         user_id = None
-        if user_id_raw is not None:
-            try:
-                user_id = int(float(str(user_id_raw)))
-            except (ValueError, TypeError):
-                pass
+        if email_remitente:
+            usuario = obtener_usuario_por_email(email_remitente)
+            if usuario:
+                user_id = usuario["id"]
 
+        if not user_id:
+            print(f"  ⚠  Fila {row_num}: no se encontró usuario para '{email_remitente}', se omite.")
+            continue
+
+        # lat/lng desde la dirección del perfil del usuario
         lat = None
         lng = None
-        try:
-            if lat_raw is not None:
-                lat = float(str(lat_raw).replace(",", "."))
-            if lng_raw is not None:
-                lng = float(str(lng_raw).replace(",", "."))
-        except (ValueError, TypeError):
-            pass
+        ubicacion = obtener_ubicacion_usuario(user_id)
+        if ubicacion:
+            lat = ubicacion.get("lat")
+            lng = ubicacion.get("lng")
 
-        # Imágenes: intentar emparejar por nombre de archivo
-        imagenes_bytes: list[bytes] = []
+        # Imágenes: leer URLs de la planilla
+        imagen_urls: list[str] = []
         for campo_img in ["imagen", "imagen2", "imagen3"]:
-            nombre_img = str(get(campo_img, "")).strip().lower()
-            if nombre_img and nombre_img in imagenes_adjuntas:
-                imagenes_bytes.append(imagenes_adjuntas[nombre_img])
-
-        # Si no hay imágenes referenciadas, tomar las adjuntas en orden
-        if not imagenes_bytes and imagenes_adjuntas:
-            imagenes_bytes = list(imagenes_adjuntas.values())[:4]
+            url = str(get(campo_img, "")).strip()
+            if url and url.startswith("http"):
+                imagen_urls.append(url)
 
         productos.append({
             "titulo":       titulo,
@@ -204,7 +203,7 @@ def leer_productos_excel(
             "user_id":      user_id,
             "lat":          lat,
             "lng":          lng,
-            "imagenes":     imagenes_bytes,  # lista de bytes
+            "imagen_urls":  imagen_urls,  # lista de URLs
         })
 
     return productos
@@ -214,44 +213,62 @@ def leer_productos_excel(
 # PUBLICAR VÍA API
 # ─────────────────────────────────────────────
 
+def _descargar_imagen(url: str) -> Optional[bytes]:
+    """Descarga una imagen desde una URL y retorna sus bytes."""
+    try:
+        resp = requests.get(url, timeout=30)
+        if resp.status_code == 200 and resp.content:
+            return resp.content
+    except Exception as e:
+        print(f"  ⚠  No se pudo descargar imagen {url}: {e}")
+    return None
+
+
 def publicar_producto(api_url: str, producto: dict) -> bool:
     """
-    Llama a POST /publicar con multipart/form-data.
+    Descarga imágenes desde URLs y llama a POST /publicar.
     Devuelve True si tuvo éxito.
     """
-    if not producto["imagenes"]:
-        print(f"  ⚠  '{producto['titulo']}': sin imagen, se omite.")
-        return False
-
     if not producto["user_id"]:
         print(f"  ⚠  '{producto['titulo']}': sin user_id, se omite.")
         return False
 
-    campos = {
-        "titulo":      (None, str(producto["titulo"])),
-        "descripcion": (None, str(producto["descripcion"])),
-        "precio":      (None, str(producto["precio"])),
-        "user_id":     (None, str(producto["user_id"])),
-    }
-    if producto["categoria"]:
-        campos["categoria"]    = (None, producto["categoria"])
-    if producto["subcategoria"]:
-        campos["subcategoria"] = (None, producto["subcategoria"])
-    if producto["lat"] is not None:
-        campos["lat"] = (None, str(producto["lat"]))
-    if producto["lng"] is not None:
-        campos["lng"] = (None, str(producto["lng"]))
+    # Descargar imágenes desde URLs
+    imagen_urls = producto.get("imagen_urls", [])
+    imagenes_bytes = []
+    for url in imagen_urls[:4]:
+        img = _descargar_imagen(url)
+        if img:
+            imagenes_bytes.append(img)
 
-    # Construir archivos: file (obligatorio) + file2, file3, file4
+    if not imagenes_bytes:
+        print(f"  ⚠  '{producto['titulo']}': sin imágenes válidas, se omite.")
+        return False
+
+    campos = {
+        "titulo":      str(producto["titulo"]),
+        "descripcion": str(producto["descripcion"]),
+        "precio":      str(producto["precio"]),
+        "user_id":     str(producto["user_id"]),
+    }
+    if producto.get("categoria"):
+        campos["categoria"] = producto["categoria"]
+    if producto.get("subcategoria"):
+        campos["subcategoria"] = producto["subcategoria"]
+    if producto.get("lat") is not None:
+        campos["lat"] = str(producto["lat"])
+    if producto.get("lng") is not None:
+        campos["lng"] = str(producto["lng"])
+
     slots = ["file", "file2", "file3", "file4"]
     archivos = {}
-    for i, img_bytes in enumerate(producto["imagenes"][:4]):
+    for i, img_bytes in enumerate(imagenes_bytes):
         archivos[slots[i]] = (f"imagen{i+1}.jpg", img_bytes, "image/jpeg")
 
     try:
         resp = requests.post(
             f"{api_url}/publicar",
-            data={k: v[1] for k, v in campos.items()},
+            data=campos,
             files=archivos,
             timeout=120,
         )
@@ -286,7 +303,7 @@ def obtener_nombre_adjunto(part) -> str:
     return filename
 
 
-def procesar_correo(msg, api_url: str) -> int:
+def procesar_correo(msg, api_url: str, email_remitente: str = "") -> int:
     """
     Extrae adjuntos de un correo y publica los productos encontrados.
     Devuelve el número de productos publicados.
@@ -322,7 +339,7 @@ def procesar_correo(msg, api_url: str) -> int:
     for nombre_excel, contenido_excel in excels:
         print(f"  Procesando Excel: {nombre_excel}")
         try:
-            productos = leer_productos_excel(contenido_excel, imagenes)
+            productos = leer_productos_excel(contenido_excel, imagenes, email_remitente)
             print(f"  → {len(productos)} producto(s) encontrado(s)")
             for p in productos:
                 if publicar_producto(api_url, p):
@@ -389,12 +406,28 @@ def revisar_correos(cfg: dict) -> int:
                     asunto += data
             print(f"\n  ✉  Asunto: {asunto}")
 
-            publicados = procesar_correo(msg, api_url)
+            # Obtener remitente para enviar confirmación
+            remitente_raw = msg.get("From", "")
+            # Extraer solo el email del campo From ("Nombre <email@x.com>" → "email@x.com")
+            if "<" in remitente_raw and ">" in remitente_raw:
+                email_remitente = remitente_raw.split("<")[1].split(">")[0].strip()
+            else:
+                email_remitente = remitente_raw.strip()
+
+            publicados = procesar_correo(msg, api_url, email_remitente)
             total += publicados
 
             if marcar and publicados > 0:
                 mail.store(uid, "+FLAGS", "\\Seen")
                 print(f"  → Marcado como leído ({publicados} publicado(s)).")
+                # Enviar confirmación al remitente
+                if email_remitente:
+                    username = email_remitente.split("@")[0]
+                    enviar_confirmacion_carga_masiva(
+                        email_destino=email_remitente,
+                        username=username,
+                        total_publicados=publicados,
+                    )
             elif publicados == 0:
                 print("  → Sin productos publicados (sin Excel válido o sin datos).")
 

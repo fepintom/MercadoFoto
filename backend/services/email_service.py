@@ -78,14 +78,59 @@ Consulta la hoja "Instrucciones" dentro del Excel para más detalles.
     )
     msg.attach(adjunto)
 
-    # ── Enviar ───────────────────────────────────────────────────────────
+    _enviar(smtp_server, smtp_port, usuario, password, email_destino, msg)
+
+
+def enviar_confirmacion_carga_masiva(
+    email_destino: str,
+    username: str,
+    total_publicados: int,
+) -> None:
+    """
+    Envía confirmación al usuario tras procesar su planilla de carga masiva.
+    """
+    try:
+        cfg = _cargar_config()
+        smtp_server = cfg.get("smtp_server") or cfg.get("imap_server", "")
+        smtp_port   = int(cfg.get("smtp_port", 587))
+        usuario     = cfg["email"]
+        password    = cfg["password"]
+
+        msg = MIMEMultipart()
+        msg["From"]    = f"OkVenta <{usuario}>"
+        msg["To"]      = email_destino
+        msg["Subject"] = f"✓ Tus productos fueron publicados — OkVenta"
+
+        productos_texto = (
+            f"{total_publicados} producto{'s' if total_publicados != 1 else ''}"
+        )
+
+        cuerpo = f"""\
+Hola {username},
+
+Hemos procesado y publicado {productos_texto} bajo tu usuario: {username}
+
+Puedes verlos ahora mismo en la app OkVenta.
+
+Si tienes alguna duda puedes escribirnos a fpinto@galmar.cl
+
+— Equipo OkVenta
+"""
+        msg.attach(MIMEText(cuerpo, "plain", "utf-8"))
+        _enviar(smtp_server, smtp_port, usuario, password, email_destino, msg)
+        print(f"  ✓ Confirmación enviada a {email_destino}")
+    except Exception as e:
+        print(f"  ⚠ No se pudo enviar confirmación a {email_destino}: {e}")
+
+
+def _enviar(smtp_server, smtp_port, usuario, password, destino, msg):
     if smtp_port == 465:
         with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
             server.login(usuario, password)
-            server.sendmail(usuario, email_destino, msg.as_string())
+            server.sendmail(usuario, destino, msg.as_string())
     else:
         with smtplib.SMTP(smtp_server, smtp_port) as server:
             server.ehlo()
             server.starttls()
             server.login(usuario, password)
-            server.sendmail(usuario, email_destino, msg.as_string())
+            server.sendmail(usuario, destino, msg.as_string())
