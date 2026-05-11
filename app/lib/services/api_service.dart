@@ -5,10 +5,10 @@ import 'package:http/http.dart' as http;
 class ApiService {
   // ── URL del servidor ─────────────────────────────────────────────────────
   // 💻 Desarrollo local (WiFi)
-  static const String baseUrl = "http://192.168.1.81:8000";
+  // static const String baseUrl = "http://192.168.1.81:8000";
 
   // 🌐 Producción (Render)
-  // static const String baseUrl = "https://okventa-backend.onrender.com";
+  static const String baseUrl = "https://okventa-backend.onrender.com";
 
   // ──────────────────────────────────────────────
   // CARGA MASIVA
