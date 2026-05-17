@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../theme/app_theme.dart';
+import '../services/api_service.dart';
 
 class RegistroFormWidget extends StatefulWidget {
   final Future<void> Function(String email, String password) onSubmit;
@@ -63,6 +66,24 @@ class _RegistroFormWidgetState extends State<RegistroFormWidget> {
       await widget.onGoogleSignIn!();
     } finally {
       if (mounted) setState(() => _loadingGoogle = false);
+    }
+  }
+
+  Future<void> _solicitarReset() async {
+    final email = emailCtrl.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      _snack('Ingresa tu correo primero');
+      return;
+    }
+    try {
+      await http.post(
+        Uri.parse('${ApiService.baseUrl}/solicitar_reset'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      );
+      _snack('Si el correo está registrado, recibirás un enlace para restablecer tu contraseña');
+    } catch (_) {
+      _snack('Sin conexión al servidor');
     }
   }
 
@@ -187,7 +208,20 @@ class _RegistroFormWidgetState extends State<RegistroFormWidget> {
           ),
         ),
 
-        const SizedBox(height: 20),
+        // ¿Olvidaste tu contraseña?
+        if (widget.isLogin)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: _solicitarReset,
+              child: const Text(
+                '¿Olvidaste tu contraseña?',
+                style: TextStyle(color: AppColors.grayMid, fontSize: 13),
+              ),
+            ),
+          ),
+
+        const SizedBox(height: 8),
 
         // Botón email/pass
         SizedBox(
