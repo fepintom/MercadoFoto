@@ -147,19 +147,39 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     try {
-      final res = await http.post(
+      await http.post(
         Uri.parse('${ApiService.baseUrl}/solicitar_reset'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email}),
       );
-      if (res.statusCode == 200) {
-        _snack('Si el correo está registrado, recibirás un enlace en tu bandeja de entrada');
-      } else {
-        _snack('Error al enviar. Intenta de nuevo.');
-      }
     } catch (_) {
       _snack('Sin conexión al servidor');
+      return;
     }
+    if (!mounted) return;
+    Navigator.pop(context); // cierra el diálogo del correo
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Revisa tu correo'),
+        content: const Text(
+          'Si el correo está registrado, recibirás un enlace para crear una nueva contraseña.\n\nRevisa también la carpeta de spam.',
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Entendido'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _irAHome() {

@@ -81,10 +81,33 @@ class _RegistroFormWidgetState extends State<RegistroFormWidget> {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email}),
       );
-      _snack('Si el correo está registrado, recibirás un enlace para restablecer tu contraseña');
     } catch (_) {
       _snack('Sin conexión al servidor');
+      return;
     }
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Revisa tu correo'),
+        content: const Text(
+          'Si el correo está registrado, recibirás un enlace para crear una nueva contraseña.\n\nRevisa también la carpeta de spam.',
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Entendido'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _snack(String msg) {
