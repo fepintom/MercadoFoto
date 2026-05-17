@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../services/auth_service.dart';
-import '../../services/api_service.dart';
 import '../../services/biometric_service.dart';
 import '../../theme/app_theme.dart';
 import '../home_screen.dart';
@@ -110,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // ── Navegación ───────────────────────────────────────────────────────────
   Future<void> _solicitarReset() async {
-    final emailCtrl = TextEditingController();
+    final emailCtrl = TextEditingController(text: _emailCtrl.text.trim());
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -147,17 +145,20 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     try {
-      await http.post(
-        Uri.parse('${ApiService.baseUrl}/solicitar_reset'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email}),
-      );
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found') {
+        // Por seguridad mostramos el mismo mensaje aunque no exista
+      } else {
+        _snack('Error al enviar. Intenta de nuevo.');
+        return;
+      }
     } catch (_) {
-      _snack('Sin conexión al servidor');
+      _snack('Error al enviar. Intenta de nuevo.');
       return;
     }
+
     if (!mounted) return;
-    Navigator.pop(context); // cierra el diálogo del correo
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
