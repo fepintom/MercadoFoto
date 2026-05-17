@@ -19,10 +19,28 @@ RESOURCES_DIR = BASE_DIR / "resources"
 
 
 def _cargar_config() -> dict:
-    if not CONFIG_PATH.exists():
-        raise FileNotFoundError(f"No se encontró {CONFIG_PATH}")
-    with open(CONFIG_PATH, encoding="utf-8") as f:
-        return json.load(f)
+    """
+    Carga configuración SMTP desde config_email.json (local) o
+    variables de entorno SMTP_SERVER, SMTP_PORT, SMTP_EMAIL, SMTP_PASSWORD (Render).
+    """
+    if CONFIG_PATH.exists():
+        with open(CONFIG_PATH, encoding="utf-8") as f:
+            return json.load(f)
+
+    # Fallback: variables de entorno (usadas en Render)
+    smtp_email    = os.environ.get("SMTP_EMAIL")
+    smtp_password = os.environ.get("SMTP_PASSWORD")
+    if not smtp_email or not smtp_password:
+        raise EnvironmentError(
+            "No se encontró config_email.json ni las variables de entorno "
+            "SMTP_EMAIL / SMTP_PASSWORD"
+        )
+    return {
+        "smtp_server": os.environ.get("SMTP_SERVER", "mail.galmar.cl"),
+        "smtp_port":   int(os.environ.get("SMTP_PORT", "587")),
+        "email":       smtp_email,
+        "password":    smtp_password,
+    }
 
 
 def enviar_plantilla_carga_masiva(email_destino: str) -> None:
