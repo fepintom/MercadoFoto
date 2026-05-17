@@ -18,6 +18,13 @@ CONFIG_PATH = BASE_DIR / "config_email.json"
 RESOURCES_DIR = BASE_DIR / "resources"
 
 
+def _parse_port(value) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 587
+
+
 def _cargar_config() -> dict:
     """
     Carga configuración SMTP desde config_email.json (local) o
@@ -37,7 +44,7 @@ def _cargar_config() -> dict:
         )
     return {
         "smtp_server": os.environ.get("SMTP_SERVER", "mail.galmar.cl"),
-        "smtp_port":   int(os.environ.get("SMTP_PORT", "587")),
+        "smtp_port":   _parse_port(os.environ.get("SMTP_PORT")),
         "email":       smtp_email,
         "password":    smtp_password,
     }
