@@ -655,7 +655,14 @@ def login_usuario(data: LoginUsuario):
             detail="Usuario no encontrado",
         )
 
-    if data.password != usuario["password"]:
+    stored = usuario["password"] or ""
+    # Soporta contraseñas en texto plano (legacy) y hashes bcrypt
+    if stored.startswith("$2b$") or stored.startswith("$2a$"):
+        password_ok = bcrypt.checkpw(data.password.encode(), stored.encode())
+    else:
+        password_ok = (data.password == stored)
+
+    if not password_ok:
         raise HTTPException(
             status_code=401,
             detail="Contraseña incorrecta",
