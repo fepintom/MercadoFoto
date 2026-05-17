@@ -22,7 +22,13 @@ from config import UPLOADS_DIR
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+import json as _json
+
+class UTF8JSONResponse(JSONResponse):
+    def render(self, content) -> bytes:
+        return _json.dumps(content, ensure_ascii=False).encode("utf-8")
 from services.gpt_service import mejorar_descripcion_producto
 from typing import Optional
 
@@ -221,7 +227,7 @@ def ranking_producto(producto):
 # APP
 # --------------------------------------------------
 
-app = FastAPI()
+app = FastAPI(default_response_class=UTF8JSONResponse)
 
 # Exponer carpeta uploads como pública
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
