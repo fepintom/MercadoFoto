@@ -59,7 +59,7 @@ jobs:
           echo "PROFILE_UUID=$UUID" >> $GITHUB_ENV
           echo "Profile UUID: $UUID"
 
-      # 7. Configurar firma manual solo en Runner (inyectar en project.pbxproj)
+      # 7. Inyectar firma manual SOLO en Runner (no toca SPM/Pods)
       - name: Configure Runner signing
         working-directory: app/ios
         run: |
@@ -67,15 +67,15 @@ jobs:
           with open('Runner.xcodeproj/project.pbxproj', 'r') as f:
               content = f.read()
 
-          # Firma manual
+          # Firma manual para Runner
           content = content.replace('CODE_SIGN_STYLE = Automatic;', 'CODE_SIGN_STYLE = Manual;')
           content = content.replace('CODE_SIGN_STYLE = "Automatic";', 'CODE_SIGN_STYLE = Manual;')
 
-          # Inyectar PROVISIONING_PROFILE_SPECIFIER solo en bloque de Runner
-          # (el único target con PRODUCT_BUNDLE_IDENTIFIER = com.okventa.app)
+          # Inyectar CODE_SIGN_IDENTITY y PROVISIONING_PROFILE_SPECIFIER
+          # solo en los bloques de Runner (los que tienen PRODUCT_BUNDLE_IDENTIFIER = com.okventa.app)
           content = content.replace(
               'PRODUCT_BUNDLE_IDENTIFIER = com.okventa.app;',
-              'PRODUCT_BUNDLE_IDENTIFIER = com.okventa.app;\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = "OkVenta Distribution";'
+              'PRODUCT_BUNDLE_IDENTIFIER = com.okventa.app;\n\t\t\t\tCODE_SIGN_IDENTITY = "Apple Distribution";\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = "OkVenta Distribution";'
           )
 
           with open('Runner.xcodeproj/project.pbxproj', 'w') as f:
@@ -114,7 +114,7 @@ jobs:
           </plist>
           PLIST
 
-      # 10. Archivar con xcodebuild
+      # 10. Archivar (sin parámetros de firma globales)
       - name: Xcode archive
         working-directory: app
         run: |
@@ -123,7 +123,6 @@ jobs:
             -scheme Runner \
             -configuration Release \
             -archivePath build/Runner.xcarchive \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
             DEVELOPMENT_TEAM=ASN79QKDK7 \
             OTHER_CODE_SIGN_FLAGS="--keychain build.keychain"
 
