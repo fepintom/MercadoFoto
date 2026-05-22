@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -34,6 +35,8 @@ class _HomeScreenState extends State<HomeScreen> {
   int _tab = 0;
   int? userId;
   String nombreUsuario = "";
+  int _notifCount = 0;
+  Timer? _notifTimer;
 
   // ── UBICACIÓN / RADIO ──────────────────────────────────────────────────────
   Position? _miPosicion;
@@ -55,12 +58,27 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _notifTimer?.cancel();
     super.dispose();
   }
 
   Future<void> _inicializar() async {
     await _iniciarSesion();
     await _cargarUsuario();
+    _notifTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _cargarNotifCount(),
+    );
+    _cargarNotifCount();
+  }
+
+  Future<void> _cargarNotifCount() async {
+    if (userId == null) return;
+    try {
+      final data = await ApiService.obtenerNotificaciones(userId!);
+      final noLeidas = data.where((n) => n['leido'] == 0 || n['leido'] == false).length;
+      if (mounted) setState(() => _notifCount = noLeidas);
+    } catch (_) {}
   }
 
   // ── Preferencias de ubicación ─────────────────────────────────────────────
@@ -267,7 +285,28 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       return;
     }
+    if (index == 1) {
+      // Al entrar a Mensajes, limpiar badge
+      setState(() { _tab = 1; _notifCount = 0; });
+      return;
+    }
     setState(() => _tab = index);
+  }
+
+  void _abrirNotificaciones() {
+    if (userId == null) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _NotificacionesSheet(userId: userId!),
+    ).then((_) {
+      // Marcar como leídas al cerrar
+      setState(() => _notifCount = 0);
+    });
   }
 
   // ── HEADER ─────────────────────────────────────────────────────────────────
@@ -342,6 +381,60 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
           ),
+
+          const SizedBox(width: 8),
+
+          // Campana de notificaciones
+          if (userId != null)
+            GestureDetector(
+              onTap: () => _abrirNotificaciones(),
+              child: Stack(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: _notifCount > 0
+                          ? AppColors.primary.withOpacity(0.1)
+                          : AppColors.background,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      _notifCount > 0
+                          ? Icons.notifications_rounded
+                          : Icons.notifications_outlined,
+                      size: 20,
+                      color: _notifCount > 0
+                          ? AppColors.primary
+                          : AppColors.grayMid,
+                    ),
+                  ),
+                  if (_notifCount > 0)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        width: 16,
+                        height: 16,
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            _notifCount > 9 ? '9+' : '$_notifCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
 
           const SizedBox(width: 8),
 
@@ -520,7 +613,7 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _navItem(0, Icons.home_rounded, "Inicio"),
-              _navItem(1, Icons.chat_bubble_outline_rounded, "Mensajes"),
+              _navItemBadge(1, Icons.chat_bubble_outline_rounded, "Mensajes", _notifCount),
               _navItem(2, Icons.explore_outlined, "Encontrar"),
               _navItem(3, Icons.person_outline_rounded, "Mi OkVenta"),
               _navVender(),
@@ -566,6 +659,65 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: selected ? AppColors.primary : AppColors.grayMid,
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _navItemBadge(int index, IconData icon, String label, int badge) {
+    final selected = _tab == index;
+    return GestureDetector(
+      onTap: () => _onNavTap(index),
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 60,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? AppColors.primary.withOpacity(0.1)
+                        : Colors.transparent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, size: 22,
+                      color: selected ? AppColors.primary : AppColors.grayMid),
+                ),
+                if (badge > 0)
+                  Positioned(
+                    right: 4,
+                    top: 4,
+                    child: Container(
+                      width: 14,
+                      height: 14,
+                      decoration: const BoxDecoration(
+                          color: Colors.red, shape: BoxShape.circle),
+                      child: Center(
+                        child: Text(
+                          badge > 9 ? '9+' : '$badge',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 1),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 10,
+                    fontWeight:
+                        selected ? FontWeight.w600 : FontWeight.w400,
+                    color: selected ? AppColors.primary : AppColors.grayMid)),
           ],
         ),
       ),
@@ -951,6 +1103,158 @@ class _HomeScreenState extends State<HomeScreen> {
             _buildBottomNav(),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Panel de notificaciones ──────────────────────────────────────────────────
+class _NotificacionesSheet extends StatefulWidget {
+  final int userId;
+  const _NotificacionesSheet({required this.userId});
+
+  @override
+  State<_NotificacionesSheet> createState() => _NotificacionesSheetState();
+}
+
+class _NotificacionesSheetState extends State<_NotificacionesSheet> {
+  List<Map<String, dynamic>> _notifs = [];
+  bool _cargando = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargar();
+  }
+
+  Future<void> _cargar() async {
+    try {
+      final data = await ApiService.obtenerNotificaciones(widget.userId);
+      if (mounted) setState(() { _notifs = data; _cargando = false; });
+    } catch (_) {
+      if (mounted) setState(() => _cargando = false);
+    }
+  }
+
+  IconData _icono(String tipo) {
+    switch (tipo) {
+      case 'oferta':     return Icons.monetization_on_outlined;
+      case 'pregunta':   return Icons.help_outline_rounded;
+      case 'chat':       return Icons.chat_bubble_outline_rounded;
+      case 'interes_compra': return Icons.favorite_outline;
+      default:           return Icons.notifications_outlined;
+    }
+  }
+
+  String _formatFecha(String? f) {
+    if (f == null) return '';
+    try {
+      final dt = DateTime.parse(f).toLocal();
+      final now = DateTime.now();
+      final diff = now.difference(dt);
+      if (diff.inMinutes < 60) return 'Hace ${diff.inMinutes} min';
+      if (diff.inHours < 24)   return 'Hace ${diff.inHours}h';
+      return '${dt.day}/${dt.month}';
+    } catch (_) { return ''; }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      minChildSize: 0.3,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (_, ctrl) => Column(
+        children: [
+          // Handle
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 10),
+            width: 40, height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.divider,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+            child: Row(
+              children: const [
+                Icon(Icons.notifications_rounded, color: AppColors.primary),
+                SizedBox(width: 8),
+                Text('Notificaciones',
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary)),
+              ],
+            ),
+          ),
+          Divider(height: 0.5, color: AppColors.divider),
+          Expanded(
+            child: _cargando
+                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                : _notifs.isEmpty
+                    ? const Center(
+                        child: Text('Sin notificaciones aún',
+                            style: TextStyle(color: AppColors.grayMid)))
+                    : ListView.separated(
+                        controller: ctrl,
+                        itemCount: _notifs.length,
+                        separatorBuilder: (_, __) =>
+                            Divider(height: 0.5, color: AppColors.divider),
+                        itemBuilder: (_, i) {
+                          final n = _notifs[i];
+                          final leida = n['leido'] == 1 || n['leido'] == true;
+                          return Container(
+                            color: leida ? Colors.transparent : AppColors.primary.withOpacity(0.05),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 40, height: 40,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(_icono(n['tipo'] ?? ''),
+                                      color: AppColors.primary, size: 20),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(n['mensaje'] ?? '',
+                                          style: TextStyle(
+                                              fontSize: 14,
+                                              color: AppColors.textPrimary,
+                                              fontWeight: leida
+                                                  ? FontWeight.w400
+                                                  : FontWeight.w600)),
+                                      const SizedBox(height: 4),
+                                      Text(_formatFecha(n['fecha']),
+                                          style: const TextStyle(
+                                              fontSize: 11,
+                                              color: AppColors.grayMid)),
+                                    ],
+                                  ),
+                                ),
+                                if (!leida)
+                                  Container(
+                                    width: 8, height: 8,
+                                    decoration: const BoxDecoration(
+                                        color: AppColors.primary,
+                                        shape: BoxShape.circle),
+                                  ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+          ),
+        ],
       ),
     );
   }

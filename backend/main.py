@@ -701,12 +701,30 @@ def preguntar(pregunta: Pregunta):
 
     vendedor_id = obtener_vendedor_publicacion(pregunta.publicacion_id)
 
+    # También guardar como mensaje de chat para que aparezca en la bandeja
+    if pregunta.user_id:
+        guardar_mensaje(pregunta.publicacion_id, pregunta.user_id, pregunta.mensaje)
+
     if vendedor_id:
         crear_notificacion(
             vendedor_id,
             "pregunta",
-            "Tienes una nueva pregunta en tu publicación",
+            f"Nueva pregunta: \"{pregunta.mensaje}\"",
         )
+        # Push al vendedor
+        try:
+            fcm_token = obtener_fcm_token(vendedor_id)
+            if fcm_token:
+                pub = obtener_publicacion_por_id(pregunta.publicacion_id)
+                titulo = pub["titulo"] if pub else "tu publicación"
+                enviar_push(
+                    fcm_token,
+                    "Nueva pregunta",
+                    f"{pregunta.mensaje}",
+                    {"publicacion_id": str(pregunta.publicacion_id), "tipo": "pregunta"},
+                )
+        except Exception as e:
+            print(f"Push pregunta error: {e}")
 
     return {"mensaje": "Pregunta enviada"}
 
@@ -1020,6 +1038,45 @@ def ver_favoritos_completos(user_id: int):
 # --------------------------------------------------
 # INTERÉS DE COMPRA (comprador interesado → notifica vendedor)
 # --------------------------------------------------
+
+@app.post("/ofertar")
+def hacer_oferta(body: dict):
+    """El comprador hace una oferta. Se guarda como mensaje de chat y se notifica al vendedor."""
+    publicacion_id = body.get("publicacion_id")
+    comprador_id   = body.get("comprador_id")
+    monto          = body.get("monto")
+
+    if not publicacion_id or not comprador_id or monto is None:
+        raise HTTPException(status_code=400, detail="Faltan datos")
+
+    pub = obtener_publicacion_por_id(publicacion_id)
+    if not pub:
+        raise HTTPException(status_code=404, detail="Publicación no encontrada")
+
+    mensaje_oferta = f"💰 Oferta: ${monto:,.0f}"
+    guardar_mensaje(publicacion_id, comprador_id, mensaje_oferta)
+
+    vendedor_id = pub.get("user_id")
+    if vendedor_id:
+        crear_notificacion(
+            vendedor_id,
+            "oferta",
+            f"Nueva oferta de ${monto:,.0f} por '{pub['titulo']}'",
+        )
+        try:
+            fcm_token = obtener_fcm_token(vendedor_id)
+            if fcm_token:
+                enviar_push(
+                    fcm_token,
+                    "💰 Nueva oferta",
+                    f"${monto:,.0f} por {pub['titulo']}",
+                    {"publicacion_id": str(publicacion_id), "tipo": "oferta"},
+                )
+        except Exception as e:
+            print(f"Push oferta error: {e}")
+
+    return {"ok": True}
+
 
 @app.post("/interes_compra/{publicacion_id}")
 def registrar_interes(publicacion_id: int, comprador_id: int):

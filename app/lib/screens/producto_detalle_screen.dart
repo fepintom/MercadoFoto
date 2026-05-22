@@ -712,23 +712,35 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                 style: TextStyle(color: AppColors.grayMid)),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               final t = _ofertaController.text.trim();
               if (t.isEmpty) return;
               final oferta = double.tryParse(t);
               if (oferta == null || oferta <= 0) return;
-              CartService.addOffer(
-                  Map<String, dynamic>.from(widget.producto), oferta);
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text("Oferta de \$$t agregada al carrito"),
-                  backgroundColor: AppColors.primary,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-              );
+              try {
+                await http.post(
+                  Uri.parse("${ApiService.baseUrl}/ofertar"),
+                  headers: {"Content-Type": "application/json"},
+                  body: jsonEncode({
+                    "publicacion_id": widget.producto["id"],
+                    "comprador_id": userId,
+                    "monto": oferta,
+                  }),
+                );
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("Oferta de \$$t enviada al vendedor"),
+                    backgroundColor: AppColors.primary,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                );
+              } catch (e) {
+                debugPrint("ERROR oferta: $e");
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
