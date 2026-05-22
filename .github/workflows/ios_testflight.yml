@@ -41,7 +41,7 @@ jobs:
           security unlock-keychain -p "" build.keychain
           echo "$CERTIFICATE_P12" | base64 --decode > certificate.p12
           security import certificate.p12 -k build.keychain \
-            -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+            -P "$CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/xcodebuild
           security set-key-partition-list -S apple-tool:,apple: \
             -s -k "" build.keychain
 
@@ -59,24 +59,29 @@ jobs:
           echo "PROFILE_UUID=$UUID" >> $GITHUB_ENV
           echo "Profile UUID: $UUID"
 
-      # 7. Configurar firma manual solo en Runner (no en SPM/Pods)
+      # 7. Configurar firma manual solo en Runner (inyectar en project.pbxproj)
       - name: Configure Runner signing
         working-directory: app/ios
         run: |
           python3 << 'PYEOF'
-          import re
-
           with open('Runner.xcodeproj/project.pbxproj', 'r') as f:
               content = f.read()
 
-          # Cambiar a firma manual
+          # Firma manual
           content = content.replace('CODE_SIGN_STYLE = Automatic;', 'CODE_SIGN_STYLE = Manual;')
           content = content.replace('CODE_SIGN_STYLE = "Automatic";', 'CODE_SIGN_STYLE = Manual;')
+
+          # Inyectar PROVISIONING_PROFILE_SPECIFIER solo en bloque de Runner
+          # (el único target con PRODUCT_BUNDLE_IDENTIFIER = com.okventa.app)
+          content = content.replace(
+              'PRODUCT_BUNDLE_IDENTIFIER = com.okventa.app;',
+              'PRODUCT_BUNDLE_IDENTIFIER = com.okventa.app;\n\t\t\t\tPROVISIONING_PROFILE_SPECIFIER = "OkVenta Distribution";'
+          )
 
           with open('Runner.xcodeproj/project.pbxproj', 'w') as f:
               f.write(content)
 
-          print("Signing configured")
+          print("Runner signing configured")
           PYEOF
 
       # 8. Compilar Dart sin codesign
@@ -109,7 +114,7 @@ jobs:
           </plist>
           PLIST
 
-      # 10. Archivar con xcodebuild (firma solo en Runner, no global)
+      # 10. Archivar con xcodebuild
       - name: Xcode archive
         working-directory: app
         run: |
@@ -118,7 +123,6 @@ jobs:
             -scheme Runner \
             -configuration Release \
             -archivePath build/Runner.xcarchive \
-            CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
             DEVELOPMENT_TEAM=ASN79QKDK7 \
             OTHER_CODE_SIGN_FLAGS="--keychain build.keychain"
