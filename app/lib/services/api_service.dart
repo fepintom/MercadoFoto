@@ -247,6 +247,18 @@ class ApiService {
     return [];
   }
 
+  static Future<List<Map<String, dynamic>>> obtenerConversaciones(
+      int userId) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/chat/conversaciones/$userId'),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      return List<Map<String, dynamic>>.from(data);
+    }
+    return [];
+  }
+
   // ──────────────────────────────────────────────
   // INTERÉS DE COMPRA
   // ──────────────────────────────────────────────

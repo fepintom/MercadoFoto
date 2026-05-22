@@ -52,6 +52,7 @@ class _AuthGateState extends State<_AuthGate> {
   Future<void> _route() async {
     // Sesión Firebase activa → verificar biometría si está habilitada
     if (FirebaseAuth.instance.currentUser != null) {
+      PushService.init().catchError((_) {});
       final biometricEnabled = await BiometricService.isEnabled();
       if (biometricEnabled) {
         final ok = await BiometricService.authenticate(
@@ -66,6 +67,7 @@ class _AuthGateState extends State<_AuthGate> {
     // Guest session activa → HomeScreen
     final guest = await SessionService.obtenerGuest();
     if (guest != null && guest.isNotEmpty) {
+      PushService.init().catchError((_) {});
       _go(const HomeScreen());
       return;
     }

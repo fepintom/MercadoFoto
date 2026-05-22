@@ -15,6 +15,7 @@ import 'marketplace_screen.dart';
 import 'mi_cuenta_screen.dart';
 import 'encontrar_screen.dart';
 import 'favoritos_screen.dart';
+import 'mensajes_screen.dart';
 import '../widgets/registro_form_widget.dart';
 
 // ---------------------------------------------------------------------------
@@ -29,7 +30,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Estado de navegación: 0=Inicio, 1=Alertas, 2=Encontrar, 3=Mi OkVenta, 4=Vender
+  // Estado de navegación: 0=Inicio, 1=Mensajes, 2=Encontrar, 3=Mi OkVenta, 4=Vender
   int _tab = 0;
   int? userId;
   String nombreUsuario = "";
@@ -519,7 +520,7 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _navItem(0, Icons.home_rounded, "Inicio"),
-              _navItem(1, Icons.notifications_outlined, "Alertas"),
+              _navItem(1, Icons.chat_bubble_outline_rounded, "Mensajes"),
               _navItem(2, Icons.explore_outlined, "Encontrar"),
               _navItem(3, Icons.person_outline_rounded, "Mi OkVenta"),
               _navVender(),
@@ -942,7 +943,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 index: _tab,
                 children: [
                   _buildInicio(),
-                  _buildAlertas(),
+                  const MensajesScreen(),
                 ],
               ),
             ),

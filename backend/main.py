@@ -79,6 +79,7 @@ from database.chat import (
     init_chat_db,
     guardar_mensaje,
     obtener_chat,
+    obtener_conversaciones,
 )
 
 from database.favoritos import (
@@ -893,6 +894,10 @@ def enviar_mensaje(data: Mensaje):
 # --------------------------------------------------
 # VER CHAT
 # --------------------------------------------------
+
+@app.get("/chat/conversaciones/{user_id}")
+def ver_conversaciones(user_id: int):
+    return obtener_conversaciones(user_id)
 
 @app.get("/chat/{publicacion_id}")
 def ver_chat(publicacion_id: int):
