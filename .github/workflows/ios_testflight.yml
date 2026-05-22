@@ -45,7 +45,7 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: \
             -s -k "" build.keychain
 
-      # 6. Instalar provisioning profile
+      # 6. Instalar provisioning profile y obtener UUID
       - name: Install provisioning profile
         env:
           PROVISIONING_PROFILE: ${{ secrets.PROVISIONING_PROFILE }}
@@ -53,13 +53,16 @@ jobs:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           echo "$PROVISIONING_PROFILE" | base64 --decode \
             > ~/Library/MobileDevice/Provisioning\ Profiles/okventa.mobileprovision
+          UUID=$(security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/okventa.mobileprovision \
+            | grep -A1 '<key>UUID</key>' | grep '<string>' \
+            | sed 's/.*<string>\(.*\)<\/string>/\1/' | xargs)
+          echo "PROFILE_UUID=$UUID" >> $GITHUB_ENV
+          echo "Profile UUID: $UUID"
 
-      # 7. Configurar firma manual en Xcode
-      - name: Configure Xcode manual signing
-        working-directory: app/ios
-        run: |
-          sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' Runner.xcodeproj/project.pbxproj
-          sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = "";/PROVISIONING_PROFILE_SPECIFIER = "OkVenta Distribution";/g' Runner.xcodeproj/project.pbxproj
+      # 7. Compilar Dart sin codesign
+      - name: Flutter build (no codesign)
+        working-directory: app
+        run: flutter build ios --release --no-codesign
 
       # 8. Crear ExportOptions.plist
       - name: Create ExportOptions
@@ -83,14 +86,36 @@ jobs:
                   <string>OkVenta Distribution</string>
               </dict>
           </dict>
+          </plist>
           PLIST
 
-      # 9. Build IPA
-      - name: Build IPA
+      # 9. Archivar con xcodebuild (firma manual explícita)
+      - name: Xcode archive
         working-directory: app
-        run: flutter build ipa --release --export-options-plist=ios/ExportOptions.plist
+        run: |
+          xcodebuild archive \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -archivePath build/Runner.xcarchive \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE="$PROFILE_UUID" \
+            PROVISIONING_PROFILE_SPECIFIER="OkVenta Distribution" \
+            DEVELOPMENT_TEAM=ASN79QKDK7 \
+            -allowProvisioningUpdates
 
-      # 10. Subir a TestFlight
+      # 10. Exportar IPA
+      - name: Export IPA
+        working-directory: app
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath build/Runner.xcarchive \
+            -exportPath build/ios/ipa \
+            -exportOptionsPlist ios/ExportOptions.plist
+          ls build/ios/ipa/
+
+      # 11. Subir a TestFlight
       - name: Upload to TestFlight
         uses: apple-actions/upload-testflight-build@v1
         with:
