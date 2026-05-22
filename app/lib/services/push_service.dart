@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -19,18 +20,37 @@ class PushService {
       sound: true,
     );
 
+    debugPrint('PushService: authorizationStatus=${settings.authorizationStatus}');
+
     if (settings.authorizationStatus == AuthorizationStatus.denied) return;
 
-    // 2. Obtener token FCM
+    // 2. En iOS: esperar a que APNs entregue su token antes de pedir el FCM token
+    if (Platform.isIOS) {
+      String? apnsToken;
+      // Reintentar hasta 5 veces con espera de 1 segundo
+      for (int i = 0; i < 5; i++) {
+        apnsToken = await _messaging.getAPNSToken();
+        debugPrint('PushService: APNs token intento $i: $apnsToken');
+        if (apnsToken != null) break;
+        await Future.delayed(const Duration(seconds: 1));
+      }
+      if (apnsToken == null) {
+        debugPrint('PushService: APNs token no disponible, abortando');
+        return;
+      }
+    }
+
+    // 3. Obtener token FCM
     final token = await _messaging.getToken();
+    debugPrint('PushService: FCM token: $token');
     if (token != null) {
       await _enviarTokenAlBackend(token);
     }
 
-    // 3. Si el token se renueva, reenviarlo
+    // 4. Si el token se renueva, reenviarlo
     _messaging.onTokenRefresh.listen(_enviarTokenAlBackend);
 
-    // 4. Manejar notificaciones en foreground (app abierta)
+    // 5. Manejar notificaciones en foreground (app abierta)
     FirebaseMessaging.onMessage.listen(_manejarMensajeForeground);
   }
 
@@ -38,13 +58,18 @@ class PushService {
   static Future<void> _enviarTokenAlBackend(String token) async {
     try {
       final userId = await SessionService.obtenerUser();
-      if (userId == null) return;
+      if (userId == null) {
+        debugPrint('PushService: userId null, no se envía token');
+        return;
+      }
 
-      await http.post(
+      debugPrint('PushService: enviando token a backend para user $userId');
+      final res = await http.post(
         Uri.parse('${ApiService.baseUrl}/usuarios/$userId/fcm_token'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'token': token}),
       );
+      debugPrint('PushService: backend respondió ${res.statusCode}');
     } catch (e) {
       debugPrint('PushService: error enviando token: $e');
     }
@@ -53,7 +78,6 @@ class PushService {
   /// Cuando llega una notificación con la app abierta, mostrar un banner.
   static void _manejarMensajeForeground(RemoteMessage message) {
     debugPrint('Push foreground: ${message.notification?.title}');
-    // La UI la manejará con el stream público de abajo
   }
 
   /// Stream para que la UI pueda mostrar un banner cuando la app está abierta.
