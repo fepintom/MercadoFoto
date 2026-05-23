@@ -1210,11 +1210,11 @@ class _NotificacionesSheetState extends State<_NotificacionesSheet> {
                           final leida = n['leido'] == 1 || n['leido'] == true;
                           final pubId = n['publicacion_id'];
                           return InkWell(
-                            onTap: pubId != null ? () {
+                            onTap: () {
                               Navigator.pop(context);
+                              if (pubId == null) return; // sin destino: cierra el panel
                               final tipo = n['tipo'] ?? '';
                               if (tipo == 'oferta') {
-                                // Extraer monto del mensaje: "Nueva oferta de $1,000 por '...'"
                                 final msg = n['mensaje'] ?? '';
                                 final match = RegExp(r'\$([\d,]+)').firstMatch(msg);
                                 final montoStr = (match?.group(1) ?? '0').replaceAll(',', '');
@@ -1246,7 +1246,7 @@ class _NotificacionesSheetState extends State<_NotificacionesSheet> {
                                   ),
                                 );
                               }
-                            } : null,
+                            },
                             child: Container(
                             color: leida ? Colors.transparent : AppColors.primary.withOpacity(0.05),
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
