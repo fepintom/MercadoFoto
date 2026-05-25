@@ -91,6 +91,20 @@ class AuthService {
     return 'Error de conexión. Intenta de nuevo';
   }
 
+  // ── Reconectar sesión existente (app restart con Firebase activo) ─────
+  /// Llama al backend para refrescar user_id en SharedPreferences.
+  /// Silencia errores para no bloquear el arranque de la app.
+  static Future<void> reconectarSesion() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    // Solo re-sincroniza si no tenemos user_id en local
+    final local = await SessionService.obtenerUser();
+    if (local != null) return; // ya tenemos sesión persistida
+    try {
+      await _syncConBackend(user);
+    } catch (_) {}
+  }
+
   // ── Sync con backend ─────────────────────────────────────────────────
   /// Crea o recupera el user_id del backend y persiste la sesión local.
   static Future<void> _syncConBackend(User firebaseUser) async {

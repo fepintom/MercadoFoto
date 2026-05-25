@@ -9,7 +9,8 @@ import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 
 class AgregarServicioScreen extends StatefulWidget {
-  const AgregarServicioScreen({super.key});
+  final String tipoInicial;
+  const AgregarServicioScreen({super.key, this.tipoInicial = 'ofrezco'});
 
   @override
   State<AgregarServicioScreen> createState() =>
@@ -25,7 +26,7 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
   final _telefonoCtrl = TextEditingController();
   final _wsCtrl      = TextEditingController();
 
-  String _tipo      = 'ofrezco';
+  late String _tipo;
   String _modalidad = 'servicio';
   List<XFile> _medios = [];
   XFile? _certificado;
@@ -35,6 +36,7 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
   @override
   void initState() {
     super.initState();
+    _tipo = widget.tipoInicial;
     _cargarUsuario();
   }
 
@@ -204,7 +206,7 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
               size: 18, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Publicar servicio',
+        title: Text(_tipo == 'busco' ? 'Publicar solicitud' : 'Publicar servicio',
             style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'firebase_options.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'services/auth_service.dart';
 import 'services/biometric_service.dart';
 import 'services/push_service.dart';
 import 'services/session_service.dart';
@@ -58,6 +59,8 @@ class _AuthGateState extends State<_AuthGate> {
   Future<void> _route() async {
     // Sesión Firebase activa → verificar biometría si está habilitada
     if (FirebaseAuth.instance.currentUser != null) {
+      // Refrescar user_id en SharedPreferences si fue limpiado (nueva instalación)
+      await AuthService.reconectarSesion();
       PushService.init().catchError((_) {});
       final biometricEnabled = await BiometricService.isEnabled();
       if (biometricEnabled) {

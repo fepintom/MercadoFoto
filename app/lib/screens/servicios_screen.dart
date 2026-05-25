@@ -62,18 +62,28 @@ class _ServiciosScreenState extends State<ServiciosScreen>
   }
 
   void _irAAgregar() async {
-    if (_miUserId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Debes iniciar sesión para publicar un servicio'),
-          backgroundColor: AppColors.primary,
-        ),
-      );
+    // Re-fetch userId en el momento de pulsar (por si la sesión cambió)
+    final uid = await SessionService.obtenerUser();
+    if (uid == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Debes iniciar sesión para publicar'),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
       return;
     }
+    // Pasar el tipo según el tab activo (0=Ofrezco, 1=Busco, 2=Mapa→Ofrezco)
+    final tipoInicial =
+        _tabController.index == 1 ? 'busco' : 'ofrezco';
+    if (!mounted) return;
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const AgregarServicioScreen()),
+      MaterialPageRoute(
+        builder: (_) => AgregarServicioScreen(tipoInicial: tipoInicial),
+      ),
     );
     _cargar();
   }
@@ -150,13 +160,21 @@ class _ServiciosScreenState extends State<ServiciosScreen>
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _irAAgregar,
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('Publicar servicio',
-            style: TextStyle(fontWeight: FontWeight.w700)),
+      floatingActionButton: AnimatedBuilder(
+        animation: _tabController,
+        builder: (_, __) {
+          final label = _tabController.index == 1
+              ? 'Publicar solicitud'
+              : 'Publicar servicio';
+          return FloatingActionButton.extended(
+            onPressed: _irAAgregar,
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.add),
+            label: Text(label,
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+          );
+        },
       ),
     );
   }
