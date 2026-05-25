@@ -30,7 +30,7 @@ class UTF8JSONResponse(JSONResponse):
     def render(self, content) -> bytes:
         return _json.dumps(content, ensure_ascii=False).encode("utf-8")
 from services.gpt_service import mejorar_descripcion_producto
-from typing import Optional
+from typing import Optional, List
 
 # --------------------------------------------------
 # SERVICES
@@ -1287,14 +1287,18 @@ async def reset_password_submit(request: Request):
 # SERVICIOS
 # ==============================================================================
 
-# Detección de QR en certificados (opcional — si zxingcpp no está disponible,
-# el certificado queda como "pendiente de verificación manual")
+# Detección de QR en certificados con Pillow (sin dependencias extra).
+# Usamos pyzbar si está disponible; si no, el certificado queda pendiente.
 try:
-    import zxingcpp
+    from pyzbar.pyzbar import decode as _pyzbar_decode
     from PIL import Image as _PilImage
     _QR_OK = True
 except Exception:
-    _QR_OK = False
+    try:
+        from PIL import Image as _PilImage
+        _QR_OK = False          # Pillow sí, pyzbar no
+    except Exception:
+        _QR_OK = False
 
 
 def _tiene_qr_valido(filepath: str) -> bool:
@@ -1303,9 +1307,10 @@ def _tiene_qr_valido(filepath: str) -> bool:
         return False
     try:
         img = _PilImage.open(filepath).convert("RGB")
-        results = zxingcpp.read_barcodes(img)
-        for r in results:
-            if "QR" in r.format.name.upper() and r.text.startswith("http"):
+        codes = _pyzbar_decode(img)
+        for code in codes:
+            data = code.data.decode("utf-8", errors="ignore")
+            if data.startswith("http"):
                 return True
     except Exception:
         pass
@@ -1327,10 +1332,10 @@ async def crear_servicio_endpoint(
     whatsapp:    str   = Form(""),
     lat:         float = Form(None),
     lng:         float = Form(None),
-    fotos: list[UploadFile] = File(default=[]),
+    fotos: Optional[List[UploadFile]] = File(default=None),
 ):
     saved_paths = []
-    for foto in fotos[:2]:          # máximo 2 archivos
+    for foto in (fotos or [])[:2]:  # máximo 2 archivos
         if not foto.filename:
             continue
         ext  = os.path.splitext(foto.filename)[1].lower() or ".jpg"
