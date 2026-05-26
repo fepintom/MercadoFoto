@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -46,6 +47,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   bool _esFavorito = false;
   bool _toggleandoFavorito = false;
   bool _registrandoInteres = false;
+  bool _comprando = false;
   bool _campoEstado = false;
   bool _campoCodigo = false;
   bool _campoSKU = false;
@@ -634,6 +636,67 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
       );
     } catch (e) {
       debugPrint("ERROR pregunta: $e");
+    }
+  }
+
+  // ── COMPRAR CON MERCADOPAGO ────────────────────────────────────────────
+  Future<void> _comprarConMP() async {
+    if (userId == null) {
+      _abrirRegistroModal();
+      return;
+    }
+    if (_comprando) return;
+
+    final pubId = widget.producto["id"] as int? ?? 0;
+    final vendedorId = widget.producto["user_id"] as int? ?? 0;
+    final titulo =
+        _safeDecode(widget.producto["titulo"] as String? ?? "Producto");
+    final monto =
+        ((widget.producto["precio"] as num?)?.toDouble() ?? 0).toDouble();
+    final imagenUrl = widget.producto["imagen_url"]?.toString() ?? "";
+
+    if (monto <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('El precio del producto no es válido'),
+            backgroundColor: AppColors.carbon),
+      );
+      return;
+    }
+
+    setState(() => _comprando = true);
+    try {
+      final data = await ApiService.crearPreferencia(
+        compradorId: userId!,
+        vendedorId: vendedorId,
+        tipo: 'producto',
+        titulo: titulo,
+        monto: monto,
+        publicacionId: pubId,
+        imagenUrl: imagenUrl,
+      );
+
+      final initPoint = data['init_point'] as String? ??
+          data['sandbox_init_point'] as String? ??
+          '';
+
+      if (initPoint.isEmpty) throw Exception('No se obtuvo el link de pago');
+
+      final uri = Uri.parse(initPoint);
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        throw Exception('No se pudo abrir el navegador');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al iniciar el pago: $e'),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _comprando = false);
     }
   }
 
@@ -1401,7 +1464,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                           ],
                         ),
                         const SizedBox(height: 10),
-                        // Botón principal: Quiero comprar
+                        // Botón principal: Quiero comprar (chat + interés)
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
@@ -1422,6 +1485,36 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: AppColors.surface,
+                              elevation: 0,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                              textStyle: const TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // Botón MercadoPago
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _comprando ? null : _comprarConMP,
+                            icon: _comprando
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white),
+                                  )
+                                : const Icon(Icons.credit_card_rounded,
+                                    size: 18),
+                            label: const Text("Pagar con MercadoPago"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF009EE3),
+                              foregroundColor: Colors.white,
                               elevation: 0,
                               padding:
                                   const EdgeInsets.symmetric(vertical: 14),

@@ -315,4 +315,72 @@ class ApiService {
     }
     return null;
   }
+
+  // ──────────────────────────────────────────────
+  // PAGOS / MERCADOPAGO
+  // ──────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>> crearPreferencia({
+    required int compradorId,
+    required int vendedorId,
+    required String tipo, // 'producto' | 'servicio'
+    required String titulo,
+    required double monto,
+    int? publicacionId,
+    int? servicioId,
+    String compradorEmail = '',
+    String imagenUrl = '',
+  }) async {
+    final body = <String, dynamic>{
+      'comprador_id': compradorId,
+      'vendedor_id': vendedorId,
+      'tipo': tipo,
+      'titulo': titulo,
+      'monto': monto,
+      'comprador_email': compradorEmail,
+      'imagen_url': imagenUrl,
+    };
+    if (publicacionId != null) body['publicacion_id'] = publicacionId;
+    if (servicioId != null) body['servicio_id'] = servicioId;
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/pagos/crear-preferencia'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(jsonDecode(response.body));
+    }
+    throw Exception('Error al crear preferencia: ${response.body}');
+  }
+
+  static Future<List<Map<String, dynamic>>> obtenerMisCompras(
+      int userId) async {
+    final response =
+        await http.get(Uri.parse('$baseUrl/mis-compras/$userId'));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      return List<Map<String, dynamic>>.from(data);
+    }
+    return [];
+  }
+
+  static Future<List<Map<String, dynamic>>> obtenerMisVentas(
+      int userId) async {
+    final response =
+        await http.get(Uri.parse('$baseUrl/mis-ventas/$userId'));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      return List<Map<String, dynamic>>.from(data);
+    }
+    return [];
+  }
+
+  static Future<void> confirmarOrden(int ordenId) async {
+    await http.post(Uri.parse('$baseUrl/ordenes/$ordenId/confirmar'));
+  }
+
+  static Future<void> disputarOrden(int ordenId) async {
+    await http.post(Uri.parse('$baseUrl/ordenes/$ordenId/disputar'));
+  }
 }

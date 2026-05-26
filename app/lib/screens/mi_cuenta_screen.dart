@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../services/biometric_service.dart';
 import '../theme/app_theme.dart';
 import 'auth/login_screen.dart';
+import 'mis_compras_screen.dart';
 import 'mis_publicaciones_screen.dart';
 import 'perfil_info_screen.dart';
 
@@ -636,6 +637,14 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                               MaterialPageRoute(
                                   builder: (_) =>
                                       const MisPublicacionesScreen()),
+                            );
+                          }),
+                          _itemMenu(
+                              Icons.receipt_long_outlined, "Mis compras", () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const MisComprasScreen()),
                             );
                           }),
                           _itemMenu(Icons.favorite_border_rounded,

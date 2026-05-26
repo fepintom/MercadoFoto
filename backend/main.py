@@ -121,6 +121,25 @@ from database.guest_sessions import (
     crear_guest,
 )
 
+from database.ordenes import (
+    init_ordenes_db,
+    crear_orden,
+    obtener_orden,
+    obtener_por_external_ref,
+    obtener_mis_compras,
+    obtener_mis_ventas,
+    guardar_preference,
+    confirmar_pago,
+    confirmar_entrega,
+    abrir_disputa,
+    marcar_reembolsado,
+)
+from services.mp_service import (
+    crear_preferencia as mp_crear_preferencia,
+    obtener_pago     as mp_obtener_pago,
+    reembolsar_pago  as mp_reembolsar_pago,
+)
+
 from database.servicios import (
     init_servicios_db,
     crear_servicio,
@@ -257,6 +276,7 @@ init_reviews_db()
 init_notifications_db()
 init_favoritos_db()
 init_chat_db()
+init_ordenes_db()
 init_servicios_db()
 
 # --------------------------------------------------
@@ -1417,3 +1437,247 @@ async def subir_certificado(
         "mensaje":    "Certificado validado automáticamente ✅" if verificado
                       else "Certificado recibido. Verificación en proceso 🔄",
     }
+
+
+# ==============================================================================
+# PAGOS — MercadoPago
+# ==============================================================================
+
+# ── Crear preferencia (los 3 flujos) ─────────────────────────────────────────
+
+@app.post("/pagos/crear-preferencia")
+def crear_preferencia_endpoint(body: dict):
+    """
+    Crea una orden en nuestra DB y una preferencia en MP.
+    Body:
+      comprador_id, vendedor_id, tipo ('producto'|'servicio'),
+      titulo, monto, comprador_email,
+      publicacion_id? (producto), servicio_id? (servicio),
+      imagen_url?
+    """
+    comprador_id  = body.get("comprador_id")
+    vendedor_id   = body.get("vendedor_id")
+    tipo          = body.get("tipo", "producto")
+    titulo        = body.get("titulo", "Producto OkVenta")
+    monto         = float(body.get("monto", 0))
+    email         = body.get("comprador_email", "")
+    pub_id        = body.get("publicacion_id")
+    srv_id        = body.get("servicio_id")
+    imagen_url    = body.get("imagen_url", "")
+
+    if not comprador_id or not vendedor_id or monto <= 0:
+        raise HTTPException(status_code=400, detail="Datos incompletos")
+
+    from services.mp_service import _comision_pct
+    comision = round(monto * _comision_pct() / 100, 2)
+
+    # 1. Crear orden en nuestra DB
+    orden_id = crear_orden(
+        comprador_id=comprador_id,
+        vendedor_id=vendedor_id,
+        tipo=tipo,
+        titulo=titulo,
+        monto=monto,
+        publicacion_id=pub_id,
+        servicio_id=srv_id,
+        comision=comision,
+    )
+
+    # 2. Crear preferencia en MP
+    try:
+        mp = mp_crear_preferencia(
+            orden_id=orden_id,
+            titulo=titulo,
+            monto=monto,
+            comprador_email=email,
+            imagen_url=imagen_url,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Error MP: {e}")
+
+    # 3. Guardar preference_id
+    guardar_preference(orden_id, mp["preference_id"])
+
+    return {
+        "orden_id":           orden_id,
+        "preference_id":      mp["preference_id"],
+        "init_point":         mp["init_point"],
+        "sandbox_init_point": mp["sandbox_init_point"],
+    }
+
+
+# ── Webhook de MercadoPago ────────────────────────────────────────────────────
+
+@app.post("/pagos/webhook")
+async def mp_webhook(request: Request):
+    """
+    MP envía notificaciones de pago aquí.
+    Actualizamos el estado de la orden y notificamos al vendedor.
+    """
+    try:
+        data = await request.json()
+    except Exception:
+        return {"ok": True}  # devolver 200 siempre para que MP no reintente
+
+    # MP puede enviar topic=payment o type=payment
+    topic = data.get("topic") or data.get("type", "")
+    if topic not in ("payment", "merchant_order"):
+        return {"ok": True}
+
+    payment_id = None
+    if "data" in data and isinstance(data["data"], dict):
+        payment_id = str(data["data"].get("id", ""))
+    elif "id" in data:
+        payment_id = str(data["id"])
+
+    if not payment_id:
+        return {"ok": True}
+
+    try:
+        pago = mp_obtener_pago(payment_id)
+    except Exception:
+        return {"ok": True}
+
+    status          = pago.get("status", "")
+    external_ref    = pago.get("external_reference", "")
+
+    if not external_ref:
+        return {"ok": True}
+
+    orden = obtener_por_external_ref(external_ref)
+    if not orden:
+        return {"ok": True}
+
+    orden_id = orden["id"]
+
+    if status == "approved":
+        confirmar_pago(orden_id, payment_id)
+        # Notificar al vendedor
+        fcm_tok = obtener_fcm_token(orden["vendedor_id"])
+        if fcm_tok:
+            try:
+                enviar_push(
+                    fcm_tok,
+                    "💳 Pago recibido",
+                    f"Recibiste un pago por '{orden['titulo']}'",
+                    {"tipo": "pago_confirmado", "orden_id": str(orden_id)},
+                )
+            except Exception:
+                pass
+        crear_notificacion(
+            orden["vendedor_id"], "pago",
+            f"💳 Pago confirmado por '{orden['titulo']}'",
+        )
+
+    return {"ok": True}
+
+
+# ── Páginas de retorno (back_urls de MP) ─────────────────────────────────────
+
+@app.get("/pagos/resultado")
+def resultado_pago(estado: str = "aprobado", orden: int = 0):
+    from fastapi.responses import HTMLResponse
+    msgs = {
+        "aprobado": ("✅ Pago aprobado", "Tu pago fue procesado exitosamente. Vuelve a la app OkVenta.", "#27ae60"),
+        "pendiente": ("⏳ Pago pendiente", "Tu pago está siendo procesado. Te notificaremos cuando se confirme.", "#f39c12"),
+        "fallido": ("❌ Pago rechazado", "Hubo un problema con tu pago. Intenta de nuevo en la app.", "#e74c3c"),
+    }
+    titulo, msg, color = msgs.get(estado, msgs["fallido"])
+    return HTMLResponse(f"""
+    <html><head><meta name='viewport' content='width=device-width,initial-scale=1'>
+    <style>body{{font-family:sans-serif;text-align:center;padding:60px 20px;background:#f5f5f5}}
+    .card{{background:white;border-radius:16px;padding:40px 24px;max-width:400px;margin:auto;box-shadow:0 4px 20px rgba(0,0,0,.08)}}
+    h2{{color:{color}}}p{{color:#555}}a{{display:inline-block;margin-top:20px;padding:12px 24px;background:#00B4A0;color:white;border-radius:8px;text-decoration:none}}</style>
+    </head><body><div class='card'><h2>{titulo}</h2><p>{msg}</p>
+    <a href='okventa://mis-compras'>Volver a OkVenta</a></div></body></html>
+    """)
+
+
+# ── Mis compras / Mis ventas ──────────────────────────────────────────────────
+
+@app.get("/mis-compras/{user_id}")
+def mis_compras(user_id: int):
+    return obtener_mis_compras(user_id)
+
+
+@app.get("/mis-ventas/{user_id}")
+def mis_ventas(user_id: int):
+    return obtener_mis_ventas(user_id)
+
+
+# ── Confirmar entrega ─────────────────────────────────────────────────────────
+
+@app.post("/ordenes/{orden_id}/confirmar")
+def confirmar_orden(orden_id: int, body: dict):
+    orden = obtener_orden(orden_id)
+    if not orden:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+    if orden["estado"] not in ("pago_confirmado", "en_camino"):
+        raise HTTPException(status_code=400,
+                            detail=f"Estado actual '{orden['estado']}' no permite confirmar")
+    confirmar_entrega(orden_id)
+    # Notificar al vendedor que puede recibir el dinero
+    fcm_tok = obtener_fcm_token(orden["vendedor_id"])
+    if fcm_tok:
+        try:
+            enviar_push(
+                fcm_tok,
+                "🎉 Entrega confirmada",
+                f"El comprador confirmó recepción de '{orden['titulo']}'",
+                {"tipo": "entrega_confirmada", "orden_id": str(orden_id)},
+            )
+        except Exception:
+            pass
+    crear_notificacion(
+        orden["vendedor_id"], "entrega",
+        f"🎉 Entrega confirmada por '{orden['titulo']}'. El pago será liberado.",
+    )
+    return {"ok": True, "estado": "entregado"}
+
+
+# ── Abrir disputa ─────────────────────────────────────────────────────────────
+
+@app.post("/ordenes/{orden_id}/disputar")
+def disputar_orden(orden_id: int, body: dict):
+    motivo = body.get("motivo", "Sin descripción")
+    orden = obtener_orden(orden_id)
+    if not orden:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+    if orden["estado"] not in ("pago_confirmado", "en_camino"):
+        raise HTTPException(status_code=400,
+                            detail=f"Estado '{orden['estado']}' no permite disputar")
+    abrir_disputa(orden_id)
+    # Notificar al equipo OkVenta (vendedor_id=1 es el admin por convención)
+    crear_notificacion(
+        1, "disputa",
+        f"⚠️ Disputa en orden #{orden_id}: '{orden['titulo']}' — {motivo}",
+    )
+    # Notificar al vendedor
+    fcm_tok = obtener_fcm_token(orden["vendedor_id"])
+    if fcm_tok:
+        try:
+            enviar_push(
+                fcm_tok,
+                "⚠️ Disputa abierta",
+                f"El comprador reportó un problema con '{orden['titulo']}'",
+                {"tipo": "disputa", "orden_id": str(orden_id)},
+            )
+        except Exception:
+            pass
+    return {"ok": True, "estado": "en_disputa"}
+
+
+# ── Reembolso (uso interno / admin) ──────────────────────────────────────────
+
+@app.post("/ordenes/{orden_id}/reembolsar")
+def reembolsar_orden(orden_id: int):
+    orden = obtener_orden(orden_id)
+    if not orden or not orden.get("mp_payment_id"):
+        raise HTTPException(status_code=404,
+                            detail="Orden no encontrada o sin pago registrado")
+    try:
+        mp_reembolsar_pago(orden["mp_payment_id"])
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Error MP refund: {e}")
+    marcar_reembolsado(orden_id)
+    return {"ok": True, "estado": "reembolsado"}

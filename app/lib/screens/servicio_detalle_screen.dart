@@ -22,6 +22,7 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
   int? _miUserId;
   int _miRating = 0;
   bool _enviandoRating = false;
+  bool _pagando = false;
 
   @override
   void initState() {
@@ -86,6 +87,65 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No se pudo iniciar la llamada')));
       }
+    }
+  }
+
+  Future<void> _pagarServicio() async {
+    if (_miUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Debes iniciar sesión para contratar el servicio')),
+      );
+      return;
+    }
+    if (_pagando) return;
+
+    final servicioId = _srv['id'] as int? ?? 0;
+    final vendedorId = _srv['user_id'] as int? ?? 0;
+    final titulo = _srv['titulo'] as String? ?? 'Servicio';
+    final monto = (_srv['valor'] as num?)?.toDouble() ?? 0;
+
+    if (monto <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Este servicio no tiene un precio definido'),
+            backgroundColor: AppColors.carbon),
+      );
+      return;
+    }
+
+    setState(() => _pagando = true);
+    try {
+      final data = await ApiService.crearPreferencia(
+        compradorId: _miUserId!,
+        vendedorId: vendedorId,
+        tipo: 'servicio',
+        titulo: titulo,
+        monto: monto,
+        servicioId: servicioId,
+      );
+
+      final initPoint = data['init_point'] as String? ??
+          data['sandbox_init_point'] as String? ??
+          '';
+
+      if (initPoint.isEmpty) throw Exception('No se obtuvo el link de pago');
+
+      final uri = Uri.parse(initPoint);
+      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        throw Exception('No se pudo abrir el navegador');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al iniciar el pago: $e'),
+          backgroundColor: AppColors.primary,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _pagando = false);
     }
   }
 
@@ -460,33 +520,33 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
 
                   const SizedBox(height: 16),
 
-                  // ── Pagar servicio (placeholder MercadoPago) ────────────
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                                '💳 Pago por MercadoPago próximamente disponible'),
-                            backgroundColor: AppColors.primary,
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.credit_card, size: 20),
-                      label: const Text('Pagar servicio',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.w700)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
+                  // ── Pagar servicio con MercadoPago ──────────────────────
+                  if (tipo == 'ofrezco' && valor > 0)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _pagando ? null : _pagarServicio,
+                        icon: _pagando
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.credit_card, size: 20),
+                        label: Text(
+                            _pagando ? 'Procesando...' : 'Contratar y pagar',
+                            style: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w700)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF009EE3),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
                       ),
                     ),
-                  ),
 
                   const SizedBox(height: 32),
                 ],
