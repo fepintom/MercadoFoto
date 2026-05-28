@@ -1,12 +1,15 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import 'agregar_servicio_screen.dart';
+import 'mapa_ubicacion_picker_screen.dart';
 import 'servicio_detalle_screen.dart';
 
 class ServiciosScreen extends StatefulWidget {
@@ -155,6 +158,8 @@ class _ServiciosScreenState extends State<ServiciosScreen>
                       ),
                       _MapaServicios(
                         servicios: [..._ofrezco, ..._busco],
+                        miUserId: _miUserId,
+                        onUbicacionActualizada: _cargar,
                       ),
                     ],
                   ),
@@ -494,20 +499,78 @@ class _TarjetaServicio extends StatelessWidget {
 
 // ── Mapa de servicios ─────────────────────────────────────────────────────────
 
-// Santiago, Chile — centro por defecto cuando no hay servicios con coordenadas
 final _kSantiago = LatLng(-33.4489, -70.6693);
 
-class _MapaServicios extends StatelessWidget {
+class _MapaServicios extends StatefulWidget {
   final List<Map<String, dynamic>> servicios;
-  const _MapaServicios({required this.servicios});
+  final int? miUserId;
+  final VoidCallback onUbicacionActualizada;
+
+  const _MapaServicios({
+    required this.servicios,
+    required this.miUserId,
+    required this.onUbicacionActualizada,
+  });
+
+  @override
+  State<_MapaServicios> createState() => _MapaServiciosState();
+}
+
+class _MapaServiciosState extends State<_MapaServicios> {
+  bool _guardando = false;
+
+  Future<void> _ajustarRadio(Map<String, dynamic> s) async {
+    final result = await Navigator.push<UbicacionElegida>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MapaUbicacionPickerScreen(
+          latInicial:    (s['lat'] as num).toDouble(),
+          lngInicial:    (s['lng'] as num).toDouble(),
+          radioKmInicial: (s['radio_km'] as num?)?.toDouble() ?? 5.0,
+        ),
+      ),
+    );
+    if (result == null || !mounted) return;
+
+    setState(() => _guardando = true);
+    try {
+      final resp = await http.patch(
+        Uri.parse('${ApiService.baseUrl}/servicios/${s['id']}/ubicacion'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id':  widget.miUserId,
+          'lat':      result.lat,
+          'lng':      result.lng,
+          'radio_km': result.radioKm,
+        }),
+      );
+      if (resp.statusCode == 200 && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Ubicación actualizada'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        widget.onUbicacionActualizada();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _guardando = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final conUbicacion = servicios
+    final conUbicacion = widget.servicios
         .where((s) => s['lat'] != null && s['lng'] != null)
         .toList();
 
-    // Centro: primer servicio con coords, o Santiago por defecto
     final center = conUbicacion.isNotEmpty
         ? LatLng(
             (conUbicacion.first['lat'] as num).toDouble(),
@@ -524,34 +587,105 @@ class _MapaServicios extends StatelessWidget {
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               userAgentPackageName: 'com.okventa.app',
             ),
+
+            // ── Círculos de cobertura ─────────────────────────────────────
+            if (conUbicacion.isNotEmpty)
+              CircleLayer(
+                circles: conUbicacion.map((s) {
+                  final tipo    = s['tipo'] as String? ?? 'ofrezco';
+                  final radioKm = (s['radio_km'] as num?)?.toDouble() ?? 5.0;
+                  final color   = tipo == 'ofrezco'
+                      ? AppColors.primary
+                      : Colors.orange;
+                  return CircleMarker(
+                    point: LatLng(
+                      (s['lat'] as num).toDouble(),
+                      (s['lng'] as num).toDouble(),
+                    ),
+                    radius: radioKm * 1000,
+                    useRadiusInMeter: true,
+                    color: color.withOpacity(0.12),
+                    borderStrokeWidth: 1.5,
+                    borderColor: color.withOpacity(0.5),
+                  );
+                }).toList(),
+              ),
+
+            // ── Globos de texto ───────────────────────────────────────────
             if (conUbicacion.isNotEmpty)
               MarkerLayer(
                 markers: conUbicacion.map((s) {
-                  final tipo   = s['tipo'] as String? ?? 'ofrezco';
-                  final titulo = s['titulo'] as String? ?? '';
-                  final lat    = (s['lat'] as num).toDouble();
-                  final lng    = (s['lng'] as num).toDouble();
-                  final color  = tipo == 'ofrezco'
+                  final tipo     = s['tipo'] as String? ?? 'ofrezco';
+                  final titulo   = s['titulo'] as String? ?? '';
+                  final esMio    = widget.miUserId != null &&
+                      s['user_id'] == widget.miUserId;
+                  final color    = tipo == 'ofrezco'
                       ? AppColors.primary
                       : Colors.orange;
-
-                  // Primeras 2 palabras del título
-                  final palabras = titulo.trim().split(RegExp(r'\s+')).take(2).join(' ');
-                  final label    = '${tipo == 'ofrezco' ? 'Ofrezco' : 'Busco'} $palabras';
+                  final palabras = titulo.trim()
+                      .split(RegExp(r'\s+'))
+                      .take(2)
+                      .join(' ');
+                  final label =
+                      '${tipo == 'ofrezco' ? 'Ofrezco' : 'Busco'} $palabras';
 
                   return Marker(
-                    point: LatLng(lat, lng),
-                    width: 148,
-                    height: 46,
+                    point: LatLng(
+                      (s['lat'] as num).toDouble(),
+                      (s['lng'] as num).toDouble(),
+                    ),
+                    width: 160,
+                    height: esMio ? 64 : 46,
                     anchorPos: AnchorPos.align(AnchorAlign.bottom),
-                    builder: (_) => GestureDetector(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ServicioDetalleScreen(servicio: s),
+                    builder: (_) => Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  ServicioDetalleScreen(servicio: s),
+                            ),
+                          ),
+                          child: _GloboMarcador(label: label, color: color),
                         ),
-                      ),
-                      child: _GloboMarcador(label: label, color: color),
+                        // Botón ajustar radio (solo titular)
+                        if (esMio)
+                          GestureDetector(
+                            onTap: _guardando ? null : () => _ajustarRadio(s),
+                            child: Container(
+                              margin: const EdgeInsets.only(top: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                    color: color.withOpacity(0.5)),
+                                boxShadow: [
+                                  BoxShadow(
+                                      color:
+                                          Colors.black.withOpacity(0.1),
+                                      blurRadius: 4)
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.radar_rounded,
+                                      size: 11, color: color),
+                                  const SizedBox(width: 3),
+                                  Text('Ajustar radio',
+                                      style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: color)),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   );
                 }).toList(),
@@ -559,7 +693,7 @@ class _MapaServicios extends StatelessWidget {
           ],
         ),
 
-        // Aviso cuando no hay servicios con ubicación
+        // Aviso cuando no hay ubicaciones
         if (conUbicacion.isEmpty)
           Positioned(
             top: 16,
@@ -593,6 +727,15 @@ class _MapaServicios extends StatelessWidget {
                   ],
                 ),
               ),
+            ),
+          ),
+
+        // Spinner mientras guarda
+        if (_guardando)
+          Container(
+            color: Colors.black26,
+            child: const Center(
+              child: CircularProgressIndicator(color: Colors.white),
             ),
           ),
       ],

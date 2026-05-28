@@ -1,12 +1,15 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
+import 'mapa_ubicacion_picker_screen.dart';
 
 class AgregarServicioScreen extends StatefulWidget {
   final String tipoInicial;
@@ -32,6 +35,12 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
   XFile? _certificado;
   bool _enviando = false;
   int? _userId;
+
+  // Ubicación
+  double? _lat;
+  double? _lng;
+  double  _radioKm = 5.0;
+  bool    _cargandoUbicacion = false;
 
   @override
   void initState() {
@@ -123,6 +132,120 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
     }
   }
 
+  // ── Ubicación: GPS ────────────────────────────────────────────────────────
+  Future<void> _usarGPS() async {
+    setState(() => _cargandoUbicacion = true);
+    try {
+      bool servicio = await Geolocator.isLocationServiceEnabled();
+      if (!servicio) {
+        _snack('El servicio de ubicación está desactivado');
+        return;
+      }
+      LocationPermission perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+        if (perm == LocationPermission.denied) {
+          _snack('Permiso de ubicación denegado');
+          return;
+        }
+      }
+      if (perm == LocationPermission.deniedForever) {
+        _snack('Permiso permanentemente denegado. Actívalo en Ajustes.');
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high);
+      if (mounted) {
+        setState(() {
+          _lat = pos.latitude;
+          _lng = pos.longitude;
+        });
+        _snack('📍 Ubicación actual registrada', color: Colors.green);
+      }
+    } catch (e) {
+      _snack('Error al obtener ubicación: $e');
+    } finally {
+      if (mounted) setState(() => _cargandoUbicacion = false);
+    }
+  }
+
+  // ── Ubicación: dirección del perfil → Nominatim ────────────────────────────
+  Future<void> _usarDireccionPerfil() async {
+    setState(() => _cargandoUbicacion = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final direccion = prefs.getString('direccion') ?? '';
+      final comuna    = prefs.getString('comuna')    ?? '';
+      final ciudad    = prefs.getString('ciudad')    ?? '';
+      final query     = [direccion, comuna, ciudad, 'Chile']
+          .where((s) => s.isNotEmpty)
+          .join(', ');
+
+      if (query.trim() == 'Chile' || query.trim().isEmpty) {
+        _snack('Completa tu dirección en el perfil primero');
+        return;
+      }
+
+      final uri = Uri.parse(
+        'https://nominatim.openstreetmap.org/search'
+        '?q=${Uri.encodeComponent(query)}&format=json&limit=1',
+      );
+      final resp = await http.get(uri,
+          headers: {'User-Agent': 'OkVenta/1.0 contact@okventa.cl'});
+
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body) as List;
+        if (data.isNotEmpty) {
+          final lat = double.tryParse(data[0]['lat'] as String);
+          final lng = double.tryParse(data[0]['lon'] as String);
+          if (lat != null && lng != null && mounted) {
+            setState(() {
+              _lat = lat;
+              _lng = lng;
+            });
+            _snack('📍 Dirección del perfil ubicada', color: Colors.green);
+            return;
+          }
+        }
+      }
+      _snack('No se pudo ubicar la dirección del perfil');
+    } catch (e) {
+      _snack('Error al geocodificar: $e');
+    } finally {
+      if (mounted) setState(() => _cargandoUbicacion = false);
+    }
+  }
+
+  // ── Ubicación: picker de mapa ──────────────────────────────────────────────
+  Future<void> _usarMapa() async {
+    final result = await Navigator.push<UbicacionElegida>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MapaUbicacionPickerScreen(
+          latInicial: _lat,
+          lngInicial: _lng,
+          radioKmInicial: _radioKm,
+        ),
+      ),
+    );
+    if (result != null && mounted) {
+      setState(() {
+        _lat     = result.lat;
+        _lng     = result.lng;
+        _radioKm = result.radioKm;
+      });
+    }
+  }
+
+  void _snack(String msg, {Color? color}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: color ?? AppColors.carbon,
+      behavior: SnackBarBehavior.floating,
+    ));
+  }
+
   Future<void> _publicar() async {
     if (!_formKey.currentState!.validate()) return;
     if (_userId == null) return;
@@ -144,6 +267,11 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
       req.fields['modalidad']   = _modalidad;
       req.fields['telefono']    = _telefonoCtrl.text.trim();
       req.fields['whatsapp']    = _wsCtrl.text.trim();
+      if (_lat != null && _lng != null) {
+        req.fields['lat']      = _lat.toString();
+        req.fields['lng']      = _lng.toString();
+        req.fields['radio_km'] = _radioKm.toStringAsFixed(1);
+      }
 
       for (final m in _medios) {
         req.files.add(await http.MultipartFile.fromPath('fotos', m.path));
@@ -382,6 +510,96 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
 
               const SizedBox(height: 24),
 
+              // ── Ubicación ─────────────────────────────────────────────────
+              _label('Ubicación del servicio'),
+              const SizedBox(height: 4),
+              const Text(
+                'Elige cómo registrar tu área de cobertura en el mapa',
+                style: TextStyle(fontSize: 12, color: AppColors.grayMid),
+              ),
+              const SizedBox(height: 10),
+
+              // 3 opciones
+              Row(
+                children: [
+                  _botonUbicacion(
+                    icon: Icons.my_location_rounded,
+                    label: 'GPS actual',
+                    onTap: _cargandoUbicacion ? null : _usarGPS,
+                  ),
+                  const SizedBox(width: 8),
+                  _botonUbicacion(
+                    icon: Icons.home_outlined,
+                    label: 'Mi perfil',
+                    onTap: _cargandoUbicacion ? null : _usarDireccionPerfil,
+                  ),
+                  const SizedBox(width: 8),
+                  _botonUbicacion(
+                    icon: Icons.map_outlined,
+                    label: 'En el mapa',
+                    onTap: _cargandoUbicacion ? null : _usarMapa,
+                  ),
+                ],
+              ),
+
+              // Resultado de ubicación elegida
+              if (_cargandoUbicacion)
+                const Padding(
+                  padding: EdgeInsets.only(top: 10),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: AppColors.primary)),
+                      SizedBox(width: 8),
+                      Text('Obteniendo ubicación...',
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.grayMid)),
+                    ],
+                  ),
+                )
+              else if (_lat != null && _lng != null)
+                Container(
+                  margin: const EdgeInsets.only(top: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withOpacity(0.07),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.green.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle_outline_rounded,
+                          size: 16, color: Colors.green),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Ubicación registrada  •  Radio: ${_radioKm.toStringAsFixed(0)} km',
+                          style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.green,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      // Ajustar radio inline
+                      GestureDetector(
+                        onTap: _usarMapa,
+                        child: const Text('Ajustar',
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                                decoration: TextDecoration.underline)),
+                      ),
+                    ],
+                  ),
+                ),
+
+              const SizedBox(height: 24),
+
               // ── Certificado profesional ───────────────────────────────────
               Container(
                 padding: const EdgeInsets.all(16),
@@ -577,6 +795,45 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
                       fontWeight: FontWeight.w600,
                       color:
                           sel ? AppColors.primary : AppColors.grayMid)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _botonUbicacion({
+    required IconData icon,
+    required String label,
+    required VoidCallback? onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: onTap == null
+                ? AppColors.background
+                : AppColors.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: Column(
+            children: [
+              Icon(icon,
+                  color: onTap == null
+                      ? AppColors.grayMid
+                      : AppColors.primary,
+                  size: 22),
+              const SizedBox(height: 4),
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: onTap == null
+                          ? AppColors.grayMid
+                          : AppColors.textPrimary)),
             ],
           ),
         ),

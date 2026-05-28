@@ -149,6 +149,7 @@ from database.servicios import (
     eliminar_servicio,
     valorar_servicio,
     actualizar_certificado,
+    actualizar_ubicacion,
 )
 
 from database.users import guardar_fcm_token, obtener_fcm_token
@@ -1352,6 +1353,7 @@ async def crear_servicio_endpoint(
     whatsapp:    str   = Form(""),
     lat:         float = Form(None),
     lng:         float = Form(None),
+    radio_km:    float = Form(5.0),
     fotos: Optional[List[UploadFile]] = File(default=None),
 ):
     saved_paths = []
@@ -1370,10 +1372,22 @@ async def crear_servicio_endpoint(
         descripcion=descripcion, comunas=comunas,
         valor=valor, modalidad=modalidad,
         fotos=saved_paths,
-        lat=lat, lng=lng,
+        lat=lat, lng=lng, radio_km=radio_km,
         telefono=telefono, whatsapp=whatsapp,
     )
     return {"id": sid, "ok": True}
+
+
+@app.patch("/servicios/{servicio_id}/ubicacion")
+def actualizar_ubicacion_endpoint(servicio_id: int, body: dict):
+    user_id  = body.get("user_id")
+    lat      = body.get("lat")
+    lng      = body.get("lng")
+    radio_km = float(body.get("radio_km", 5))
+    if not user_id or lat is None or lng is None:
+        raise HTTPException(status_code=400, detail="Datos incompletos")
+    actualizar_ubicacion(servicio_id, user_id, lat, lng, radio_km)
+    return {"ok": True}
 
 
 @app.get("/servicios")

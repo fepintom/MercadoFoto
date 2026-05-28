@@ -22,11 +22,19 @@ def init_servicios_db():
         certificado_verificado  INTEGER DEFAULT 0,
         lat                     REAL,
         lng                     REAL,
+        radio_km                REAL    DEFAULT 5,
         telefono                TEXT,
         whatsapp                TEXT,
         created_at              TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
+
+    # Migración: agregar radio_km si no existe
+    try:
+        c.execute("ALTER TABLE servicios ADD COLUMN radio_km REAL DEFAULT 5")
+        conn.commit()
+    except Exception:
+        pass  # columna ya existe
 
     c.execute("""
     CREATE TABLE IF NOT EXISTS valoraciones_servicios (
@@ -47,21 +55,34 @@ def init_servicios_db():
 
 def crear_servicio(user_id, tipo, titulo, descripcion, comunas,
                    valor, modalidad, fotos,
-                   lat=None, lng=None, telefono=None, whatsapp=None):
+                   lat=None, lng=None, radio_km=5.0,
+                   telefono=None, whatsapp=None):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("""
         INSERT INTO servicios
             (user_id, tipo, titulo, descripcion, comunas,
-             valor, modalidad, fotos, lat, lng, telefono, whatsapp)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             valor, modalidad, fotos, lat, lng, radio_km, telefono, whatsapp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (user_id, tipo, titulo, descripcion, comunas,
           valor, modalidad, json.dumps(fotos),
-          lat, lng, telefono, whatsapp))
+          lat, lng, radio_km, telefono, whatsapp))
     sid = c.lastrowid
     conn.commit()
     conn.close()
     return sid
+
+
+def actualizar_ubicacion(servicio_id, user_id, lat, lng, radio_km):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("""
+        UPDATE servicios
+        SET lat = ?, lng = ?, radio_km = ?
+        WHERE id = ? AND user_id = ?
+    """, (lat, lng, radio_km, servicio_id, user_id))
+    conn.commit()
+    conn.close()
 
 
 # ── Leer ──────────────────────────────────────────────────────────────────────
@@ -70,7 +91,8 @@ _SELECT = """
     SELECT s.id, s.user_id, s.tipo, s.titulo, s.descripcion, s.comunas,
            s.valor, s.modalidad, s.fotos,
            s.certificado_url, s.certificado_verificado,
-           s.lat, s.lng, s.telefono, s.whatsapp, s.created_at,
+           s.lat, s.lng, COALESCE(s.radio_km, 5) AS radio_km,
+           s.telefono, s.whatsapp, s.created_at,
            u.nombre, u.apellido, u.foto_url,
            COALESCE(AVG(v.estrellas), 0) AS rating,
            COUNT(v.id) AS num_val
@@ -171,12 +193,13 @@ def _to_dict(row):
         "certificado_verificado": bool(row[10]),
         "lat":                    row[11],
         "lng":                    row[12],
-        "telefono":               row[13],
-        "whatsapp":               row[14],
-        "created_at":             row[15],
-        "nombre":                 row[16],
-        "apellido":               row[17],
-        "foto_url":               row[18],
-        "rating":                 round(float(row[19] or 0), 1),
-        "num_valoraciones":       row[20],
+        "radio_km":               float(row[13] or 5),
+        "telefono":               row[14],
+        "whatsapp":               row[15],
+        "created_at":             row[16],
+        "nombre":                 row[17],
+        "apellido":               row[18],
+        "foto_url":               row[19],
+        "rating":                 round(float(row[20] or 0), 1),
+        "num_valoraciones":       row[21],
     }
