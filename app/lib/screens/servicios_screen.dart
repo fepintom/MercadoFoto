@@ -56,7 +56,8 @@ class _ServiciosScreenState extends State<ServiciosScreen>
           _cargando = false;
         });
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('ERROR cargando servicios: $e');
       if (mounted) setState(() => _cargando = false);
     }
   }
@@ -493,6 +494,9 @@ class _TarjetaServicio extends StatelessWidget {
 
 // ── Mapa de servicios ─────────────────────────────────────────────────────────
 
+// Santiago, Chile — centro por defecto cuando no hay servicios con coordenadas
+final _kSantiago = LatLng(-33.4489, -70.6693);
+
 class _MapaServicios extends StatelessWidget {
   final List<Map<String, dynamic>> servicios;
   const _MapaServicios({required this.servicios});
@@ -503,66 +507,151 @@ class _MapaServicios extends StatelessWidget {
         .where((s) => s['lat'] != null && s['lng'] != null)
         .toList();
 
-    if (conUbicacion.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+    // Centro: primer servicio con coords, o Santiago por defecto
+    final center = conUbicacion.isNotEmpty
+        ? LatLng(
+            (conUbicacion.first['lat'] as num).toDouble(),
+            (conUbicacion.first['lng'] as num).toDouble(),
+          )
+        : _kSantiago;
+
+    return Stack(
+      children: [
+        FlutterMap(
+          options: MapOptions(center: center, zoom: 11),
           children: [
-            Icon(Icons.map_outlined, size: 64, color: AppColors.grayMid),
-            SizedBox(height: 16),
-            Text('Ningún servicio tiene ubicación registrada',
-                style: TextStyle(color: AppColors.grayMid)),
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.okventa.app',
+            ),
+            if (conUbicacion.isNotEmpty)
+              MarkerLayer(
+                markers: conUbicacion.map((s) {
+                  final tipo   = s['tipo'] as String? ?? 'ofrezco';
+                  final titulo = s['titulo'] as String? ?? '';
+                  final lat    = (s['lat'] as num).toDouble();
+                  final lng    = (s['lng'] as num).toDouble();
+                  final color  = tipo == 'ofrezco'
+                      ? AppColors.primary
+                      : Colors.orange;
+
+                  // Primeras 2 palabras del título
+                  final palabras = titulo.trim().split(RegExp(r'\s+')).take(2).join(' ');
+                  final label    = '${tipo == 'ofrezco' ? 'Ofrezco' : 'Busco'} $palabras';
+
+                  return Marker(
+                    point: LatLng(lat, lng),
+                    width: 148,
+                    height: 46,
+                    anchorPos: AnchorPos.align(AnchorAlign.bottom),
+                    builder: (_) => GestureDetector(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ServicioDetalleScreen(servicio: s),
+                        ),
+                      ),
+                      child: _GloboMarcador(label: label, color: color),
+                    ),
+                  );
+                }).toList(),
+              ),
           ],
         ),
-      );
-    }
 
-    final first = conUbicacion.first;
-    final center =
-        LatLng(first['lat'] as double, first['lng'] as double);
-
-    return FlutterMap(
-      options: MapOptions(center: center, zoom: 12),
-      children: [
-        TileLayer(
-          urlTemplate:
-              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.okventa.app',
-        ),
-        MarkerLayer(
-          markers: conUbicacion.map((s) {
-            final tipo = s['tipo'] as String? ?? 'ofrezco';
-            return Marker(
-              point: LatLng(s['lat'] as double, s['lng'] as double),
-              width: 44,
-              height: 44,
-              builder: (_) => GestureDetector(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        ServicioDetalleScreen(servicio: s),
-                  ),
+        // Aviso cuando no hay servicios con ubicación
+        if (conUbicacion.isEmpty)
+          Positioned(
+            top: 16,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black.withOpacity(0.12),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2))
+                  ],
                 ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: tipo == 'ofrezco'
-                        ? AppColors.primary
-                        : Colors.orange,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                          color: Colors.black.withOpacity(0.25),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2))
-                    ],
-                  ),
-                  child: const Icon(Icons.handyman,
-                      color: Colors.white, size: 22),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.info_outline,
+                        size: 14, color: AppColors.grayMid),
+                    SizedBox(width: 6),
+                    Text(
+                      'Ningún servicio tiene ubicación todavía',
+                      style: TextStyle(
+                          fontSize: 12, color: AppColors.grayMid),
+                    ),
+                  ],
                 ),
               ),
-            );
-          }).toList(),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+// ── Globo de marcador (speech bubble) ────────────────────────────────────────
+
+class _GloboMarcador extends StatelessWidget {
+  final String label;
+  final Color  color;
+  const _GloboMarcador({required this.label, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Burbuja
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                  color: color.withOpacity(0.4),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2))
+            ],
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ),
+        // Triángulo puntero — truco de borders sin CustomPainter
+        SizedBox(
+          width: 12,
+          height: 6,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border(
+                left: const BorderSide(
+                    width: 6, color: Colors.transparent),
+                right: const BorderSide(
+                    width: 6, color: Colors.transparent),
+                top: BorderSide(width: 6, color: color),
+              ),
+            ),
+          ),
         ),
       ],
     );
