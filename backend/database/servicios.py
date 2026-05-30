@@ -29,12 +29,17 @@ def init_servicios_db():
     )
     """)
 
-    # Migración: agregar radio_km si no existe
-    try:
-        c.execute("ALTER TABLE servicios ADD COLUMN radio_km REAL DEFAULT 5")
-        conn.commit()
-    except Exception:
-        pass  # columna ya existe
+    # Migraciones: agregar columnas si no existen
+    for col_sql in [
+        "ALTER TABLE servicios ADD COLUMN radio_km   REAL DEFAULT 5",
+        "ALTER TABLE servicios ADD COLUMN categoria  TEXT DEFAULT 'Otros'",
+        "ALTER TABLE servicios ADD COLUMN color_hex  TEXT DEFAULT '#007AFF'",
+    ]:
+        try:
+            c.execute(col_sql)
+            conn.commit()
+        except Exception:
+            pass
 
     c.execute("""
     CREATE TABLE IF NOT EXISTS valoraciones_servicios (
@@ -56,17 +61,20 @@ def init_servicios_db():
 def crear_servicio(user_id, tipo, titulo, descripcion, comunas,
                    valor, modalidad, fotos,
                    lat=None, lng=None, radio_km=5.0,
+                   categoria="Otros", color_hex="#007AFF",
                    telefono=None, whatsapp=None):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("""
         INSERT INTO servicios
             (user_id, tipo, titulo, descripcion, comunas,
-             valor, modalidad, fotos, lat, lng, radio_km, telefono, whatsapp)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             valor, modalidad, fotos, lat, lng, radio_km,
+             categoria, color_hex, telefono, whatsapp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (user_id, tipo, titulo, descripcion, comunas,
           valor, modalidad, json.dumps(fotos),
-          lat, lng, radio_km, telefono, whatsapp))
+          lat, lng, radio_km, categoria, color_hex,
+          telefono, whatsapp))
     sid = c.lastrowid
     conn.commit()
     conn.close()
@@ -92,6 +100,8 @@ _SELECT = """
            s.valor, s.modalidad, s.fotos,
            s.certificado_url, s.certificado_verificado,
            s.lat, s.lng, COALESCE(s.radio_km, 5) AS radio_km,
+           COALESCE(s.categoria, 'Otros') AS categoria,
+           COALESCE(s.color_hex, '#007AFF') AS color_hex,
            s.telefono, s.whatsapp, s.created_at,
            u.nombre, u.apellido, u.foto_url,
            COALESCE(AVG(v.estrellas), 0) AS rating,
@@ -194,12 +204,14 @@ def _to_dict(row):
         "lat":                    row[11],
         "lng":                    row[12],
         "radio_km":               float(row[13] or 5),
-        "telefono":               row[14],
-        "whatsapp":               row[15],
-        "created_at":             row[16],
-        "nombre":                 row[17],
-        "apellido":               row[18],
-        "foto_url":               row[19],
-        "rating":                 round(float(row[20] or 0), 1),
-        "num_valoraciones":       row[21],
+        "categoria":              row[14] or "Otros",
+        "color_hex":              row[15] or "#007AFF",
+        "telefono":               row[16],
+        "whatsapp":               row[17],
+        "created_at":             row[18],
+        "nombre":                 row[19],
+        "apellido":               row[20],
+        "foto_url":               row[21],
+        "rating":                 round(float(row[22] or 0), 1),
+        "num_valoraciones":       row[23],
     }

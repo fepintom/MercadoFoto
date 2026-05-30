@@ -186,6 +186,38 @@ class _ServiciosScreenState extends State<ServiciosScreen>
   }
 }
 
+// ── Constantes compartidas ───────────────────────────────────────────────────
+
+const _kCategorias = [
+  'Hogar', 'Tecnología', 'Transporte', 'Educación', 'Salud',
+  'Belleza', 'Construcción', 'Fotografía', 'Limpieza', 'Mascotas',
+  'Negocios', 'Otros',
+];
+
+const _kCategoriaIconos = <String, IconData>{
+  'Hogar':         Icons.home_outlined,
+  'Tecnología':    Icons.computer_outlined,
+  'Transporte':    Icons.directions_car_outlined,
+  'Educación':     Icons.school_outlined,
+  'Salud':         Icons.health_and_safety_outlined,
+  'Belleza':       Icons.face_retouching_natural,
+  'Construcción':  Icons.construction_outlined,
+  'Fotografía':    Icons.camera_alt_outlined,
+  'Limpieza':      Icons.cleaning_services_outlined,
+  'Mascotas':      Icons.pets_outlined,
+  'Negocios':      Icons.business_center_outlined,
+  'Otros':         Icons.more_horiz_rounded,
+};
+
+Color _hexColor(String? hex) {
+  if (hex == null || hex.isEmpty) return AppColors.primary;
+  try {
+    return Color(int.parse('FF${hex.replaceAll('#', '')}', radix: 16));
+  } catch (_) {
+    return AppColors.primary;
+  }
+}
+
 // ── Lista de servicios ────────────────────────────────────────────────────────
 
 class _ListaServicios extends StatelessWidget {
@@ -259,6 +291,7 @@ class _TarjetaServicio extends StatelessWidget {
   Widget build(BuildContext context) {
     final nombre    = '${servicio['nombre'] ?? ''} ${servicio['apellido'] ?? ''}'.trim();
     final fotoUrl   = servicio['foto_url'] as String? ?? '';
+    final tipo      = servicio['tipo'] as String? ?? 'ofrezco';
     final titulo    = servicio['titulo'] as String? ?? '';
     final rating    = (servicio['rating'] as num?)?.toDouble() ?? 0.0;
     final numVal    = servicio['num_valoraciones'] as int? ?? 0;
@@ -267,12 +300,19 @@ class _TarjetaServicio extends StatelessWidget {
     final fotos     = servicio['fotos'] as List? ?? [];
     final verificado = servicio['certificado_verificado'] as bool? ?? false;
     final comunas   = servicio['comunas'] as String? ?? '';
+    final cardColor = _hexColor(servicio['color_hex'] as String?);
+    final prefix    = tipo == 'ofrezco' ? 'Ofrezco' : 'Busco';
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: cardColor.withOpacity(0.04),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.divider, width: 0.5),
+        border: Border(
+          left:   BorderSide(color: cardColor, width: 4),
+          top:    BorderSide(color: AppColors.divider, width: 0.5),
+          right:  BorderSide(color: AppColors.divider, width: 0.5),
+          bottom: BorderSide(color: AppColors.divider, width: 0.5),
+        ),
         boxShadow: [
           BoxShadow(
               color: Colors.black.withOpacity(0.04),
@@ -355,14 +395,31 @@ class _TarjetaServicio extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
 
-                  // Título
-                  Text(titulo,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
+                  // Título con prefijo "Ofrezco:" / "Busco:"
+                  RichText(
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '$prefix: ',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: cardColor,
+                          ),
+                        ),
+                        TextSpan(
+                          text: titulo,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 4),
 
                   // Comunas
@@ -517,7 +574,18 @@ class _MapaServicios extends StatefulWidget {
 }
 
 class _MapaServiciosState extends State<_MapaServicios> {
-  bool _guardando = false;
+  bool    _guardando        = false;
+  String? _filtroTipo;       // null = todos | 'ofrezco' | 'busco'
+  String? _filtroCategoria;  // null = todas | nombre de categoría
+
+  List<Map<String, dynamic>> get _serviciosFiltrados =>
+      widget.servicios.where((s) {
+        if (_filtroTipo != null && s['tipo'] != _filtroTipo) return false;
+        if (_filtroCategoria != null && s['categoria'] != _filtroCategoria) {
+          return false;
+        }
+        return true;
+      }).toList();
 
   Future<void> _ajustarRadio(Map<String, dynamic> s) async {
     final result = await Navigator.push<UbicacionElegida>(
@@ -567,14 +635,18 @@ class _MapaServiciosState extends State<_MapaServicios> {
 
   @override
   Widget build(BuildContext context) {
-    final conUbicacion = widget.servicios
+    final filtrados     = _serviciosFiltrados;
+    final conUbicacion  = filtrados
+        .where((s) => s['lat'] != null && s['lng'] != null)
+        .toList();
+    final todos         = widget.servicios
         .where((s) => s['lat'] != null && s['lng'] != null)
         .toList();
 
-    final center = conUbicacion.isNotEmpty
+    final center = todos.isNotEmpty
         ? LatLng(
-            (conUbicacion.first['lat'] as num).toDouble(),
-            (conUbicacion.first['lng'] as num).toDouble(),
+            (todos.first['lat'] as num).toDouble(),
+            (todos.first['lng'] as num).toDouble(),
           )
         : _kSantiago;
 
@@ -592,11 +664,8 @@ class _MapaServiciosState extends State<_MapaServicios> {
             if (conUbicacion.isNotEmpty)
               CircleLayer(
                 circles: conUbicacion.map((s) {
-                  final tipo    = s['tipo'] as String? ?? 'ofrezco';
                   final radioKm = (s['radio_km'] as num?)?.toDouble() ?? 5.0;
-                  final color   = tipo == 'ofrezco'
-                      ? AppColors.primary
-                      : Colors.orange;
+                  final color   = _hexColor(s['color_hex'] as String?);
                   return CircleMarker(
                     point: LatLng(
                       (s['lat'] as num).toDouble(),
@@ -615,26 +684,24 @@ class _MapaServiciosState extends State<_MapaServicios> {
             if (conUbicacion.isNotEmpty)
               MarkerLayer(
                 markers: conUbicacion.map((s) {
-                  final tipo     = s['tipo'] as String? ?? 'ofrezco';
-                  final titulo   = s['titulo'] as String? ?? '';
-                  final esMio    = widget.miUserId != null &&
+                  final tipo    = s['tipo'] as String? ?? 'ofrezco';
+                  final titulo  = s['titulo'] as String? ?? '';
+                  final esMio   = widget.miUserId != null &&
                       s['user_id'] == widget.miUserId;
-                  final color    = tipo == 'ofrezco'
-                      ? AppColors.primary
-                      : Colors.orange;
+                  final color   = _hexColor(s['color_hex'] as String?);
                   final palabras = titulo.trim()
                       .split(RegExp(r'\s+'))
                       .take(2)
                       .join(' ');
                   final label =
-                      '${tipo == 'ofrezco' ? 'Ofrezco' : 'Busco'} $palabras';
+                      '${tipo == 'ofrezco' ? 'Ofrezco' : 'Busco'}: $palabras';
 
                   return Marker(
                     point: LatLng(
                       (s['lat'] as num).toDouble(),
                       (s['lng'] as num).toDouble(),
                     ),
-                    width: 160,
+                    width: 170,
                     height: esMio ? 64 : 46,
                     anchorPos: AnchorPos.align(AnchorAlign.bottom),
                     builder: (_) => Column(
@@ -650,7 +717,7 @@ class _MapaServiciosState extends State<_MapaServicios> {
                           ),
                           child: _GloboMarcador(label: label, color: color),
                         ),
-                        // Botón ajustar radio (solo titular)
+                        // Botón ajustar radio SOLO para el titular
                         if (esMio)
                           GestureDetector(
                             onTap: _guardando ? null : () => _ajustarRadio(s),
@@ -665,8 +732,7 @@ class _MapaServiciosState extends State<_MapaServicios> {
                                     color: color.withOpacity(0.5)),
                                 boxShadow: [
                                   BoxShadow(
-                                      color:
-                                          Colors.black.withOpacity(0.1),
+                                      color: Colors.black.withOpacity(0.1),
                                       blurRadius: 4)
                                 ],
                               ),
@@ -693,44 +759,50 @@ class _MapaServiciosState extends State<_MapaServicios> {
           ],
         ),
 
-        // Aviso cuando no hay ubicaciones
+        // ── Panel de filtros (izquierda) ──────────────────────────────────
+        Positioned(
+          left: 8,
+          top: 12,
+          child: _buildFiltroPanel(),
+        ),
+
+        // Aviso cuando no hay ubicaciones tras filtrar
         if (conUbicacion.isEmpty)
           Positioned(
             top: 16,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                        color: Colors.black.withOpacity(0.12),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2))
-                  ],
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.info_outline,
-                        size: 14, color: AppColors.grayMid),
-                    SizedBox(width: 6),
-                    Text(
-                      'Ningún servicio tiene ubicación todavía',
+            left: 110,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 7),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black.withOpacity(0.12),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2))
+                ],
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.info_outline,
+                      size: 13, color: AppColors.grayMid),
+                  SizedBox(width: 5),
+                  Flexible(
+                    child: Text(
+                      'Sin ubicación registrada',
                       style: TextStyle(
-                          fontSize: 12, color: AppColors.grayMid),
+                          fontSize: 11, color: AppColors.grayMid),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
 
-        // Spinner mientras guarda
         if (_guardando)
           Container(
             color: Colors.black26,
@@ -739,6 +811,152 @@ class _MapaServiciosState extends State<_MapaServicios> {
             ),
           ),
       ],
+    );
+  }
+
+  // ── Panel de filtros lateral izquierdo ────────────────────────────────────
+  Widget _buildFiltroPanel() {
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.55,
+      ),
+      child: Container(
+        width: 88,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.95),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.14),
+                blurRadius: 10,
+                offset: const Offset(0, 3))
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 7),
+                color: AppColors.carbon,
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.tune_rounded,
+                        size: 12, color: Colors.white),
+                    SizedBox(width: 4),
+                    Text('Filtrar',
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white)),
+                  ],
+                ),
+              ),
+
+              // Tipo
+              _fBtn(null, Icons.apps_rounded, 'Todos',
+                  _filtroTipo == null, AppColors.carbon),
+              _fBtn('ofrezco', Icons.handyman_outlined, 'Ofrezco',
+                  _filtroTipo == 'ofrezco', AppColors.primary),
+              _fBtn('busco', Icons.search_rounded, 'Busco',
+                  _filtroTipo == 'busco', Colors.orange),
+
+              Container(height: 0.5, color: AppColors.divider),
+
+              // Categorías (scrollable)
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: _kCategorias.map((cat) {
+                      final icon =
+                          _kCategoriaIconos[cat] ?? Icons.more_horiz_rounded;
+                      final sel = _filtroCategoria == cat;
+                      return InkWell(
+                        onTap: () => setState(() {
+                          _filtroCategoria = sel ? null : cat;
+                        }),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 6),
+                          color: sel
+                              ? AppColors.primary.withOpacity(0.1)
+                              : null,
+                          child: Column(
+                            children: [
+                              Icon(icon,
+                                  size: 16,
+                                  color: sel
+                                      ? AppColors.primary
+                                      : AppColors.grayMid),
+                              const SizedBox(height: 2),
+                              Text(
+                                cat.length > 8
+                                    ? '${cat.substring(0, 7)}…'
+                                    : cat,
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: sel
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: sel
+                                      ? AppColors.primary
+                                      : AppColors.grayMid,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _fBtn(String? tipo, IconData icon, String label,
+      bool sel, Color color) {
+    return InkWell(
+      onTap: () => setState(() {
+        _filtroTipo = (tipo == null || _filtroTipo == tipo) ? tipo : tipo;
+        if (tipo == null) _filtroTipo = null;
+        else _filtroTipo = _filtroTipo == tipo ? null : tipo;
+      }),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+        color: sel ? color.withOpacity(0.1) : null,
+        child: Row(
+          children: [
+            Icon(icon,
+                size: 14,
+                color: sel ? color : AppColors.grayMid),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight:
+                      sel ? FontWeight.w700 : FontWeight.w500,
+                  color: sel ? color : AppColors.grayMid,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

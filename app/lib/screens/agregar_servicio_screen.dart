@@ -30,7 +30,9 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
   final _wsCtrl      = TextEditingController();
 
   late String _tipo;
-  String _modalidad = 'servicio';
+  String _modalidad  = 'servicio';
+  String _categoria  = 'Otros';
+  String _colorHex   = '#007AFF';
   List<XFile> _medios = [];
   XFile? _certificado;
   bool _enviando = false;
@@ -41,6 +43,18 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
   double? _lng;
   double  _radioKm = 5.0;
   bool    _cargandoUbicacion = false;
+
+  static const _kCategorias = [
+    'Hogar', 'Tecnología', 'Transporte', 'Educación', 'Salud',
+    'Belleza', 'Construcción', 'Fotografía', 'Limpieza', 'Mascotas',
+    'Negocios', 'Otros',
+  ];
+  static const _kColores = [
+    Color(0xFF007AFF), Color(0xFF34C759), Color(0xFFFF9500),
+    Color(0xFFFF3B30), Color(0xFFAF52DE), Color(0xFF5AC8FA),
+    Color(0xFFFFCC00), Color(0xFFFF2D55), Color(0xFF00C7BE),
+    Color(0xFF636366),
+  ];
 
   @override
   void initState() {
@@ -267,6 +281,8 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
       req.fields['modalidad']   = _modalidad;
       req.fields['telefono']    = _telefonoCtrl.text.trim();
       req.fields['whatsapp']    = _wsCtrl.text.trim();
+      req.fields['categoria']   = _categoria;
+      req.fields['color_hex']   = _colorHex;
       if (_lat != null && _lng != null) {
         req.fields['lat']      = _lat.toString();
         req.fields['lng']      = _lng.toString();
@@ -451,6 +467,95 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
                   required: true),
 
               const SizedBox(height: 16),
+
+              // ── Categoría ─────────────────────────────────────────────────
+              _label('Categoría'),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: _kCategorias.map((cat) {
+                  final sel = _categoria == cat;
+                  return GestureDetector(
+                    onTap: () => setState(() => _categoria = cat),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: sel
+                            ? AppColors.primary.withOpacity(0.12)
+                            : AppColors.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: sel ? AppColors.primary : AppColors.divider,
+                          width: sel ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Text(
+                        cat,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: sel
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: sel
+                              ? AppColors.primary
+                              : AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+
+              const SizedBox(height: 20),
+
+              // ── Color del aviso ───────────────────────────────────────────
+              _label('Color del aviso'),
+              const SizedBox(height: 4),
+              const Text(
+                'Así se verá tu tarjeta en el mapa y en la lista',
+                style: TextStyle(fontSize: 12, color: AppColors.grayMid),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: _kColores.map((c) {
+                  final hex =
+                      '#${c.value.toRadixString(16).substring(2).toUpperCase()}';
+                  final sel = _colorHex.toUpperCase() == hex;
+                  return GestureDetector(
+                    onTap: () => setState(() => _colorHex = hex),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      width: 30,
+                      height: 30,
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        color: c,
+                        shape: BoxShape.circle,
+                        border: sel
+                            ? Border.all(color: Colors.white, width: 2.5)
+                            : null,
+                        boxShadow: sel
+                            ? [
+                                BoxShadow(
+                                    color: c.withOpacity(0.6),
+                                    blurRadius: 6,
+                                    spreadRadius: 1)
+                              ]
+                            : null,
+                      ),
+                      child: sel
+                          ? const Icon(Icons.check_rounded,
+                              color: Colors.white, size: 14)
+                          : null,
+                    ),
+                  );
+                }).toList(),
+              ),
+
+              const SizedBox(height: 20),
 
               // ── Descripción ───────────────────────────────────────────────
               _label('Detalle del servicio'),

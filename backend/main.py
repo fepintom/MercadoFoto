@@ -1354,6 +1354,8 @@ async def crear_servicio_endpoint(
     lat:         float = Form(None),
     lng:         float = Form(None),
     radio_km:    float = Form(5.0),
+    categoria:   str   = Form("Otros"),
+    color_hex:   str   = Form("#007AFF"),
     fotos: Optional[List[UploadFile]] = File(default=None),
 ):
     saved_paths = []
@@ -1373,6 +1375,7 @@ async def crear_servicio_endpoint(
         valor=valor, modalidad=modalidad,
         fotos=saved_paths,
         lat=lat, lng=lng, radio_km=radio_km,
+        categoria=categoria, color_hex=color_hex,
         telefono=telefono, whatsapp=whatsapp,
     )
     return {"id": sid, "ok": True}

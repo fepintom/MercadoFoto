@@ -381,21 +381,25 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
         sublabel: "Envía el producto por WhatsApp",
         accion: (ctx) async {
           Navigator.pop(ctx);
-          // Copia el mensaje — integrar url_launcher aquí en el futuro:
-          // final url = Uri.parse("https://wa.me/?text=${Uri.encodeComponent(msgCompleto)}");
-          // await launchUrl(url, mode: LaunchMode.externalApplication);
-          await Clipboard.setData(ClipboardData(text: msgCompleto));
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text(
-                  "Mensaje copiado · Pégalo en WhatsApp"),
-              backgroundColor: const Color(0xFF25D366),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-          );
+          final waUrl = Uri.parse(
+              "https://wa.me/?text=${Uri.encodeComponent(msgCompleto)}");
+          try {
+            await launchUrl(waUrl,
+                mode: LaunchMode.externalApplication);
+          } catch (_) {
+            // Fallback: copiar al portapapeles
+            await Clipboard.setData(ClipboardData(text: msgCompleto));
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text("Mensaje copiado · Pégalo en WhatsApp"),
+                backgroundColor: const Color(0xFF25D366),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+            );
+          }
         },
       ),
       _OpcionCompartir(
