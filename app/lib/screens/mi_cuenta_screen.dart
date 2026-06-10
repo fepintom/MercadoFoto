@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../services/biometric_service.dart';
 import '../theme/app_theme.dart';
 import 'auth/login_screen.dart';
+import 'ayuda_screen.dart';
 import 'mis_compras_screen.dart';
 import 'mis_publicaciones_screen.dart';
 import 'perfil_info_screen.dart';
@@ -651,6 +652,13 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                               "Favoritos", () {}),
                           _itemMenu(
                               Icons.history_rounded, "Historial", () {}),
+                          _itemMenu(
+                              Icons.support_agent_rounded, "Obtener ayuda",
+                              () => Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) => const AyudaScreen()),
+                                  )),
                           _itemFaceId(),
                         ],
                       ),
