@@ -69,7 +69,9 @@ class _BlueExpressSheetState extends State<BlueExpressSheet> {
       maxChildSize: 0.95,
       minChildSize: 0.5,
       expand: false,
-      builder: (_, scrollCtrl) => Column(
+      builder: (_, scrollCtrl) => Container(
+        color: AppColors.surface,
+        child: Column(
         children: [
           // Handle + header
           Container(
@@ -179,36 +181,39 @@ class _BlueExpressSheetState extends State<BlueExpressSheet> {
                   ),
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
+
+                // Info box — siempre visible
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: _azulBE.withOpacity(0.07),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: _azulBE.withOpacity(0.3)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline, color: _azulBE, size: 16),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Lleva tu paquete a la oficina Blue Express más '
+                          'cercana para coordinar el despacho.',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: _azulBE,
+                              height: 1.4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
                 // Resultados
                 if (_buscado && _puntos.isEmpty)
                   _noResults()
                 else if (_puntos.isNotEmpty) ...[
-                  // Info box
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: _azulBE.withOpacity(0.07),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: _azulBE.withOpacity(0.3)),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.info_outline, color: _azulBE, size: 16),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            'Acércate a la oficina más cercana con tu producto '
-                            'empaquetado para coordinar tu despacho.',
-                            style: TextStyle(fontSize: 12, color: _azulBE),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
                   // Lista de puntos
                   ...List.generate(_puntos.length, (i) {
                     final p = _puntos[i];
@@ -355,7 +360,8 @@ class _BlueExpressSheetState extends State<BlueExpressSheet> {
               ),
             ),
         ],
-      ),
+        ), // Column
+      ), // Container
     );
   }
 
