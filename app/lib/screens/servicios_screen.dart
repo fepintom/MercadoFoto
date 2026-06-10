@@ -9,6 +9,7 @@ import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import 'agregar_servicio_screen.dart';
+import 'delivery_registro_screen.dart';
 import 'mapa_ubicacion_picker_screen.dart';
 import 'servicio_detalle_screen.dart';
 
@@ -22,8 +23,9 @@ class ServiciosScreen extends StatefulWidget {
 class _ServiciosScreenState extends State<ServiciosScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  List<Map<String, dynamic>> _ofrezco = [];
-  List<Map<String, dynamic>> _busco   = [];
+  List<Map<String, dynamic>> _ofrezco   = [];
+  List<Map<String, dynamic>> _busco     = [];
+  List<Map<String, dynamic>> _delivery  = [];
   bool _cargando = true;
   int? _miUserId;
   Timer? _timer;
@@ -31,7 +33,7 @@ class _ServiciosScreenState extends State<ServiciosScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _inicializar();
   }
 
@@ -52,10 +54,12 @@ class _ServiciosScreenState extends State<ServiciosScreen>
     try {
       final o = await ApiService.obtenerServicios(tipo: 'ofrezco');
       final b = await ApiService.obtenerServicios(tipo: 'busco');
+      final d = await ApiService.obtenerDelivery(soloActivos: false);
       if (mounted) {
         setState(() {
-          _ofrezco = o;
-          _busco   = b;
+          _ofrezco  = o;
+          _busco    = b;
+          _delivery = d;
           _cargando = false;
         });
       }
@@ -77,6 +81,16 @@ class _ServiciosScreenState extends State<ServiciosScreen>
           ),
         );
       }
+      return;
+    }
+    // Tab 3 = Delivery → ir a pantalla de registro
+    if (_tabController.index == 3) {
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const DeliveryRegistroScreen()),
+      );
+      _cargar();
       return;
     }
     // Pasar el tipo según el tab activo (0=Ofrezco, 1=Busco, 2=Mapa→Ofrezco)
@@ -131,6 +145,7 @@ class _ServiciosScreenState extends State<ServiciosScreen>
                     Tab(text: 'Ofrezco'),
                     Tab(text: 'Busco'),
                     Tab(text: 'Mapa'),
+                    Tab(text: 'Delivery'),
                   ],
                 ),
               ],
@@ -161,6 +176,11 @@ class _ServiciosScreenState extends State<ServiciosScreen>
                         miUserId: _miUserId,
                         onUbicacionActualizada: _cargar,
                       ),
+                      _DeliveryTab(
+                        delivery: _delivery,
+                        miUserId: _miUserId,
+                        onRefresh: _cargar,
+                      ),
                     ],
                   ),
           ),
@@ -171,7 +191,9 @@ class _ServiciosScreenState extends State<ServiciosScreen>
         builder: (_, __) {
           final label = _tabController.index == 1
               ? 'Publicar solicitud'
-              : 'Publicar servicio';
+              : _tabController.index == 3
+                  ? 'Registrarme como Delivery'
+                  : 'Publicar servicio';
           return FloatingActionButton.extended(
             onPressed: _irAAgregar,
             backgroundColor: AppColors.primary,
@@ -268,15 +290,31 @@ class _ListaServicios extends StatelessWidget {
       );
     }
 
+    final compacta = servicios.length > 3;
+
     return RefreshIndicator(
       onRefresh: onRefresh,
       color: AppColors.primary,
-      child: ListView.separated(
-        padding: const EdgeInsets.all(12),
-        itemCount: servicios.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (_, i) => _TarjetaServicio(servicio: servicios[i]),
-      ),
+      child: compacta
+          ? GridView.builder(
+              padding: const EdgeInsets.all(10),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 0.72,
+              ),
+              itemCount: servicios.length,
+              itemBuilder: (_, i) =>
+                  _TarjetaServicio(servicio: servicios[i], compacta: true),
+            )
+          : ListView.separated(
+              padding: const EdgeInsets.all(12),
+              itemCount: servicios.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (_, i) =>
+                  _TarjetaServicio(servicio: servicios[i], compacta: false),
+            ),
     );
   }
 }
@@ -285,7 +323,8 @@ class _ListaServicios extends StatelessWidget {
 
 class _TarjetaServicio extends StatelessWidget {
   final Map<String, dynamic> servicio;
-  const _TarjetaServicio({required this.servicio});
+  final bool compacta;
+  const _TarjetaServicio({required this.servicio, this.compacta = false});
 
   @override
   Widget build(BuildContext context) {
@@ -302,6 +341,12 @@ class _TarjetaServicio extends StatelessWidget {
     final comunas   = servicio['comunas'] as String? ?? '';
     final cardColor = _hexColor(servicio['color_hex'] as String?);
     final prefix    = tipo == 'ofrezco' ? 'Ofrezco' : 'Busco';
+
+    if (compacta) return _buildCompacta(context,
+        nombre: nombre, fotoUrl: fotoUrl, tipo: tipo, titulo: titulo,
+        rating: rating, numVal: numVal, modalidad: modalidad, valor: valor,
+        fotos: fotos, verificado: verificado, comunas: comunas,
+        cardColor: cardColor, prefix: prefix);
 
     return Container(
       decoration: BoxDecoration(
@@ -551,6 +596,373 @@ class _TarjetaServicio extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  // ── Vista compacta (2 columnas) ───────────────────────────────────────────
+  Widget _buildCompacta(
+    BuildContext context, {
+    required String nombre, required String fotoUrl,
+    required String tipo, required String titulo,
+    required double rating, required int numVal,
+    required String modalidad, required double valor,
+    required List fotos, required bool verificado,
+    required String comunas, required Color cardColor, required String prefix,
+  }) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => ServicioDetalleScreen(servicio: servicio)),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: cardColor.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(14),
+          border: Border(
+            left:   BorderSide(color: cardColor, width: 3),
+            top:    BorderSide(color: AppColors.divider, width: 0.5),
+            right:  BorderSide(color: AppColors.divider, width: 0.5),
+            bottom: BorderSide(color: AppColors.divider, width: 0.5),
+          ),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 6, offset: const Offset(0, 2))
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Imagen superior
+            ClipRRect(
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(12)),
+              child: fotos.isNotEmpty
+                  ? _media(fotos.first as String, double.infinity, 90)
+                  : _avatar(fotoUrl, nombre, double.infinity, 90),
+            ),
+
+            // Info
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 7, 8, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Badge tipo
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: cardColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        prefix,
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: cardColor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+
+                    // Título
+                    Text(
+                      titulo,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+
+                    // Espacio flexible
+                    const Spacer(),
+
+                    // Nombre usuario
+                    Text(
+                      nombre,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 10, color: AppColors.grayMid),
+                    ),
+
+                    // Precio + estrellas
+                    Row(
+                      children: [
+                        if (valor > 0)
+                          Expanded(
+                            child: Text(
+                              '\$${valor.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]}.')}',
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: cardColor,
+                              ),
+                            ),
+                          ),
+                        _Estrellas(rating: rating, size: 10),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Tab Delivery OkVenta ──────────────────────────────────────────────────────
+
+class _DeliveryTab extends StatefulWidget {
+  final List<Map<String, dynamic>> delivery;
+  final int? miUserId;
+  final Future<void> Function() onRefresh;
+
+  const _DeliveryTab({
+    required this.delivery,
+    required this.miUserId,
+    required this.onRefresh,
+  });
+
+  @override
+  State<_DeliveryTab> createState() => _DeliveryTabState();
+}
+
+class _DeliveryTabState extends State<_DeliveryTab> {
+  bool _toggling = false;
+
+  Future<void> _toggleActivo(Map<String, dynamic> d) async {
+    if (_toggling) return;
+    setState(() => _toggling = true);
+    final nuevoActivo = !((d['activo'] as int? ?? 1) == 1);
+    try {
+      await ApiService.toggleDeliveryActivo(
+          d['id'] as int, widget.miUserId!, nuevoActivo);
+      await widget.onRefresh();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _toggling = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.delivery.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.delivery_dining_outlined,
+                  size: 64, color: AppColors.grayMid.withOpacity(0.4)),
+              const SizedBox(height: 16),
+              const Text(
+                'No hay deliveries registrados aún',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Toca el botón + para registrarte como Delivery OkVenta',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: AppColors.grayMid),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: widget.onRefresh,
+      color: AppColors.primary,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(12),
+        itemCount: widget.delivery.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (_, i) {
+          final d = widget.delivery[i];
+          final esMio = widget.miUserId != null &&
+              d['user_id'] == widget.miUserId;
+          final activo = (d['activo'] as int? ?? 1) == 1;
+          final fotoUrl = d['foto_perfil'] as String? ?? '';
+          final nombre = d['nombre'] as String? ?? 'Sin nombre';
+          final vehiculo = d['tipo_vehiculo'] as String? ?? 'bicicleta';
+          final comunas  = d['radio_km'] != null
+              ? 'Radio: ${(d['radio_km'] as num).toStringAsFixed(0)} km'
+              : '';
+
+          return Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: activo
+                    ? Colors.green.withOpacity(0.35)
+                    : AppColors.divider,
+              ),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2))
+              ],
+            ),
+            child: ListTile(
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              leading: Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: AppColors.primary.withOpacity(0.15),
+                    backgroundImage: fotoUrl.isNotEmpty
+                        ? NetworkImage('${ApiService.baseUrl}$fotoUrl')
+                        : null,
+                    child: fotoUrl.isEmpty
+                        ? Text(
+                            nombre[0].toUpperCase(),
+                            style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary),
+                          )
+                        : null,
+                  ),
+                  Positioned(
+                    bottom: 0, right: 0,
+                    child: Container(
+                      width: 14, height: 14,
+                      decoration: BoxDecoration(
+                        color: activo ? Colors.green : AppColors.grayMid,
+                        shape: BoxShape.circle,
+                        border:
+                            Border.all(color: Colors.white, width: 1.5),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(nombre,
+                        style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary)),
+                  ),
+                  _vehiculoIcon(vehiculo),
+                ],
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: activo
+                              ? Colors.green.withOpacity(0.1)
+                              : AppColors.grayMid.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          activo ? '✅ Disponible' : '⏸ Inactivo',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: activo ? Colors.green : AppColors.grayMid,
+                          ),
+                        ),
+                      ),
+                      if (comunas.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Text(comunas,
+                            style: const TextStyle(
+                                fontSize: 11, color: AppColors.grayMid)),
+                      ],
+                    ],
+                  ),
+                  if (esMio) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _toggling ? null : () => _toggleActivo(d),
+                        icon: Icon(
+                            activo
+                                ? Icons.pause_circle_outline
+                                : Icons.play_circle_outline,
+                            size: 16),
+                        label: Text(
+                          activo ? 'Pausar disponibilidad' : 'Activarme',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor:
+                              activo ? Colors.orange : Colors.green,
+                          side: BorderSide(
+                              color: activo
+                                  ? Colors.orange
+                                  : Colors.green),
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              onTap: esMio
+                  ? () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => DeliveryRegistroScreen(
+                              perfilExistente: d),
+                        ),
+                      );
+                      widget.onRefresh();
+                    }
+                  : null,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _vehiculoIcon(String v) {
+    final icons = {
+      'bicicleta': Icons.directions_bike_rounded,
+      'moto':      Icons.two_wheeler_rounded,
+      'auto':      Icons.directions_car_rounded,
+    };
+    return Icon(icons[v] ?? Icons.delivery_dining_outlined,
+        size: 20, color: AppColors.grayMid);
   }
 }
 

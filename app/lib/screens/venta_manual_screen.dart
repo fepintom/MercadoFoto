@@ -26,6 +26,10 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
   bool _publicando = false;
   final _picker = ImagePicker();
 
+  // ── Delivery ──────────────────────────────────────────────────────────
+  int? _deliveryId;
+  List<Map<String, dynamic>> _deliveryWorkers = [];
+
   static const _categorias = [
     'Electrónica',
     'Automotriz',
@@ -34,6 +38,19 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
     'Mascotas',
     'General',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarDelivery();
+  }
+
+  Future<void> _cargarDelivery() async {
+    try {
+      final workers = await ApiService.obtenerDelivery(soloActivos: true);
+      if (mounted) setState(() => _deliveryWorkers = workers);
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -126,6 +143,9 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
       request.fields["descripcion"] = _descripcion.text.trim();
       request.fields["precio"] = _precio.text.trim();
       request.fields["categoria"] = _categoria;
+      if (_deliveryId != null) {
+        request.fields["delivery_id"] = '$_deliveryId';
+      }
 
       final session = await SessionService.obtenerSesion();
       if (session["user_id"] != null) {
@@ -272,6 +292,7 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
                 _buildCampoMultilinea("Descripción", _descripcion),
                 _buildCampoPrecio(),
                 _buildDropdownCategoria(),
+                _buildDeliverySection(),
                 const SizedBox(height: 28),
                 SizedBox(
                   width: double.infinity,
@@ -498,6 +519,128 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
     );
   }
 
+  // ── Delivery selector ──────────────────────────────────────────────────────
+  Widget _buildDeliverySection() {
+    final selectedWorker = _deliveryId == null
+        ? null
+        : _deliveryWorkers.where((d) => d['id'] == _deliveryId).firstOrNull;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+        const Text(
+          '🚴 Método de entrega',
+          style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary),
+        ),
+        const SizedBox(height: 10),
+
+        // Yo entrego
+        GestureDetector(
+          onTap: () => setState(() => _deliveryId = null),
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: _deliveryId == null
+                  ? AppColors.primary.withOpacity(0.08)
+                  : AppColors.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: _deliveryId == null
+                    ? AppColors.primary
+                    : AppColors.divider,
+                width: _deliveryId == null ? 1.5 : 0.5,
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.person_outline, color: AppColors.grayMid),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text('Yo hago la entrega',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary)),
+                ),
+                if (_deliveryId == null)
+                  const Icon(Icons.check_circle_rounded,
+                      color: AppColors.primary, size: 18),
+              ],
+            ),
+          ),
+        ),
+
+        // Delivery OkVenta
+        if (_deliveryWorkers.isNotEmpty)
+          GestureDetector(
+            onTap: () async {
+              final elegido =
+                  await showModalBottomSheet<Map<String, dynamic>>(
+                context: context,
+                backgroundColor: AppColors.surface,
+                shape: const RoundedRectangleBorder(
+                    borderRadius:
+                        BorderRadius.vertical(top: Radius.circular(20))),
+                builder: (_) =>
+                    _DeliveryPickerSheet(workers: _deliveryWorkers),
+              );
+              if (elegido != null && mounted) {
+                setState(() => _deliveryId = elegido['id'] as int?);
+              }
+            },
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              decoration: BoxDecoration(
+                color: _deliveryId != null
+                    ? Colors.green.withOpacity(0.06)
+                    : AppColors.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: _deliveryId != null
+                      ? Colors.green.withOpacity(0.5)
+                      : AppColors.divider,
+                  width: 0.5,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.delivery_dining_rounded,
+                      color: _deliveryId != null
+                          ? Colors.green
+                          : AppColors.grayMid),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: selectedWorker != null
+                        ? Text(
+                            '${selectedWorker['nombre']} — ${selectedWorker['tipo_vehiculo']}',
+                            style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary),
+                          )
+                        : const Text(
+                            'Delivery OkVenta — elegir...',
+                            style: TextStyle(
+                                fontSize: 14, color: AppColors.grayMid),
+                          ),
+                  ),
+                  const Icon(Icons.chevron_right,
+                      color: AppColors.grayMid, size: 16),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   InputDecoration _inputDeco(String label) {
     return InputDecoration(
       labelText: label,
@@ -520,6 +663,118 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
         borderSide:
             const BorderSide(color: AppColors.primary, width: 1.5),
       ),
+    );
+  }
+}
+
+// ── Delivery picker bottom sheet ──────────────────────────────────────────────
+
+class _DeliveryPickerSheet extends StatelessWidget {
+  final List<Map<String, dynamic>> workers;
+  const _DeliveryPickerSheet({required this.workers});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 40, height: 4,
+          margin: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+              color: AppColors.divider,
+              borderRadius: BorderRadius.circular(2)),
+        ),
+        const Padding(
+          padding: EdgeInsets.only(bottom: 12),
+          child: Text(
+            'Seleccionar Delivery OkVenta',
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary),
+          ),
+        ),
+        Flexible(
+          child: ListView.separated(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            itemCount: workers.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (_, i) {
+              final d = workers[i];
+              final nombre   = d['nombre'] as String? ?? 'Delivery';
+              final vehiculo = d['tipo_vehiculo'] as String? ?? 'bicicleta';
+              final radio    = (d['radio_km'] as num?)?.toStringAsFixed(0) ?? '5';
+              final fotoUrl  = d['foto_perfil'] as String? ?? '';
+              final iconos = {
+                'bicicleta': Icons.directions_bike_rounded,
+                'moto':      Icons.two_wheeler_rounded,
+                'auto':      Icons.directions_car_rounded,
+              };
+              return GestureDetector(
+                onTap: () => Navigator.pop(context, d),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.divider),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundColor:
+                            AppColors.primary.withOpacity(0.1),
+                        backgroundImage: fotoUrl.isNotEmpty
+                            ? NetworkImage(
+                                '${ApiService.baseUrl}$fotoUrl')
+                            : null,
+                        child: fotoUrl.isEmpty
+                            ? Text(nombre[0].toUpperCase(),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary))
+                            : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(nombre,
+                                style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary)),
+                            Row(
+                              children: [
+                                Icon(
+                                    iconos[vehiculo] ??
+                                        Icons.delivery_dining_outlined,
+                                    size: 12,
+                                    color: AppColors.grayMid),
+                                const SizedBox(width: 4),
+                                Text('$vehiculo  •  $radio km',
+                                    style: const TextStyle(
+                                        fontSize: 11,
+                                        color: AppColors.grayMid)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right,
+                          color: AppColors.grayMid, size: 16),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

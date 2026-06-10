@@ -117,6 +117,12 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
   final _anchoCtrl = TextEditingController();
   final _pesoCtrl  = TextEditingController();
 
+  // ── Delivery ──────────────────────────────────────────────────────────
+  /// null = yo hago la entrega; non-null = id del delivery OkVenta
+  int? _deliveryId;
+  List<Map<String, dynamic>> _deliveryWorkers = [];
+  bool _cargandoDelivery = false;
+
   @override
   void initState() {
     super.initState();
@@ -143,6 +149,18 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
     // Auto-detectar talla desde las dimensiones generadas por IA
     final dimIA = jsonData["dimensiones"] ?? "";
     _tallaId = _detectarTallaDesdeIA(dimIA);
+
+    // Cargar deliveries disponibles
+    _cargarDelivery();
+  }
+
+  Future<void> _cargarDelivery() async {
+    setState(() => _cargandoDelivery = true);
+    try {
+      final workers = await ApiService.obtenerDelivery(soloActivos: true);
+      if (mounted) setState(() => _deliveryWorkers = workers);
+    } catch (_) {}
+    if (mounted) setState(() => _cargandoDelivery = false);
   }
 
   @override
@@ -439,6 +457,10 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
       if (ubicacion != null) {
         request.fields["lat"] = ubicacion['lat'].toString();
         request.fields["lng"] = ubicacion['lng'].toString();
+      }
+      // Delivery seleccionado
+      if (_deliveryId != null) {
+        request.fields["delivery_id"] = '$_deliveryId';
       }
 
       // Foto principal + extras
@@ -980,6 +1002,192 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
     );
   }
 
+  // ── DELIVERY SELECTOR ────────────────────────────────────────────────────
+  Widget _buildDeliverySection() {
+    final selectedWorker = _deliveryId == null
+        ? null
+        : _deliveryWorkers.where((d) => d['id'] == _deliveryId).firstOrNull;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+        const Padding(
+          padding: EdgeInsets.only(bottom: 10),
+          child: Text(
+            '🚴 Método de entrega',
+            style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary),
+          ),
+        ),
+
+        // Opción 1: Yo entrego
+        GestureDetector(
+          onTap: () => setState(() => _deliveryId = null),
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: _deliveryId == null
+                  ? AppColors.primary.withOpacity(0.08)
+                  : AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _deliveryId == null
+                    ? AppColors.primary
+                    : AppColors.divider,
+                width: _deliveryId == null ? 1.5 : 0.5,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.person_outline,
+                    color: _deliveryId == null
+                        ? AppColors.primary
+                        : AppColors.grayMid),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Yo hago la entrega',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary)),
+                      Text('Me encargo personalmente del envío',
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.grayMid)),
+                    ],
+                  ),
+                ),
+                if (_deliveryId == null)
+                  const Icon(Icons.check_circle_rounded,
+                      color: AppColors.primary, size: 20),
+              ],
+            ),
+          ),
+        ),
+
+        // Opción 2: Elegir delivery OkVenta
+        if (_cargandoDelivery)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(
+                child:
+                    CircularProgressIndicator(color: AppColors.primary)),
+          )
+        else if (_deliveryWorkers.isEmpty)
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.grayMid.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.divider, width: 0.5),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.delivery_dining_outlined,
+                    color: AppColors.grayMid),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Sin deliveries OkVenta disponibles por el momento',
+                    style: TextStyle(
+                        fontSize: 13, color: AppColors.grayMid),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          GestureDetector(
+            onTap: () => _mostrarSelectorDelivery(),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: _deliveryId != null
+                    ? Colors.green.withOpacity(0.06)
+                    : AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _deliveryId != null
+                      ? Colors.green.withOpacity(0.5)
+                      : AppColors.divider,
+                  width: 0.5,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.delivery_dining_rounded,
+                      color: _deliveryId != null
+                          ? Colors.green
+                          : AppColors.grayMid),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: selectedWorker != null
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                selectedWorker['nombre'] as String? ?? '',
+                                style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary),
+                              ),
+                              Text(
+                                '${selectedWorker['tipo_vehiculo'] ?? ''} • ${(selectedWorker['radio_km'] as num?)?.toStringAsFixed(0) ?? '5'} km de radio',
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.grayMid),
+                              ),
+                            ],
+                          )
+                        : const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Delivery OkVenta',
+                                  style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textPrimary)),
+                              Text(
+                                  'Seleccionar un delivery de la red OkVenta',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.grayMid)),
+                            ],
+                          ),
+                  ),
+                  Icon(Icons.chevron_right,
+                      color: AppColors.grayMid, size: 18),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _mostrarSelectorDelivery() async {
+    final elegido = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _SelectorDeliverySheet(workers: _deliveryWorkers),
+    );
+    if (elegido != null && mounted) {
+      setState(() => _deliveryId = elegido['id'] as int?);
+    }
+  }
+
   // ── TALLA SELECTOR (card tappable → bottom sheet) ─────────────────────
   Widget _buildTallaSection() {
     final tallaActual = _tallas.firstWhere(
@@ -1425,6 +1633,9 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                       // ── Precio interactivo con sugerencia IA ──────
                       _buildPrecioInteractivo(),
 
+                      // ── Selector de Delivery ──────────────────────
+                      _buildDeliverySection(),
+
                       const SizedBox(height: 28),
 
                       SizedBox(
@@ -1455,6 +1666,117 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                 ),
               ],
             ),
+    );
+  }
+}
+
+// ── Bottom sheet selector de delivery ────────────────────────────────────────
+
+class _SelectorDeliverySheet extends StatelessWidget {
+  final List<Map<String, dynamic>> workers;
+  const _SelectorDeliverySheet({required this.workers});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 40, height: 4,
+          margin: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+              color: AppColors.divider,
+              borderRadius: BorderRadius.circular(2)),
+        ),
+        const Padding(
+          padding: EdgeInsets.only(bottom: 12),
+          child: Text(
+            'Seleccionar Delivery OkVenta',
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary),
+          ),
+        ),
+        Flexible(
+          child: ListView.separated(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            itemCount: workers.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (_, i) {
+              final d = workers[i];
+              final nombre   = d['nombre'] as String? ?? 'Delivery';
+              final vehiculo = d['tipo_vehiculo'] as String? ?? 'bicicleta';
+              final radio    = (d['radio_km'] as num?)?.toStringAsFixed(0) ?? '5';
+              final fotoUrl  = d['foto_perfil'] as String? ?? '';
+              final iconos = {
+                'bicicleta': Icons.directions_bike_rounded,
+                'moto':      Icons.two_wheeler_rounded,
+                'auto':      Icons.directions_car_rounded,
+              };
+
+              return GestureDetector(
+                onTap: () => Navigator.pop(context, d),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.divider),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 22,
+                        backgroundColor:
+                            AppColors.primary.withOpacity(0.1),
+                        backgroundImage: fotoUrl.isNotEmpty
+                            ? NetworkImage(
+                                '${ApiService.baseUrl}$fotoUrl')
+                            : null,
+                        child: fotoUrl.isEmpty
+                            ? Text(nombre[0].toUpperCase(),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary))
+                            : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(nombre,
+                                style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary)),
+                            Row(
+                              children: [
+                                Icon(iconos[vehiculo] ??
+                                    Icons.delivery_dining_outlined,
+                                    size: 13, color: AppColors.grayMid),
+                                const SizedBox(width: 4),
+                                Text('$vehiculo  •  radio $radio km',
+                                    style: const TextStyle(
+                                        fontSize: 11,
+                                        color: AppColors.grayMid)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right,
+                          color: AppColors.grayMid, size: 16),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

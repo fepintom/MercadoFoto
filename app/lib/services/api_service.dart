@@ -383,4 +383,41 @@ class ApiService {
   static Future<void> disputarOrden(int ordenId) async {
     await http.post(Uri.parse('$baseUrl/ordenes/$ordenId/disputar'));
   }
+
+  // ──────────────────────────────────────────────
+  // DELIVERY OKVENTA
+  // ──────────────────────────────────────────────
+
+  static Future<List<Map<String, dynamic>>> obtenerDelivery(
+      {bool soloActivos = true}) async {
+    final uri = Uri.parse('$baseUrl/delivery')
+        .replace(queryParameters: {'solo_activos': soloActivos.toString()});
+    final response = await http.get(uri);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      return List<Map<String, dynamic>>.from(data);
+    }
+    return [];
+  }
+
+  static Future<Map<String, dynamic>?> obtenerDeliveryUsuario(
+      int userId) async {
+    final response =
+        await http.get(Uri.parse('$baseUrl/delivery/usuario/$userId'));
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(
+          jsonDecode(utf8.decode(response.bodyBytes)));
+    }
+    return null;
+  }
+
+  static Future<bool> toggleDeliveryActivo(
+      int deliveryId, int userId, bool activo) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/delivery/$deliveryId/estado'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'user_id': userId, 'activo': activo}),
+    );
+    return response.statusCode == 200;
+  }
 }

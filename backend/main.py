@@ -152,6 +152,16 @@ from database.servicios import (
     actualizar_ubicacion,
 )
 
+from database.delivery import (
+    init_delivery_db,
+    crear_perfil_delivery,
+    obtener_perfiles_delivery,
+    obtener_perfil_delivery_usuario,
+    obtener_perfil_delivery_por_id,
+    actualizar_estado_delivery,
+    actualizar_ubicacion_delivery,
+)
+
 from database.users import guardar_fcm_token, obtener_fcm_token
 from services.fcm_service import enviar_push
 
@@ -279,6 +289,7 @@ init_favoritos_db()
 init_chat_db()
 init_ordenes_db()
 init_servicios_db()
+init_delivery_db()
 
 # --------------------------------------------------
 # CORS
@@ -496,6 +507,7 @@ async def publicar_producto(
     subcategoria: Optional[str] = Form(None),
     lat: Optional[float] = Form(None),
     lng: Optional[float] = Form(None),
+    delivery_id: Optional[int] = Form(None),
 ):
     if not guest_id and not user_id:
         raise HTTPException(
@@ -539,6 +551,7 @@ async def publicar_producto(
             imagenes_extra,
             lat,
             lng,
+            delivery_id,
         )
 
         return {
@@ -1454,6 +1467,101 @@ async def subir_certificado(
         "mensaje":    "Certificado validado automáticamente ✅" if verificado
                       else "Certificado recibido. Verificación en proceso 🔄",
     }
+
+
+# ── CRUD delivery ─────────────────────────────────────────────────────────────
+
+@app.post("/delivery")
+async def registrar_delivery(
+    user_id:       int   = Form(...),
+    nombre:        str   = Form(...),
+    edad:          int   = Form(0),
+    email:         str   = Form(""),
+    rut:           str   = Form(""),
+    telefono:      str   = Form(""),
+    direccion:     str   = Form(""),
+    tipo_vehiculo: str   = Form("bicicleta"),
+    patente:       str   = Form(""),
+    banco:         str   = Form(""),
+    cuenta_banco:  str   = Form(""),
+    lat:           float = Form(None),
+    lng:           float = Form(None),
+    radio_km:      float = Form(5.0),
+    foto_perfil:     Optional[UploadFile] = File(default=None),
+    foto_vehiculo:   Optional[UploadFile] = File(default=None),
+    foto_ci_frente:  Optional[UploadFile] = File(default=None),
+    foto_ci_reverso: Optional[UploadFile] = File(default=None),
+    selfie_ci:       Optional[UploadFile] = File(default=None),
+):
+    async def _save(upload: Optional[UploadFile], prefix: str) -> Optional[str]:
+        if upload is None or not upload.filename:
+            return None
+        ext  = os.path.splitext(upload.filename)[1].lower() or ".jpg"
+        name = f"{prefix}_{user_id}_{secrets.token_hex(8)}{ext}"
+        path = os.path.join(UPLOADS_DIR, name)
+        with open(path, "wb") as f:
+            f.write(await upload.read())
+        return f"/uploads/{name}"
+
+    p_perfil    = await _save(foto_perfil,     "dlv_perfil")
+    p_vehiculo  = await _save(foto_vehiculo,   "dlv_vehiculo")
+    p_ci_frente = await _save(foto_ci_frente,  "dlv_ci_f")
+    p_ci_rev    = await _save(foto_ci_reverso, "dlv_ci_r")
+    p_selfie    = await _save(selfie_ci,       "dlv_selfie")
+
+    did = crear_perfil_delivery(
+        user_id=user_id, nombre=nombre, edad=edad, email=email,
+        rut=rut, telefono=telefono, direccion=direccion,
+        tipo_vehiculo=tipo_vehiculo, patente=patente,
+        banco=banco, cuenta_banco=cuenta_banco,
+        foto_perfil=p_perfil, foto_vehiculo=p_vehiculo,
+        foto_ci_frente=p_ci_frente, foto_ci_reverso=p_ci_rev, selfie_ci=p_selfie,
+        lat=lat, lng=lng, radio_km=radio_km,
+    )
+    return {"id": did, "ok": True}
+
+
+@app.get("/delivery")
+def listar_delivery(solo_activos: bool = True):
+    return obtener_perfiles_delivery(solo_activos=solo_activos)
+
+
+@app.get("/delivery/usuario/{user_id}")
+def delivery_de_usuario(user_id: int):
+    perfil = obtener_perfil_delivery_usuario(user_id)
+    if not perfil:
+        raise HTTPException(status_code=404, detail="Sin perfil de delivery")
+    return perfil
+
+
+@app.get("/delivery/{delivery_id}")
+def detalle_delivery(delivery_id: int):
+    perfil = obtener_perfil_delivery_por_id(delivery_id)
+    if not perfil:
+        raise HTTPException(status_code=404, detail="No encontrado")
+    return perfil
+
+
+@app.patch("/delivery/{delivery_id}/estado")
+def toggle_delivery(delivery_id: int, body: dict):
+    user_id = body.get("user_id")
+    activo  = body.get("activo", True)
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id requerido")
+    actualizar_estado_delivery(delivery_id, user_id, activo)
+    return {"ok": True}
+
+
+@app.patch("/delivery/{delivery_id}/ubicacion")
+def ubicacion_delivery(delivery_id: int, body: dict):
+    user_id  = body.get("user_id")
+    lat      = body.get("lat")
+    lng      = body.get("lng")
+    radio_km = float(body.get("radio_km", 5))
+    if not user_id or lat is None or lng is None:
+        raise HTTPException(status_code=400, detail="Datos incompletos")
+    actualizar_ubicacion_delivery(delivery_id, user_id, lat, lng, radio_km)
+    return {"ok": True}
 
 
 # ==============================================================================

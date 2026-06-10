@@ -38,6 +38,7 @@ def init_publicaciones_db():
         "imagenes_extra TEXT",
         "lat REAL",
         "lng REAL",
+        "delivery_id INTEGER",
     ]:
         try:
             cursor.execute(f"ALTER TABLE publicaciones ADD COLUMN {col}")
@@ -65,6 +66,7 @@ def guardar_publicacion(
     imagenes_extra=None,
     lat=None,
     lng=None,
+    delivery_id=None,
 ):
 
     conn = sqlite3.connect(DB)
@@ -83,9 +85,10 @@ def guardar_publicacion(
             subcategoria,
             imagenes_extra,
             lat,
-            lng
+            lng,
+            delivery_id
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         titulo,
         descripcion,
@@ -99,6 +102,7 @@ def guardar_publicacion(
         imagenes_extra,
         lat,
         lng,
+        delivery_id,
     ))
 
     conn.commit()
