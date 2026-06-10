@@ -12,8 +12,8 @@ def guardar_imagen_procesada(image_bytes: bytes) -> str:
     # Crear carpeta uploads si no existe
     os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-    # Generar nombre único
-    filename = f"{uuid.uuid4().hex}.png"
+    # Generar nombre único (.jpg — mucho más liviano que .png)
+    filename = f"{uuid.uuid4().hex}.jpg"
     file_path = os.path.join(UPLOAD_DIR, filename)
 
     # Guardar archivo

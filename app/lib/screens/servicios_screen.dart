@@ -290,31 +290,15 @@ class _ListaServicios extends StatelessWidget {
       );
     }
 
-    final compacta = servicios.length > 3;
-
     return RefreshIndicator(
       onRefresh: onRefresh,
       color: AppColors.primary,
-      child: compacta
-          ? GridView.builder(
-              padding: const EdgeInsets.all(10),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 0.72,
-              ),
-              itemCount: servicios.length,
-              itemBuilder: (_, i) =>
-                  _TarjetaServicio(servicio: servicios[i], compacta: true),
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.all(12),
-              itemCount: servicios.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (_, i) =>
-                  _TarjetaServicio(servicio: servicios[i], compacta: false),
-            ),
+      child: ListView.separated(
+        padding: const EdgeInsets.all(12),
+        itemCount: servicios.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        itemBuilder: (_, i) => _TarjetaServicio(servicio: servicios[i]),
+      ),
     );
   }
 }
@@ -323,8 +307,7 @@ class _ListaServicios extends StatelessWidget {
 
 class _TarjetaServicio extends StatelessWidget {
   final Map<String, dynamic> servicio;
-  final bool compacta;
-  const _TarjetaServicio({required this.servicio, this.compacta = false});
+  const _TarjetaServicio({required this.servicio});
 
   @override
   Widget build(BuildContext context) {
@@ -339,21 +322,15 @@ class _TarjetaServicio extends StatelessWidget {
     final fotos     = servicio['fotos'] as List? ?? [];
     final verificado = servicio['certificado_verificado'] as bool? ?? false;
     final comunas   = servicio['comunas'] as String? ?? '';
-    final cardColor = _hexColor(servicio['color_hex'] as String?);
+    final tipoColor = tipo == 'ofrezco' ? AppColors.primary : Colors.orange;
     final prefix    = tipo == 'ofrezco' ? 'Ofrezco' : 'Busco';
-
-    if (compacta) return _buildCompacta(context,
-        nombre: nombre, fotoUrl: fotoUrl, tipo: tipo, titulo: titulo,
-        rating: rating, numVal: numVal, modalidad: modalidad, valor: valor,
-        fotos: fotos, verificado: verificado, comunas: comunas,
-        cardColor: cardColor, prefix: prefix);
 
     return Container(
       decoration: BoxDecoration(
-        color: cardColor.withOpacity(0.04),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border(
-          left:   BorderSide(color: cardColor, width: 4),
+          left:   BorderSide(color: tipoColor, width: 4),
           top:    BorderSide(color: AppColors.divider, width: 0.5),
           right:  BorderSide(color: AppColors.divider, width: 0.5),
           bottom: BorderSide(color: AppColors.divider, width: 0.5),
@@ -451,7 +428,7 @@ class _TarjetaServicio extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
-                            color: cardColor,
+                            color: tipoColor,
                           ),
                         ),
                         TextSpan(
@@ -493,10 +470,10 @@ class _TarjetaServicio extends StatelessWidget {
                       if (valor > 0)
                         Text(
                           '\$${valor.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]}.')} / $modalidad',
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.primary),
+                              color: tipoColor),
                         ),
                       const Spacer(),
 
@@ -598,127 +575,6 @@ class _TarjetaServicio extends StatelessWidget {
     );
   }
 
-  // ── Vista compacta (2 columnas) ───────────────────────────────────────────
-  Widget _buildCompacta(
-    BuildContext context, {
-    required String nombre, required String fotoUrl,
-    required String tipo, required String titulo,
-    required double rating, required int numVal,
-    required String modalidad, required double valor,
-    required List fotos, required bool verificado,
-    required String comunas, required Color cardColor, required String prefix,
-  }) {
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (_) => ServicioDetalleScreen(servicio: servicio)),
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: cardColor.withOpacity(0.04),
-          borderRadius: BorderRadius.circular(14),
-          border: Border(
-            left:   BorderSide(color: cardColor, width: 3),
-            top:    BorderSide(color: AppColors.divider, width: 0.5),
-            right:  BorderSide(color: AppColors.divider, width: 0.5),
-            bottom: BorderSide(color: AppColors.divider, width: 0.5),
-          ),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 6, offset: const Offset(0, 2))
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Imagen superior
-            ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(12)),
-              child: fotos.isNotEmpty
-                  ? _media(fotos.first as String, double.infinity, 90)
-                  : _avatar(fotoUrl, nombre, double.infinity, 90),
-            ),
-
-            // Info
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 7, 8, 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Badge tipo
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: cardColor.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        prefix,
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          color: cardColor,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-
-                    // Título
-                    Text(
-                      titulo,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-
-                    // Espacio flexible
-                    const Spacer(),
-
-                    // Nombre usuario
-                    Text(
-                      nombre,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: 10, color: AppColors.grayMid),
-                    ),
-
-                    // Precio + estrellas
-                    Row(
-                      children: [
-                        if (valor > 0)
-                          Expanded(
-                            child: Text(
-                              '\$${valor.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]}.')}',
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: cardColor,
-                              ),
-                            ),
-                          ),
-                        _Estrellas(rating: rating, size: 10),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 // ── Tab Delivery OkVenta ──────────────────────────────────────────────────────

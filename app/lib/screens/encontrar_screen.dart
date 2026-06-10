@@ -34,11 +34,10 @@ class _EncontrarScreenState extends State<EncontrarScreen>
   // ── Filtros por categoría ─────────────────────────────────────────────────
   Set<String> _categoriasSeleccionadas = {};
   bool _filtroCategoriasActivo = false;
+  bool _panelFiltroAbierto     = false;
 
   List<Map<String, dynamic>> get _productosVisibles {
-    if (!_filtroCategoriasActivo || _categoriasSeleccionadas.isEmpty) {
-      return _productosCercanos;
-    }
+    if (_categoriasSeleccionadas.isEmpty) return _productosCercanos;
     return _productosCercanos.where((p) {
       final cat = (p['categoria'] ?? '').toString();
       return _categoriasSeleccionadas.contains(cat);
@@ -645,106 +644,7 @@ class _EncontrarScreenState extends State<EncontrarScreen>
 
     return Column(
       children: [
-        // ── Barra de filtros por categoría ────────────────────────────
-        if (_categoriasDisponibles.isNotEmpty)
-          Container(
-            color: AppColors.surface,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                children: [
-                  // Toggle activar/desactivar filtros
-                  GestureDetector(
-                    onTap: () => setState(() {
-                      _filtroCategoriasActivo = !_filtroCategoriasActivo;
-                      if (!_filtroCategoriasActivo) _categoriasSeleccionadas.clear();
-                    }),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      margin: const EdgeInsets.only(right: 8),
-                      decoration: BoxDecoration(
-                        color: _filtroCategoriasActivo
-                            ? AppColors.primary
-                            : AppColors.background,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: _filtroCategoriasActivo
-                              ? AppColors.primary
-                              : AppColors.divider,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.filter_list_rounded,
-                            size: 14,
-                            color: _filtroCategoriasActivo
-                                ? Colors.white
-                                : AppColors.grayMid,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Filtrar',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: _filtroCategoriasActivo
-                                  ? Colors.white
-                                  : AppColors.grayMid,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Chips de categoría (solo visibles cuando filtro activo)
-                  if (_filtroCategoriasActivo)
-                    ..._categoriasDisponibles.map((cat) {
-                      final sel = _categoriasSeleccionadas.contains(cat);
-                      return GestureDetector(
-                        onTap: () => setState(() {
-                          if (sel) {
-                            _categoriasSeleccionadas.remove(cat);
-                          } else {
-                            _categoriasSeleccionadas.add(cat);
-                          }
-                        }),
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 8),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: sel
-                                ? AppColors.primary.withOpacity(0.12)
-                                : AppColors.background,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: sel
-                                  ? AppColors.primary
-                                  : AppColors.divider,
-                            ),
-                          ),
-                          child: Text(
-                            cat,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: sel
-                                  ? AppColors.primary
-                                  : AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                ],
-              ),
-            ),
-          ),
-
-        // ── Mapa ─────────────────────────────────────────────────────
+        // ── Mapa (con panel de filtro flotante a la izquierda) ────────
         Expanded(child: Stack(
       children: [
         // ── Mapa ─────────────────────────────────────────────────────
@@ -795,12 +695,19 @@ class _EncontrarScreenState extends State<EncontrarScreen>
           },
         ),
 
+        // ── Panel de filtro lateral izquierdo ─────────────────────────
+        Positioned(
+          left: 8,
+          top: 12,
+          child: _buildPanelFiltro(),
+        ),
+
         // ── Badge contador arriba ──────────────────────────────────────
         if (_productosCercanos.isNotEmpty)
           Positioned(
             top: 12,
-            left: 0,
-            right: 0,
+            left: _panelFiltroAbierto ? 106 : 106,
+            right: 16,
             child: Center(
               child: Container(
                 padding: const EdgeInsets.symmetric(
@@ -932,6 +839,184 @@ class _EncontrarScreenState extends State<EncontrarScreen>
         child: Icon(icon, size: 20, color: AppColors.carbon),
       ),
     );
+  }
+
+  // ── Panel de filtro lateral colapsable ───────────────────────────────────
+  Widget _buildPanelFiltro() {
+    final cats = _categoriasDisponibles;
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.55,
+      ),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeInOut,
+        width: 88,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.95),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.14),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            )
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header — toca para colapsar/expandir
+              GestureDetector(
+                onTap: () => setState(() {
+                  _panelFiltroAbierto = !_panelFiltroAbierto;
+                  if (!_panelFiltroAbierto) {
+                    _filtroCategoriasActivo = false;
+                    _categoriasSeleccionadas.clear();
+                  } else {
+                    _filtroCategoriasActivo = true;
+                  }
+                }),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+                  color: AppColors.carbon,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _panelFiltroAbierto
+                            ? Icons.tune_rounded
+                            : Icons.tune_rounded,
+                        size: 12, color: Colors.white,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          _panelFiltroAbierto ? 'Filtrar' : 'Filtrar',
+                          style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white),
+                        ),
+                      ),
+                      Icon(
+                        _panelFiltroAbierto
+                            ? Icons.expand_less_rounded
+                            : Icons.expand_more_rounded,
+                        size: 13, color: Colors.white70,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Categorías (solo cuando abierto)
+              if (_panelFiltroAbierto && cats.isNotEmpty)
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        // "Todas"
+                        _fCat(null, Icons.apps_rounded, 'Todas',
+                            _categoriasSeleccionadas.isEmpty),
+                        Container(height: 0.5, color: AppColors.divider),
+                        ...cats.map((cat) {
+                          final sel = _categoriasSeleccionadas.contains(cat);
+                          final icono = _iconoCategoria(cat);
+                          return InkWell(
+                            onTap: () => setState(() {
+                              if (sel) {
+                                _categoriasSeleccionadas.remove(cat);
+                              } else {
+                                _categoriasSeleccionadas.add(cat);
+                              }
+                            }),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 6),
+                              color: sel
+                                  ? AppColors.primary.withOpacity(0.1)
+                                  : null,
+                              child: Column(
+                                children: [
+                                  Icon(icono,
+                                      size: 16,
+                                      color: sel
+                                          ? AppColors.primary
+                                          : AppColors.grayMid),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    cat.length > 8
+                                        ? '${cat.substring(0, 7)}…'
+                                        : cat,
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: sel
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      color: sel
+                                          ? AppColors.primary
+                                          : AppColors.grayMid,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _fCat(String? cat, IconData icon, String label, bool sel) {
+    return InkWell(
+      onTap: () => setState(() => _categoriasSeleccionadas.clear()),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        color: sel ? AppColors.primary.withOpacity(0.1) : null,
+        child: Column(
+          children: [
+            Icon(icon,
+                size: 16,
+                color: sel ? AppColors.primary : AppColors.grayMid),
+            const SizedBox(height: 2),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                    color: sel ? AppColors.primary : AppColors.grayMid)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _iconoCategoria(String cat) {
+    const map = <String, IconData>{
+      'Electrónica':  Icons.computer_outlined,
+      'Automotriz':   Icons.directions_car_outlined,
+      'Hogar':        Icons.home_outlined,
+      'Ocio':         Icons.sports_esports_outlined,
+      'Mascotas':     Icons.pets_outlined,
+      'General':      Icons.category_outlined,
+      'Ropa':         Icons.checkroom_outlined,
+      'Deportes':     Icons.fitness_center_outlined,
+      'Juguetes':     Icons.toys_outlined,
+      'Libros':       Icons.menu_book_outlined,
+    };
+    return map[cat] ?? Icons.more_horiz_rounded;
   }
 
   // ── Pantallas auxiliares ──────────────────────────────────────────────────
