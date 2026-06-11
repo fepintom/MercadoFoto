@@ -172,6 +172,7 @@ from services.fcm_service import enviar_push
 from database.ayuda import (
     init_ayuda_db,
     crear_ticket,
+    crear_ticket_chat_directo,
     agregar_mensaje,
     obtener_tickets_usuario,
     obtener_mensajes_ticket,
@@ -1646,6 +1647,30 @@ def crear_ticket_ayuda(body: dict):
     ).start()
 
     return {"ok": True, "ticket_id": resultado["id"], "estado": resultado["estado"]}
+
+
+@app.post("/ayuda/chat_directo")
+def chat_directo_ayuda(body: dict):
+    """Abre un chat directo con soporte, sin formulario previo."""
+    user_id = body.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id requerido")
+
+    resultado = crear_ticket_chat_directo(user_id)
+
+    threading.Thread(
+        target=_notificar_n8n,
+        args=(resultado["id"], user_id, "chat_directo",
+              resultado["caso_numero"], "Chat directo iniciado desde la app"),
+        daemon=True,
+    ).start()
+
+    return {
+        "ok":         True,
+        "ticket_id":  resultado["id"],
+        "caso_numero": resultado["caso_numero"],
+        "estado":     resultado["estado"],
+    }
 
 
 @app.get("/ayuda/usuario/{user_id}")

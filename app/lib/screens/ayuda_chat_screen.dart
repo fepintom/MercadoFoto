@@ -132,10 +132,11 @@ class _AyudaChatScreenState extends State<AyudaChatScreen> {
 
   String get _tipoLabel {
     const map = {
-      'pedido':   '📦 Pedido',
-      'venta':    '🏪 Venta',
-      'servicio': '🔧 Servicio',
-      'otros':    '❓ Consulta',
+      'pedido':       '📦 Pedido',
+      'venta':        '🏪 Venta',
+      'servicio':     '🔧 Servicio',
+      'otros':        '❓ Consulta',
+      'chat_directo': '💬 Chat con soporte',
     };
     return map[widget.tipo] ?? widget.tipo;
   }

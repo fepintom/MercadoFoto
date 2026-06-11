@@ -131,6 +131,33 @@ def obtener_ticket(ticket_id: int):
     return dict(row) if row else None
 
 
+def crear_ticket_chat_directo(user_id: int) -> dict:
+    """Crea un ticket de chat directo con número de caso auto-generado."""
+    conn = sqlite3.connect(_DB)
+    cur = conn.cursor()
+
+    cur.execute("""
+        INSERT INTO ayuda_tickets (user_id, tipo, numero_referencia, detalle)
+        VALUES (?, 'chat_directo', NULL, 'Chat directo iniciado desde la app')
+    """, (user_id,))
+
+    ticket_id = cur.lastrowid
+    caso_numero = f"CASO-{str(ticket_id).zfill(6)}"
+
+    cur.execute("UPDATE ayuda_tickets SET numero_referencia = ? WHERE id = ?",
+                (caso_numero, ticket_id))
+
+    # Mensaje de bienvenida automático de soporte
+    cur.execute("""
+        INSERT INTO ayuda_mensajes (ticket_id, remitente, mensaje)
+        VALUES (?, 'soporte', '¡Hola! 👋 Soy del equipo OkVenta. ¿En qué te puedo ayudar hoy?')
+    """, (ticket_id,))
+
+    conn.commit()
+    conn.close()
+    return {"id": ticket_id, "caso_numero": caso_numero, "estado": "abierto"}
+
+
 def cerrar_ticket(ticket_id: int) -> bool:
     conn = sqlite3.connect(_DB)
     cur = conn.cursor()

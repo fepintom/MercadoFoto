@@ -12,7 +12,7 @@ extension _TipoAyudaExt on _TipoAyuda {
   String get label {
     switch (this) {
       case _TipoAyuda.pedido:   return 'Un pedido';
-      case _TipoAyuda.venta:    return 'Una venta';
+      case _TipoAyuda.venta:    return 'Una venta / compra';
       case _TipoAyuda.servicio: return 'Un servicio';
       case _TipoAyuda.otros:    return 'Otro motivo';
     }
@@ -67,6 +67,10 @@ class _AyudaScreenState extends State<AyudaScreen> {
   int? _userId;
   List<Map<String, dynamic>> _tickets = [];
   bool _cargandoTickets = false;
+
+  // ── Chat directo ───────────────────────────────────────────────────────────
+  bool _mostrarBurbuja   = false;
+  bool _abriendo         = false;
 
   @override
   void initState() {
@@ -148,14 +152,57 @@ class _AyudaScreenState extends State<AyudaScreen> {
     }
   }
 
+  Future<void> _abrirChatDirecto() async {
+    setState(() { _mostrarBurbuja = false; _abriendo = true; });
+    try {
+      if (_userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Debes iniciar sesión para chatear con soporte')));
+        return;
+      }
+      final result = await ApiService.crearChatDirecto(_userId!);
+      if (!mounted) return;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AyudaChatScreen(
+            ticketId:         result['ticket_id'] as int,
+            tipo:             'chat_directo',
+            numeroReferencia: result['caso_numero'] as String?,
+          ),
+        ),
+      );
+      _cargarTickets();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('No se pudo iniciar el chat. Intenta de nuevo.')));
+      }
+    } finally {
+      if (mounted) setState(() => _abriendo = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // ── Header ────────────────────────────────────────────────────
+            // ── Dimmer para cerrar burbuja al tocar afuera ─────────────────
+            if (_mostrarBurbuja)
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: () => setState(() => _mostrarBurbuja = false),
+                  behavior: HitTestBehavior.opaque,
+                  child: const SizedBox.expand(),
+                ),
+              ),
+
+            Column(
+              children: [
+            // ── Header ──────────────────────────────────────────────────
             Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               decoration: BoxDecoration(
@@ -187,14 +234,19 @@ class _AyudaScreenState extends State<AyudaScreen> {
                       ],
                     ),
                   ),
-                  Container(
-                    width: 40, height: 40,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.08),
-                      shape: BoxShape.circle,
+                  // ── Monito ────────────────────────────────────────────
+                  GestureDetector(
+                    onTap: () => setState(() => _mostrarBurbuja = !_mostrarBurbuja),
+                    child: Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: Text('🐒', style: TextStyle(fontSize: 22)),
+                      ),
                     ),
-                    child: const Icon(Icons.support_agent_rounded,
-                        color: AppColors.primary, size: 22),
                   ),
                 ],
               ),
@@ -275,9 +327,21 @@ class _AyudaScreenState extends State<AyudaScreen> {
               ),
             ),
           ],
-        ),
-      ),
-    );
+        ),  // Column principal
+
+        // ── Burbuja "Chatea con nosotros" ─────────────────────────────
+        if (_mostrarBurbuja)
+          Positioned(
+            top: 58, right: 16,
+            child: _NubeBurbuja(
+              onTap: _abriendo ? null : _abrirChatDirecto,
+              cargando: _abriendo,
+            ),
+          ),
+      ],  // Stack children
+    ),    // Stack
+  ),      // SafeArea
+);
   }
 
   // ── Estado inicial (sin tipo elegido) ──────────────────────────────────────
@@ -459,6 +523,95 @@ class _AyudaScreenState extends State<AyudaScreen> {
       ),
     );
   }
+}
+
+// ── Burbuja "Chatea con nosotros" ────────────────────────────────────────────
+
+class _NubeBurbuja extends StatelessWidget {
+  final VoidCallback? onTap;
+  final bool cargando;
+  const _NubeBurbuja({required this.onTap, required this.cargando});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Cuerpo de la burbuja
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                  color: AppColors.primary.withOpacity(0.2), width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (cargando)
+                  const SizedBox(
+                    width: 14, height: 14,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 1.8, color: AppColors.primary),
+                  )
+                else
+                  const Icon(Icons.chat_bubble_outline_rounded,
+                      size: 16, color: AppColors.primary),
+                const SizedBox(width: 7),
+                Text(
+                  cargando ? 'Iniciando…' : 'Chatea con nosotros',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Cola triangular apuntando a la derecha (hacia el monito)
+          CustomPaint(
+            size: const Size(9, 16),
+            painter: _ColaBurbuja(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ColaBurbuja extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.white;
+    final path = Path()
+      ..moveTo(0, size.height / 2 - 7)
+      ..lineTo(0, size.height / 2 + 7)
+      ..lineTo(size.width, size.height / 2)
+      ..close();
+    canvas.drawPath(path, paint);
+
+    // Borde de la cola
+    final border = Paint()
+      ..color = AppColors.primary.withOpacity(0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    canvas.drawPath(path, border);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter _) => false;
 }
 
 // ── Tarjeta de tipo de ayuda ──────────────────────────────────────────────────

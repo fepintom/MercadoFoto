@@ -446,6 +446,19 @@ class ApiService {
     throw Exception('Error al crear ticket de ayuda');
   }
 
+  static Future<Map<String, dynamic>> crearChatDirecto(int userId) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/ayuda/chat_directo'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'user_id': userId}),
+    );
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(
+          jsonDecode(utf8.decode(response.bodyBytes)));
+    }
+    throw Exception('Error al iniciar chat directo');
+  }
+
   static Future<List<Map<String, dynamic>>> obtenerTicketsAyuda(
       int userId) async {
     final response =
