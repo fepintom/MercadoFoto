@@ -67,6 +67,8 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
         .toString()
         .replaceAll(RegExp(r'\D'), '');
     if (num.isEmpty) return;
+    // Registrar contacto en background
+    _registrarContacto('whatsapp');
     final uri = Uri.parse('https://wa.me/56$num');
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (mounted) {
@@ -81,6 +83,7 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
         .toString()
         .replaceAll(RegExp(r'\D'), '');
     if (num.isEmpty) return;
+    _registrarContacto('llamada');
     final uri = Uri.parse('tel:+56$num');
     if (!await launchUrl(uri)) {
       if (mounted) {
@@ -88,6 +91,15 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
           const SnackBar(content: Text('No se pudo iniciar la llamada')));
       }
     }
+  }
+
+  void _registrarContacto(String tipo) {
+    ApiService.registrarContactoServicio(
+      _srv['id'] as int,
+      _miUserId,
+      tipo,
+      '',
+    ).catchError((_) {});  // silencioso, no interrumpir UX
   }
 
   Future<void> _pagarServicio() async {

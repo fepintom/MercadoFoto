@@ -42,6 +42,17 @@ def init_servicios_db():
             pass
 
     c.execute("""
+    CREATE TABLE IF NOT EXISTS contactos_servicios (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        servicio_id     INTEGER NOT NULL,
+        contactante_id  INTEGER,
+        tipo_contacto   TEXT DEFAULT 'whatsapp',  -- 'whatsapp' | 'llamada'
+        nombre          TEXT,
+        created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    c.execute("""
     CREATE TABLE IF NOT EXISTS valoraciones_servicios (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
         servicio_id INTEGER NOT NULL,
@@ -168,6 +179,63 @@ def eliminar_servicio(servicio_id, user_id):
               (servicio_id, user_id))
     conn.commit()
     conn.close()
+
+
+# ── Contactos ─────────────────────────────────────────────────────────────────
+
+def registrar_contacto(servicio_id: int, contactante_id, tipo: str, nombre: str = None):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("""
+        INSERT INTO contactos_servicios (servicio_id, contactante_id, tipo_contacto, nombre)
+        VALUES (?, ?, ?, ?)
+    """, (servicio_id, contactante_id, tipo, nombre))
+    conn.commit()
+    conn.close()
+
+
+def obtener_contactos_servicio(servicio_id: int) -> list:
+    conn = sqlite3.connect(DB)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("""
+        SELECT cs.id, cs.servicio_id, cs.contactante_id, cs.tipo_contacto,
+               cs.created_at,
+               COALESCE(cs.nombre, u.nombre || ' ' || COALESCE(u.apellido,''), 'Anónimo') AS nombre_contactante
+        FROM contactos_servicios cs
+        LEFT JOIN users u ON cs.contactante_id = u.id
+        WHERE cs.servicio_id = ?
+        ORDER BY cs.created_at DESC
+    """, (servicio_id,))
+    rows = c.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def obtener_servicios_usuario_con_contactos(user_id: int) -> list:
+    """Servicios del usuario incluyendo conteo de contactos."""
+    conn = sqlite3.connect(DB)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("""
+        SELECT s.id, s.user_id, s.tipo, s.titulo, s.descripcion, s.comunas,
+               s.valor, s.modalidad, s.fotos,
+               COALESCE(s.categoria, 'Otros') AS categoria,
+               COALESCE(s.color_hex, '#007AFF') AS color_hex,
+               s.created_at,
+               COALESCE(AVG(v.estrellas), 0) AS rating,
+               COUNT(DISTINCT v.id) AS num_valoraciones,
+               COUNT(DISTINCT cs.id) AS num_contactos
+        FROM servicios s
+        LEFT JOIN valoraciones_servicios v ON s.id = v.servicio_id
+        LEFT JOIN contactos_servicios cs ON s.id = cs.servicio_id
+        WHERE s.user_id = ?
+        GROUP BY s.id
+        ORDER BY s.created_at DESC
+    """, (user_id,))
+    rows = c.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
 
 
 # ── Valoraciones ──────────────────────────────────────────────────────────────

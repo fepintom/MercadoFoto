@@ -502,6 +502,45 @@ class ApiService {
 
   // ── Entrega de orden ───────────────────────────────────────────────────────
 
+  // ── Servicios (Ofrezco/Busco) ──────────────────────────────────────────────
+
+  static Future<List<Map<String, dynamic>>> obtenerMisServicios(
+      int userId) async {
+    final response = await http.get(
+        Uri.parse('$baseUrl/servicios/usuario/$userId/mis_servicios'));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      return List<Map<String, dynamic>>.from(data is List ? data : []);
+    }
+    throw Exception('Error al obtener mis servicios');
+  }
+
+  static Future<void> registrarContactoServicio(
+      int servicioId, int? contactanteId, String tipo, String nombre) async {
+    await http.post(
+      Uri.parse('$baseUrl/servicios/$servicioId/contacto'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'contactante_id': contactanteId,
+        'tipo':           tipo,
+        'nombre':         nombre,
+      }),
+    );
+  }
+
+  static Future<List<Map<String, dynamic>>> obtenerContactosServicio(
+      int servicioId, int ownerId) async {
+    final response = await http.get(Uri.parse(
+        '$baseUrl/servicios/$servicioId/contactos?owner_id=$ownerId'));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      return List<Map<String, dynamic>>.from(data['contactos'] ?? []);
+    }
+    return [];
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+
   static Future<void> elegirEntrega({
     required int ordenId,
     required String method,

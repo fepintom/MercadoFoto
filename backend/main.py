@@ -148,10 +148,13 @@ from database.servicios import (
     obtener_servicios,
     obtener_servicio_por_id,
     obtener_servicios_usuario,
+    obtener_servicios_usuario_con_contactos,
     eliminar_servicio,
     valorar_servicio,
     actualizar_certificado,
     actualizar_ubicacion,
+    registrar_contacto,
+    obtener_contactos_servicio,
 )
 
 from database.delivery import (
@@ -1443,6 +1446,31 @@ def listar_servicios(tipo: str = None):
 @app.get("/servicios/usuario/{user_id}")
 def servicios_de_usuario(user_id: int):
     return obtener_servicios_usuario(user_id)
+
+
+@app.get("/servicios/usuario/{user_id}/mis_servicios")
+def mis_servicios(user_id: int):
+    """Servicios propios con conteo de contactos (para el panel del dueño)."""
+    return obtener_servicios_usuario_con_contactos(user_id)
+
+
+@app.post("/servicios/{servicio_id}/contacto")
+def registrar_contacto_servicio(servicio_id: int, body: dict):
+    """Registra que alguien tocó WhatsApp/Llamar en un servicio."""
+    contactante_id = body.get("contactante_id")
+    tipo           = body.get("tipo", "whatsapp")
+    nombre         = body.get("nombre", "")
+    registrar_contacto(servicio_id, contactante_id, tipo, nombre)
+    return {"ok": True}
+
+
+@app.get("/servicios/{servicio_id}/contactos")
+def contactos_servicio(servicio_id: int, owner_id: int):
+    """Lista de contactos de un servicio (solo el dueño puede verla)."""
+    srv = obtener_servicio_por_id(servicio_id)
+    if not srv or srv["user_id"] != owner_id:
+        raise HTTPException(status_code=403, detail="Sin permiso")
+    return {"contactos": obtener_contactos_servicio(servicio_id)}
 
 
 @app.get("/servicios/{servicio_id}")
