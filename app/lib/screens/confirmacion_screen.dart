@@ -417,11 +417,11 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
       }
     }
 
-    setState(() => _publicando = true);
-
     // ── Preguntar ubicación al usuario ────────────────────────────────
     final ubicacion = await _elegirUbicacion();
     if (!mounted) return;
+
+    setState(() => _publicando = true);
 
     try {
       final request = http.MultipartRequest(

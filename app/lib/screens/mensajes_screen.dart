@@ -154,6 +154,7 @@ class _MensajesScreenState extends State<MensajesScreen> {
             imagenUrl: imagenProducto,
             vendedorId: conv['vendedor_id'],
             nombreVendedor: conv['nombre_vendedor'] ?? '',
+            nombreComprador: conv['nombre_comprador'] ?? '',
           ),
         ),
       ),

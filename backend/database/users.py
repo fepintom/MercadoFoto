@@ -342,3 +342,15 @@ def obtener_ubicacion_usuario(user_id):
         "lat": row[0], "lng": row[1],
         "direccion": row[2], "comuna": row[3], "ciudad": row[4],
     }
+
+
+# --------------------------------------------------
+# ACTUALIZAR FOTO DE PERFIL
+# --------------------------------------------------
+
+def actualizar_foto_perfil(user_id: int, foto_url: str):
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE users SET foto_url = ? WHERE id = ?", (foto_url, user_id))
+    conn.commit()
+    conn.close()

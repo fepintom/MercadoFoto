@@ -73,6 +73,7 @@ from database.users import (
     crear_reset_token,
     validar_reset_token,
     usar_reset_token,
+    actualizar_foto_perfil,
 )
 
 from database.chat import (
@@ -1075,6 +1076,19 @@ def actualizar_ubicacion(user_id: int, data: UbicacionUsuario):
 @app.get("/usuarios/{user_id}/ubicacion")
 def ver_ubicacion(user_id: int):
     return obtener_ubicacion_usuario(user_id) or {}
+
+
+@app.post("/usuarios/{user_id}/foto")
+async def subir_foto_perfil(user_id: int, foto: UploadFile = File(...)):
+    ext = os.path.splitext(foto.filename or "foto.jpg")[1] or ".jpg"
+    nombre = f"perfil_{user_id}{ext}"
+    ruta = os.path.join(UPLOADS_DIR, nombre)
+    contenido = await foto.read()
+    with open(ruta, "wb") as f:
+        f.write(contenido)
+    foto_url = f"/uploads/{nombre}"
+    actualizar_foto_perfil(user_id, foto_url)
+    return {"foto_url": foto_url}
 
 
 # --------------------------------------------------

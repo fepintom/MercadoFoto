@@ -13,6 +13,7 @@ class ChatScreen extends StatefulWidget {
   final String imagenUrl;
   final int vendedorId;
   final String nombreVendedor;
+  final String nombreComprador;
 
   const ChatScreen({
     super.key,
@@ -21,6 +22,7 @@ class ChatScreen extends StatefulWidget {
     required this.imagenUrl,
     required this.vendedorId,
     required this.nombreVendedor,
+    this.nombreComprador = '',
   });
 
   @override
@@ -455,7 +457,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 children: [
                   Text(
                     widget.tituloProducto,
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 14,
@@ -464,7 +466,11 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   ),
                   Text(
-                    widget.nombreVendedor,
+                    widget.nombreComprador.isNotEmpty
+                        ? '${widget.nombreVendedor} · ${widget.nombreComprador}'
+                        : widget.nombreVendedor,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                         fontSize: 11, color: AppColors.grayMid),
                   ),
