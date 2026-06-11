@@ -11,7 +11,6 @@ import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/space_invaders_widget.dart';
-import '../widgets/blue_express_sheet.dart';
 import 'mis_publicaciones_screen.dart';
 
 // ── Modelo Talla de envío ─────────────────────────────────────────────────
@@ -118,14 +117,6 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
   final _anchoCtrl = TextEditingController();
   final _pesoCtrl  = TextEditingController();
 
-  // ── Delivery ──────────────────────────────────────────────────────────
-  /// 'yo' | 'okventa' | 'blueexpress'
-  String _metodoEntrega = 'yo';
-  int? _deliveryId;
-  Map<String, dynamic>? _blueExpressPunto;
-  List<Map<String, dynamic>> _deliveryWorkers = [];
-  bool _cargandoDelivery = false;
-
   @override
   void initState() {
     super.initState();
@@ -152,18 +143,6 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
     // Auto-detectar talla desde las dimensiones generadas por IA
     final dimIA = jsonData["dimensiones"] ?? "";
     _tallaId = _detectarTallaDesdeIA(dimIA);
-
-    // Cargar deliveries disponibles
-    _cargarDelivery();
-  }
-
-  Future<void> _cargarDelivery() async {
-    setState(() => _cargandoDelivery = true);
-    try {
-      final workers = await ApiService.obtenerDelivery(soloActivos: true);
-      if (mounted) setState(() => _deliveryWorkers = workers);
-    } catch (_) {}
-    if (mounted) setState(() => _cargandoDelivery = false);
   }
 
   @override
@@ -461,11 +440,6 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
         request.fields["lat"] = ubicacion['lat'].toString();
         request.fields["lng"] = ubicacion['lng'].toString();
       }
-      // Delivery seleccionado
-      if (_deliveryId != null) {
-        request.fields["delivery_id"] = '$_deliveryId';
-      }
-
       // Foto principal + extras
       request.files.add(
           await http.MultipartFile.fromPath("file", _imagenes[0].path));
@@ -1005,157 +979,6 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
     );
   }
 
-  // ── DELIVERY SELECTOR ────────────────────────────────────────────────────
-  Widget _buildDeliverySection() {
-    final selectedWorker = _metodoEntrega == 'okventa' && _deliveryId != null
-        ? _deliveryWorkers.where((d) => d['id'] == _deliveryId).firstOrNull
-        : null;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 20),
-        const Padding(
-          padding: EdgeInsets.only(bottom: 10),
-          child: Text(
-            '🚴 Método de entrega',
-            style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary),
-          ),
-        ),
-
-        // Opción 1: Yo entrego
-        _opcionEntrega(
-          activo: _metodoEntrega == 'yo',
-          icon: Icons.person_outline,
-          iconColor: AppColors.primary,
-          titulo: 'Yo hago la entrega',
-          subtitulo: 'Me encargo personalmente del envío',
-          onTap: () => setState(() {
-            _metodoEntrega = 'yo';
-            _deliveryId = null;
-            _blueExpressPunto = null;
-          }),
-        ),
-
-        const SizedBox(height: 8),
-
-        // Opción 2: Delivery OkVenta
-        _opcionEntrega(
-          activo: _metodoEntrega == 'okventa',
-          icon: Icons.delivery_dining_rounded,
-          iconColor: Colors.green,
-          titulo: _metodoEntrega == 'okventa' && selectedWorker != null
-              ? selectedWorker['nombre'] as String? ?? 'Delivery OkVenta'
-              : 'Delivery OkVenta',
-          subtitulo: _metodoEntrega == 'okventa' && selectedWorker != null
-              ? '${selectedWorker['tipo_vehiculo'] ?? ''} • radio ${(selectedWorker['radio_km'] as num?)?.toStringAsFixed(0) ?? '5'} km'
-              : 'Seleccionar de la red OkVenta',
-          trailing: const Icon(Icons.chevron_right, color: AppColors.grayMid, size: 18),
-          onTap: () {
-            setState(() => _metodoEntrega = 'okventa');
-            if (_deliveryWorkers.isNotEmpty) _mostrarSelectorDelivery();
-          },
-        ),
-
-        const SizedBox(height: 8),
-
-        // Opción 3: Blue Express
-        _opcionEntrega(
-          activo: _metodoEntrega == 'blueexpress',
-          icon: Icons.local_shipping_rounded,
-          iconColor: const Color(0xFF0057B8),
-          titulo: _metodoEntrega == 'blueexpress' && _blueExpressPunto != null
-              ? _blueExpressPunto!['nombre'] as String? ?? 'Blue Express'
-              : 'Blue Express',
-          subtitulo: _metodoEntrega == 'blueexpress' && _blueExpressPunto != null
-              ? _blueExpressPunto!['direccion'] as String? ?? ''
-              : 'Despacho a todo Chile — buscar punto',
-          trailing: const Icon(Icons.chevron_right, color: AppColors.grayMid, size: 18),
-          onTap: () async {
-            setState(() => _metodoEntrega = 'blueexpress');
-            final punto = await showModalBottomSheet<Map<String, dynamic>>(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (_) => const BlueExpressSheet(),
-            );
-            if (punto != null && mounted) {
-              setState(() => _blueExpressPunto = punto);
-            }
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _opcionEntrega({
-    required bool activo,
-    required IconData icon,
-    required Color iconColor,
-    required String titulo,
-    required String subtitulo,
-    Widget? trailing,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: activo ? iconColor.withOpacity(0.06) : AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: activo ? iconColor.withOpacity(0.5) : AppColors.divider,
-            width: activo ? 1.5 : 0.5,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: activo ? iconColor : AppColors.grayMid),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(titulo,
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: activo ? iconColor : AppColors.textPrimary)),
-                  Text(subtitulo,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.grayMid)),
-                ],
-              ),
-            ),
-            if (activo && trailing == null)
-              Icon(Icons.check_circle_rounded, color: iconColor, size: 20)
-            else if (trailing != null)
-              trailing,
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _mostrarSelectorDelivery() async {
-    final elegido = await showModalBottomSheet<Map<String, dynamic>>(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => _SelectorDeliverySheet(workers: _deliveryWorkers),
-    );
-    if (elegido != null && mounted) {
-      setState(() => _deliveryId = elegido['id'] as int?);
-    }
-  }
-
   // ── TALLA SELECTOR (card tappable → bottom sheet) ─────────────────────
   Widget _buildTallaSection() {
     final tallaActual = _tallas.firstWhere(
@@ -1601,9 +1424,6 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                       // ── Precio interactivo con sugerencia IA ──────
                       _buildPrecioInteractivo(),
 
-                      // ── Selector de Delivery ──────────────────────
-                      _buildDeliverySection(),
-
                       const SizedBox(height: 28),
 
                       SizedBox(
@@ -1638,113 +1458,3 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
   }
 }
 
-// ── Bottom sheet selector de delivery ────────────────────────────────────────
-
-class _SelectorDeliverySheet extends StatelessWidget {
-  final List<Map<String, dynamic>> workers;
-  const _SelectorDeliverySheet({required this.workers});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 40, height: 4,
-          margin: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-              color: AppColors.divider,
-              borderRadius: BorderRadius.circular(2)),
-        ),
-        const Padding(
-          padding: EdgeInsets.only(bottom: 12),
-          child: Text(
-            'Seleccionar Delivery OkVenta',
-            style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary),
-          ),
-        ),
-        Flexible(
-          child: ListView.separated(
-            shrinkWrap: true,
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-            itemCount: workers.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
-            itemBuilder: (_, i) {
-              final d = workers[i];
-              final nombre   = d['nombre'] as String? ?? 'Delivery';
-              final vehiculo = d['tipo_vehiculo'] as String? ?? 'bicicleta';
-              final radio    = (d['radio_km'] as num?)?.toStringAsFixed(0) ?? '5';
-              final fotoUrl  = d['foto_perfil'] as String? ?? '';
-              final iconos = {
-                'bicicleta': Icons.directions_bike_rounded,
-                'moto':      Icons.two_wheeler_rounded,
-                'auto':      Icons.directions_car_rounded,
-              };
-
-              return GestureDetector(
-                onTap: () => Navigator.pop(context, d),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.divider),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 22,
-                        backgroundColor:
-                            AppColors.primary.withOpacity(0.1),
-                        backgroundImage: fotoUrl.isNotEmpty
-                            ? NetworkImage(
-                                '${ApiService.baseUrl}$fotoUrl')
-                            : null,
-                        child: fotoUrl.isEmpty
-                            ? Text(nombre[0].toUpperCase(),
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.primary))
-                            : null,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(nombre,
-                                style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary)),
-                            Row(
-                              children: [
-                                Icon(iconos[vehiculo] ??
-                                    Icons.delivery_dining_outlined,
-                                    size: 13, color: AppColors.grayMid),
-                                const SizedBox(width: 4),
-                                Text('$vehiculo  •  radio $radio km',
-                                    style: const TextStyle(
-                                        fontSize: 11,
-                                        color: AppColors.grayMid)),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right,
-                          color: AppColors.grayMid, size: 16),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-}

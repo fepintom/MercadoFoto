@@ -21,6 +21,7 @@ def init_ordenes_db():
         mp_external_ref     TEXT UNIQUE,        -- 'orden_{id}' después de insertar
         estado              TEXT    DEFAULT 'pendiente_pago',
         -- pendiente_pago | pago_confirmado | en_camino | entregado | en_disputa | reembolsado | cancelado
+        delivery_method     TEXT,   -- null | 'yo' | 'okventa' | 'blueexpress'
         created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
@@ -124,6 +125,10 @@ def abrir_disputa(orden_id):
 
 def marcar_reembolsado(orden_id):
     _update(orden_id, estado="reembolsado")
+
+
+def guardar_delivery_method(orden_id: int, method: str):
+    _update(orden_id, delivery_method=method, estado="en_camino")
 
 
 def _update(orden_id, **kwargs):

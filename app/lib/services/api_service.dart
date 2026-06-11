@@ -486,4 +486,25 @@ class ApiService {
     );
     return response.statusCode == 200;
   }
+
+  // ── Entrega de orden ───────────────────────────────────────────────────────
+
+  static Future<void> elegirEntrega({
+    required int ordenId,
+    required String method,
+    int? deliveryId,
+    String? blueExpressPunto,
+  }) async {
+    final body = <String, dynamic>{'method': method};
+    if (deliveryId != null) body['delivery_id'] = deliveryId;
+    if (blueExpressPunto != null) body['blue_express_punto'] = blueExpressPunto;
+    final response = await http.patch(
+      Uri.parse('$baseUrl/ordenes/$ordenId/entrega'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Error al elegir entrega: ${response.body}');
+    }
+  }
 }

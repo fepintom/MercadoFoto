@@ -121,6 +121,7 @@ from database.guest_sessions import (
     crear_guest,
 )
 
+from database.ordenes import guardar_delivery_method as _guardar_delivery
 from database.ordenes import (
     init_ordenes_db,
     crear_orden,
@@ -1831,21 +1832,40 @@ async def mp_webhook(request: Request):
 
     if status == "approved":
         confirmar_pago(orden_id, payment_id)
-        # Notificar al vendedor
+        # Obtener ubicación del comprador para informar al vendedor
+        comprador = obtener_usuario_por_id(orden["comprador_id"])
+        ubicacion_str = ""
+        if comprador:
+            ciudad = comprador.get("ciudad") or comprador.get("comuna") or ""
+            if ciudad:
+                ubicacion_str = ciudad
+        push_body = (
+            f"Tu comprador está en {ubicacion_str}. "
+            f"¿Cómo entregas '{orden['titulo']}'?"
+            if ubicacion_str else
+            f"Elige cómo entregarás '{orden['titulo']}'"
+        )
+        # Notificar al vendedor con acción de elegir entrega
         fcm_tok = obtener_fcm_token(orden["vendedor_id"])
         if fcm_tok:
             try:
                 enviar_push(
                     fcm_tok,
-                    "💳 Pago recibido",
-                    f"Recibiste un pago por '{orden['titulo']}'",
-                    {"tipo": "pago_confirmado", "orden_id": str(orden_id)},
+                    "📦 ¡Tienes una venta!",
+                    push_body,
+                    {
+                        "tipo":               "elegir_entrega",
+                        "orden_id":           str(orden_id),
+                        "titulo":             orden["titulo"],
+                        "comprador_ubicacion": ubicacion_str,
+                        "monto":              str(orden["monto"]),
+                    },
                 )
             except Exception:
                 pass
         crear_notificacion(
             orden["vendedor_id"], "pago",
-            f"💳 Pago confirmado por '{orden['titulo']}'",
+            f"💳 Pago confirmado por '{orden['titulo']}'. Elige cómo entregar.",
         )
 
     return {"ok": True}
@@ -1882,6 +1902,37 @@ def mis_compras(user_id: int):
 @app.get("/mis-ventas/{user_id}")
 def mis_ventas(user_id: int):
     return obtener_mis_ventas(user_id)
+
+
+# ── Vendedor elige método de entrega ─────────────────────────────────────────
+
+@app.patch("/ordenes/{orden_id}/entrega")
+def elegir_entrega(orden_id: int, body: dict):
+    method = body.get("delivery_method", "")
+    if method not in ("yo", "okventa", "blueexpress"):
+        raise HTTPException(status_code=400, detail="Método inválido")
+    orden = obtener_orden(orden_id)
+    if not orden:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+    _guardar_delivery(orden_id, method)
+    # Notificar al comprador
+    fcm_tok = obtener_fcm_token(orden["comprador_id"])
+    labels = {"yo": "el vendedor", "okventa": "OkVenta Delivery", "blueexpress": "Blue Express"}
+    if fcm_tok:
+        try:
+            enviar_push(
+                fcm_tok,
+                "🚚 Tu pedido está en camino",
+                f"'{orden['titulo']}' será entregado por {labels.get(method, method)}",
+                {"tipo": "en_camino", "orden_id": str(orden_id)},
+            )
+        except Exception:
+            pass
+    crear_notificacion(
+        orden["comprador_id"], "entrega",
+        f"🚚 '{orden['titulo']}' será entregado por {labels.get(method, method)}",
+    )
+    return {"ok": True}
 
 
 # ── Confirmar entrega ─────────────────────────────────────────────────────────

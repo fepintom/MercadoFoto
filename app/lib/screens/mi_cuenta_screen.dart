@@ -8,6 +8,7 @@ import 'auth/login_screen.dart';
 import 'ayuda_screen.dart';
 import 'mis_compras_screen.dart';
 import 'mis_publicaciones_screen.dart';
+import 'mis_ventas_screen.dart';
 import 'perfil_info_screen.dart';
 
 class MiCuentaScreen extends StatefulWidget {
@@ -638,6 +639,14 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                               MaterialPageRoute(
                                   builder: (_) =>
                                       const MisPublicacionesScreen()),
+                            );
+                          }),
+                          _itemMenu(
+                              Icons.storefront_outlined, "Mis ventas", () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const MisVentasScreen()),
                             );
                           }),
                           _itemMenu(

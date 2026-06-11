@@ -268,6 +268,11 @@ class _HomeScreenState extends State<HomeScreen> {
       ).then((_) => _inicializar());
       return;
     }
+    if (index == 6) {
+      // Servicios
+      setState(() => _tab = 2);
+      return;
+    }
     if (index == 4) {
       // Mi OkVenta
       if (userId != null) {
@@ -281,7 +286,6 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     if (index == 3) {
-      // Encontrar — mapa de productos cercanos
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const EncontrarScreen()),
@@ -289,7 +293,6 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     if (index == 1) {
-      // Al entrar a Mensajes, limpiar badge
       setState(() { _tab = 1; _notifCount = 0; });
       return;
     }
@@ -618,8 +621,8 @@ class _HomeScreenState extends State<HomeScreen> {
               Expanded(child: _navItem(0, Icons.home_rounded, "Inicio")),
               // Mensajes
               Expanded(child: _navItemBadge(1, Icons.chat_bubble_outline_rounded, "Mensajes", _notifCount)),
-              // Vender — CENTRO, más grande
-              _navVender(),
+              // Servicios + Vender — CENTRO destacados
+              _navDobleDestacado(),
               // Encontrar
               Expanded(child: _navItem(3, Icons.explore_outlined, "Encontrar")),
               // Mi OkVenta
@@ -731,54 +734,114 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _navVender() {
-    return GestureDetector(
-      onTap: () => _onNavTap(5),
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 72,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Círculo elevado por encima de la barra
-            Transform.translate(
-              offset: const Offset(0, -10),
-              child: Container(
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.surface, width: 3),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withOpacity(0.45),
-                      blurRadius: 14,
-                      offset: const Offset(0, 4),
+  static const _colorServicios = Color(0xFF00897B); // teal complementario
+
+  Widget _navDobleDestacado() {
+    final selServ = _tab == 2;
+    return SizedBox(
+      width: 140,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // ── Servicios ──────────────────────────────────────
+          GestureDetector(
+            onTap: () => _onNavTap(6),
+            behavior: HitTestBehavior.opaque,
+            child: SizedBox(
+              width: 64,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Transform.translate(
+                    offset: const Offset(0, -10),
+                    child: Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: _colorServicios,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.surface, width: 3),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _colorServicios.withOpacity(0.4),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.handyman_rounded,
+                        color: Colors.white,
+                        size: selServ ? 22 : 20,
+                      ),
                     ),
-                  ],
-                ),
-                padding: const EdgeInsets.all(12),
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  fit: BoxFit.contain,
-                ),
+                  ),
+                  Transform.translate(
+                    offset: const Offset(0, -8),
+                    child: Text(
+                      "Servicios",
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: selServ ? _colorServicios : _colorServicios,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            Transform.translate(
-              offset: const Offset(0, -8),
-              child: const Text(
-                "Vender",
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary,
-                ),
+          ),
+          // ── Vender ─────────────────────────────────────────
+          GestureDetector(
+            onTap: () => _onNavTap(5),
+            behavior: HitTestBehavior.opaque,
+            child: SizedBox(
+              width: 64,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Transform.translate(
+                    offset: const Offset(0, -10),
+                    child: Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.surface, width: 3),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.45),
+                            blurRadius: 14,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(11),
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                  Transform.translate(
+                    offset: const Offset(0, -8),
+                    child: const Text(
+                      "Vender",
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
