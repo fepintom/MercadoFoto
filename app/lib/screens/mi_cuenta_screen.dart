@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/biometric_service.dart';
 import '../theme/app_theme.dart';
 import 'auth/login_screen.dart';
+import 'ayuda_chat_screen.dart';
 import 'ayuda_screen.dart';
 import 'mis_compras_screen.dart';
 import 'mis_publicaciones_screen.dart';
@@ -440,6 +442,142 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
     );
   }
 
+  Future<void> _mostrarChatSoporte() async {
+    bool abriendo = false;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.divider,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Monito
+              const Text('🐒', style: TextStyle(fontSize: 56)),
+              const SizedBox(height: 16),
+              const Text(
+                'Chatea con nosotros',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Nuestro equipo responde a la brevedad.\nSe generará un número de caso automáticamente.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.grayMid,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 28),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: abriendo
+                      ? null
+                      : () async {
+                          if (_userId == null) {
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                    'Debes iniciar sesión para chatear'),
+                              ),
+                            );
+                            return;
+                          }
+                          setSheet(() => abriendo = true);
+                          try {
+                            final result = await ApiService
+                                .crearChatDirecto(_userId!);
+                            if (!mounted) return;
+                            Navigator.pop(ctx);
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => AyudaChatScreen(
+                                  ticketId: result['ticket_id'] as int,
+                                  tipo: 'chat_directo',
+                                  numeroReferencia:
+                                      result['caso_numero'] as String?,
+                                ),
+                              ),
+                            );
+                          } catch (_) {
+                            if (mounted) {
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      'No se pudo iniciar el chat. Intenta de nuevo.'),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: abriendo
+                      ? const SizedBox(
+                          width: 20, height: 20,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
+                      : const Text('Iniciar chat',
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w700)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Link a consultas anteriores
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const AyudaScreen()),
+                  );
+                },
+                child: const Text(
+                  'Ver mis consultas anteriores',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _cerrarSesion() async {
     await AuthService.cerrarSesion(); // Firebase + Google + SharedPreferences
     if (!mounted) return;
@@ -672,11 +810,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                               Icons.history_rounded, "Historial", () {}),
                           _itemMenu(
                               Icons.support_agent_rounded, "Obtener ayuda",
-                              () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (_) => const AyudaScreen()),
-                                  )),
+                              _mostrarChatSoporte),
                           _itemFaceId(),
                         ],
                       ),
