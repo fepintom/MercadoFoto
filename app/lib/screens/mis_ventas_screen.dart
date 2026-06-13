@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
+import 'producto_detalle_screen.dart';
 import 'seleccionar_entrega_screen.dart';
 
 class MisVentasScreen extends StatefulWidget {
@@ -197,7 +198,7 @@ class _MisVentasScreenState extends State<MisVentasScreen> {
 
 // ── Tarjeta individual ─────────────────────────────────────────────────────────
 
-class _TarjetaVenta extends StatelessWidget {
+class _TarjetaVenta extends StatefulWidget {
   final Map<String, dynamic> venta;
   final Color Function(String) estadoColor;
   final IconData Function(String) estadoIcono;
@@ -219,191 +220,287 @@ class _TarjetaVenta extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final estado   = venta['estado'] as String? ?? '';
-    final titulo   = venta['titulo'] as String? ?? '';
-    final monto    = venta['monto'];
-    final delivery = venta['delivery_method'] as String?;
-    final comprador = venta['nombre_comprador'] as String? ?? 'Comprador';
-    final fecha    = formatFecha(venta['created_at'] as String?);
-    final color    = estadoColor(estado);
-    final necesitaEntrega = estado == 'pago_confirmado' && (delivery == null || delivery.isEmpty);
+  State<_TarjetaVenta> createState() => _TarjetaVentaState();
+}
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: necesitaEntrega
-              ? AppColors.primary.withOpacity(0.5)
-              : AppColors.divider,
-          width: necesitaEntrega ? 1.5 : 0.8,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+class _TarjetaVentaState extends State<_TarjetaVenta> {
+  bool _abriendo = false;
+
+  Future<void> _irAPublicacion() async {
+    final pubId = widget.venta['publicacion_id'];
+    if (pubId == null) return;
+    if (_abriendo) return;
+    setState(() => _abriendo = true);
+    try {
+      final producto = await ApiService.obtenerPublicacion(pubId as int);
+      if (!mounted) return;
+      if (producto != null) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProductoDetalleScreen(producto: producto),
           ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Fila superior: titulo + estado ──────────────────────────
-            Row(
-              children: [
-                Expanded(
-                  child: Text(titulo,
-                      style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                ),
-                const SizedBox(width: 8),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _abriendo = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final venta = widget.venta;
+    final estado    = venta['estado'] as String? ?? '';
+    final titulo    = venta['titulo'] as String? ?? '';
+    final monto     = venta['monto'];
+    final delivery  = venta['delivery_method'] as String?;
+    final comprador = venta['nombre_comprador'] as String? ?? 'Comprador';
+    final fecha     = widget.formatFecha(venta['created_at'] as String?);
+    final color     = widget.estadoColor(estado);
+    final fotoUrl   = venta['foto_producto'] as String?;
+    final necesitaEntrega =
+        estado == 'pago_confirmado' && (delivery == null || delivery.isEmpty);
+
+    final fotoWidget = fotoUrl != null
+        ? ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              fotoUrl.startsWith('http')
+                  ? fotoUrl
+                  : '${ApiService.baseUrl}$fotoUrl',
+              width: 62,
+              height: 62,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _iconoFallback(),
+            ),
+          )
+        : _iconoFallback();
+
+    return GestureDetector(
+      onTap: venta['publicacion_id'] != null ? _irAPublicacion : null,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: necesitaEntrega
+                ? AppColors.primary.withOpacity(0.5)
+                : AppColors.divider,
+            width: necesitaEntrega ? 1.5 : 0.8,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Fila superior: foto + titulo + estado ────────────────
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Stack(
+                    children: [
+                      fotoWidget,
+                      if (_abriendo)
+                        Positioned.fill(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              color: Colors.black26,
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(titulo,
+                                  style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textPrimary),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: color.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(widget.estadoIcono(estado),
+                                      size: 11, color: color),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    widget.estadoLabel[estado] ?? estado,
+                                    style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: color),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        // ── Info ─────────────────────────────────────
+                        Row(
+                          children: [
+                            const Icon(Icons.person_outline_rounded,
+                                size: 13, color: AppColors.grayMid),
+                            const SizedBox(width: 4),
+                            Text(comprador,
+                                style: const TextStyle(
+                                    fontSize: 12, color: AppColors.grayMid)),
+                            const SizedBox(width: 10),
+                            const Icon(Icons.calendar_today_outlined,
+                                size: 12, color: AppColors.grayMid),
+                            const SizedBox(width: 4),
+                            Text(fecha,
+                                style: const TextStyle(
+                                    fontSize: 12, color: AppColors.grayMid)),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          formatPrecio(monto),
+                          style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              // ── Entrega ──────────────────────────────────────────────
+              if (estado != 'pendiente_pago') ...[
+                const SizedBox(height: 10),
                 Container(
+                  width: double.infinity,
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 3),
+                      horizontal: 10, vertical: 7),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
+                    color: necesitaEntrega
+                        ? AppColors.primary.withOpacity(0.05)
+                        : AppColors.background,
+                    borderRadius: BorderRadius.circular(8),
+                    border: necesitaEntrega
+                        ? Border.all(
+                            color: AppColors.primary.withOpacity(0.3))
+                        : null,
                   ),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(estadoIcono(estado), size: 11, color: color),
-                      const SizedBox(width: 4),
-                      Text(
-                        estadoLabel[estado] ?? estado,
-                        style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: color),
+                      Icon(
+                        necesitaEntrega
+                            ? Icons.local_shipping_outlined
+                            : Icons.check_circle_outline_rounded,
+                        size: 14,
+                        color: necesitaEntrega
+                            ? AppColors.primary
+                            : AppColors.grayMid,
                       ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          necesitaEntrega
+                              ? 'Debes elegir cómo entregar este producto'
+                              : 'Entrega: ${widget.deliveryLabel(delivery)}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: necesitaEntrega
+                                ? AppColors.primary
+                                : AppColors.grayMid,
+                            fontWeight: necesitaEntrega
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                      if (necesitaEntrega)
+                        GestureDetector(
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => SeleccionarEntregaScreen(
+                                  ordenId: venta['id'] as int,
+                                  titulo:  titulo,
+                                  monto:   monto,
+                                  compradorUbicacion:
+                                      venta['comprador_ubicacion']
+                                          as String? ?? '',
+                                ),
+                              ),
+                            );
+                            widget.onEntregaElegida();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text('Elegir',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                        ),
                     ],
                   ),
                 ),
               ],
-            ),
-
-            const SizedBox(height: 8),
-
-            // ── Info ─────────────────────────────────────────────────────
-            Row(
-              children: [
-                const Icon(Icons.person_outline_rounded,
-                    size: 13, color: AppColors.grayMid),
-                const SizedBox(width: 4),
-                Text(comprador,
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.grayMid)),
-                const SizedBox(width: 14),
-                const Icon(Icons.calendar_today_outlined,
-                    size: 12, color: AppColors.grayMid),
-                const SizedBox(width: 4),
-                Text(fecha,
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.grayMid)),
-                const Spacer(),
-                Text(
-                  formatPrecio(monto),
-                  style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary),
-                ),
-              ],
-            ),
-
-            // ── Entrega ──────────────────────────────────────────────────
-            if (estado != 'pendiente_pago') ...[
-              const SizedBox(height: 8),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 7),
-                decoration: BoxDecoration(
-                  color: necesitaEntrega
-                      ? AppColors.primary.withOpacity(0.05)
-                      : AppColors.background,
-                  borderRadius: BorderRadius.circular(8),
-                  border: necesitaEntrega
-                      ? Border.all(
-                          color: AppColors.primary.withOpacity(0.3))
-                      : null,
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      necesitaEntrega
-                          ? Icons.local_shipping_outlined
-                          : Icons.check_circle_outline_rounded,
-                      size: 14,
-                      color: necesitaEntrega
-                          ? AppColors.primary
-                          : AppColors.grayMid,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        necesitaEntrega
-                            ? 'Debes elegir cómo entregar este producto'
-                            : 'Entrega: ${deliveryLabel(delivery)}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: necesitaEntrega
-                              ? AppColors.primary
-                              : AppColors.grayMid,
-                          fontWeight: necesitaEntrega
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                    if (necesitaEntrega)
-                      GestureDetector(
-                        onTap: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => SeleccionarEntregaScreen(
-                                ordenId: venta['id'] as int,
-                                titulo:  titulo,
-                                monto:   monto,
-                                compradorUbicacion:
-                                    venta['comprador_ubicacion']
-                                        as String? ?? '',
-                              ),
-                            ),
-                          );
-                          onEntregaElegida();
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text('Elegir',
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700)),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
             ],
-          ],
+          ),
         ),
       ),
     );
   }
+
+  Widget _iconoFallback() => Container(
+        width: 62,
+        height: 62,
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(Icons.image_outlined,
+            size: 28, color: AppColors.grayMid),
+      );
 }

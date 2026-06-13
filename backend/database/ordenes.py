@@ -90,19 +90,36 @@ def obtener_mis_compras(user_id: int):
 
 
 def obtener_mis_ventas(user_id: int):
+    import json
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("""
-        SELECT o.*, uc.nombre AS nombre_comprador, uc.foto_url AS foto_comprador
+        SELECT o.*, uc.nombre AS nombre_comprador, uc.foto_url AS foto_comprador,
+               p.fotos AS producto_fotos
         FROM ordenes o
         LEFT JOIN users uc ON o.comprador_id = uc.id
+        LEFT JOIN publicaciones p ON o.publicacion_id = p.id
         WHERE o.vendedor_id = ?
         ORDER BY o.created_at DESC
     """, (user_id,))
     rows = c.fetchall()
     cols = [d[0] for d in c.description]
     conn.close()
-    return [dict(zip(cols, r)) for r in rows]
+    result = []
+    for r in rows:
+        d = dict(zip(cols, r))
+        fotos_json = d.pop('producto_fotos', None)
+        foto_url = None
+        if fotos_json:
+            try:
+                fotos = json.loads(fotos_json)
+                if fotos:
+                    foto_url = fotos[0]
+            except Exception:
+                pass
+        d['foto_producto'] = foto_url
+        result.append(d)
+    return result
 
 
 # ── Actualizar ────────────────────────────────────────────────────────────────
