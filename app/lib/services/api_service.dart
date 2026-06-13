@@ -75,6 +75,8 @@ class ApiService {
     required double precio,
     List<String> fotosMantener = const [],
     List<File> fotosNuevas = const [],
+    String condicion = 'nuevo',
+    bool aceptaOfertas = true,
   }) async {
     final uri = Uri.parse('$baseUrl/publicaciones/$id');
     final request = http.MultipartRequest('PUT', uri);
@@ -82,6 +84,8 @@ class ApiService {
     request.fields['titulo'] = titulo;
     request.fields['descripcion'] = descripcion;
     request.fields['precio'] = precio.toString();
+    request.fields['condicion'] = condicion;
+    request.fields['acepta_ofertas'] = aceptaOfertas ? '1' : '0';
 
     if (fotosMantener.isNotEmpty) {
       request.fields['fotos_mantener'] = jsonEncode(fotosMantener);

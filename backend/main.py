@@ -1007,6 +1007,8 @@ async def editar_pub(
     file1: Optional[UploadFile] = File(None),
     file2: Optional[UploadFile] = File(None),
     file3: Optional[UploadFile] = File(None),
+    condicion: Optional[str] = Form(None),
+    acepta_ofertas: Optional[int] = Form(None),
 ):
     import json as _json
 
@@ -1034,10 +1036,10 @@ async def editar_pub(
         imagen_url    = todas[0]
         imagenes_extra = _json.dumps(todas[1:]) if len(todas) > 1 else None
         editar_publicacion(publicacion_id, titulo, descripcion, precio,
-                           imagen_url, imagenes_extra)
+                           imagen_url, imagenes_extra, condicion, acepta_ofertas)
     else:
-        # Sin cambio de fotos — solo actualizar texto
-        editar_publicacion(publicacion_id, titulo, descripcion, precio)
+        editar_publicacion(publicacion_id, titulo, descripcion, precio,
+                           condicion=condicion, acepta_ofertas=acepta_ofertas)
 
     return {"mensaje": "Publicación actualizada"}
 

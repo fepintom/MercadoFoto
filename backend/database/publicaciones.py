@@ -376,7 +376,8 @@ def obtener_publicacion_por_id(publicacion_id):
 # --------------------------------------------------
 
 def editar_publicacion(publicacion_id, titulo, descripcion, precio,
-                       imagen_url=None, imagenes_extra=None):
+                       imagen_url=None, imagenes_extra=None,
+                       condicion=None, acepta_ofertas=None):
 
     conn = sqlite3.connect(DB)
     cursor = conn.cursor()
@@ -385,16 +386,22 @@ def editar_publicacion(publicacion_id, titulo, descripcion, precio,
         cursor.execute("""
             UPDATE publicaciones
             SET titulo = ?, descripcion = ?, precio = ?,
-                imagen_url = ?, imagenes_extra = ?
+                imagen_url = ?, imagenes_extra = ?,
+                condicion = COALESCE(?, condicion),
+                acepta_ofertas = COALESCE(?, acepta_ofertas)
             WHERE id = ?
         """, (titulo, descripcion, precio,
-              imagen_url, imagenes_extra, publicacion_id))
+              imagen_url, imagenes_extra,
+              condicion, acepta_ofertas, publicacion_id))
     else:
         cursor.execute("""
             UPDATE publicaciones
-            SET titulo = ?, descripcion = ?, precio = ?
+            SET titulo = ?, descripcion = ?, precio = ?,
+                condicion = COALESCE(?, condicion),
+                acepta_ofertas = COALESCE(?, acepta_ofertas)
             WHERE id = ?
-        """, (titulo, descripcion, precio, publicacion_id))
+        """, (titulo, descripcion, precio,
+              condicion, acepta_ofertas, publicacion_id))
 
     conn.commit()
     conn.close()
