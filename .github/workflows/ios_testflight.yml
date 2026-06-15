@@ -129,6 +129,9 @@ jobs:
           PLIST
 
       # 11. Build IPA (un solo paso: compila + archiva + exporta)
+      - name: Disable Swift Package Manager (mantener CocoaPods)
+        run: flutter config --no-enable-swift-package-manager
+
       - name: Build IPA
         working-directory: app
         run: |
