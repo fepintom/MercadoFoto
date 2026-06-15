@@ -27,6 +27,7 @@ class MarketplaceScreen extends StatefulWidget {
   final double? miLng;
   final double radioKm;
   final bool filtroUbicacionActivo;
+  final Widget? banner;
 
   const MarketplaceScreen({
     super.key,
@@ -34,6 +35,7 @@ class MarketplaceScreen extends StatefulWidget {
     this.miLng,
     this.radioKm = 50.0,
     this.filtroUbicacionActivo = false,
+    this.banner,
   });
 
   @override
@@ -560,15 +562,112 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     );
   }
 
+  // ── Sticky header height (search + categories + optional chips) ──────────
+
+  double get _stickyHeaderHeight {
+    double h = 60.0 + 46.0; // search row + main category bar
+    final catActual = _categorias.where((c) => c.nombre == _categoriaSeleccionada);
+    final subcats = catActual.isNotEmpty ? catActual.first.subcategorias : <String>[];
+    if (_categoriaSeleccionada != null && subcats.isNotEmpty) h += 36.0;
+    if (_tieneFiltroPrecio) h += 32.0;
+    return h;
+  }
+
+  // ── Sticky header widget ──────────────────────────────────────────────────
+
+  Widget _buildStickyHeader() {
+    return Container(
+      color: AppColors.surface,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Search bar + tune button
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.divider),
+                    ),
+                    child: TextField(
+                      controller: _searchCtrl,
+                      onChanged: (v) {
+                        if (v.trim().isEmpty) setState(() => cargarPublicaciones());
+                      },
+                      onSubmitted: _buscarEnBackend,
+                      decoration: InputDecoration(
+                        hintText: "Buscar productos...",
+                        hintStyle: const TextStyle(color: AppColors.grayMid, fontSize: 13),
+                        prefixIcon: _buscando
+                            ? const Padding(
+                                padding: EdgeInsets.all(10),
+                                child: SizedBox(width: 16, height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)),
+                              )
+                            : const Icon(Icons.search, size: 18, color: AppColors.grayMid),
+                        suffixIcon: _searchCtrl.text.isNotEmpty
+                            ? GestureDetector(
+                                onTap: () { _searchCtrl.clear(); setState(() => cargarPublicaciones()); },
+                                child: const Icon(Icons.close, size: 16, color: AppColors.grayMid))
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: _mostrarFiltrosPrecio,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(
+                      color: _tieneFiltroPrecio ? AppColors.primary : AppColors.surface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: _tieneFiltroPrecio ? AppColors.primary : AppColors.divider),
+                    ),
+                    child: Icon(Icons.tune, size: 18,
+                        color: _tieneFiltroPrecio ? AppColors.textOnPrimary : AppColors.grayMid),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Category chips
+          _buildCategoryBar(),
+          // Price filter chip
+          if (_tieneFiltroPrecio)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+              child: _chipFiltro(
+                label: _precioMin != null && _precioMax != null
+                    ? "${formatPrecio(_precioMin)} — ${formatPrecio(_precioMax)}"
+                    : _precioMin != null
+                        ? "Desde ${formatPrecio(_precioMin)}"
+                        : "Hasta ${formatPrecio(_precioMax)}",
+                onClear: () => setState(() { _precioMin = null; _precioMax = null; cargarPublicaciones(); }),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Padding(
+      return const Center(child: Padding(
         padding: EdgeInsets.all(40),
-        child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-      );
+        child: CircularProgressIndicator(color: AppColors.primary),
+      ));
     }
 
     final tituloSeccion = _categoriaSeleccionada != null
@@ -577,208 +676,180 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
             : _categoriaSeleccionada!
         : "Marketplace";
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return CustomScrollView(
+      slivers: [
+        // ── Banner (se desvanece al hacer scroll) ────────────────────────────
+        if (widget.banner != null)
+          SliverToBoxAdapter(child: widget.banner),
 
-        // ── 1. Barra búsqueda + tune ─────────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Container(
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.divider),
-                  ),
-                  child: TextField(
-                    controller: _searchCtrl,
-                    onChanged: (v) {
-                      if (v.trim().isEmpty) setState(() => cargarPublicaciones());
-                    },
-                    onSubmitted: _buscarEnBackend,
-                    decoration: InputDecoration(
-                      hintText: "Buscar productos...",
-                      hintStyle: const TextStyle(color: AppColors.grayMid, fontSize: 13),
-                      prefixIcon: _buscando
-                          ? const Padding(
-                              padding: EdgeInsets.all(10),
-                              child: SizedBox(width: 16, height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)),
-                            )
-                          : const Icon(Icons.search, size: 18, color: AppColors.grayMid),
-                      suffixIcon: _searchCtrl.text.isNotEmpty
-                          ? GestureDetector(
-                              onTap: () { _searchCtrl.clear(); setState(() => cargarPublicaciones()); },
-                              child: const Icon(Icons.close, size: 16, color: AppColors.grayMid))
-                          : null,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: _mostrarFiltrosPrecio,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  width: 40, height: 40,
-                  decoration: BoxDecoration(
-                    color: _tieneFiltroPrecio ? AppColors.primary : AppColors.surface,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: _tieneFiltroPrecio ? AppColors.primary : AppColors.divider),
-                  ),
-                  child: Icon(Icons.tune, size: 18,
-                      color: _tieneFiltroPrecio ? AppColors.textOnPrimary : AppColors.grayMid),
-                ),
-              ),
-            ],
+        // ── Barra de búsqueda + categorías (anclada) ─────────────────────────
+        SliverPersistentHeader(
+          pinned: true,
+          delegate: _SearchHeaderDelegate(
+            height: _stickyHeaderHeight,
+            child: _buildStickyHeader(),
           ),
         ),
 
-        // ── 2. Barra de categorías (inline, scrollable) ──────────────────────
-        _buildCategoryBar(),
-
-        // ── 3. Chip filtro precio activo ─────────────────────────────────────
-        if (_tieneFiltroPrecio)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
-            child: _chipFiltro(
-              label: _precioMin != null && _precioMax != null
-                  ? "${formatPrecio(_precioMin)} — ${formatPrecio(_precioMax)}"
-                  : _precioMin != null
-                      ? "Desde ${formatPrecio(_precioMin)}"
-                      : "Hasta ${formatPrecio(_precioMax)}",
-              onClear: () => setState(() { _precioMin = null; _precioMax = null; cargarPublicaciones(); }),
-            ),
-          ),
-
-        // ── 4. Header: título + cartera ──────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(tituloSeccion,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-              ),
-              GestureDetector(
-                onTap: _mostrarConteoProductos,
-                child: ValueListenableBuilder<List<Map<String, dynamic>>>(
-                  valueListenable: CartService.cartNotifier,
-                  builder: (_, cart, __) => Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        width: 34, height: 34,
-                        decoration: BoxDecoration(
-                          color: cart.isNotEmpty ? AppColors.primary.withValues(alpha: 0.10) : AppColors.background,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Icons.shopping_bag_outlined, size: 18,
-                            color: cart.isNotEmpty ? AppColors.primary : AppColors.grayMid),
-                      ),
-                      if (cart.isNotEmpty)
-                        Positioned(
-                          right: -2, top: -2,
-                          child: Container(
-                            width: 15, height: 15,
-                            decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                            child: Center(child: Text("${cart.length}",
-                                style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w700))),
+        // ── Título sección + ícono carrito ────────────────────────────────────
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(tituloSeccion,
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                ),
+                GestureDetector(
+                  onTap: _mostrarConteoProductos,
+                  child: ValueListenableBuilder<List<Map<String, dynamic>>>(
+                    valueListenable: CartService.cartNotifier,
+                    builder: (_, cart, __) => Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 34, height: 34,
+                          decoration: BoxDecoration(
+                            color: cart.isNotEmpty ? AppColors.primary.withValues(alpha: 0.10) : AppColors.background,
+                            shape: BoxShape.circle,
                           ),
+                          child: Icon(Icons.shopping_bag_outlined, size: 18,
+                              color: cart.isNotEmpty ? AppColors.primary : AppColors.grayMid),
                         ),
-                    ],
+                        if (cart.isNotEmpty)
+                          Positioned(
+                            right: -2, top: -2,
+                            child: Container(
+                              width: 15, height: 15,
+                              decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                              child: Center(child: Text("${cart.length}",
+                                  style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w700))),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 4),
-            ],
+                const SizedBox(width: 4),
+              ],
+            ),
           ),
         ),
 
-        // ── 5. Sin resultados / error ────────────────────────────────────────
+        // ── Sin resultados / error ────────────────────────────────────────────
         if (_filtradas.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 40),
-            child: Center(
-              child: Column(
-                children: [
-                  Icon(
-                    _errorConexion
-                        ? Icons.wifi_off_rounded
-                        : _radioActivo
-                            ? Icons.explore_off_rounded
-                            : Icons.inventory_2_outlined,
-                    size: 48,
-                    color: _errorConexion ? AppColors.primary : AppColors.grayMid,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _errorConexion
-                        ? "Sin conexión al servidor"
-                        : _radioActivo
-                            ? "Sin productos en ${_formatRadio(widget.radioKm)} de tu ubicación"
-                            : _searchCtrl.text.isNotEmpty
-                                ? "Sin resultados para \"${_searchCtrl.text}\""
-                                : _categoriaSeleccionada != null
-                                    ? "Sin productos en esta categoría"
-                                    : "No hay productos disponibles",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: _errorConexion ? AppColors.textPrimary : AppColors.grayMid,
-                      fontSize: 14,
-                      fontWeight: _errorConexion ? FontWeight.w600 : FontWeight.normal,
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 40),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(
+                      _errorConexion
+                          ? Icons.wifi_off_rounded
+                          : _radioActivo
+                              ? Icons.explore_off_rounded
+                              : Icons.inventory_2_outlined,
+                      size: 48,
+                      color: _errorConexion ? AppColors.primary : AppColors.grayMid,
                     ),
-                  ),
-                  if (_errorConexion) ...[
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 12),
                     Text(
-                      "Verifica que el servidor esté activo\n(${ApiService.baseUrl})",
+                      _errorConexion
+                          ? "Sin conexión al servidor"
+                          : _radioActivo
+                              ? "Sin productos en ${_formatRadio(widget.radioKm)} de tu ubicación"
+                              : _searchCtrl.text.isNotEmpty
+                                  ? "Sin resultados para \"${_searchCtrl.text}\""
+                                  : _categoriaSeleccionada != null
+                                      ? "Sin productos en esta categoría"
+                                      : "No hay productos disponibles",
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.grayMid, fontSize: 12),
+                      style: TextStyle(
+                        color: _errorConexion ? AppColors.textPrimary : AppColors.grayMid,
+                        fontSize: 14,
+                        fontWeight: _errorConexion ? FontWeight.w600 : FontWeight.normal,
+                      ),
                     ),
-                    const SizedBox(height: 16),
-                    TextButton.icon(
-                      onPressed: cargarPublicaciones,
-                      icon: const Icon(Icons.refresh_rounded,
-                          size: 18, color: AppColors.primary),
-                      label: const Text("Reintentar",
-                          style: TextStyle(color: AppColors.primary,
-                              fontWeight: FontWeight.w600)),
-                    ),
+                    if (_errorConexion) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        "Verifica que el servidor esté activo\n(${ApiService.baseUrl})",
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: AppColors.grayMid, fontSize: 12),
+                      ),
+                      const SizedBox(height: 16),
+                      TextButton.icon(
+                        onPressed: cargarPublicaciones,
+                        icon: const Icon(Icons.refresh_rounded,
+                            size: 18, color: AppColors.primary),
+                        label: const Text("Reintentar",
+                            style: TextStyle(color: AppColors.primary,
+                                fontWeight: FontWeight.w600)),
+                      ),
+                    ],
+                    if (_radioActivo && !_errorConexion)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 8),
+                        child: Text("Ajusta el radio en la barra inferior",
+                            style: TextStyle(color: AppColors.grayMid, fontSize: 12)),
+                      ),
                   ],
-                  if (_radioActivo && !_errorConexion)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 8),
-                      child: Text("Ajusta el radio en la barra inferior",
-                          style: TextStyle(color: AppColors.grayMid, fontSize: 12)),
-                    ),
-                ],
+                ),
               ),
             ),
           ),
 
-        // ── 6. Grid ──────────────────────────────────────────────────────────
+        // ── Grid de productos ─────────────────────────────────────────────────
         if (_filtradas.isNotEmpty)
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 0.65,
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
+            sliver: SliverGrid(
+              delegate: SliverChildBuilderDelegate(
+                (_, i) => _itemProducto(_filtradas[i]),
+                childCount: _filtradas.length,
+              ),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 0.65,
+              ),
             ),
-            itemCount: _filtradas.length,
-            itemBuilder: (_, i) => _itemProducto(_filtradas[i]),
           ),
       ],
     );
   }
+}
+
+// ── Delegate para cabecera anclada ────────────────────────────────────────────
+
+class _SearchHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  final double height;
+
+  const _SearchHeaderDelegate({required this.child, required this.height});
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        boxShadow: overlapsContent
+            ? [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 6, offset: const Offset(0, 2))]
+            : [],
+      ),
+      child: child,
+    );
+  }
+
+  @override
+  double get maxExtent => height;
+
+  @override
+  double get minExtent => height;
+
+  @override
+  bool shouldRebuild(_SearchHeaderDelegate old) => old.height != height || old.child != child;
 }

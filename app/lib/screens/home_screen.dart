@@ -734,8 +734,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  static const _colorServicios = Color(0xFF00897B); // teal complementario
-
   Widget _navDobleDestacado() {
     final selServ = _tab == 2;
     return SizedBox(
@@ -759,12 +757,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       width: 46,
                       height: 46,
                       decoration: BoxDecoration(
-                        color: _colorServicios,
+                        color: AppColors.carbon,
                         shape: BoxShape.circle,
                         border: Border.all(color: AppColors.surface, width: 3),
                         boxShadow: [
                           BoxShadow(
-                            color: _colorServicios.withOpacity(0.4),
+                            color: AppColors.carbon.withOpacity(0.4),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -784,7 +782,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
-                        color: selServ ? _colorServicios : _colorServicios,
+                        color: selServ ? AppColors.carbon : AppColors.carbon,
                       ),
                     ),
                   ),
@@ -848,21 +846,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ── CONTENIDO POR TAB ──────────────────────────────────────────────────────
   Widget _buildInicio() {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          // Banner animado
-          const _BannerCarrusel(),
-          const SizedBox(height: 8),
-          MarketplaceScreen(
-            miLat: _miPosicion?.latitude,
-            miLng: _miPosicion?.longitude,
-            radioKm: _radioKm,
-            filtroUbicacionActivo: _filtroUbicacionActivo && _miPosicion != null,
-          ),
-          const SizedBox(height: 20),
-        ],
-      ),
+    return MarketplaceScreen(
+      banner: const _BannerCarrusel(),
+      miLat: _miPosicion?.latitude,
+      miLng: _miPosicion?.longitude,
+      radioKm: _radioKm,
+      filtroUbicacionActivo: _filtroUbicacionActivo && _miPosicion != null,
     );
   }
 
