@@ -392,24 +392,27 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── HEADER ─────────────────────────────────────────────────────────────────
   Widget _buildHeader() {
     return Container(
+      padding: const EdgeInsets.fromLTRB(15, 10, 15, 10),
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(
           bottom: BorderSide(color: AppColors.divider, width: 0.5),
         ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Row(
         children: [
-          // Fila principal: logo + iconos
-          Padding(
-            padding: const EdgeInsets.fromLTRB(15, 10, 15, 8),
-            child: Row(
-              children: [
-                // Logo
-                Image.asset('assets/images/logo.png', height: 44),
+          // Logo
+          Image.asset('assets/images/logo.png', height: 44),
 
-                const Spacer(),
+          const SizedBox(width: 8),
+
+          // Dirección (centro, solo para usuarios registrados)
+          if (userId != null)
+            Expanded(child: _buildDireccionInline())
+          else
+            const Spacer(),
+
+          const SizedBox(width: 4),
 
           // Carrito
           ValueListenableBuilder<List<Map<String, dynamic>>>(
@@ -573,53 +576,45 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-              ],
-            ),   // Row
-          ),     // Padding fila superior
-
-          // Fila de dirección (solo usuarios registrados)
-          if (userId != null) _buildDireccionRow(),
-        ],     // Column children
-      ),       // Column
+        ],   // Row children
+      ),     // Row
     );
   }
 
-  Widget _buildDireccionRow() {
+  Widget _buildDireccionInline() {
     final dir = _direccionActual;
+    final etiqueta = dir?['etiqueta'] as String? ?? '';
+    final direccion = dir?['direccion'] as String? ?? '';
     final texto = dir == null
         ? 'Agregar dirección'
-        : [
-            dir['etiqueta'] as String? ?? '',
-            dir['direccion'] as String? ?? '',
-          ].where((s) => s.isNotEmpty).join(' · ');
+        : [etiqueta, direccion].where((s) => s.isNotEmpty).join(' · ');
 
-    return InkWell(
+    return GestureDetector(
       onTap: _mostrarSelectorDireccion,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(15, 0, 15, 10),
-        child: Row(
-          children: [
-            Icon(
-              dir == null ? Icons.add_location_alt_outlined : Icons.location_on_outlined,
-              size: 15,
-              color: AppColors.primary,
-            ),
-            const SizedBox(width: 5),
-            Expanded(
-              child: Text(
-                texto,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w500,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            dir == null ? Icons.add_location_alt_outlined : Icons.location_on_rounded,
+            size: 14,
+            color: AppColors.primary,
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              texto,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: AppColors.primary),
-          ],
-        ),
+          ),
+          const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppColors.primary),
+        ],
       ),
     );
   }

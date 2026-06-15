@@ -366,25 +366,81 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
 
   Future<void> _buscar(String query) async {
     setState(() => _buscando = true);
+    bool encontrado = false;
+
+    // Photon (Elasticsearch sobre OSM): mejor fuzzy matching para calles chilenas
     try {
-      final uri = Uri.parse('https://nominatim.openstreetmap.org/search').replace(
+      final uri = Uri.parse('https://photon.komoot.io/api/').replace(
         queryParameters: {
-          'q': '$query, Chile',
-          'format': 'json',
-          'limit': '6',
-          'addressdetails': '1',
-          'countrycodes': 'cl',
+          'q': query,
+          'limit': '8',
+          'lang': 'es',
+          'bbox': '-75.7,-55.9,-66.1,-17.5', // bounding box Chile
         },
       );
       final resp = await http.get(uri, headers: {
         'User-Agent': 'OkVenta/1.0 (okventa.app)',
-        'Accept-Language': 'es',
       }).timeout(const Duration(seconds: 8));
+
       if (resp.statusCode == 200) {
-        final data = jsonDecode(resp.body) as List;
-        if (mounted) setState(() => _sugerencias = data.map((e) => Map<String, dynamic>.from(e)).toList());
+        final data = jsonDecode(resp.body);
+        final features = (data['features'] as List?) ?? [];
+        if (features.isNotEmpty) {
+          final resultados = features.map<Map<String, dynamic>>((f) {
+            final props = Map<String, dynamic>.from(f['properties'] as Map);
+            final coords = (f['geometry']['coordinates'] as List);
+            final lon = coords[0];
+            final lat = coords[1];
+            final calle = props['street'] as String? ?? props['name'] as String? ?? '';
+            final numero = props['housenumber'] as String? ?? '';
+            final calleConNum = [calle, numero].where((s) => s.isNotEmpty).join(' ');
+            final suburb = props['suburb'] as String? ?? props['district'] as String? ?? '';
+            final ciudad = props['city'] as String? ?? props['town'] as String? ?? props['village'] as String? ?? '';
+            final estado = props['state'] as String? ?? '';
+            final displayName = [calleConNum, suburb, ciudad, estado, 'Chile']
+                .where((s) => s.isNotEmpty).join(', ');
+            return {
+              'display_name': displayName,
+              'lat': '$lat',
+              'lon': '$lon',
+              'address': {
+                'road': calleConNum,
+                'suburb': suburb,
+                'city': ciudad,
+                'state': estado,
+                'country': 'Chile',
+              },
+            };
+          }).toList();
+          if (mounted) setState(() => _sugerencias = resultados);
+          encontrado = true;
+        }
       }
     } catch (_) {}
+
+    // Fallback: Nominatim si Photon no retorna resultados
+    if (!encontrado) {
+      try {
+        final uri = Uri.parse('https://nominatim.openstreetmap.org/search').replace(
+          queryParameters: {
+            'q': '$query, Chile',
+            'format': 'json',
+            'limit': '6',
+            'addressdetails': '1',
+            'countrycodes': 'cl',
+          },
+        );
+        final resp = await http.get(uri, headers: {
+          'User-Agent': 'OkVenta/1.0 (okventa.app)',
+          'Accept-Language': 'es',
+        }).timeout(const Duration(seconds: 8));
+        if (resp.statusCode == 200) {
+          final data = jsonDecode(resp.body) as List;
+          if (mounted) setState(() => _sugerencias = data.map((e) => Map<String, dynamic>.from(e)).toList());
+        }
+      } catch (_) {}
+    }
+
     if (mounted) setState(() => _buscando = false);
   }
 
