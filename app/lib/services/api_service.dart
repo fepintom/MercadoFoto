@@ -563,4 +563,71 @@ class ApiService {
       throw Exception('Error al elegir entrega: ${response.body}');
     }
   }
+
+  // ── Mis Direcciones ────────────────────────────────────────────────────────
+
+  static Future<List<Map<String, dynamic>>> obtenerDirecciones(int userId) async {
+    final res = await http.get(Uri.parse('$baseUrl/usuarios/$userId/direcciones'));
+    if (res.statusCode == 200) {
+      return List<Map<String, dynamic>>.from(jsonDecode(res.body));
+    }
+    return [];
+  }
+
+  static Future<Map<String, dynamic>> agregarDireccion(
+    int userId, {
+    required String etiqueta,
+    required String direccion,
+    String comuna = '',
+    String ciudad = '',
+    double? lat,
+    double? lng,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/usuarios/$userId/direcciones'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'etiqueta': etiqueta,
+        'direccion': direccion,
+        'comuna': comuna,
+        'ciudad': ciudad,
+        'lat': lat,
+        'lng': lng,
+      }),
+    );
+    if (res.statusCode == 200) return Map<String, dynamic>.from(jsonDecode(res.body));
+    throw Exception('Error al agregar dirección');
+  }
+
+  static Future<void> actualizarDireccion(
+    int userId,
+    int addressId, {
+    required String etiqueta,
+    required String direccion,
+    String comuna = '',
+    String ciudad = '',
+    double? lat,
+    double? lng,
+  }) async {
+    await http.put(
+      Uri.parse('$baseUrl/usuarios/$userId/direcciones/$addressId'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'etiqueta': etiqueta,
+        'direccion': direccion,
+        'comuna': comuna,
+        'ciudad': ciudad,
+        'lat': lat,
+        'lng': lng,
+      }),
+    );
+  }
+
+  static Future<void> eliminarDireccion(int userId, int addressId) async {
+    await http.delete(Uri.parse('$baseUrl/usuarios/$userId/direcciones/$addressId'));
+  }
+
+  static Future<void> establecerPrincipal(int userId, int addressId) async {
+    await http.patch(Uri.parse('$baseUrl/usuarios/$userId/direcciones/$addressId/principal'));
+  }
 }

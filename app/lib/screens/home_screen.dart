@@ -20,6 +20,7 @@ import 'mensajes_screen.dart';
 import 'chat_screen.dart';
 import 'oferta_screen.dart';
 import 'servicios_screen.dart';
+import 'mis_direcciones_screen.dart';
 import '../widgets/registro_form_widget.dart';
 
 // ---------------------------------------------------------------------------
@@ -49,6 +50,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const _kRadio  = 'mkt_radio_km';
   static const _kActivo = 'mkt_ubicacion_activo';
+
+  // ── DIRECCIONES ───────────────────────────────────────────────────────────
+  List<Map<String, dynamic>> _misDirections = [];
+  Map<String, dynamic>? _direccionActual;
 
   // ── INIT ───────────────────────────────────────────────────────────────────
   @override
@@ -151,6 +156,75 @@ class _HomeScreenState extends State<HomeScreen> {
       userId = id;
       nombreUsuario = nombre ?? "";
     });
+    if (id != null) _cargarDirecciones(id);
+  }
+
+  Future<void> _cargarDirecciones(int uid) async {
+    try {
+      final data = await ApiService.obtenerDirecciones(uid);
+      if (!mounted) return;
+      setState(() {
+        _misDirections = data;
+        _direccionActual = data.firstWhere(
+          (d) => (d['es_principal'] as int? ?? 0) == 1,
+          orElse: () => data.isNotEmpty ? data.first : {},
+        );
+        if (_direccionActual!.isEmpty) _direccionActual = null;
+      });
+    } catch (_) {}
+  }
+
+  void _mostrarSelectorDireccion() {
+    if (userId == null) return;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _DireccionSelectorSheet(
+        misDirections: _misDirections,
+        direccionActual: _direccionActual,
+        onSeleccionada: (d) async {
+          Navigator.pop(context);
+          if (d == null) {
+            // → editar
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => MisDireccionesScreen(
+                    userId: userId!, mostrarBotonMarketplace: true),
+              ),
+            );
+            _cargarDirecciones(userId!);
+            return;
+          }
+          final id = d['id'] as int;
+          try {
+            await ApiService.establecerPrincipal(userId!, id);
+          } catch (_) {}
+          setState(() => _direccionActual = d);
+          if (mounted) {
+            ScaffoldMessenger.of(context).clearSnackBars();
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Row(children: [
+                const Icon(Icons.location_on_rounded, size: 16, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text(
+                  'Dirección cambiada a: ${d['etiqueta']}',
+                  style: const TextStyle(fontSize: 13),
+                )),
+              ]),
+              backgroundColor: AppColors.carbon,
+              duration: const Duration(seconds: 3),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            ));
+          }
+          _cargarDirecciones(userId!);
+        },
+      ),
+    );
   }
 
   // ── AUTH MODALS ────────────────────────────────────────────────────────────
@@ -318,19 +392,24 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── HEADER ─────────────────────────────────────────────────────────────────
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(15, 10, 15, 10),
       decoration: BoxDecoration(
         color: AppColors.surface,
         border: Border(
           bottom: BorderSide(color: AppColors.divider, width: 0.5),
         ),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Logo
-          Image.asset('assets/images/logo.png', height: 44),
+          // Fila principal: logo + iconos
+          Padding(
+            padding: const EdgeInsets.fromLTRB(15, 10, 15, 8),
+            child: Row(
+              children: [
+                // Logo
+                Image.asset('assets/images/logo.png', height: 44),
 
-          const Spacer(),
+                const Spacer(),
 
           // Carrito
           ValueListenableBuilder<List<Map<String, dynamic>>>(
@@ -494,7 +573,53 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-        ],
+              ],
+            ),   // Row
+          ),     // Padding fila superior
+
+          // Fila de dirección (solo usuarios registrados)
+          if (userId != null) _buildDireccionRow(),
+        ],     // Column children
+      ),       // Column
+    );
+  }
+
+  Widget _buildDireccionRow() {
+    final dir = _direccionActual;
+    final texto = dir == null
+        ? 'Agregar dirección'
+        : [
+            dir['etiqueta'] as String? ?? '',
+            dir['direccion'] as String? ?? '',
+          ].where((s) => s.isNotEmpty).join(' · ');
+
+    return InkWell(
+      onTap: _mostrarSelectorDireccion,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(15, 0, 15, 10),
+        child: Row(
+          children: [
+            Icon(
+              dir == null ? Icons.add_location_alt_outlined : Icons.location_on_outlined,
+              size: 15,
+              color: AppColors.primary,
+            ),
+            const SizedBox(width: 5),
+            Expanded(
+              child: Text(
+                texto,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: AppColors.primary),
+          ],
+        ),
       ),
     );
   }
@@ -1160,6 +1285,125 @@ class _HomeScreenState extends State<HomeScreen> {
             _buildBottomNav(),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Selector de dirección (bottom sheet) ─────────────────────────────────────
+
+class _DireccionSelectorSheet extends StatelessWidget {
+  final List<Map<String, dynamic>> misDirections;
+  final Map<String, dynamic>? direccionActual;
+  final void Function(Map<String, dynamic>? d) onSeleccionada;
+
+  const _DireccionSelectorSheet({
+    required this.misDirections,
+    required this.onSeleccionada,
+    this.direccionActual,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(0, 16, 0, 0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle
+          Container(
+            width: 40, height: 4,
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+                color: AppColors.divider, borderRadius: BorderRadius.circular(2)),
+          ),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Mis direcciones',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary)),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          if (misDirections.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Text('No tienes direcciones guardadas.',
+                  style: TextStyle(color: AppColors.grayMid, fontSize: 14)),
+            )
+          else
+            ...misDirections.map((d) {
+              final esPrincipal = (d['es_principal'] as int? ?? 0) == 1;
+              final esActual = direccionActual != null && d['id'] == direccionActual!['id'];
+              final etiqueta = d['etiqueta'] as String? ?? 'Casa';
+              final direccion = d['direccion'] as String? ?? '';
+              final comuna = d['comuna'] as String? ?? '';
+              return ListTile(
+                leading: Container(
+                  width: 38, height: 38,
+                  decoration: BoxDecoration(
+                    color: esActual
+                        ? AppColors.primary.withOpacity(0.1)
+                        : AppColors.background,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    etiqueta.toLowerCase().contains('trabajo')
+                        ? Icons.work_outline
+                        : etiqueta.toLowerCase().contains('otro')
+                            ? Icons.place_outlined
+                            : Icons.home_outlined,
+                    size: 18,
+                    color: esActual ? AppColors.primary : AppColors.grayMid,
+                  ),
+                ),
+                title: Row(children: [
+                  Text(etiqueta,
+                      style: TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w600,
+                        color: esActual ? AppColors.primary : AppColors.textPrimary,
+                      )),
+                  if (esPrincipal) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(8)),
+                      child: const Text('Principal',
+                          style: TextStyle(fontSize: 10, color: AppColors.primary,
+                              fontWeight: FontWeight.w600)),
+                    ),
+                  ],
+                ]),
+                subtitle: Text(
+                  [if (direccion.isNotEmpty) direccion, if (comuna.isNotEmpty) comuna]
+                      .join(', '),
+                  style: const TextStyle(fontSize: 12, color: AppColors.grayMid),
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                ),
+                trailing: esActual
+                    ? const Icon(Icons.check_rounded, color: AppColors.primary, size: 20)
+                    : null,
+                onTap: () => onSeleccionada(d),
+              );
+            }),
+
+          const Divider(height: 1),
+
+          // Opción editar
+          ListTile(
+            leading: const Icon(Icons.edit_location_alt_outlined, color: AppColors.carbon),
+            title: const Text('Editar mis direcciones',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary)),
+            onTap: () => onSeleccionada(null),
+          ),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }

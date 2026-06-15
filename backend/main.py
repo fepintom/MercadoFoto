@@ -74,6 +74,11 @@ from database.users import (
     validar_reset_token,
     usar_reset_token,
     actualizar_foto_perfil,
+    obtener_direcciones_usuario,
+    agregar_direccion,
+    actualizar_direccion,
+    eliminar_direccion,
+    establecer_principal,
 )
 
 from database.chat import (
@@ -1086,6 +1091,45 @@ def actualizar_ubicacion(user_id: int, data: UbicacionUsuario):
 @app.get("/usuarios/{user_id}/ubicacion")
 def ver_ubicacion(user_id: int):
     return obtener_ubicacion_usuario(user_id) or {}
+
+
+# --------------------------------------------------
+# MÚLTIPLES DIRECCIONES POR USUARIO
+# --------------------------------------------------
+
+class DireccionBody(BaseModel):
+    etiqueta: str = "Casa"
+    direccion: str
+    comuna: str = ""
+    ciudad: str = ""
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+
+@app.get("/usuarios/{user_id}/direcciones")
+def listar_direcciones(user_id: int):
+    return obtener_direcciones_usuario(user_id)
+
+@app.post("/usuarios/{user_id}/direcciones")
+def nueva_direccion(user_id: int, body: DireccionBody):
+    new_id = agregar_direccion(user_id, body.etiqueta, body.direccion,
+                               body.comuna, body.ciudad, body.lat, body.lng)
+    return {"id": new_id, "mensaje": "Dirección agregada"}
+
+@app.put("/usuarios/{user_id}/direcciones/{address_id}")
+def editar_direccion(user_id: int, address_id: int, body: DireccionBody):
+    actualizar_direccion(address_id, user_id, body.etiqueta, body.direccion,
+                         body.comuna, body.ciudad, body.lat, body.lng)
+    return {"mensaje": "Dirección actualizada"}
+
+@app.delete("/usuarios/{user_id}/direcciones/{address_id}")
+def borrar_direccion(user_id: int, address_id: int):
+    eliminar_direccion(address_id, user_id)
+    return {"mensaje": "Dirección eliminada"}
+
+@app.patch("/usuarios/{user_id}/direcciones/{address_id}/principal")
+def marcar_principal(user_id: int, address_id: int):
+    establecer_principal(address_id, user_id)
+    return {"mensaje": "Dirección principal actualizada"}
 
 
 @app.post("/usuarios/{user_id}/foto")

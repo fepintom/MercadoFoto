@@ -44,6 +44,22 @@ def init_users_db():
     )
     """)
 
+    # Tabla de direcciones múltiples por usuario
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS user_addresses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        etiqueta TEXT DEFAULT 'Casa',
+        direccion TEXT NOT NULL,
+        comuna TEXT DEFAULT '',
+        ciudad TEXT DEFAULT '',
+        lat REAL,
+        lng REAL,
+        es_principal INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -342,6 +358,116 @@ def obtener_ubicacion_usuario(user_id):
         "lat": row[0], "lng": row[1],
         "direccion": row[2], "comuna": row[3], "ciudad": row[4],
     }
+
+
+# --------------------------------------------------
+# MÚLTIPLES DIRECCIONES POR USUARIO
+# --------------------------------------------------
+
+def obtener_direcciones_usuario(user_id: int):
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, etiqueta, direccion, comuna, ciudad, lat, lng, es_principal
+        FROM user_addresses WHERE user_id = ?
+        ORDER BY es_principal DESC, id ASC
+    """, (user_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [
+        {"id": r[0], "etiqueta": r[1], "direccion": r[2], "comuna": r[3],
+         "ciudad": r[4], "lat": r[5], "lng": r[6], "es_principal": r[7]}
+        for r in rows
+    ]
+
+
+def agregar_direccion(user_id: int, etiqueta: str, direccion: str,
+                      comuna: str = "", ciudad: str = "",
+                      lat: float = None, lng: float = None):
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+    # Si no hay ninguna dirección, esta será la principal
+    cursor.execute("SELECT COUNT(*) FROM user_addresses WHERE user_id = ?", (user_id,))
+    es_principal = 1 if cursor.fetchone()[0] == 0 else 0
+    cursor.execute("""
+        INSERT INTO user_addresses (user_id, etiqueta, direccion, comuna, ciudad, lat, lng, es_principal)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (user_id, etiqueta, direccion, comuna, ciudad, lat, lng, es_principal))
+    new_id = cursor.lastrowid
+    # Sincronizar con users si es principal
+    if es_principal:
+        cursor.execute("""
+            UPDATE users SET lat = ?, lng = ?, direccion = ?, comuna = ?, ciudad = ?
+            WHERE id = ?
+        """, (lat, lng, direccion, comuna, ciudad, user_id))
+    conn.commit()
+    conn.close()
+    return new_id
+
+
+def actualizar_direccion(address_id: int, user_id: int, etiqueta: str,
+                         direccion: str, comuna: str = "", ciudad: str = "",
+                         lat: float = None, lng: float = None):
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE user_addresses
+        SET etiqueta = ?, direccion = ?, comuna = ?, ciudad = ?, lat = ?, lng = ?
+        WHERE id = ? AND user_id = ?
+    """, (etiqueta, direccion, comuna, ciudad, lat, lng, address_id, user_id))
+    # Si era principal, también sincronizar users
+    cursor.execute("SELECT es_principal FROM user_addresses WHERE id = ? AND user_id = ?",
+                   (address_id, user_id))
+    row = cursor.fetchone()
+    if row and row[0]:
+        cursor.execute("""
+            UPDATE users SET lat = ?, lng = ?, direccion = ?, comuna = ?, ciudad = ?
+            WHERE id = ?
+        """, (lat, lng, direccion, comuna, ciudad, user_id))
+    conn.commit()
+    conn.close()
+
+
+def eliminar_direccion(address_id: int, user_id: int):
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+    cursor.execute("SELECT es_principal FROM user_addresses WHERE id = ? AND user_id = ?",
+                   (address_id, user_id))
+    row = cursor.fetchone()
+    era_principal = row and row[0]
+    cursor.execute("DELETE FROM user_addresses WHERE id = ? AND user_id = ?",
+                   (address_id, user_id))
+    # Si era principal, asignar la primera restante como principal
+    if era_principal:
+        cursor.execute("""
+            UPDATE user_addresses SET es_principal = 1
+            WHERE user_id = ? AND id = (
+                SELECT id FROM user_addresses WHERE user_id = ? ORDER BY id ASC LIMIT 1
+            )
+        """, (user_id, user_id))
+    conn.commit()
+    conn.close()
+
+
+def establecer_principal(address_id: int, user_id: int):
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE user_addresses SET es_principal = 0 WHERE user_id = ?", (user_id,))
+    cursor.execute("UPDATE user_addresses SET es_principal = 1 WHERE id = ? AND user_id = ?",
+                   (address_id, user_id))
+    # Sincronizar datos en users
+    cursor.execute("""
+        SELECT lat, lng, direccion, comuna, ciudad
+        FROM user_addresses WHERE id = ? AND user_id = ?
+    """, (address_id, user_id))
+    row = cursor.fetchone()
+    if row:
+        cursor.execute("""
+            UPDATE users SET lat = ?, lng = ?, direccion = ?, comuna = ?, ciudad = ?
+            WHERE id = ?
+        """, (row[0], row[1], row[2], row[3], row[4], user_id))
+    conn.commit()
+    conn.close()
 
 
 # --------------------------------------------------
