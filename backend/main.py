@@ -998,6 +998,24 @@ def ver_chat(publicacion_id: int):
     return obtener_chat(publicacion_id)
 
 
+@app.post("/chat/{publicacion_id}/imagen")
+async def enviar_imagen_chat(
+    publicacion_id: int,
+    remitente_id: int = Form(...),
+    imagen: UploadFile = File(...),
+):
+    import time as _time
+    ext = os.path.splitext(imagen.filename or "img.jpg")[1] or ".jpg"
+    nombre = f"chat_{publicacion_id}_{remitente_id}_{int(_time.time())}{ext}"
+    ruta = os.path.join(UPLOADS_DIR, nombre)
+    contenido = await imagen.read()
+    with open(ruta, "wb") as f:
+        f.write(contenido)
+    imagen_url = f"/uploads/{nombre}"
+    guardar_mensaje(publicacion_id, remitente_id, "", imagen_url=imagen_url)
+    return {"imagen_url": imagen_url}
+
+
 # --------------------------------------------------
 # EDITAR PUBLICACION
 # --------------------------------------------------

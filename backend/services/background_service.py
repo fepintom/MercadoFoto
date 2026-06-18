@@ -21,16 +21,10 @@ def quitar_fondo(image_bytes):
     # 2) remover fondo
     output_image = remove(input_image)
 
-    # 3) abrir fondo MercadoFoto
-    if not FONDO_PATH.exists():
-        raise FileNotFoundError(f"No se encontró el fondo en: {FONDO_PATH}")
+    # 3) fondo blanco del mismo tamaño que el producto procesado
+    fondo = Image.new("RGBA", output_image.size, (255, 255, 255, 255))
 
-    fondo = Image.open(FONDO_PATH).convert("RGBA")
-
-    # 4) ajustar fondo al tamaño del producto (ya reducido)
-    fondo = fondo.resize(output_image.size, Image.LANCZOS)
-
-    # 5) pegar producto sobre el fondo
+    # 4) pegar producto sobre el fondo
     fondo.paste(output_image, (0, 0), mask=output_image)
 
     # 6) guardar como JPEG (mucho más liviano que PNG)

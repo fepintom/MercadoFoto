@@ -367,7 +367,8 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     if (index == 1) {
-      setState(() { _tab = 1; _notifCount = 0; });
+      _abrirNotificaciones();
+      if (mounted) setState(() => _notifCount = 0);
       return;
     }
     setState(() => _tab = index);
@@ -472,55 +473,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
           const SizedBox(width: 8),
 
-          // Campana de notificaciones
+          // Mensajes (ahora en el header)
           if (userId != null)
             GestureDetector(
-              onTap: () => _abrirNotificaciones(),
-              child: Stack(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: _notifCount > 0
-                          ? AppColors.primary.withOpacity(0.1)
-                          : AppColors.background,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      _notifCount > 0
-                          ? Icons.notifications_rounded
-                          : Icons.notifications_outlined,
-                      size: 20,
-                      color: _notifCount > 0
-                          ? AppColors.primary
-                          : AppColors.grayMid,
-                    ),
-                  ),
-                  if (_notifCount > 0)
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      child: Container(
-                        width: 16,
-                        height: 16,
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            _notifCount > 9 ? '9+' : '$_notifCount',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MensajesScreen()),
+              ),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  size: 20,
+                  color: AppColors.grayMid,
+                ),
               ),
             ),
 
@@ -739,8 +710,8 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               // Inicio
               Expanded(child: _navItem(0, Icons.home_rounded, "Inicio")),
-              // Mensajes
-              Expanded(child: _navItemBadge(1, Icons.chat_bubble_outline_rounded, "Mensajes", _notifCount)),
+              // Notificaciones
+              Expanded(child: _navItemBadge(1, Icons.notifications_outlined, "Alertas", _notifCount)),
               // Servicios + Vender — CENTRO destacados
               _navDobleDestacado(),
               // Encontrar
@@ -1271,7 +1242,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 index: _tab,
                 children: [
                   _buildInicio(),
-                  const MensajesScreen(),
+                  const SizedBox.shrink(), // slot 1 reservado (notif abre como sheet)
                   const ServiciosScreen(),
                 ],
               ),

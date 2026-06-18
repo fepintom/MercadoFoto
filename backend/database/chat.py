@@ -18,12 +18,18 @@ def init_chat_db():
     )
     """)
 
+    # Migración: columna para imágenes en chat
+    try:
+        cursor.execute("ALTER TABLE chat ADD COLUMN imagen_url TEXT")
+    except Exception:
+        pass
+
     conn.commit()
     conn.close()
 
 
 
-def guardar_mensaje(publicacion_id, remitente_id, mensaje):
+def guardar_mensaje(publicacion_id, remitente_id, mensaje, imagen_url=None):
 
     conn = sqlite3.connect(DB)
     cursor = conn.cursor()
@@ -32,13 +38,15 @@ def guardar_mensaje(publicacion_id, remitente_id, mensaje):
         INSERT INTO chat (
             publicacion_id,
             remitente_id,
-            mensaje
+            mensaje,
+            imagen_url
         )
-        VALUES (?, ?, ?)
+        VALUES (?, ?, ?, ?)
     """, (
         publicacion_id,
         remitente_id,
-        mensaje
+        mensaje,
+        imagen_url,
     ))
 
     conn.commit()
@@ -100,7 +108,7 @@ def obtener_chat(publicacion_id):
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT remitente_id, mensaje, created_at
+        SELECT remitente_id, mensaje, created_at, imagen_url
         FROM chat
         WHERE publicacion_id = ?
         ORDER BY id ASC
@@ -116,7 +124,8 @@ def obtener_chat(publicacion_id):
         mensajes.append({
             "remitente": r[0],
             "mensaje": r[1],
-            "fecha": r[2]
+            "fecha": r[2],
+            "imagen_url": r[3],
         })
 
     return mensajes

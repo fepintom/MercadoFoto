@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
@@ -105,6 +107,94 @@ class _ChatScreenState extends State<ChatScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("No se pudo enviar el mensaje")),
       );
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
+  }
+
+  // ── Envío de imágenes ────────────────────────────────────────────────────
+
+  void _mostrarOpcionesImagen() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                  color: AppColors.divider, borderRadius: BorderRadius.circular(2)),
+            ),
+            ListTile(
+              leading: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                    color: AppColors.carbon.withOpacity(0.08), shape: BoxShape.circle),
+                child: const Icon(Icons.camera_alt_outlined, color: AppColors.carbon, size: 20),
+              ),
+              title: const Text('Tomar foto',
+                  style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+              onTap: () {
+                Navigator.pop(context);
+                _enviarImagen(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.08), shape: BoxShape.circle),
+                child: const Icon(Icons.photo_library_outlined, color: AppColors.primary, size: 20),
+              ),
+              title: const Text('Elegir de la galería',
+                  style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+              onTap: () {
+                Navigator.pop(context);
+                _enviarImagen(ImageSource.gallery);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _enviarImagen(ImageSource source) async {
+    if (_miUserId == null) return;
+    try {
+      final picked = await ImagePicker().pickImage(
+          source: source, imageQuality: 75, maxWidth: 1080);
+      if (picked == null) return;
+
+      if (mounted) setState(() => _enviando = true);
+
+      final bytes = await File(picked.path).readAsBytes();
+      final req = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiService.baseUrl}/chat/${widget.publicacionId}/imagen'),
+      );
+      req.fields['remitente_id'] = '${_miUserId!}';
+      req.files.add(http.MultipartFile.fromBytes(
+        'imagen', bytes,
+        filename: 'chat_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      ));
+      final streamed = await req.send().timeout(const Duration(seconds: 20));
+      if (streamed.statusCode == 200) {
+        await _cargarMensajes();
+      } else {
+        throw Exception('status ${streamed.statusCode}');
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo enviar la imagen')));
+      }
     } finally {
       if (mounted) setState(() => _enviando = false);
     }
@@ -240,6 +330,39 @@ class _ChatScreenState extends State<ChatScreen> {
     final esMio  = m['remitente'] == _miUserId;
     final texto  = (m['mensaje'] ?? '') as String;
     final hora   = _formatHora(m['fecha'] ?? '');
+    final imagenUrl = m['imagen_url'] as String?;
+
+    // Burbuja de imagen
+    if (imagenUrl != null && imagenUrl.isNotEmpty) {
+      return Align(
+        alignment: esMio ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Column(
+            crossAxisAlignment: esMio ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: Radius.circular(esMio ? 16 : 4),
+                  bottomRight: Radius.circular(esMio ? 4 : 16),
+                ),
+                child: NetImage(
+                  '${ApiService.baseUrl}$imagenUrl',
+                  width: 220, height: 220,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(hora,
+                  style: const TextStyle(fontSize: 10, color: AppColors.grayMid)),
+            ],
+          ),
+        ),
+      );
+    }
+
     final esOferta = texto.startsWith('💰 Oferta:');
 
     // Mostrar botones sólo al vendedor, sólo en la última oferta sin respuesta
@@ -520,6 +643,15 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: const Padding(
                       padding: EdgeInsets.only(right: 6),
                       child: Icon(Icons.keyboard_hide_rounded,
+                          size: 22, color: AppColors.grayMid),
+                    ),
+                  ),
+                  // Botón imagen
+                  GestureDetector(
+                    onTap: _enviando ? null : _mostrarOpcionesImagen,
+                    child: const Padding(
+                      padding: EdgeInsets.only(right: 8),
+                      child: Icon(Icons.image_outlined,
                           size: 22, color: AppColors.grayMid),
                     ),
                   ),
