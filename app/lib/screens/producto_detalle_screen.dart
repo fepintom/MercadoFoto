@@ -1042,11 +1042,14 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                           setState(() => _imgPagina = i),
                       itemBuilder: (ctx, i) => GestureDetector(
                         onTap: () => _verFotoCompleta(imagenes, i),
-                        child: NetImage(
-                          "${ApiService.baseUrl}${imagenes[i]}",
-                          height: 300,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
+                        child: ColoredBox(
+                          color: Colors.white,
+                          child: NetImage(
+                            "${ApiService.baseUrl}${imagenes[i]}",
+                            height: 300,
+                            width: double.infinity,
+                            fit: BoxFit.contain,
+                          ),
                         ),
                       ),
                     ),
@@ -1079,11 +1082,14 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
             else
               GestureDetector(
                 onTap: () => _verFotoCompleta(imagenes, 0),
-                child: NetImage(
-                  "${ApiService.baseUrl}${imagenes.isNotEmpty ? imagenes[0] : ''}",
-                  height: 300,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
+                child: ColoredBox(
+                  color: Colors.white,
+                  child: NetImage(
+                    "${ApiService.baseUrl}${imagenes.isNotEmpty ? imagenes[0] : ''}",
+                    height: 300,
+                    width: double.infinity,
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
 
