@@ -1033,8 +1033,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
             if (imagenes.length > 1)
               Column(
                 children: [
-                  SizedBox(
-                    height: 300,
+                  AspectRatio(
+                    aspectRatio: 1,
                     child: PageView.builder(
                       controller: _imgPageController,
                       itemCount: imagenes.length,
@@ -1046,8 +1046,6 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                           color: Colors.white,
                           child: NetImage(
                             "${ApiService.baseUrl}${imagenes[i]}",
-                            height: 300,
-                            width: double.infinity,
                             fit: BoxFit.contain,
                           ),
                         ),
@@ -1082,13 +1080,14 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
             else
               GestureDetector(
                 onTap: () => _verFotoCompleta(imagenes, 0),
-                child: ColoredBox(
-                  color: Colors.white,
-                  child: NetImage(
-                    "${ApiService.baseUrl}${imagenes.isNotEmpty ? imagenes[0] : ''}",
-                    height: 300,
-                    width: double.infinity,
-                    fit: BoxFit.contain,
+                child: AspectRatio(
+                  aspectRatio: 1,
+                  child: ColoredBox(
+                    color: Colors.white,
+                    child: NetImage(
+                      "${ApiService.baseUrl}${imagenes.isNotEmpty ? imagenes[0] : ''}",
+                      fit: BoxFit.contain,
+                    ),
                   ),
                 ),
               ),
