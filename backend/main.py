@@ -58,6 +58,7 @@ from database.publicaciones import (
     actualizar_precio,
     editar_publicacion,
     eliminar_publicacion,
+    guardar_info_adicional,
     obtener_publicaciones_cercanas,
     obtener_publicaciones_por_usuario,
 )
@@ -1081,14 +1082,12 @@ def actualizar_info_adicional(publicacion_id: int, body: InfoAdicionalBody):
     pub = obtener_publicacion_por_id(publicacion_id)
     if not pub:
         raise HTTPException(status_code=404, detail="Publicación no encontrada")
-    conn = sqlite3.connect(PUBLICACIONES_DB)
-    cursor = conn.cursor()
-    cursor.execute(
-        "UPDATE publicaciones SET sku=?, stock=?, codigo_universal=? WHERE id=?",
-        (body.sku, body.stock, body.codigo_universal, publicacion_id),
+    guardar_info_adicional(
+        publicacion_id,
+        sku=body.sku,
+        stock=body.stock,
+        codigo_universal=body.codigo_universal,
     )
-    conn.commit()
-    conn.close()
     return {"mensaje": "Información adicional actualizada"}
 
 

@@ -411,6 +411,21 @@ def editar_publicacion(publicacion_id, titulo, descripcion, precio,
 
 
 # --------------------------------------------------
+# INFO ADICIONAL (SKU / STOCK / CÓDIGO UNIVERSAL)
+# --------------------------------------------------
+
+def guardar_info_adicional(publicacion_id, sku=None, stock=None, codigo_universal=None):
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE publicaciones SET sku=?, stock=?, codigo_universal=? WHERE id=?",
+        (sku, stock, codigo_universal, publicacion_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+# --------------------------------------------------
 # ELIMINAR PUBLICACION
 # --------------------------------------------------
 
