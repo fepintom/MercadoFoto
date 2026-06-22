@@ -1068,6 +1068,31 @@ async def editar_pub(
 
 
 # --------------------------------------------------
+# INFO ADICIONAL (SKU / STOCK / CÓDIGO UNIVERSAL)
+# --------------------------------------------------
+
+class InfoAdicionalBody(BaseModel):
+    sku:              Optional[str] = None
+    stock:            Optional[int] = None
+    codigo_universal: Optional[str] = None
+
+@app.patch("/publicaciones/{publicacion_id}/info-adicional")
+def actualizar_info_adicional(publicacion_id: int, body: InfoAdicionalBody):
+    pub = obtener_publicacion_por_id(publicacion_id)
+    if not pub:
+        raise HTTPException(status_code=404, detail="Publicación no encontrada")
+    conn = sqlite3.connect(PUBLICACIONES_DB)
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE publicaciones SET sku=?, stock=?, codigo_universal=? WHERE id=?",
+        (body.sku, body.stock, body.codigo_universal, publicacion_id),
+    )
+    conn.commit()
+    conn.close()
+    return {"mensaje": "Información adicional actualizada"}
+
+
+# --------------------------------------------------
 # ELIMINAR PUBLICACION
 # --------------------------------------------------
 

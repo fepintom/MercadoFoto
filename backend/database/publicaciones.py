@@ -41,6 +41,9 @@ def init_publicaciones_db():
         "delivery_id INTEGER",
         "condicion TEXT DEFAULT 'nuevo'",
         "acepta_ofertas INTEGER DEFAULT 1",
+        "sku TEXT",
+        "stock INTEGER",
+        "codigo_universal TEXT",
     ]:
         try:
             cursor.execute(f"ALTER TABLE publicaciones ADD COLUMN {col}")

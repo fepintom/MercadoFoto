@@ -49,15 +49,14 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   bool _toggleandoFavorito = false;
   bool _registrandoInteres = false;
   bool _comprando = false;
-  bool _campoEstado = false;
-  bool _campoCodigo = false;
   bool _campoSKU = false;
   bool _campoStock = false;
+  bool _campoCodigo = false;
+  bool _guardandoInfoAdicional = false;
 
-  final _estadoController = TextEditingController();
-  final _codigoController = TextEditingController();
-  final _skuController = TextEditingController();
-  final _stockController = TextEditingController();
+  late TextEditingController _skuController;
+  late TextEditingController _stockController;
+  late TextEditingController _codigoController;
   final _ofertaController = TextEditingController();
 
   // Galería multi-imagen
@@ -68,13 +67,15 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   void initState() {
     super.initState();
     _imgPageController = PageController();
+    _skuController     = TextEditingController(text: widget.producto['sku']?.toString() ?? '');
+    _stockController   = TextEditingController(text: widget.producto['stock']?.toString() ?? '');
+    _codigoController  = TextEditingController(text: widget.producto['codigo_universal']?.toString() ?? '');
     _cargarSesion();
   }
 
   @override
   void dispose() {
     _imgPageController.dispose();
-    _estadoController.dispose();
     _codigoController.dispose();
     _skuController.dispose();
     _stockController.dispose();
@@ -889,12 +890,43 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     );
   }
 
+  // ── GUARDAR INFO ADICIONAL ─────────────────────────────────────────────
+  Future<void> _guardarInfoAdicional() async {
+    final pubId = widget.producto['id'] as int?;
+    if (pubId == null) return;
+    setState(() => _guardandoInfoAdicional = true);
+    try {
+      await ApiService.guardarInfoAdicional(
+        pubId,
+        sku: _skuController.text.trim().isEmpty ? null : _skuController.text.trim(),
+        stock: int.tryParse(_stockController.text.trim()),
+        codigoUniversal: _codigoController.text.trim().isEmpty ? null : _codigoController.text.trim(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text("Información adicional guardada"),
+        backgroundColor: AppColors.carbon,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text("Error al guardar: $e"),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } finally {
+      if (mounted) setState(() => _guardandoInfoAdicional = false);
+    }
+  }
+
   // ── CAMPO EXPANDIBLE ───────────────────────────────────────────────────
   Widget _campoExpandible({
     required String titulo,
     required bool abierto,
     required VoidCallback toggle,
     TextEditingController? controller,
+    TextInputType teclado = TextInputType.text,
   }) {
     return Column(
       children: [
@@ -928,6 +960,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
             padding: const EdgeInsets.only(bottom: 12),
             child: TextField(
               controller: controller,
+              keyboardType: teclado,
               style: const TextStyle(
                   fontSize: 14, color: AppColors.textPrimary),
               decoration: InputDecoration(
@@ -1401,14 +1434,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                     const SizedBox(height: 8),
 
                     _campoExpandible(
-                      titulo: "Nuevo / Usado",
-                      abierto: _campoEstado,
-                      controller: _estadoController,
-                      toggle: () =>
-                          setState(() => _campoEstado = !_campoEstado),
-                    ),
-                    _campoExpandible(
-                      titulo: "Código universal",
+                      titulo: "Código universal (UPC/EAN)",
                       abierto: _campoCodigo,
                       controller: _codigoController,
                       toggle: () =>
@@ -1422,12 +1448,39 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                           setState(() => _campoSKU = !_campoSKU),
                     ),
                     _campoExpandible(
-                      titulo: "Stock",
+                      titulo: "Stock disponible",
                       abierto: _campoStock,
                       controller: _stockController,
+                      teclado: TextInputType.number,
                       toggle: () =>
                           setState(() => _campoStock = !_campoStock),
                     ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _guardandoInfoAdicional ? null : _guardarInfoAdicional,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.carbon,
+                          disabledBackgroundColor: AppColors.grayMid,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                        child: _guardandoInfoAdicional
+                            ? const SizedBox(
+                                width: 18, height: 18,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2))
+                            : const Text("Guardar información adicional",
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                   ],
 
                   const SizedBox(height: 28),

@@ -105,6 +105,26 @@ class ApiService {
     }
   }
 
+  static Future<void> guardarInfoAdicional(
+    int id, {
+    String? sku,
+    int? stock,
+    String? codigoUniversal,
+  }) async {
+    final response = await http.patch(
+      Uri.parse('$baseUrl/publicaciones/$id/info-adicional'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'sku': sku,
+        'stock': stock,
+        'codigo_universal': codigoUniversal,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw Exception("Error al guardar info adicional: ${response.body}");
+    }
+  }
+
   static Future<void> eliminarPublicacion(int id, {int? userId}) async {
     var uri = Uri.parse('$baseUrl/publicaciones/$id');
     if (userId != null) {
