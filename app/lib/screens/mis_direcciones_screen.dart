@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart' hide Path;
 
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
@@ -307,14 +309,22 @@ class _DireccionFormSheet extends StatefulWidget {
 }
 
 class _DireccionFormSheetState extends State<_DireccionFormSheet> {
-  final _etiquetaCtrl = TextEditingController();
-  final _busquedaCtrl = TextEditingController();
+  final _etiquetaCtrl    = TextEditingController();
+  final _busquedaCtrl    = TextEditingController();
   List<Map<String, dynamic>> _sugerencias = [];
-  bool _buscando = false;
-  bool _guardando = false;
-  bool _obteniendoGps = false;
+  bool _buscando         = false;
+  bool _guardando        = false;
+  bool _obteniendoGps    = false;
   Timer? _debounce;
   Map<String, dynamic>? _seleccionada;
+
+  // ── Modo manual ───────────────────────────────────────────────────────────
+  bool _modoManual       = false;
+  final _calleCtrl       = TextEditingController();
+  final _numeracionCtrl  = TextEditingController();
+  final _comunaCtrl      = TextEditingController();
+  double? _latManual;
+  double? _lngManual;
 
   static const _etiquetas = ['Casa', 'Trabajo', 'Otro'];
 
@@ -350,6 +360,9 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
   void dispose() {
     _etiquetaCtrl.dispose();
     _busquedaCtrl.dispose();
+    _calleCtrl.dispose();
+    _numeracionCtrl.dispose();
+    _comunaCtrl.dispose();
     _debounce?.cancel();
     super.dispose();
   }
@@ -493,6 +506,67 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
     }
   }
 
+  Widget _botonAgregarManual() {
+    return InkWell(
+      onTap: () => setState(() {
+        _modoManual = true;
+        _sugerencias = [];
+        _seleccionada = null;
+      }),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            const Icon(Icons.edit_location_alt_outlined,
+                size: 16, color: AppColors.carbon),
+            const SizedBox(width: 10),
+            const Text('Agregar manual',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.carbon)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _campoManual({
+    required String label,
+    required TextEditingController ctrl,
+    required String hint,
+    TextInputType teclado = TextInputType.text,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary)),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: TextField(
+            controller: ctrl,
+            keyboardType: teclado,
+            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: const TextStyle(color: AppColors.grayMid, fontSize: 13),
+              border: InputBorder.none,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   String _extraer(Map<String, dynamic> addr, List<String> claves) {
     for (final c in claves) {
       final v = addr[c];
@@ -502,18 +576,41 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
   }
 
   Future<void> _guardar() async {
-    if (_seleccionada == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Selecciona una dirección de la lista')));
-      return;
-    }
     final etiqueta = _etiquetaCtrl.text.trim().isEmpty ? 'Casa' : _etiquetaCtrl.text.trim();
-    final addr = _seleccionada!['address'] as Map<String, dynamic>? ?? {};
-    final direccion = _extraer(addr, ['road', 'pedestrian', 'footway', 'display_name']);
-    final comuna = _extraer(addr, ['suburb', 'neighbourhood', 'quarter', 'town', 'village']);
-    final ciudad = _extraer(addr, ['city', 'county', 'state_district', 'state']);
-    final lat = double.tryParse(_seleccionada!['lat']?.toString() ?? '');
-    final lng = double.tryParse(_seleccionada!['lon']?.toString() ?? '');
+    String direccion, comuna, ciudad;
+    double? lat, lng;
+
+    if (_modoManual) {
+      final calle = _calleCtrl.text.trim();
+      final num   = _numeracionCtrl.text.trim();
+      if (calle.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Ingresa el nombre de la calle')));
+        return;
+      }
+      if (_latManual == null || _lngManual == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Sitúa el pin en el mapa para guardar la ubicación')));
+        return;
+      }
+      direccion = num.isNotEmpty ? '$calle $num' : calle;
+      comuna    = _comunaCtrl.text.trim();
+      ciudad    = 'Chile';
+      lat       = _latManual;
+      lng       = _lngManual;
+    } else {
+      if (_seleccionada == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Selecciona una dirección de la lista')));
+        return;
+      }
+      final addr = _seleccionada!['address'] as Map<String, dynamic>? ?? {};
+      direccion = _extraer(addr, ['road', 'pedestrian', 'footway', 'display_name']);
+      comuna    = _extraer(addr, ['suburb', 'neighbourhood', 'quarter', 'town', 'village']);
+      ciudad    = _extraer(addr, ['city', 'county', 'state_district', 'state']);
+      lat       = double.tryParse(_seleccionada!['lat']?.toString() ?? '');
+      lng       = double.tryParse(_seleccionada!['lon']?.toString() ?? '');
+    }
 
     setState(() => _guardando = true);
     try {
@@ -685,8 +782,8 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
                         ),
                       ),
 
-                      // Sugerencias Nominatim
-                      if (_sugerencias.isNotEmpty) ...[
+                      // Sugerencias buscador
+                      if (!_modoManual && _sugerencias.isNotEmpty) ...[
                         const SizedBox(height: 12),
                         Container(
                           decoration: BoxDecoration(
@@ -695,44 +792,163 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
                             border: Border.all(color: AppColors.divider),
                           ),
                           child: Column(
-                            children: _sugerencias.asMap().entries.map((entry) {
-                              final i = entry.key;
-                              final s = entry.value;
-                              final nombre = s['display_name'] as String? ?? '';
-                              return Column(
-                                children: [
-                                  if (i > 0)
-                                    Divider(height: 0.5, color: AppColors.divider),
-                                  InkWell(
-                                    onTap: () => setState(() {
-                                      _seleccionada = s;
-                                      _busquedaCtrl.text = nombre;
-                                      _sugerencias = [];
-                                    }),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 12),
-                                      child: Row(
-                                        children: [
-                                          const Icon(Icons.location_on_outlined,
-                                              size: 16, color: AppColors.grayMid),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: Text(nombre,
-                                                style: const TextStyle(
-                                                    fontSize: 13,
-                                                    color: AppColors.textPrimary),
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis),
-                                          ),
-                                        ],
+                            children: [
+                              ..._sugerencias.asMap().entries.map((entry) {
+                                final i = entry.key;
+                                final s = entry.value;
+                                final nombre = s['display_name'] as String? ?? '';
+                                return Column(
+                                  children: [
+                                    if (i > 0)
+                                      Divider(height: 0.5, color: AppColors.divider),
+                                    InkWell(
+                                      onTap: () => setState(() {
+                                        _seleccionada = s;
+                                        _busquedaCtrl.text = nombre;
+                                        _sugerencias = [];
+                                      }),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16, vertical: 12),
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.location_on_outlined,
+                                                size: 16, color: AppColors.grayMid),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Text(nombre,
+                                                  style: const TextStyle(
+                                                      fontSize: 13,
+                                                      color: AppColors.textPrimary),
+                                                  maxLines: 2,
+                                                  overflow: TextOverflow.ellipsis),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
-                              );
-                            }).toList(),
+                                  ],
+                                );
+                              }),
+                              // Opción agregar manual al final de la lista
+                              Divider(height: 0.5, color: AppColors.divider),
+                              _botonAgregarManual(),
+                            ],
                           ),
+                        ),
+                      ],
+
+                      // Botón agregar manual cuando no hay sugerencias y se buscó algo
+                      if (!_modoManual && _sugerencias.isEmpty && !_buscando &&
+                          _busquedaCtrl.text.trim().length >= 4 && _seleccionada == null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.divider),
+                          ),
+                          child: Column(children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              child: Row(children: [
+                                const Icon(Icons.search_off_rounded, size: 15, color: AppColors.grayMid),
+                                const SizedBox(width: 8),
+                                const Text('No se encontraron resultados',
+                                    style: TextStyle(fontSize: 13, color: AppColors.grayMid)),
+                              ]),
+                            ),
+                            Divider(height: 0.5, color: AppColors.divider),
+                            _botonAgregarManual(),
+                          ]),
+                        ),
+                      ],
+
+                      // Formulario manual
+                      if (_modoManual) ...[
+                        const SizedBox(height: 16),
+                        _campoManual(label: 'Calle / Avenida', ctrl: _calleCtrl,
+                            hint: 'Ej: Av. Providencia'),
+                        const SizedBox(height: 12),
+                        _campoManual(label: 'Numeración', ctrl: _numeracionCtrl,
+                            hint: 'Ej: 1234', teclado: TextInputType.number),
+                        const SizedBox(height: 12),
+                        _campoManual(label: 'Comuna', ctrl: _comunaCtrl,
+                            hint: 'Ej: Santiago'),
+                        const SizedBox(height: 16),
+
+                        // Botón situar pin
+                        GestureDetector(
+                          onTap: () async {
+                            final resultado = await Navigator.push<LatLng>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => _MapaPinPickerScreen(
+                                  latInicial: _latManual,
+                                  lngInicial: _lngManual,
+                                ),
+                              ),
+                            );
+                            if (resultado != null && mounted) {
+                              setState(() {
+                                _latManual = resultado.latitude;
+                                _lngManual = resultado.longitude;
+                              });
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: _latManual != null
+                                  ? AppColors.primary.withOpacity(0.06)
+                                  : AppColors.carbon.withOpacity(0.06),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: _latManual != null
+                                    ? AppColors.primary.withOpacity(0.4)
+                                    : AppColors.divider,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _latManual != null
+                                      ? Icons.location_on_rounded
+                                      : Icons.add_location_alt_outlined,
+                                  size: 20,
+                                  color: _latManual != null
+                                      ? AppColors.primary
+                                      : AppColors.carbon,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _latManual != null
+                                        ? 'Pin situado: ${_latManual!.toStringAsFixed(5)}, ${_lngManual!.toStringAsFixed(5)}'
+                                        : 'Situar pin en el mapa',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: _latManual != null
+                                          ? AppColors.primary
+                                          : AppColors.carbon,
+                                    ),
+                                  ),
+                                ),
+                                Icon(Icons.chevron_right_rounded,
+                                    size: 18,
+                                    color: _latManual != null
+                                        ? AppColors.primary
+                                        : AppColors.grayMid),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        GestureDetector(
+                          onTap: () => setState(() => _modoManual = false),
+                          child: const Text('← Volver a búsqueda',
+                              style: TextStyle(fontSize: 13, color: AppColors.grayMid)),
                         ),
                       ],
 
@@ -795,6 +1011,155 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Pantalla picker de pin en mapa ───────────────────────────────────────────
+class _MapaPinPickerScreen extends StatefulWidget {
+  final double? latInicial;
+  final double? lngInicial;
+  const _MapaPinPickerScreen({this.latInicial, this.lngInicial});
+
+  @override
+  State<_MapaPinPickerScreen> createState() => _MapaPinPickerScreenState();
+}
+
+class _MapaPinPickerScreenState extends State<_MapaPinPickerScreen> {
+  static final _santiago = LatLng(-33.4489, -70.6693);
+  late LatLng _pin;
+  late MapController _mapCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _mapCtrl = MapController();
+    _pin = widget.latInicial != null && widget.lngInicial != null
+        ? LatLng(widget.latInicial!, widget.lngInicial!)
+        : _santiago;
+  }
+
+  @override
+  void dispose() {
+    _mapCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: AppColors.carbon),
+        title: const Text('Sitúa tu dirección',
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary)),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(0.5),
+          child: Container(height: 0.5, color: AppColors.divider),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, _pin),
+            child: const Text('Confirmar',
+                style: TextStyle(color: AppColors.primary,
+                    fontSize: 15, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          FlutterMap(
+            mapController: _mapCtrl,
+            options: MapOptions(
+              center: _pin,
+              zoom: 15.0,
+              maxZoom: 19,
+              onTap: (_, latlng) => setState(() => _pin = latlng),
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.okventa.app',
+              ),
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: _pin,
+                    width: 40,
+                    height: 50,
+                    anchorPos: AnchorPos.align(AnchorAlign.top),
+                    builder: (_) => const Icon(
+                      Icons.location_on_rounded,
+                      size: 40,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          // Instrucción centrada arriba
+          Positioned(
+            top: 12,
+            left: 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.92),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8, offset: const Offset(0, 2)),
+                ],
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.touch_app_rounded, size: 15, color: AppColors.grayMid),
+                  SizedBox(width: 6),
+                  Text('Toca el mapa para mover el pin',
+                      style: TextStyle(fontSize: 13, color: AppColors.grayMid)),
+                ],
+              ),
+            ),
+          ),
+
+          // Coordenadas del pin abajo
+          Positioned(
+            bottom: 20,
+            left: 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8, offset: const Offset(0, 2)),
+                ],
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.location_on_rounded,
+                      size: 16, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${_pin.latitude.toStringAsFixed(5)}, ${_pin.longitude.toStringAsFixed(5)}',
+                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
