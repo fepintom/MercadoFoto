@@ -323,8 +323,12 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
   final _calleCtrl       = TextEditingController();
   final _numeracionCtrl  = TextEditingController();
   final _comunaCtrl      = TextEditingController();
+  final _ciudadCtrl      = TextEditingController();
   double? _latManual;
   double? _lngManual;
+  // centro sugerido para el mapa según la comuna ingresada
+  double? _latComuna;
+  double? _lngComuna;
 
   static const _etiquetas = ['Casa', 'Trabajo', 'Otro'];
 
@@ -363,6 +367,7 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
     _calleCtrl.dispose();
     _numeracionCtrl.dispose();
     _comunaCtrl.dispose();
+    _ciudadCtrl.dispose();
     _debounce?.cancel();
     super.dispose();
   }
@@ -506,6 +511,34 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
     }
   }
 
+  Future<void> _geocodificarComuna(String comuna) async {
+    if (comuna.trim().length < 3) return;
+    try {
+      final uri = Uri.parse('https://photon.komoot.io/api/').replace(
+        queryParameters: {
+          'q': '$comuna, Chile',
+          'limit': '1',
+          'lang': 'es',
+          'bbox': '-75.7,-55.9,-66.1,-17.5',
+        },
+      );
+      final resp = await http.get(uri,
+          headers: {'User-Agent': 'OkVenta/1.0'})
+          .timeout(const Duration(seconds: 6));
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body);
+        final features = (data['features'] as List?) ?? [];
+        if (features.isNotEmpty) {
+          final coords = features.first['geometry']['coordinates'] as List;
+          if (mounted) setState(() {
+            _latComuna = (coords[1] as num).toDouble();
+            _lngComuna = (coords[0] as num).toDouble();
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
   Widget _botonAgregarManual() {
     return InkWell(
       onTap: () => setState(() {
@@ -536,6 +569,7 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
     required TextEditingController ctrl,
     required String hint,
     TextInputType teclado = TextInputType.text,
+    VoidCallback? onEditingComplete,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -553,6 +587,7 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
           child: TextField(
             controller: ctrl,
             keyboardType: teclado,
+            onEditingComplete: onEditingComplete,
             style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
             decoration: InputDecoration(
               hintText: hint,
@@ -595,7 +630,7 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
       }
       direccion = num.isNotEmpty ? '$calle $num' : calle;
       comuna    = _comunaCtrl.text.trim();
-      ciudad    = 'Chile';
+      ciudad    = _ciudadCtrl.text.trim().isEmpty ? 'Chile' : _ciudadCtrl.text.trim();
       lat       = _latManual;
       lng       = _lngManual;
     } else {
@@ -630,10 +665,10 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
       }
       widget.onGuardado();
       if (mounted) Navigator.pop(context);
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Error al guardar la dirección')));
+            SnackBar(content: Text('Error al guardar: $e')));
       }
     } finally {
       if (mounted) setState(() => _guardando = false);
@@ -873,19 +908,30 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
                         _campoManual(label: 'Numeración', ctrl: _numeracionCtrl,
                             hint: 'Ej: 1234', teclado: TextInputType.number),
                         const SizedBox(height: 12),
-                        _campoManual(label: 'Comuna', ctrl: _comunaCtrl,
+                        _campoManual(
+                          label: 'Comuna',
+                          ctrl: _comunaCtrl,
+                          hint: 'Ej: Maipú',
+                          onEditingComplete: () => _geocodificarComuna(_comunaCtrl.text),
+                        ),
+                        const SizedBox(height: 12),
+                        _campoManual(label: 'Ciudad', ctrl: _ciudadCtrl,
                             hint: 'Ej: Santiago'),
                         const SizedBox(height: 16),
 
                         // Botón situar pin
                         GestureDetector(
                           onTap: () async {
+                            // si escribió una comuna, geocodificamos primero para centrar el mapa
+                            if (_latComuna == null && _comunaCtrl.text.trim().isNotEmpty) {
+                              await _geocodificarComuna(_comunaCtrl.text);
+                            }
                             final resultado = await Navigator.push<LatLng>(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => _MapaPinPickerScreen(
-                                  latInicial: _latManual,
-                                  lngInicial: _lngManual,
+                                  latInicial: _latManual ?? _latComuna,
+                                  lngInicial: _lngManual ?? _lngComuna,
                                 ),
                               ),
                             );
