@@ -145,6 +145,7 @@ jobs:
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+          APP_APPLE_ID: "6767074336"
         run: |
           mkdir -p ~/.appstoreconnect/private_keys
           echo "$APP_STORE_CONNECT_PRIVATE_KEY" \
@@ -154,4 +155,6 @@ jobs:
             --file app/build/ios/ipa/mercadofoto_app.ipa \
             --apiKey "$APP_STORE_CONNECT_KEY_ID" \
             --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
+            --apple-id "$APP_APPLE_ID" \
+            --bundle-id "com.okventa.app" \
             --output-format normal
