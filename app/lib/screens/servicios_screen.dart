@@ -348,14 +348,14 @@ class _TarjetaServicio extends StatelessWidget {
           ClipRRect(
             borderRadius: const BorderRadius.horizontal(left: Radius.circular(14)),
             child: fotos.isNotEmpty
-                ? _media(fotos.first as String, 90, 100)
-                : _avatar(fotoUrl, nombre, 90, 100),
+                ? _media(fotos.first as String, 63, 70)
+                : _avatar(fotoUrl, nombre, 63, 70),
           ),
 
           // Info
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -364,7 +364,7 @@ class _TarjetaServicio extends StatelessWidget {
                     children: [
                       // Avatar pequeño
                       CircleAvatar(
-                        radius: 12,
+                        radius: 9,
                         backgroundColor: AppColors.primary.withOpacity(0.15),
                         backgroundImage: fotoUrl.isNotEmpty
                             ? NetworkImage(
@@ -376,19 +376,19 @@ class _TarjetaServicio extends StatelessWidget {
                                     ? nombre[0].toUpperCase()
                                     : 'U',
                                 style: const TextStyle(
-                                    fontSize: 10,
+                                    fontSize: 8,
                                     color: AppColors.primary,
                                     fontWeight: FontWeight.w700),
                               )
                             : null,
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 5),
                       Expanded(
                         child: Text(nombre,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                                fontSize: 11, color: AppColors.grayMid)),
+                                fontSize: 10, color: AppColors.grayMid)),
                       ),
                       if (verificado)
                         Container(
@@ -426,7 +426,7 @@ class _TarjetaServicio extends StatelessWidget {
                         TextSpan(
                           text: '$prefix: ',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 10,
                             fontWeight: FontWeight.w800,
                             color: tipoColor,
                           ),
@@ -434,7 +434,7 @@ class _TarjetaServicio extends StatelessWidget {
                         TextSpan(
                           text: titulo,
                           style: const TextStyle(
-                            fontSize: 14,
+                            fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary,
                           ),
@@ -442,51 +442,48 @@ class _TarjetaServicio extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
 
                   // Comunas
                   if (comunas.isNotEmpty)
                     Row(
                       children: [
                         const Icon(Icons.location_on_outlined,
-                            size: 11, color: AppColors.grayMid),
+                            size: 10, color: AppColors.grayMid),
                         const SizedBox(width: 2),
                         Expanded(
                           child: Text(comunas,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                  fontSize: 11, color: AppColors.grayMid)),
+                                  fontSize: 10, color: AppColors.grayMid)),
                         ),
                       ],
                     ),
 
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
 
-                  // Precio + estrellas + botón
+                  // Precio + estrellas
                   Row(
                     children: [
-                      // Precio
                       if (valor > 0)
                         Text(
                           '\$${valor.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]}.')} / $modalidad',
                           style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 10,
                               fontWeight: FontWeight.w700,
                               color: tipoColor),
                         ),
                       const Spacer(),
-
-                      // Estrellas
-                      _Estrellas(rating: rating, size: 12),
+                      _Estrellas(rating: rating, size: 10),
                       const SizedBox(width: 2),
                       Text('($numVal)',
                           style: const TextStyle(
-                              fontSize: 10, color: AppColors.grayMid)),
+                              fontSize: 9, color: AppColors.grayMid)),
                     ],
                   ),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
 
                   // Botón ver detalle
                   SizedBox(
@@ -503,13 +500,13 @@ class _TarjetaServicio extends StatelessWidget {
                         foregroundColor: AppColors.primary,
                         side: const BorderSide(
                             color: AppColors.primary, width: 1),
-                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        padding: const EdgeInsets.symmetric(vertical: 4),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8)),
                       ),
                       child: const Text('Ver detalle',
                           style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 10,
                               fontWeight: FontWeight.w600)),
                     ),
                   ),

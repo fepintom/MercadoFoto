@@ -608,12 +608,22 @@ class _ChatScreenState extends State<ChatScreen> {
           onTap: _verProducto,
           child: Row(
             children: [
-              NetImage(
-                "${ApiService.baseUrl}$_imagenUrl",
-                width: 36,
-                height: 36,
-                fit: BoxFit.cover,
+              ClipRRect(
                 borderRadius: BorderRadius.circular(8),
+                child: _imagenUrl.isNotEmpty
+                    ? NetImage(
+                        "${ApiService.baseUrl}$_imagenUrl",
+                        width: 36,
+                        height: 36,
+                        fit: BoxFit.cover,
+                      )
+                    : Container(
+                        width: 36,
+                        height: 36,
+                        color: AppColors.background,
+                        child: const Icon(Icons.image_outlined,
+                            size: 18, color: AppColors.grayMid),
+                      ),
               ),
               const SizedBox(width: 10),
               Expanded(

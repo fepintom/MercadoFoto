@@ -602,13 +602,23 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
 
               // ── Teléfono / WhatsApp ───────────────────────────────────────
               _label('Teléfono de contacto'),
+              const SizedBox(height: 4),
+              const Text(
+                'Solo el número sin +56 — se agrega automáticamente',
+                style: TextStyle(fontSize: 11, color: AppColors.grayMid),
+              ),
               const SizedBox(height: 8),
-              _campo(_telefonoCtrl, 'Ej: 912345678',
+              _campo(_telefonoCtrl, 'Ej: 912345678  (prefijo 9, 8, 7…)',
                   tipo: TextInputType.phone),
 
               const SizedBox(height: 12),
 
               _label('WhatsApp (si es diferente)'),
+              const SizedBox(height: 4),
+              const Text(
+                'Solo el número sin +56',
+                style: TextStyle(fontSize: 11, color: AppColors.grayMid),
+              ),
               const SizedBox(height: 8),
               _campo(_wsCtrl, 'Ej: 987654321',
                   tipo: TextInputType.phone),

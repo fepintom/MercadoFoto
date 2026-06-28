@@ -62,12 +62,17 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
     }
   }
 
+  String _limpiarTelefono(String raw) {
+    var num = raw.replaceAll(RegExp(r'\D'), '');
+    // Quitar 56 inicial para evitar doble prefijo (+5656XXXXXXX)
+    if (num.startsWith('56') && num.length > 9) num = num.substring(2);
+    return num;
+  }
+
   Future<void> _abrirWhatsApp() async {
-    final num = (_srv['whatsapp'] ?? _srv['telefono'] ?? '')
-        .toString()
-        .replaceAll(RegExp(r'\D'), '');
+    final num = _limpiarTelefono(
+        (_srv['whatsapp'] ?? _srv['telefono'] ?? '').toString());
     if (num.isEmpty) return;
-    // Registrar contacto en background
     _registrarContacto('whatsapp');
     final uri = Uri.parse('https://wa.me/56$num');
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
@@ -79,9 +84,8 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
   }
 
   Future<void> _llamar() async {
-    final num = (_srv['telefono'] ?? _srv['whatsapp'] ?? '')
-        .toString()
-        .replaceAll(RegExp(r'\D'), '');
+    final num = _limpiarTelefono(
+        (_srv['telefono'] ?? _srv['whatsapp'] ?? '').toString());
     if (num.isEmpty) return;
     _registrarContacto('llamada');
     final uri = Uri.parse('tel:+56$num');
@@ -387,70 +391,7 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                   ],
 
                   // ── Calificación ────────────────────────────────────────
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border:
-                          Border.all(color: AppColors.divider, width: 0.5),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Text('Calificación',
-                                style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary)),
-                            const Spacer(),
-                            Text(
-                              rating.toStringAsFixed(1),
-                              style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.textPrimary),
-                            ),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.star,
-                                color: Colors.amber, size: 22),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text('$numVal valoración${numVal == 1 ? '' : 'es'}',
-                            style: const TextStyle(
-                                fontSize: 12, color: AppColors.grayMid)),
-                        const SizedBox(height: 12),
-                        // Estrellas interactivas
-                        Row(
-                          children: List.generate(5, (i) {
-                            final sel = i < (_miRating > 0
-                                ? _miRating
-                                : rating.round());
-                            return GestureDetector(
-                              onTap: () => _valorar(i + 1),
-                              child: Padding(
-                                padding: const EdgeInsets.only(right: 4),
-                                child: Icon(
-                                  sel ? Icons.star : Icons.star_border,
-                                  color: Colors.amber,
-                                  size: 32,
-                                ),
-                              ),
-                            );
-                          }),
-                        ),
-                        if (_enviandoRating)
-                          const Padding(
-                            padding: EdgeInsets.only(top: 8),
-                            child: LinearProgressIndicator(
-                                color: AppColors.primary),
-                          ),
-                      ],
-                    ),
-                  ),
+                  _buildCalificacion(rating, numVal),
 
                   const SizedBox(height: 24),
 
@@ -556,6 +497,109 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCalificacion(double rating, int numVal) {
+    final esPropio = _miUserId != null && _miUserId == _srv['user_id'];
+    final puedeValorar = _miUserId != null && !esPropio;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.divider, width: 0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('Calificación',
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary)),
+              const Spacer(),
+              if (numVal > 0) ...[
+                Text(
+                  rating.toStringAsFixed(1),
+                  style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary),
+                ),
+                const SizedBox(width: 4),
+                const Icon(Icons.star, color: Colors.amber, size: 22),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          if (numVal == 0) ...[
+            // Sin calificaciones aún
+            Row(
+              children: const [
+                Icon(Icons.star_border_rounded,
+                    size: 16, color: AppColors.grayMid),
+                SizedBox(width: 6),
+                Text(
+                  'Este profesional aún no ha sido calificado',
+                  style: TextStyle(fontSize: 13, color: AppColors.grayMid),
+                ),
+              ],
+            ),
+            if (puedeValorar) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Califica este servicio si lo has contratado:',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 8),
+              _estrellasInteractivas(rating),
+            ],
+          ] else ...[
+            Text('$numVal valoración${numVal == 1 ? '' : 'es'}',
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.grayMid)),
+            if (puedeValorar) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Tu calificación:',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 8),
+              _estrellasInteractivas(rating),
+            ],
+          ],
+
+          if (_enviandoRating)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: LinearProgressIndicator(color: AppColors.primary),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _estrellasInteractivas(double rating) {
+    return Row(
+      children: List.generate(5, (i) {
+        final sel = i < (_miRating > 0 ? _miRating : rating.round());
+        return GestureDetector(
+          onTap: () => _valorar(i + 1),
+          child: Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: Icon(
+              sel ? Icons.star : Icons.star_border,
+              color: Colors.amber,
+              size: 32,
+            ),
+          ),
+        );
+      }),
     );
   }
 
