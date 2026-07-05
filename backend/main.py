@@ -7,6 +7,7 @@ import traceback
 import sqlite3
 import json
 import os
+import time
 import secrets
 import bcrypt
 
@@ -145,7 +146,8 @@ from database.ordenes import (
 from services.mp_service import (
     crear_preferencia as mp_crear_preferencia,
     obtener_pago     as mp_obtener_pago,
-    reembolsar_pago  as mp_reembolsar_pago,
+    reembolsar_pago_seguro as mp_reembolsar_pago,
+    test_mode        as pagos_test_mode,
 )
 
 from database.servicios import (
@@ -1949,6 +1951,8 @@ def crear_preferencia_endpoint(body: dict):
     from services.mp_service import _comision_pct
     comision = round(monto * _comision_pct() / 100, 2)
 
+    modo_test = pagos_test_mode()
+
     # 1. Crear orden en nuestra DB
     orden_id = crear_orden(
         comprador_id=comprador_id,
@@ -1959,7 +1963,23 @@ def crear_preferencia_endpoint(body: dict):
         publicacion_id=pub_id,
         servicio_id=srv_id,
         comision=comision,
+        es_test=modo_test,
     )
+
+    # ── MODO TEST: simular pago aprobado al instante, sin llamar a MP ────────
+    # Beta interna: mientras no esté lista la integración real de MercadoPago,
+    # esto permite probar el flujo completo (notificaciones, entrega, okdelivery).
+    # Se desactiva cambiando PAGOS_TEST_MODE=false en las variables de entorno.
+    if modo_test:
+        payment_id_fake = f"TEST-{orden_id}-{int(time.time())}"
+        orden = obtener_orden(orden_id)
+        _procesar_pago_aprobado(orden, payment_id_fake)
+        return {
+            "orden_id":   orden_id,
+            "test_mode":  True,
+            "estado":     "pago_confirmado",
+            "mensaje":    "Pago simulado (modo prueba). El vendedor ya fue notificado.",
+        }
 
     # 2. Crear preferencia en MP
     try:
@@ -1978,10 +1998,58 @@ def crear_preferencia_endpoint(body: dict):
 
     return {
         "orden_id":           orden_id,
+        "test_mode":          False,
         "preference_id":      mp["preference_id"],
         "init_point":         mp["init_point"],
         "sandbox_init_point": mp["sandbox_init_point"],
     }
+
+
+# ── Pago aprobado: efectos compartidos (webhook real y modo test) ────────────
+
+def _procesar_pago_aprobado(orden: dict, payment_id: str):
+    """
+    Efectos de un pago aprobado, sin importar si vino del webhook real de MP
+    o fue simulado en modo test (PAGOS_TEST_MODE=true). Única fuente de verdad
+    para no duplicar esta lógica en dos lugares.
+    """
+    orden_id = orden["id"]
+    confirmar_pago(orden_id, payment_id)
+    # Obtener ubicación del comprador para informar al vendedor
+    comprador = obtener_usuario_por_id(orden["comprador_id"])
+    ubicacion_str = ""
+    if comprador:
+        ciudad = comprador.get("ciudad") or comprador.get("comuna") or ""
+        if ciudad:
+            ubicacion_str = ciudad
+    push_body = (
+        f"Tu comprador está en {ubicacion_str}. "
+        f"¿Cómo entregas '{orden['titulo']}'?"
+        if ubicacion_str else
+        f"Elige cómo entregarás '{orden['titulo']}'"
+    )
+    # Notificar al vendedor con acción de elegir entrega
+    fcm_tok = obtener_fcm_token(orden["vendedor_id"])
+    if fcm_tok:
+        try:
+            enviar_push(
+                fcm_tok,
+                "📦 ¡Tienes una venta!",
+                push_body,
+                {
+                    "tipo":               "elegir_entrega",
+                    "orden_id":           str(orden_id),
+                    "titulo":             orden["titulo"],
+                    "comprador_ubicacion": ubicacion_str,
+                    "monto":              str(orden["monto"]),
+                },
+            )
+        except Exception:
+            pass
+    crear_notificacion(
+        orden["vendedor_id"], "pago",
+        f"💳 Pago confirmado por '{orden['titulo']}'. Elige cómo entregar.",
+    )
 
 
 # ── Webhook de MercadoPago ────────────────────────────────────────────────────
@@ -2026,45 +2094,8 @@ async def mp_webhook(request: Request):
     if not orden:
         return {"ok": True}
 
-    orden_id = orden["id"]
-
     if status == "approved":
-        confirmar_pago(orden_id, payment_id)
-        # Obtener ubicación del comprador para informar al vendedor
-        comprador = obtener_usuario_por_id(orden["comprador_id"])
-        ubicacion_str = ""
-        if comprador:
-            ciudad = comprador.get("ciudad") or comprador.get("comuna") or ""
-            if ciudad:
-                ubicacion_str = ciudad
-        push_body = (
-            f"Tu comprador está en {ubicacion_str}. "
-            f"¿Cómo entregas '{orden['titulo']}'?"
-            if ubicacion_str else
-            f"Elige cómo entregarás '{orden['titulo']}'"
-        )
-        # Notificar al vendedor con acción de elegir entrega
-        fcm_tok = obtener_fcm_token(orden["vendedor_id"])
-        if fcm_tok:
-            try:
-                enviar_push(
-                    fcm_tok,
-                    "📦 ¡Tienes una venta!",
-                    push_body,
-                    {
-                        "tipo":               "elegir_entrega",
-                        "orden_id":           str(orden_id),
-                        "titulo":             orden["titulo"],
-                        "comprador_ubicacion": ubicacion_str,
-                        "monto":              str(orden["monto"]),
-                    },
-                )
-            except Exception:
-                pass
-        crear_notificacion(
-            orden["vendedor_id"], "pago",
-            f"💳 Pago confirmado por '{orden['titulo']}'. Elige cómo entregar.",
-        )
+        _procesar_pago_aprobado(orden, payment_id)
 
     return {"ok": True}
 
@@ -2268,7 +2299,7 @@ def reembolsar_orden(orden_id: int):
         raise HTTPException(status_code=404,
                             detail="Orden no encontrada o sin pago registrado")
     try:
-        mp_reembolsar_pago(orden["mp_payment_id"])
+        mp_reembolsar_pago(orden)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Error MP refund: {e}")
     marcar_reembolsado(orden_id)
