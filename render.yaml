@@ -30,3 +30,20 @@ services:
         sync: false
       - key: API_URL
         sync: false
+
+  # ── Worker: auto-cierre de entregas OkDelivery vencidas (timeout 1h) ───────
+  - type: worker
+    name: okventa-delivery-worker
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: python scripts/run_delivery_worker.py
+    envVars:
+      - key: CHECK_INTERVAL
+        value: "60"
+      - key: TIMEOUT_MINUTOS
+        value: "60"
+      - key: API_URL
+        sync: false
+      - key: ADMIN_TOKEN
+        sync: false

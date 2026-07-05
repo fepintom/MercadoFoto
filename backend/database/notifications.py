@@ -25,6 +25,7 @@ def init_notifications_db():
     for col, definition in [
         ("publicacion_id", "INTEGER DEFAULT NULL"),
         ("remitente_id",   "INTEGER DEFAULT NULL"),
+        ("orden_id",       "INTEGER DEFAULT NULL"),
     ]:
         try:
             cursor.execute(f"ALTER TABLE notifications ADD COLUMN {col} {definition}")
@@ -35,15 +36,15 @@ def init_notifications_db():
     conn.close()
 
 
-def crear_notificacion(user_id, tipo, mensaje, publicacion_id=None, remitente_id=None):
+def crear_notificacion(user_id, tipo, mensaje, publicacion_id=None, remitente_id=None, orden_id=None):
 
     conn = sqlite3.connect(DB)
     cursor = conn.cursor()
 
     cursor.execute("""
-        INSERT INTO notifications (user_id, tipo, mensaje, publicacion_id, remitente_id)
-        VALUES (?, ?, ?, ?, ?)
-    """, (user_id, tipo, mensaje, publicacion_id, remitente_id))
+        INSERT INTO notifications (user_id, tipo, mensaje, publicacion_id, remitente_id, orden_id)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (user_id, tipo, mensaje, publicacion_id, remitente_id, orden_id))
 
     conn.commit()
     conn.close()
@@ -55,7 +56,7 @@ def obtener_notificaciones(user_id):
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT id, tipo, mensaje, leido, created_at, publicacion_id, remitente_id
+        SELECT id, tipo, mensaje, leido, created_at, publicacion_id, remitente_id, orden_id
         FROM notifications
         WHERE user_id = ?
         ORDER BY id DESC
@@ -75,6 +76,7 @@ def obtener_notificaciones(user_id):
             "fecha":          r[4],
             "publicacion_id": r[5],
             "remitente_id":   r[6],
+            "orden_id":       r[7] if len(r) > 7 else None,
         })
 
     return data
