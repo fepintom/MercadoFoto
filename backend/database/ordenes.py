@@ -26,6 +26,11 @@ def init_ordenes_db():
         updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
+    # Migración: marca las órdenes creadas en modo prueba (pago simulado, sin cargo real)
+    c.execute("PRAGMA table_info(ordenes)")
+    cols = [row[1] for row in c.fetchall()]
+    if "es_test" not in cols:
+        c.execute("ALTER TABLE ordenes ADD COLUMN es_test INTEGER DEFAULT 0")
     conn.commit()
     conn.close()
 
@@ -33,16 +38,17 @@ def init_ordenes_db():
 # ── Crear ─────────────────────────────────────────────────────────────────────
 
 def crear_orden(comprador_id, vendedor_id, tipo, titulo, monto,
-                publicacion_id=None, servicio_id=None, comision=0.0):
+                publicacion_id=None, servicio_id=None, comision=0.0,
+                es_test=False):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("""
         INSERT INTO ordenes
             (comprador_id, vendedor_id, tipo, titulo, monto,
-             publicacion_id, servicio_id, comision_okventa)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             publicacion_id, servicio_id, comision_okventa, es_test)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (comprador_id, vendedor_id, tipo, titulo, monto,
-          publicacion_id, servicio_id, comision))
+          publicacion_id, servicio_id, comision, 1 if es_test else 0))
     oid = c.lastrowid
     # Fijar external_reference al ID real
     c.execute("UPDATE ordenes SET mp_external_ref = ? WHERE id = ?",

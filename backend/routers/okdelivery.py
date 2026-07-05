@@ -35,7 +35,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from config import UPLOADS_DIR
 from services.geo_service import distancia_km
 from services.fcm_service import enviar_push
-from services.mp_service import _comision_pct, reembolsar_pago as mp_reembolsar_pago
+from services.mp_service import _comision_pct, reembolsar_pago_seguro as mp_reembolsar_pago
 
 from database import entregas as db
 from database.ordenes import (
@@ -372,7 +372,7 @@ def no_reparar(orden_id: int):
     db.cancelar_sin_reparar(orden_id)
     try:
         if orden.get("mp_payment_id"):
-            mp_reembolsar_pago(orden["mp_payment_id"])
+            mp_reembolsar_pago(orden)
         marcar_reembolsado(orden_id)
     except Exception:
         traceback.print_exc()
