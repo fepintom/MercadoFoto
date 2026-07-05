@@ -11,6 +11,7 @@ import '../theme/app_theme.dart';
 import 'agregar_servicio_screen.dart';
 import 'delivery_registro_screen.dart';
 import 'mapa_ubicacion_picker_screen.dart';
+import 'okdelivery_pendientes_screen.dart';
 import 'servicio_detalle_screen.dart';
 import '../widgets/net_image.dart';
 class ServiciosScreen extends StatefulWidget {
@@ -781,6 +782,35 @@ class _DeliveryTabState extends State<_DeliveryTab> {
                         ),
                       ),
                     ),
+                    if (activo) ...[
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => OkdeliveryPendientesScreen(
+                                    deliveryId: d['id'] as int),
+                              ),
+                            );
+                            widget.onRefresh();
+                          },
+                          icon: const Icon(Icons.delivery_dining_rounded,
+                              size: 16),
+                          label: const Text('Ver entregas disponibles',
+                              style: TextStyle(fontSize: 12)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ],
               ),

@@ -189,6 +189,9 @@ from database.ayuda import (
     cerrar_ticket,
 )
 
+from database.entregas import init_entregas_db
+from routers.okdelivery import router as okdelivery_router, crear_y_notificar_entrega
+
 # --------------------------------------------------
 # CATEGORIZACIÓN AUTOMÁTICA (keyword-based, sin dependencias externas)
 # --------------------------------------------------
@@ -205,6 +208,36 @@ _CATEGORIA_MAP = [
             "Impresión 3D": ["impresora 3d", "filamento", "3d"],
             "Celulares": ["celular", "iphone", "samsung", "smartphone", "telefono"],
             "TV": ["tv", "television", "smart tv", "pantalla"],
+        },
+    },
+    {
+        "categoria": "Ropa",
+        "keywords": ["polera", "camiseta", "camisa", "poleron", "polerón", "chaqueta",
+                     "chaleco", "sueter", "suéter", "sweater", "pantalon", "pantalón",
+                     "jean", "jeans", "falda", "vestido", "short", "shorts", "blusa",
+                     "polo", "abrigo", "parka", "cortaviento", "buzo", "pijama",
+                     "traje", "terno", "conjunto ropa", "legging", "licra", "ropa"],
+        "subcategorias": {
+            "Superior": ["polera", "camiseta", "camisa", "poleron", "polerón",
+                         "chaqueta", "chaleco", "sueter", "suéter", "sweater",
+                         "blusa", "polo", "abrigo", "parka", "cortaviento", "buzo"],
+            "Inferior": ["pantalon", "pantalón", "jean", "jeans", "falda",
+                         "short", "shorts", "legging", "licra"],
+            "Vestidos": ["vestido", "conjunto ropa", "traje", "terno"],
+            "Ropa interior y pijamas": ["pijama", "ropa interior"],
+        },
+    },
+    {
+        "categoria": "Calzado",
+        "keywords": ["zapato", "zapatilla", "zapatillas", "bota", "botas", "bototo",
+                     "bototos", "sandalia", "sandalias", "taco", "tacos", "mocasin",
+                     "mocasín", "mocasines", "zueco", "pantufla", "calzado", "tenis",
+                     "sneaker", "sneakers"],
+        "subcategorias": {
+            "Deportivo": ["zapatilla", "zapatillas", "tenis", "sneaker", "sneakers", "running"],
+            "Casual": ["zapato", "mocasin", "mocasín", "mocasines", "zueco", "pantufla"],
+            "Formal": ["taco", "tacos"],
+            "Botas y sandalias": ["bota", "botas", "bototo", "bototos", "sandalia", "sandalias"],
         },
     },
     {
@@ -315,6 +348,7 @@ init_ordenes_db()
 init_servicios_db()
 init_delivery_db()
 init_ayuda_db()
+init_entregas_db()
 
 # --------------------------------------------------
 # CORS
@@ -327,6 +361,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Flujo OkDelivery (retiro, tracking, entrega, evidencia y auto-cierre)
+app.include_router(okdelivery_router)
 
 # --------------------------------------------------
 # MODELOS
@@ -2076,6 +2113,13 @@ def elegir_entrega(orden_id: int, body: dict):
     if not orden:
         raise HTTPException(status_code=404, detail="Orden no encontrada")
     _guardar_delivery(orden_id, method)
+
+    if method == "okventa":
+        try:
+            crear_y_notificar_entrega(orden, delivery_id_sugerido=body.get("delivery_id"))
+        except Exception:
+            traceback.print_exc()
+
     # Notificar al comprador
     fcm_tok = obtener_fcm_token(orden["comprador_id"])
     labels = {"yo": "el vendedor", "okventa": "OkVenta Delivery", "blueexpress": "Blue Express"}

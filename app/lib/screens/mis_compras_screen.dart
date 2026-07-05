@@ -1,4 +1,10 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart' as ll;
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
@@ -320,9 +326,12 @@ class _MisComprasScreenState extends State<MisComprasScreen>
         ? (orden['nombre_vendedor'] as String? ?? 'Vendedor')
         : (orden['nombre_comprador'] as String? ?? 'Comprador');
 
-    final puedeConfirmar = esCompra &&
+    final deliveryMethod = orden['delivery_method'] as String?;
+    final esOkdelivery = deliveryMethod == 'okventa';
+
+    final puedeConfirmar = esCompra && !esOkdelivery &&
         (estado == 'pago_confirmado' || estado == 'en_camino');
-    final puedeDisputar = esCompra &&
+    final puedeDisputar = esCompra && !esOkdelivery &&
         (estado == 'pago_confirmado' || estado == 'en_camino');
 
     return Container(
@@ -487,6 +496,11 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                 ],
               ),
             ],
+
+            if (esCompra && esOkdelivery &&
+                (estado == 'pago_confirmado' || estado == 'en_camino')) ...[
+              _OkdeliveryCompradorPanel(ordenId: id),
+            ],
           ],
         ),
       ),
@@ -594,6 +608,425 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                     ),
                   ],
                 ),
+    );
+  }
+}
+
+// ── Panel OkDelivery para el comprador ─────────────────────────────────────
+//
+// Se muestra en la tarjeta de "Mis compras" cuando la entrega es OkDelivery.
+// Mientras el repartidor está en camino, muestra su ubicación en vivo.
+// Cuando ya fue entregado, permite confirmar recepción (con video de
+// unboxing) o reportar un problema (texto + video adjunto).
+
+class _OkdeliveryCompradorPanel extends StatefulWidget {
+  final int ordenId;
+  const _OkdeliveryCompradorPanel({required this.ordenId});
+
+  @override
+  State<_OkdeliveryCompradorPanel> createState() =>
+      _OkdeliveryCompradorPanelState();
+}
+
+class _OkdeliveryCompradorPanelState
+    extends State<_OkdeliveryCompradorPanel> {
+  Map<String, dynamic>? _entrega;
+  Map<String, dynamic>? _tracking;
+  Timer? _pollTimer;
+  bool _enviando = false;
+  final _picker = ImagePicker();
+
+  static const _estadosCerrados = {
+    'cerrado_ok',
+    'cerrado_con_reclamo',
+    'cancelado_sin_reparar',
+  };
+
+  static const _estadoLabel = {
+    'buscando_repartidor': 'Buscando un repartidor OkDelivery…',
+    'asignado': 'Repartidor asignado, en camino a retirar tu producto',
+    'en_camino_retiro': 'El repartidor va en camino a retirar tu producto',
+    'llegado_retiro': 'El repartidor llegó donde el vendedor',
+    'esperando_confirmacion_calidad': 'El repartidor está revisando el producto',
+    'observaciones_reportadas': 'El repartidor reportó una observación al vendedor',
+    'reparacion_reportada': 'El vendedor está reparando el producto',
+    'en_camino_entrega': 'Tu producto viene en camino',
+    'llegado_entrega': 'El repartidor llegó con tu producto',
+    'cancelado_sin_reparar': 'La venta fue cancelada y reembolsada',
+    'cerrado_ok': 'Recepción confirmada',
+    'cerrado_con_reclamo': 'Reportaste un problema — en revisión',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _cargar();
+    _pollTimer =
+        Timer.periodic(const Duration(seconds: 8), (_) => _cargar());
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _cargar() async {
+    try {
+      final entrega =
+          await ApiService.obtenerEntregaOkdelivery(widget.ordenId);
+      Map<String, dynamic>? tracking;
+      if (entrega != null &&
+          !_estadosCerrados.contains(entrega['estado']) &&
+          entrega['estado'] != 'entregado_pendiente_confirmacion') {
+        tracking = await ApiService.trackingOkdelivery(widget.ordenId);
+      }
+      if (mounted) setState(() { _entrega = entrega; _tracking = tracking; });
+      if (entrega != null && _estadosCerrados.contains(entrega['estado'])) {
+        _pollTimer?.cancel();
+      }
+    } catch (_) {}
+  }
+
+  void _mostrarError(Object e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.primary),
+    );
+  }
+
+  Future<void> _confirmarRecepcion() async {
+    final video = await _picker.pickVideo(
+      source: ImageSource.camera,
+      maxDuration: const Duration(minutes: 5),
+    );
+    if (_enviando) return;
+    setState(() => _enviando = true);
+    try {
+      await ApiService.confirmarRecepcionComprador(
+        widget.ordenId,
+        video: video != null ? File(video.path) : null,
+      );
+      await _cargar();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Recepción confirmada. Los fondos fueron liberados.'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      _mostrarError(e);
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
+  }
+
+  Future<void> _reportarProblema() async {
+    final resultado = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _ReclamoSheet(picker: _picker),
+    );
+    if (resultado == null) return;
+
+    setState(() => _enviando = true);
+    try {
+      await ApiService.reclamoComprador(
+        ordenId: widget.ordenId,
+        texto: resultado['texto'] as String,
+        video: resultado['video'] as File,
+      );
+      await _cargar();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Reclamo enviado. Nuestro equipo lo revisará.'),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      _mostrarError(e);
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final entrega = _entrega;
+    if (entrega == null) return const SizedBox.shrink();
+    final estado = entrega['estado'] as String? ?? '';
+    final esperandoComprador = estado == 'entregado_pendiente_confirmacion';
+
+    return Container(
+      margin: const EdgeInsets.only(top: 14),
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.green.withOpacity(0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.delivery_dining_rounded,
+                  size: 16, color: Colors.green),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  esperandoComprador
+                      ? 'Tu producto fue entregado'
+                      : (_estadoLabel[estado] ?? estado),
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.green),
+                ),
+              ),
+            ],
+          ),
+
+          if (_tracking != null &&
+              _tracking!['delivery_lat'] != null &&
+              _tracking!['delivery_lng'] != null) ...[
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                height: 140,
+                child: FlutterMap(
+                  options: MapOptions(
+                    center: ll.LatLng(
+                      (_tracking!['delivery_lat'] as num).toDouble(),
+                      (_tracking!['delivery_lng'] as num).toDouble(),
+                    ),
+                    zoom: 14,
+                    interactiveFlags: InteractiveFlag.none,
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    ),
+                    MarkerLayer(markers: [
+                      Marker(
+                        point: ll.LatLng(
+                          (_tracking!['delivery_lat'] as num).toDouble(),
+                          (_tracking!['delivery_lng'] as num).toDouble(),
+                        ),
+                        width: 34,
+                        height: 34,
+                        builder: (_) => const Icon(Icons.two_wheeler_rounded,
+                            color: Colors.green, size: 28),
+                      ),
+                    ]),
+                  ],
+                ),
+              ),
+            ),
+          ],
+
+          if (esperandoComprador) ...[
+            const SizedBox(height: 10),
+            const Text(
+              'Graba un video de unboxing sin cortes al confirmar. Tienes 1 hora, si no respondes se dará por recibido automáticamente.',
+              style: TextStyle(fontSize: 11, color: AppColors.grayMid, height: 1.4),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _enviando ? null : _confirmarRecepcion,
+                    icon: const Icon(Icons.videocam_rounded, size: 16),
+                    label: const Text('Confirmar recepción'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                      textStyle: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _enviando ? null : _reportarProblema,
+                    icon: const Icon(Icons.report_outlined, size: 16),
+                    label: const Text('Tengo un problema'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red, width: 1),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                      textStyle: const TextStyle(
+                          fontSize: 11, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Hoja de reclamo: texto (máx 500) + video ────────────────────────────────
+
+class _ReclamoSheet extends StatefulWidget {
+  final ImagePicker picker;
+  const _ReclamoSheet({required this.picker});
+
+  @override
+  State<_ReclamoSheet> createState() => _ReclamoSheetState();
+}
+
+class _ReclamoSheetState extends State<_ReclamoSheet> {
+  final _textoCtrl = TextEditingController();
+  File? _video;
+  bool _grabando = false;
+
+  @override
+  void dispose() {
+    _textoCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _grabarVideo() async {
+    setState(() => _grabando = true);
+    try {
+      final xfile = await widget.picker.pickVideo(
+        source: ImageSource.camera,
+        maxDuration: const Duration(minutes: 3),
+      );
+      if (xfile != null && mounted) setState(() => _video = File(xfile.path));
+    } finally {
+      if (mounted) setState(() => _grabando = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20, right: 20, top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                  color: AppColors.divider,
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          const Text('Reportar un problema',
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary)),
+          const SizedBox(height: 4),
+          const Text(
+            'Cuéntanos qué pasó. Tu video de unboxing se adjuntará automáticamente.',
+            style: TextStyle(fontSize: 12, color: AppColors.grayMid),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _textoCtrl,
+            maxLength: 500,
+            maxLines: 4,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              hintText: 'Describe el problema (máx. 500 caracteres)…',
+            ),
+          ),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: _grabando ? null : _grabarVideo,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: _video != null ? Colors.green : AppColors.divider,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    _video != null
+                        ? Icons.check_circle_rounded
+                        : Icons.videocam_outlined,
+                    size: 18,
+                    color: _video != null ? Colors.green : AppColors.grayMid,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _grabando
+                        ? 'Grabando…'
+                        : (_video != null
+                            ? 'Video grabado — toca para regrabar'
+                            : 'Grabar video del unboxing'),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _video != null
+                          ? Colors.green
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: (_textoCtrl.text.trim().isNotEmpty && _video != null)
+                  ? () => Navigator.pop(context, {
+                        'texto': _textoCtrl.text.trim(),
+                        'video': _video,
+                      })
+                  : null,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Enviar reclamo',
+                  style: TextStyle(fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

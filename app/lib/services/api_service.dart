@@ -571,7 +571,8 @@ class ApiService {
     int? deliveryId,
     String? blueExpressPunto,
   }) async {
-    final body = <String, dynamic>{'method': method};
+    // Nota: el backend lee 'delivery_method' (no 'method').
+    final body = <String, dynamic>{'delivery_method': method};
     if (deliveryId != null) body['delivery_id'] = deliveryId;
     if (blueExpressPunto != null) body['blue_express_punto'] = blueExpressPunto;
     final response = await http.patch(
@@ -581,6 +582,171 @@ class ApiService {
     );
     if (response.statusCode != 200) {
       throw Exception('Error al elegir entrega: ${response.body}');
+    }
+  }
+
+  // ──────────────────────────────────────────────
+  // OKDELIVERY — flujo de entrega propia (retiro, tracking, entrega, evidencia)
+  // ──────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>?> obtenerEntregaOkdelivery(
+      int ordenId) async {
+    final response = await http.get(Uri.parse('$baseUrl/okdelivery/$ordenId'));
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(
+          jsonDecode(utf8.decode(response.bodyBytes)));
+    }
+    return null;
+  }
+
+  static Future<Map<String, dynamic>?> trackingOkdelivery(int ordenId) async {
+    final response =
+        await http.get(Uri.parse('$baseUrl/okdelivery/$ordenId/tracking'));
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(
+          jsonDecode(utf8.decode(response.bodyBytes)));
+    }
+    return null;
+  }
+
+  static Future<List<Map<String, dynamic>>> entregasActivasRepartidor(
+      int deliveryId) async {
+    final response = await http.get(
+        Uri.parse('$baseUrl/okdelivery/repartidor/$deliveryId/activas'));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      return List<Map<String, dynamic>>.from(data);
+    }
+    return [];
+  }
+
+  static Future<List<Map<String, dynamic>>> pendientesOkdelivery(
+      int deliveryId) async {
+    final response = await http
+        .get(Uri.parse('$baseUrl/okdelivery/pendientes/$deliveryId'));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      return List<Map<String, dynamic>>.from(data);
+    }
+    return [];
+  }
+
+  static Future<void> aceptarEntregaOkdelivery(
+      int ordenId, int deliveryId) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/okdelivery/$ordenId/aceptar'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'delivery_id': deliveryId}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('No se pudo aceptar la entrega: ${response.body}');
+    }
+  }
+
+  static Future<String?> actualizarUbicacionOkdelivery(
+      int ordenId, double lat, double lng) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/okdelivery/$ordenId/ubicacion'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'lat': lat, 'lng': lng}),
+    );
+    if (response.statusCode == 200) {
+      return (jsonDecode(response.body)['estado']) as String?;
+    }
+    return null;
+  }
+
+  static Future<void> llegueRetiroOkdelivery(int ordenId) async {
+    await http.post(Uri.parse('$baseUrl/okdelivery/$ordenId/llegue_retiro'));
+  }
+
+  static Future<void> entregueADeliveryOkdelivery(int ordenId) async {
+    await http
+        .post(Uri.parse('$baseUrl/ventas/$ordenId/entregue_a_delivery'));
+  }
+
+  static Future<void> confirmarRecepcionRepartidor({
+    required int ordenId,
+    required String estadoProducto, // 'ok' | 'con_observaciones'
+    String? observaciones,
+    required File foto,
+  }) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/okdelivery/$ordenId/confirmar_recepcion'),
+    );
+    request.fields['estado_producto'] = estadoProducto;
+    if (observaciones != null) request.fields['observaciones'] = observaciones;
+    request.files.add(await http.MultipartFile.fromPath('foto', foto.path));
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode != 200) {
+      throw Exception('Error al confirmar recepción: ${response.body}');
+    }
+  }
+
+  static Future<void> repararProductoOkdelivery(int ordenId) async {
+    await http.post(Uri.parse('$baseUrl/ventas/$ordenId/reparar'));
+  }
+
+  static Future<void> noRepararProductoOkdelivery(int ordenId) async {
+    await http.post(Uri.parse('$baseUrl/ventas/$ordenId/no_reparar'));
+  }
+
+  static Future<void> confirmarReparacionOkdelivery(int ordenId) async {
+    await http
+        .post(Uri.parse('$baseUrl/okdelivery/$ordenId/confirmar_reparacion'));
+  }
+
+  static Future<void> llegueEntregaOkdelivery(int ordenId) async {
+    await http.post(Uri.parse('$baseUrl/okdelivery/$ordenId/llegue_entrega'));
+  }
+
+  static Future<void> confirmarEntregaRepartidor(
+      int ordenId, File foto) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/okdelivery/$ordenId/confirmar_entrega'),
+    );
+    request.files.add(await http.MultipartFile.fromPath('foto', foto.path));
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode != 200) {
+      throw Exception('Error al confirmar entrega: ${response.body}');
+    }
+  }
+
+  static Future<void> confirmarRecepcionComprador(
+      int ordenId, {File? video}) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/compras/$ordenId/confirmar_recepcion'),
+    );
+    if (video != null) {
+      request.files.add(await http.MultipartFile.fromPath('video', video.path));
+    }
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode != 200) {
+      throw Exception('Error al confirmar recepción: ${response.body}');
+    }
+  }
+
+  static Future<void> reclamoComprador({
+    required int ordenId,
+    required String texto,
+    required File video,
+  }) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/compras/$ordenId/reclamo'),
+    );
+    request.fields['texto'] = texto;
+    request.files.add(await http.MultipartFile.fromPath('video', video.path));
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode != 200) {
+      throw Exception('Error al enviar el reclamo: ${response.body}');
     }
   }
 
