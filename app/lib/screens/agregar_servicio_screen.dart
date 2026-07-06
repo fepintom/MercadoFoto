@@ -45,9 +45,8 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
   bool    _cargandoUbicacion = false;
 
   static const _kCategorias = [
-    'Hogar', 'Tecnología', 'Transporte', 'Educación', 'Salud',
-    'Belleza', 'Construcción', 'Fotografía', 'Limpieza', 'Mascotas',
-    'Negocios', 'Otros',
+    'Construcción', 'Transporte', 'Electrodomésticos', 'Servicio',
+    'Salud', 'Profesional', 'Asesorías', 'Computación', 'Otros',
   ];
   static const _kColores = [
     Color(0xFF007AFF), Color(0xFF34C759), Color(0xFFFF9500),
