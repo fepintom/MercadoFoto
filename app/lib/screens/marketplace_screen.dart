@@ -504,6 +504,20 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     );
   }
 
+  // ── Aspect ratio dinámico de la tarjeta (imagen cuadrada + texto fijo) ────
+  // Evita que el bloque de texto se corte cuando hay más columnas (tarjetas
+  // más angostas → la imagen cuadrada también se achica en alto, pero el
+  // texto de abajo necesita ~118px sin importar el ancho).
+  static const double _kAltoBloqueTexto = 132;
+
+  double _aspectRatioTarjeta(BuildContext context) {
+    final anchoDisponible = MediaQuery.of(context).size.width - 24; // padding lateral
+    final anchoTarjeta =
+        (anchoDisponible - (10 * (_columnas - 1))) / _columnas;
+    final altoTarjeta = anchoTarjeta + _kAltoBloqueTexto;
+    return anchoTarjeta / altoTarjeta;
+  }
+
   // ── Card de producto ──────────────────────────────────────────────────────
 
   Widget _itemProducto(Map<String, dynamic> item) {
@@ -540,17 +554,20 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           border: Border.all(color: AppColors.divider, width: 0.5),
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Stack(
               children: [
-                NetImage(
-                  "${ApiService.baseUrl}$imagenUrl",
-                  height: 140,
-                  width: double.infinity,
-                  fit: BoxFit.contain,
-                  borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(12)),
+                AspectRatio(
+                  aspectRatio: 1,
+                  child: NetImage(
+                    "${ApiService.baseUrl}$imagenUrl",
+                    width: double.infinity,
+                    fit: BoxFit.contain,
+                    borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(12)),
+                  ),
                 ),
                 if (distKm != null)
                   Positioned(
@@ -904,7 +921,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 crossAxisCount: _columnas,
                 crossAxisSpacing: 10,
                 mainAxisSpacing: 10,
-                childAspectRatio: _columnas == 1 ? 1.15 : 0.65,
+                // La imagen es cuadrada (AspectRatio 1) y el bloque de texto
+                // debajo (categoría/título/precio/vendedor) mide ~118 sin
+                // importar el ancho de la tarjeta. Si el aspect ratio fuera
+                // fijo, con más columnas la tarjeta se hace tan baja que el
+                // texto queda cortado. Lo calculamos según el ancho real.
+                childAspectRatio: _aspectRatioTarjeta(context),
               ),
             ),
           ),
