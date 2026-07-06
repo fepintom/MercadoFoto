@@ -10,6 +10,7 @@ import '../screens/mis_compras_screen.dart';
 import '../screens/mis_ventas_screen.dart';
 import '../screens/okdelivery_pendientes_screen.dart';
 import '../screens/okdelivery_activo_screen.dart';
+import '../screens/producto_detalle_screen.dart';
 
 /// Punto único que decide a qué pantalla navegar según el "tipo" de una
 /// notificación — sin importar si viene de un push (FCM, tocada con la app
@@ -24,7 +25,10 @@ class NotificationRouter {
   /// comprador_ubicacion...). Acepta valores tanto String (vienen así desde
   /// FCM) como int/num (vienen así desde la tabla de notificaciones).
   static Future<void> abrir(BuildContext? context, Map<String, dynamic> data) async {
-    final ctx = context ?? rootContext;
+    // Si el context recibido ya no está montado (p. ej. porque venía de un
+    // bottom sheet que se acaba de cerrar), usamos el navigator raíz de la
+    // app en vez de abortar en silencio.
+    final ctx = (context != null && context.mounted) ? context : rootContext;
     if (ctx == null || !ctx.mounted) return;
 
     final tipo = (data['tipo'] ?? '').toString();
@@ -37,7 +41,13 @@ class NotificationRouter {
         case 'chat':
         case 'oferta':
         case 'oferta_respuesta':
+        case 'interes_compra':
           await _irAChat(ctx, data);
+          break;
+
+        // ── Producto guardado que bajó de precio ─────────────────────────
+        case 'precio':
+          await _irAProductoDetalle(ctx, data);
           break;
 
         // ── Soporte ──────────────────────────────────────────────────────
@@ -110,6 +120,14 @@ class NotificationRouter {
         nombreVendedor: '',
       ),
     );
+  }
+
+  static Future<void> _irAProductoDetalle(BuildContext ctx, Map<String, dynamic> data) async {
+    final pubId = _int(data['publicacion_id']);
+    if (pubId == null) return;
+    final producto = await ApiService.obtenerPublicacion(pubId);
+    if (producto == null || !ctx.mounted) return;
+    _push(ctx, ProductoDetalleScreen(producto: producto));
   }
 
   static Future<void> _irAAyuda(BuildContext ctx, Map<String, dynamic> data) async {

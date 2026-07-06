@@ -2048,8 +2048,9 @@ def _procesar_pago_aprobado(orden: dict, payment_id: str):
         except Exception:
             pass
     crear_notificacion(
-        orden["vendedor_id"], "pago",
+        orden["vendedor_id"], "elegir_entrega",
         f"💳 Pago confirmado por '{orden['titulo']}'. Elige cómo entregar.",
+        orden_id=orden_id,
     )
 
 
@@ -2166,8 +2167,9 @@ def elegir_entrega(orden_id: int, body: dict):
         except Exception:
             pass
     crear_notificacion(
-        orden["comprador_id"], "entrega",
+        orden["comprador_id"], "en_camino",
         f"🚚 '{orden['titulo']}' será entregado por {labels.get(method, method)}",
+        orden_id=orden_id,
     )
     return {"ok": True}
 
@@ -2196,8 +2198,9 @@ def confirmar_orden(orden_id: int, body: dict):
         except Exception:
             pass
     crear_notificacion(
-        orden["vendedor_id"], "entrega",
+        orden["vendedor_id"], "entrega_confirmada",
         f"🎉 Entrega confirmada por '{orden['titulo']}'. El pago será liberado.",
+        orden_id=orden_id,
     )
     return {"ok": True, "estado": "entregado"}
 
@@ -2218,6 +2221,7 @@ def disputar_orden(orden_id: int, body: dict):
     crear_notificacion(
         1, "disputa",
         f"⚠️ Disputa en orden #{orden_id}: '{orden['titulo']}' — {motivo}",
+        orden_id=orden_id,
     )
     # Notificar al vendedor
     fcm_tok = obtener_fcm_token(orden["vendedor_id"])
