@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
@@ -187,23 +188,12 @@ class _ServiciosScreenState extends State<ServiciosScreen>
           ),
         ],
       ),
-      floatingActionButton: AnimatedBuilder(
-        animation: _tabController,
-        builder: (_, __) {
-          final label = _tabController.index == 1
-              ? 'Publicar solicitud'
-              : _tabController.index == 3
-                  ? 'Registrarme como Delivery'
-                  : 'Publicar servicio';
-          return FloatingActionButton.extended(
-            onPressed: _irAAgregar,
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            icon: const Icon(Icons.add),
-            label: Text(label,
-                style: const TextStyle(fontWeight: FontWeight.w700)),
-          );
-        },
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: FloatingActionButton(
+        onPressed: _irAAgregar,
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        child: const Icon(Icons.add, size: 26),
       ),
     );
   }
@@ -212,24 +202,20 @@ class _ServiciosScreenState extends State<ServiciosScreen>
 // ── Constantes compartidas ───────────────────────────────────────────────────
 
 const _kCategorias = [
-  'Hogar', 'Tecnología', 'Transporte', 'Educación', 'Salud',
-  'Belleza', 'Construcción', 'Fotografía', 'Limpieza', 'Mascotas',
-  'Negocios', 'Otros',
+  'Construcción', 'Transporte', 'Electrodomésticos', 'Servicio',
+  'Salud', 'Profesional', 'Asesorías', 'Computación', 'Otros',
 ];
 
 const _kCategoriaIconos = <String, IconData>{
-  'Hogar':         Icons.home_outlined,
-  'Tecnología':    Icons.computer_outlined,
-  'Transporte':    Icons.directions_car_outlined,
-  'Educación':     Icons.school_outlined,
-  'Salud':         Icons.health_and_safety_outlined,
-  'Belleza':       Icons.face_retouching_natural,
-  'Construcción':  Icons.construction_outlined,
-  'Fotografía':    Icons.camera_alt_outlined,
-  'Limpieza':      Icons.cleaning_services_outlined,
-  'Mascotas':      Icons.pets_outlined,
-  'Negocios':      Icons.business_center_outlined,
-  'Otros':         Icons.more_horiz_rounded,
+  'Construcción':       Icons.construction_outlined,
+  'Transporte':         Icons.directions_car_outlined,
+  'Electrodomésticos':  Icons.kitchen_outlined,
+  'Servicio':           Icons.miscellaneous_services_outlined,
+  'Salud':              Icons.health_and_safety_outlined,
+  'Profesional':        Icons.business_center_outlined,
+  'Asesorías':          Icons.support_agent_outlined,
+  'Computación':        Icons.computer_outlined,
+  'Otros':              Icons.more_horiz_rounded,
 };
 
 Color _hexColor(String? hex) {
@@ -243,7 +229,7 @@ Color _hexColor(String? hex) {
 
 // ── Lista de servicios ────────────────────────────────────────────────────────
 
-class _ListaServicios extends StatelessWidget {
+class _ListaServicios extends StatefulWidget {
   final List<Map<String, dynamic>> servicios;
   final String tipo;
   final Future<void> Function() onRefresh;
@@ -255,8 +241,173 @@ class _ListaServicios extends StatelessWidget {
   });
 
   @override
+  State<_ListaServicios> createState() => _ListaServiciosState();
+}
+
+class _ListaServiciosState extends State<_ListaServicios> {
+  String? _categoriaSeleccionada;
+
+  // ── Tamaño de tarjeta (persistido, compartido entre Ofrezco/Busco) ───────
+  double _escala = TarjetaServicioEscala.valor;
+
+  @override
+  void initState() {
+    super.initState();
+    TarjetaServicioEscala.cargar().then((v) {
+      if (mounted) setState(() => _escala = v);
+    });
+  }
+
+  List<Map<String, dynamic>> get _filtrados {
+    if (_categoriaSeleccionada == null) return widget.servicios;
+    return widget.servicios
+        .where((s) => (s['categoria'] ?? 'Otros') == _categoriaSeleccionada)
+        .toList();
+  }
+
+  void _mostrarControlTamano() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                      color: AppColors.divider,
+                      borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text('Tamaño de las tarjetas',
+                  style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary)),
+              const SizedBox(height: 4),
+              const Text('Achica para ver más servicios, agranda para verlos más grandes',
+                  style: TextStyle(fontSize: 12, color: AppColors.grayMid)),
+              Row(
+                children: [
+                  const Icon(Icons.view_compact_outlined,
+                      size: 18, color: AppColors.grayMid),
+                  Expanded(
+                    child: Slider(
+                      value: _escala,
+                      min: 0.75,
+                      max: 1.3,
+                      divisions: 2,
+                      activeColor: AppColors.primary,
+                      onChanged: (v) {
+                        setSheetState(() => _escala = v);
+                        setState(() => _escala = v);
+                        TarjetaServicioEscala.guardar(v);
+                      },
+                    ),
+                  ),
+                  const Icon(Icons.view_agenda_outlined,
+                      size: 20, color: AppColors.grayMid),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final filtrados = _filtrados;
+    return Column(
+      children: [
+        // ── Categorías + control de tamaño ─────────────────────────────────
+        Container(
+          color: AppColors.surface,
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 40,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    itemCount: _kCategorias.length,
+                    itemBuilder: (_, i) {
+                      final cat = _kCategorias[i];
+                      final sel = _categoriaSeleccionada == cat;
+                      final icon = _kCategoriaIconos[cat] ?? Icons.more_horiz_rounded;
+                      return GestureDetector(
+                        onTap: () => setState(() =>
+                            _categoriaSeleccionada = sel ? null : cat),
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: sel ? AppColors.primary : AppColors.background,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: sel ? AppColors.primary : AppColors.divider,
+                              width: 0.5,
+                            ),
+                          ),
+                          alignment: Alignment.center,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(icon, size: 13,
+                                  color: sel ? Colors.white : AppColors.grayMid),
+                              const SizedBox(width: 5),
+                              Text(cat,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: sel ? Colors.white : AppColors.textPrimary,
+                                  )),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: _mostrarControlTamano,
+                child: Container(
+                  margin: const EdgeInsets.only(right: 12),
+                  width: 34, height: 34,
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.divider),
+                  ),
+                  child: const Icon(Icons.photo_size_select_large_outlined,
+                      size: 17, color: AppColors.grayMid),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Divider(height: 0.5, color: AppColors.divider),
+
+        Expanded(child: _buildLista(filtrados)),
+      ],
+    );
+  }
+
+  Widget _buildLista(List<Map<String, dynamic>> servicios) {
     if (servicios.isEmpty) {
+      final sinCategoria = _categoriaSeleccionada != null;
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -267,9 +418,11 @@ class _ListaServicios extends StatelessWidget {
                   size: 64, color: AppColors.grayMid.withOpacity(0.4)),
               const SizedBox(height: 16),
               Text(
-                tipo == 'ofrezco'
-                    ? 'Aún no hay servicios publicados'
-                    : 'Aún no hay solicitudes de servicio',
+                sinCategoria
+                    ? 'Sin resultados en "$_categoriaSeleccionada"'
+                    : widget.tipo == 'ofrezco'
+                        ? 'Aún no hay servicios publicados'
+                        : 'Aún no hay solicitudes de servicio',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                     fontSize: 16,
@@ -278,9 +431,11 @@ class _ListaServicios extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                tipo == 'ofrezco'
-                    ? 'Sé el primero en publicar lo que ofreces'
-                    : 'Publica lo que necesitas y recibe propuestas',
+                sinCategoria
+                    ? 'Prueba con otra categoría'
+                    : widget.tipo == 'ofrezco'
+                        ? 'Sé el primero en publicar lo que ofreces'
+                        : 'Publica lo que necesitas y recibe propuestas',
                 textAlign: TextAlign.center,
                 style:
                     const TextStyle(fontSize: 13, color: AppColors.grayMid),
@@ -292,15 +447,35 @@ class _ListaServicios extends StatelessWidget {
     }
 
     return RefreshIndicator(
-      onRefresh: onRefresh,
+      onRefresh: widget.onRefresh,
       color: AppColors.primary,
       child: ListView.separated(
         padding: const EdgeInsets.all(12),
         itemCount: servicios.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (_, i) => _TarjetaServicio(servicio: servicios[i]),
+        separatorBuilder: (_, __) => SizedBox(height: 10 * _escala),
+        itemBuilder: (_, i) => _TarjetaServicio(
+            servicio: servicios[i], escala: _escala),
       ),
     );
+  }
+}
+
+// ── Preferencia de tamaño de tarjeta (persistida) ────────────────────────────
+
+class TarjetaServicioEscala {
+  static const _kPref = 'srv_tarjeta_escala';
+  static double valor = 1.0;
+
+  static Future<double> cargar() async {
+    final prefs = await SharedPreferences.getInstance();
+    valor = prefs.getDouble(_kPref) ?? 1.0;
+    return valor;
+  }
+
+  static Future<void> guardar(double v) async {
+    valor = v;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_kPref, v);
   }
 }
 
@@ -308,10 +483,13 @@ class _ListaServicios extends StatelessWidget {
 
 class _TarjetaServicio extends StatelessWidget {
   final Map<String, dynamic> servicio;
-  const _TarjetaServicio({required this.servicio});
+  final double escala;
+  const _TarjetaServicio({required this.servicio, this.escala = 1.0});
 
   @override
   Widget build(BuildContext context) {
+    final imgW = 63.0 * escala;
+    final imgH = 70.0 * escala;
     final nombre    = '${servicio['nombre'] ?? ''} ${servicio['apellido'] ?? ''}'.trim();
     final fotoUrl   = servicio['foto_url'] as String? ?? '';
     final tipo      = servicio['tipo'] as String? ?? 'ofrezco';
@@ -349,8 +527,8 @@ class _TarjetaServicio extends StatelessWidget {
           ClipRRect(
             borderRadius: const BorderRadius.horizontal(left: Radius.circular(14)),
             child: fotos.isNotEmpty
-                ? _media(fotos.first as String, 63, 70)
-                : _avatar(fotoUrl, nombre, 63, 70),
+                ? _media(fotos.first as String, imgW, imgH)
+                : _avatar(fotoUrl, nombre, imgW, imgH),
           ),
 
           // Info

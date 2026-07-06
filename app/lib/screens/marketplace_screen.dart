@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/format_utils.dart';
 
 import '../services/api_service.dart';
@@ -74,12 +75,87 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   double? _precioMax;
   bool _buscando = false;
 
+  // ── Tamaño de tarjetas (columnas de la grilla, persistido) ───────────────
+  static const _kColumnasPref = 'mkt_columnas';
+  int _columnas = 2;
+
   // ─────────────────────────────────────────────────────────────────────────
 
   @override
   void initState() {
     super.initState();
     cargarPublicaciones();
+    _cargarColumnas();
+  }
+
+  Future<void> _cargarColumnas() async {
+    final prefs = await SharedPreferences.getInstance();
+    final v = prefs.getInt(_kColumnasPref) ?? 2;
+    if (mounted) setState(() => _columnas = v);
+  }
+
+  Future<void> _guardarColumnas(int v) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kColumnasPref, v);
+  }
+
+  void _mostrarControlTamano() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                      color: AppColors.divider,
+                      borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text('Tamaño de las publicaciones',
+                  style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary)),
+              const SizedBox(height: 4),
+              const Text('Achica para ver más productos, agranda para verlos más grandes',
+                  style: TextStyle(fontSize: 12, color: AppColors.grayMid)),
+              Row(
+                children: [
+                  const Icon(Icons.grid_view_rounded,
+                      size: 16, color: AppColors.grayMid),
+                  Expanded(
+                    child: Slider(
+                      value: _columnas.toDouble(),
+                      min: 1,
+                      max: 4,
+                      divisions: 3,
+                      activeColor: AppColors.primary,
+                      onChanged: (v) {
+                        setSheetState(() => _columnas = v.round());
+                        setState(() => _columnas = v.round());
+                        _guardarColumnas(v.round());
+                      },
+                    ),
+                  ),
+                  const Icon(Icons.crop_square_rounded,
+                      size: 22, color: AppColors.grayMid),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -636,6 +712,20 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                         color: _tieneFiltroPrecio ? AppColors.textOnPrimary : AppColors.grayMid),
                   ),
                 ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: _mostrarControlTamano,
+                  child: Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.divider),
+                    ),
+                    child: const Icon(Icons.photo_size_select_large_outlined,
+                        size: 17, color: AppColors.grayMid),
+                  ),
+                ),
               ],
             ),
           ),
@@ -810,11 +900,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 (_, i) => _itemProducto(_filtradas[i]),
                 childCount: _filtradas.length,
               ),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: _columnas,
                 crossAxisSpacing: 10,
                 mainAxisSpacing: 10,
-                childAspectRatio: 0.65,
+                childAspectRatio: _columnas == 1 ? 1.15 : 0.65,
               ),
             ),
           ),

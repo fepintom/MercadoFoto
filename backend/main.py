@@ -163,6 +163,7 @@ from database.servicios import (
     actualizar_ubicacion,
     registrar_contacto,
     obtener_contactos_servicio,
+    actualizar_categoria as _actualizar_categoria_servicio,
 )
 
 from database.delivery import (
@@ -2234,6 +2235,50 @@ def disputar_orden(orden_id: int, body: dict):
 
 
 # ── Reembolso (uso interno / admin) ──────────────────────────────────────────
+
+@app.post("/admin/servicios/clasificar-categorias")
+def admin_clasificar_categorias_servicios(token: str = ""):
+    """
+    Migración de una sola vez: reclasifica los servicios publicados antes de
+    que existiera el set de categorías Construcción/Transporte/Electrodomésticos/
+    Servicio/Salud/Profesional/Asesorias/Computación/Otros. Se revisó cada
+    servicio existente (título + descripción) manualmente para asignarle la
+    categoría que mejor le calza; los que no calzan en ninguna quedan en 'Otros'.
+    Idempotente: solo toca las filas que siguen en 'Otros' (el default), para
+    no pisar una categoría que el usuario ya haya elegido a mano después.
+    """
+    SECRET = os.environ.get("ADMIN_TOKEN", "okventa-admin-2026")
+    if token != SECRET:
+        raise HTTPException(status_code=403, detail="Token inválido")
+
+    # id de servicio -> categoría asignada (revisado título/descripción real)
+    _MAPA_CATEGORIAS = {
+        1:  "Transporte",       # Mecánica automotriz
+        2:  "Transporte",       # Mecánico
+        3:  "Construcción",     # Busco Electrico (problema con la luz)
+        4:  "Servicio",         # Deteccion de personas (perro detector)
+        5:  "Servicio",         # Guardia
+        6:  "Servicio",         # Hago la fila
+        7:  "Servicio",         # Háganme la fila
+        8:  "Servicio",         # Paseo perros
+        9:  "Servicio",         # Verificación proveedor
+        10: "Electrodomésticos",# Cambió la tele
+        11: "Transporte",       # Busco grúa
+        12: "Transporte",       # Ofrezco servicio de grúa
+    }
+
+    actualizados = []
+    for sid, cat in _MAPA_CATEGORIAS.items():
+        servicio = obtener_servicio_por_id(sid)
+        if not servicio:
+            continue
+        if servicio.get("categoria", "Otros") != "Otros":
+            continue  # ya fue recategorizado manualmente, no lo pisamos
+        _actualizar_categoria_servicio(sid, cat)
+        actualizados.append({"id": sid, "titulo": servicio["titulo"], "categoria": cat})
+
+    return {"ok": True, "actualizados": actualizados, "total": len(actualizados)}
+
 
 @app.post("/admin/procesar-imagenes")
 def admin_procesar_imagenes(token: str = ""):
