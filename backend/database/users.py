@@ -1,5 +1,6 @@
 import sqlite3
 import os
+from typing import Optional
 from config import PUBLICACIONES_DB as DB
 
 
@@ -76,7 +77,7 @@ def guardar_fcm_token(user_id: int, token: str):
     conn.close()
 
 
-def obtener_fcm_token(user_id: int) -> str | None:
+def obtener_fcm_token(user_id: int) -> Optional[str]:
     conn = sqlite3.connect(DB)
     cursor = conn.cursor()
     cursor.execute("SELECT fcm_token FROM users WHERE id = ?", (user_id,))
