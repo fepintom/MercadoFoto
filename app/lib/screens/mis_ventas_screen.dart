@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../services/api_service.dart';
@@ -19,11 +21,19 @@ class _MisVentasScreenState extends State<MisVentasScreen> {
   List<Map<String, dynamic>> _ventas = [];
   bool _cargando = true;
   int? _userId;
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
     _cargar();
+    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) => _cargar());
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _cargar() async {
@@ -226,6 +236,240 @@ class _TarjetaVenta extends StatefulWidget {
 
 class _TarjetaVentaState extends State<_TarjetaVenta> {
   bool _abriendo = false;
+  Map<String, dynamic>? _entregaOk;
+  bool _accionando = false;
+  Timer? _pollTimer;
+
+  static const _estadosCerrados = {
+    'cerrado_ok',
+    'cerrado_con_reclamo',
+    'cancelado_sin_reparar',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.venta['delivery_method'] == 'okventa') {
+      _cargarEntregaOk();
+      _pollTimer = Timer.periodic(
+          const Duration(seconds: 8), (_) => _cargarEntregaOk());
+    }
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _cargarEntregaOk() async {
+    final id = widget.venta['id'] as int?;
+    if (id == null) return;
+    try {
+      final data = await ApiService.obtenerEntregaOkdelivery(id);
+      if (mounted) {
+        setState(() => _entregaOk = data);
+        if (data != null && _estadosCerrados.contains(data['estado'])) {
+          _pollTimer?.cancel();
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _entregueADelivery() async {
+    final id = widget.venta['id'] as int?;
+    if (id == null || _accionando) return;
+    setState(() => _accionando = true);
+    try {
+      await ApiService.entregueADeliveryOkdelivery(id);
+      await _cargarEntregaOk();
+    } catch (e) {
+      _mostrarError(e);
+    } finally {
+      if (mounted) setState(() => _accionando = false);
+    }
+  }
+
+  Future<void> _reparar() async {
+    final id = widget.venta['id'] as int?;
+    if (id == null || _accionando) return;
+    setState(() => _accionando = true);
+    try {
+      await ApiService.repararProductoOkdelivery(id);
+      await _cargarEntregaOk();
+    } catch (e) {
+      _mostrarError(e);
+    } finally {
+      if (mounted) setState(() => _accionando = false);
+    }
+  }
+
+  Future<void> _noReparar() async {
+    final id = widget.venta['id'] as int?;
+    if (id == null || _accionando) return;
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('¿No se puede reparar?'),
+        content: const Text(
+            'Se cancelará la venta y se reembolsará al comprador. Esta acción no se puede deshacer.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Confirmar cancelación',
+                  style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (confirmar != true) return;
+    setState(() => _accionando = true);
+    try {
+      await ApiService.noRepararProductoOkdelivery(id);
+      await _cargarEntregaOk();
+    } catch (e) {
+      _mostrarError(e);
+    } finally {
+      if (mounted) setState(() => _accionando = false);
+    }
+  }
+
+  void _mostrarError(Object e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.primary),
+    );
+  }
+
+  static const _estadoOkLabel = {
+    'buscando_repartidor': 'Buscando repartidor OkDelivery…',
+    'asignado': 'Repartidor asignado, en camino a retirar',
+    'en_camino_retiro': 'El repartidor va en camino a retirar',
+    'llegado_retiro': 'El repartidor llegó — entrégale el producto',
+    'esperando_confirmacion_calidad': 'El repartidor está revisando el producto',
+    'reparacion_reportada': 'Esperando que el repartidor verifique la reparación',
+    'cancelado_sin_reparar': 'Venta cancelada y reembolsada',
+    'en_camino_entrega': 'El repartidor va en camino al comprador',
+    'llegado_entrega': 'El repartidor llegó donde el comprador',
+    'entregado_pendiente_confirmacion':
+        'Entregado — esperando confirmación del comprador',
+    'cerrado_ok': 'Venta cerrada — fondos liberados',
+    'cerrado_con_reclamo': 'El comprador reportó un problema',
+  };
+
+  Widget? _panelOkdelivery() {
+    final entrega = _entregaOk;
+    if (entrega == null) return null;
+    final estado = entrega['estado'] as String? ?? '';
+
+    if (estado == 'llegado_retiro') {
+      return _accionOkdelivery(
+        color: Colors.green,
+        icon: Icons.delivery_dining_rounded,
+        mensaje: 'El repartidor OkDelivery llegó a buscar el producto.',
+        boton: ElevatedButton(
+          onPressed: _accionando ? null : _entregueADelivery,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.green,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          child: const Text('Entregué al repartidor',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+        ),
+      );
+    }
+
+    if (estado == 'observaciones_reportadas') {
+      final obs = entrega['observaciones_retiro'] as String? ?? '';
+      return _accionOkdelivery(
+        color: Colors.orange,
+        icon: Icons.warning_amber_rounded,
+        mensaje: 'El repartidor reportó: "$obs". Repáralo o se cancela la venta.',
+        boton: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _accionando ? null : _noReparar,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: const BorderSide(color: Colors.red),
+                  padding: const EdgeInsets.symmetric(vertical: 9),
+                  shape:
+                      RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text('No puedo reparar', style: TextStyle(fontSize: 11)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _accionando ? null : _reparar,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 9),
+                  shape:
+                      RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: const Text('Ya lo reparé',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final label = _estadoOkLabel[estado] ?? estado;
+    return _accionOkdelivery(
+      color: AppColors.grayMid,
+      icon: Icons.delivery_dining_outlined,
+      mensaje: label,
+      boton: null,
+    );
+  }
+
+  Widget _accionOkdelivery({
+    required Color color,
+    required IconData icon,
+    required String mensaje,
+    Widget? boton,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(mensaje,
+                    style: TextStyle(
+                        fontSize: 12, color: color, fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+          if (boton != null) ...[
+            const SizedBox(height: 8),
+            boton,
+          ],
+        ],
+      ),
+    );
+  }
 
   Future<void> _irAPublicacion() async {
     final pubId = widget.venta['publicacion_id'];
@@ -481,6 +725,8 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
                     ],
                   ),
                 ),
+                if (delivery == 'okventa' && _panelOkdelivery() != null)
+                  _panelOkdelivery()!,
               ],
             ],
           ),

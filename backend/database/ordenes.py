@@ -26,6 +26,17 @@ def init_ordenes_db():
         updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
+    # Migraciones: columnas añadidas después de la creación inicial
+    c.execute("PRAGMA table_info(ordenes)")
+    cols = [row[1] for row in c.fetchall()]
+    migrations = [
+        ("es_test",         "INTEGER DEFAULT 0"),
+        ("delivery_method", "TEXT"),
+        ("updated_at",      "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+    ]
+    for col, definition in migrations:
+        if col not in cols:
+            c.execute(f"ALTER TABLE ordenes ADD COLUMN {col} {definition}")
     conn.commit()
     conn.close()
 
@@ -33,16 +44,17 @@ def init_ordenes_db():
 # ── Crear ─────────────────────────────────────────────────────────────────────
 
 def crear_orden(comprador_id, vendedor_id, tipo, titulo, monto,
-                publicacion_id=None, servicio_id=None, comision=0.0):
+                publicacion_id=None, servicio_id=None, comision=0.0,
+                es_test=False):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("""
         INSERT INTO ordenes
             (comprador_id, vendedor_id, tipo, titulo, monto,
-             publicacion_id, servicio_id, comision_okventa)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             publicacion_id, servicio_id, comision_okventa, es_test)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (comprador_id, vendedor_id, tipo, titulo, monto,
-          publicacion_id, servicio_id, comision))
+          publicacion_id, servicio_id, comision, 1 if es_test else 0))
     oid = c.lastrowid
     # Fijar external_reference al ID real
     c.execute("UPDATE ordenes SET mp_external_ref = ? WHERE id = ?",
@@ -90,12 +102,11 @@ def obtener_mis_compras(user_id: int):
 
 
 def obtener_mis_ventas(user_id: int):
-    import json
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("""
         SELECT o.*, uc.nombre AS nombre_comprador, uc.foto_url AS foto_comprador,
-               p.fotos AS producto_fotos
+               p.imagen_url AS foto_producto
         FROM ordenes o
         LEFT JOIN users uc ON o.comprador_id = uc.id
         LEFT JOIN publicaciones p ON o.publicacion_id = p.id
@@ -105,21 +116,7 @@ def obtener_mis_ventas(user_id: int):
     rows = c.fetchall()
     cols = [d[0] for d in c.description]
     conn.close()
-    result = []
-    for r in rows:
-        d = dict(zip(cols, r))
-        fotos_json = d.pop('producto_fotos', None)
-        foto_url = None
-        if fotos_json:
-            try:
-                fotos = json.loads(fotos_json)
-                if fotos:
-                    foto_url = fotos[0]
-            except Exception:
-                pass
-        d['foto_producto'] = foto_url
-        result.append(d)
-    return result
+    return [dict(zip(cols, r)) for r in rows]
 
 
 # ── Actualizar ────────────────────────────────────────────────────────────────
