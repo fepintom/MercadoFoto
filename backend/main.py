@@ -7,6 +7,7 @@ import traceback
 import sqlite3
 import json
 import os
+import time
 import secrets
 import bcrypt
 
@@ -145,7 +146,8 @@ from database.ordenes import (
 from services.mp_service import (
     crear_preferencia as mp_crear_preferencia,
     obtener_pago     as mp_obtener_pago,
-    reembolsar_pago  as mp_reembolsar_pago,
+    reembolsar_pago_seguro as mp_reembolsar_pago,
+    test_mode        as pagos_test_mode,
 )
 
 from database.servicios import (
@@ -161,6 +163,7 @@ from database.servicios import (
     actualizar_ubicacion,
     registrar_contacto,
     obtener_contactos_servicio,
+    actualizar_categoria as _actualizar_categoria_servicio,
 )
 
 from database.delivery import (
@@ -189,6 +192,9 @@ from database.ayuda import (
     cerrar_ticket,
 )
 
+from database.entregas import init_entregas_db
+from routers.okdelivery import router as okdelivery_router, crear_y_notificar_entrega
+
 # --------------------------------------------------
 # CATEGORIZACIÓN AUTOMÁTICA (keyword-based, sin dependencias externas)
 # --------------------------------------------------
@@ -205,6 +211,36 @@ _CATEGORIA_MAP = [
             "Impresión 3D": ["impresora 3d", "filamento", "3d"],
             "Celulares": ["celular", "iphone", "samsung", "smartphone", "telefono"],
             "TV": ["tv", "television", "smart tv", "pantalla"],
+        },
+    },
+    {
+        "categoria": "Ropa",
+        "keywords": ["polera", "camiseta", "camisa", "poleron", "polerón", "chaqueta",
+                     "chaleco", "sueter", "suéter", "sweater", "pantalon", "pantalón",
+                     "jean", "jeans", "falda", "vestido", "short", "shorts", "blusa",
+                     "polo", "abrigo", "parka", "cortaviento", "buzo", "pijama",
+                     "traje", "terno", "conjunto ropa", "legging", "licra", "ropa"],
+        "subcategorias": {
+            "Superior": ["polera", "camiseta", "camisa", "poleron", "polerón",
+                         "chaqueta", "chaleco", "sueter", "suéter", "sweater",
+                         "blusa", "polo", "abrigo", "parka", "cortaviento", "buzo"],
+            "Inferior": ["pantalon", "pantalón", "jean", "jeans", "falda",
+                         "short", "shorts", "legging", "licra"],
+            "Vestidos": ["vestido", "conjunto ropa", "traje", "terno"],
+            "Ropa interior y pijamas": ["pijama", "ropa interior"],
+        },
+    },
+    {
+        "categoria": "Calzado",
+        "keywords": ["zapato", "zapatilla", "zapatillas", "bota", "botas", "bototo",
+                     "bototos", "sandalia", "sandalias", "taco", "tacos", "mocasin",
+                     "mocasín", "mocasines", "zueco", "pantufla", "calzado", "tenis",
+                     "sneaker", "sneakers"],
+        "subcategorias": {
+            "Deportivo": ["zapatilla", "zapatillas", "tenis", "sneaker", "sneakers", "running"],
+            "Casual": ["zapato", "mocasin", "mocasín", "mocasines", "zueco", "pantufla"],
+            "Formal": ["taco", "tacos"],
+            "Botas y sandalias": ["bota", "botas", "bototo", "bototos", "sandalia", "sandalias"],
         },
     },
     {
@@ -315,6 +351,7 @@ init_ordenes_db()
 init_servicios_db()
 init_delivery_db()
 init_ayuda_db()
+init_entregas_db()
 
 # --------------------------------------------------
 # CORS
@@ -327,6 +364,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Flujo OkDelivery (retiro, tracking, entrega, evidencia y auto-cierre)
+app.include_router(okdelivery_router)
 
 # --------------------------------------------------
 # MODELOS
@@ -1912,6 +1952,8 @@ def crear_preferencia_endpoint(body: dict):
     from services.mp_service import _comision_pct
     comision = round(monto * _comision_pct() / 100, 2)
 
+    modo_test = pagos_test_mode()
+
     # 1. Crear orden en nuestra DB
     orden_id = crear_orden(
         comprador_id=comprador_id,
@@ -1922,7 +1964,23 @@ def crear_preferencia_endpoint(body: dict):
         publicacion_id=pub_id,
         servicio_id=srv_id,
         comision=comision,
+        es_test=modo_test,
     )
+
+    # ── MODO TEST: simular pago aprobado al instante, sin llamar a MP ────────
+    # Beta interna: mientras no esté lista la integración real de MercadoPago,
+    # esto permite probar el flujo completo (notificaciones, entrega, okdelivery).
+    # Se desactiva cambiando PAGOS_TEST_MODE=false en las variables de entorno.
+    if modo_test:
+        payment_id_fake = f"TEST-{orden_id}-{int(time.time())}"
+        orden = obtener_orden(orden_id)
+        _procesar_pago_aprobado(orden, payment_id_fake)
+        return {
+            "orden_id":   orden_id,
+            "test_mode":  True,
+            "estado":     "pago_confirmado",
+            "mensaje":    "Pago simulado (modo prueba). El vendedor ya fue notificado.",
+        }
 
     # 2. Crear preferencia en MP
     try:
@@ -1941,10 +1999,59 @@ def crear_preferencia_endpoint(body: dict):
 
     return {
         "orden_id":           orden_id,
+        "test_mode":          False,
         "preference_id":      mp["preference_id"],
         "init_point":         mp["init_point"],
         "sandbox_init_point": mp["sandbox_init_point"],
     }
+
+
+# ── Pago aprobado: efectos compartidos (webhook real y modo test) ────────────
+
+def _procesar_pago_aprobado(orden: dict, payment_id: str):
+    """
+    Efectos de un pago aprobado, sin importar si vino del webhook real de MP
+    o fue simulado en modo test (PAGOS_TEST_MODE=true). Única fuente de verdad
+    para no duplicar esta lógica en dos lugares.
+    """
+    orden_id = orden["id"]
+    confirmar_pago(orden_id, payment_id)
+    # Obtener ubicación del comprador para informar al vendedor
+    comprador = obtener_usuario_por_id(orden["comprador_id"])
+    ubicacion_str = ""
+    if comprador:
+        ciudad = comprador.get("ciudad") or comprador.get("comuna") or ""
+        if ciudad:
+            ubicacion_str = ciudad
+    push_body = (
+        f"Tu comprador está en {ubicacion_str}. "
+        f"¿Cómo entregas '{orden['titulo']}'?"
+        if ubicacion_str else
+        f"Elige cómo entregarás '{orden['titulo']}'"
+    )
+    # Notificar al vendedor con acción de elegir entrega
+    fcm_tok = obtener_fcm_token(orden["vendedor_id"])
+    if fcm_tok:
+        try:
+            enviar_push(
+                fcm_tok,
+                "📦 ¡Tienes una venta!",
+                push_body,
+                {
+                    "tipo":               "elegir_entrega",
+                    "orden_id":           str(orden_id),
+                    "titulo":             orden["titulo"],
+                    "comprador_ubicacion": ubicacion_str,
+                    "monto":              str(orden["monto"]),
+                },
+            )
+        except Exception:
+            pass
+    crear_notificacion(
+        orden["vendedor_id"], "elegir_entrega",
+        f"💳 Pago confirmado por '{orden['titulo']}'. Elige cómo entregar.",
+        orden_id=orden_id,
+    )
 
 
 # ── Webhook de MercadoPago ────────────────────────────────────────────────────
@@ -1989,45 +2096,8 @@ async def mp_webhook(request: Request):
     if not orden:
         return {"ok": True}
 
-    orden_id = orden["id"]
-
     if status == "approved":
-        confirmar_pago(orden_id, payment_id)
-        # Obtener ubicación del comprador para informar al vendedor
-        comprador = obtener_usuario_por_id(orden["comprador_id"])
-        ubicacion_str = ""
-        if comprador:
-            ciudad = comprador.get("ciudad") or comprador.get("comuna") or ""
-            if ciudad:
-                ubicacion_str = ciudad
-        push_body = (
-            f"Tu comprador está en {ubicacion_str}. "
-            f"¿Cómo entregas '{orden['titulo']}'?"
-            if ubicacion_str else
-            f"Elige cómo entregarás '{orden['titulo']}'"
-        )
-        # Notificar al vendedor con acción de elegir entrega
-        fcm_tok = obtener_fcm_token(orden["vendedor_id"])
-        if fcm_tok:
-            try:
-                enviar_push(
-                    fcm_tok,
-                    "📦 ¡Tienes una venta!",
-                    push_body,
-                    {
-                        "tipo":               "elegir_entrega",
-                        "orden_id":           str(orden_id),
-                        "titulo":             orden["titulo"],
-                        "comprador_ubicacion": ubicacion_str,
-                        "monto":              str(orden["monto"]),
-                    },
-                )
-            except Exception:
-                pass
-        crear_notificacion(
-            orden["vendedor_id"], "pago",
-            f"💳 Pago confirmado por '{orden['titulo']}'. Elige cómo entregar.",
-        )
+        _procesar_pago_aprobado(orden, payment_id)
 
     return {"ok": True}
 
@@ -2076,6 +2146,13 @@ def elegir_entrega(orden_id: int, body: dict):
     if not orden:
         raise HTTPException(status_code=404, detail="Orden no encontrada")
     _guardar_delivery(orden_id, method)
+
+    if method == "okventa":
+        try:
+            crear_y_notificar_entrega(orden, delivery_id_sugerido=body.get("delivery_id"))
+        except Exception:
+            traceback.print_exc()
+
     # Notificar al comprador
     fcm_tok = obtener_fcm_token(orden["comprador_id"])
     labels = {"yo": "el vendedor", "okventa": "OkVenta Delivery", "blueexpress": "Blue Express"}
@@ -2090,8 +2167,9 @@ def elegir_entrega(orden_id: int, body: dict):
         except Exception:
             pass
     crear_notificacion(
-        orden["comprador_id"], "entrega",
+        orden["comprador_id"], "en_camino",
         f"🚚 '{orden['titulo']}' será entregado por {labels.get(method, method)}",
+        orden_id=orden_id,
     )
     return {"ok": True}
 
@@ -2120,8 +2198,9 @@ def confirmar_orden(orden_id: int, body: dict):
         except Exception:
             pass
     crear_notificacion(
-        orden["vendedor_id"], "entrega",
+        orden["vendedor_id"], "entrega_confirmada",
         f"🎉 Entrega confirmada por '{orden['titulo']}'. El pago será liberado.",
+        orden_id=orden_id,
     )
     return {"ok": True, "estado": "entregado"}
 
@@ -2142,6 +2221,7 @@ def disputar_orden(orden_id: int, body: dict):
     crear_notificacion(
         1, "disputa",
         f"⚠️ Disputa en orden #{orden_id}: '{orden['titulo']}' — {motivo}",
+        orden_id=orden_id,
     )
     # Notificar al vendedor
     fcm_tok = obtener_fcm_token(orden["vendedor_id"])
@@ -2159,6 +2239,50 @@ def disputar_orden(orden_id: int, body: dict):
 
 
 # ── Reembolso (uso interno / admin) ──────────────────────────────────────────
+
+@app.post("/admin/servicios/clasificar-categorias")
+def admin_clasificar_categorias_servicios(token: str = ""):
+    """
+    Migración de una sola vez: reclasifica los servicios publicados antes de
+    que existiera el set de categorías Construcción/Transporte/Electrodomésticos/
+    Servicio/Salud/Profesional/Asesorias/Computación/Otros. Se revisó cada
+    servicio existente (título + descripción) manualmente para asignarle la
+    categoría que mejor le calza; los que no calzan en ninguna quedan en 'Otros'.
+    Idempotente: solo toca las filas que siguen en 'Otros' (el default), para
+    no pisar una categoría que el usuario ya haya elegido a mano después.
+    """
+    SECRET = os.environ.get("ADMIN_TOKEN", "okventa-admin-2026")
+    if token != SECRET:
+        raise HTTPException(status_code=403, detail="Token inválido")
+
+    # id de servicio -> categoría asignada (revisado título/descripción real)
+    _MAPA_CATEGORIAS = {
+        1:  "Transporte",       # Mecánica automotriz
+        2:  "Transporte",       # Mecánico
+        3:  "Construcción",     # Busco Electrico (problema con la luz)
+        4:  "Servicio",         # Deteccion de personas (perro detector)
+        5:  "Servicio",         # Guardia
+        6:  "Servicio",         # Hago la fila
+        7:  "Servicio",         # Háganme la fila
+        8:  "Servicio",         # Paseo perros
+        9:  "Servicio",         # Verificación proveedor
+        10: "Electrodomésticos",# Cambió la tele
+        11: "Transporte",       # Busco grúa
+        12: "Transporte",       # Ofrezco servicio de grúa
+    }
+
+    actualizados = []
+    for sid, cat in _MAPA_CATEGORIAS.items():
+        servicio = obtener_servicio_por_id(sid)
+        if not servicio:
+            continue
+        if servicio.get("categoria", "Otros") != "Otros":
+            continue  # ya fue recategorizado manualmente, no lo pisamos
+        _actualizar_categoria_servicio(sid, cat)
+        actualizados.append({"id": sid, "titulo": servicio["titulo"], "categoria": cat})
+
+    return {"ok": True, "actualizados": actualizados, "total": len(actualizados)}
+
 
 @app.post("/admin/procesar-imagenes")
 def admin_procesar_imagenes(token: str = ""):
@@ -2217,6 +2341,17 @@ def admin_procesar_imagenes(token: str = ""):
     return {"ok": ok, "errores": err, "detalle_errores": errores}
 
 
+@app.post("/admin/fix-ordenes-schema")
+def admin_fix_ordenes_schema(token: str = ""):
+    """Migración manual: añade columnas faltantes en ordenes. Seguro llamar N veces (idempotente)."""
+    SECRET = os.environ.get("ADMIN_TOKEN", "okventa-admin-2026")
+    if token != SECRET:
+        raise HTTPException(status_code=403, detail="Token inválido")
+    from database.ordenes import init_ordenes_db
+    init_ordenes_db()
+    return {"ok": True, "mensaje": "Migraciones ejecutadas (delivery_method, updated_at, es_test)"}
+
+
 @app.post("/ordenes/{orden_id}/reembolsar")
 def reembolsar_orden(orden_id: int):
     orden = obtener_orden(orden_id)
@@ -2224,7 +2359,7 @@ def reembolsar_orden(orden_id: int):
         raise HTTPException(status_code=404,
                             detail="Orden no encontrada o sin pago registrado")
     try:
-        mp_reembolsar_pago(orden["mp_payment_id"])
+        mp_reembolsar_pago(orden)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Error MP refund: {e}")
     marcar_reembolsado(orden_id)
