@@ -152,12 +152,35 @@ def _update(orden_id, **kwargs):
     vals = list(kwargs.values()) + [orden_id]
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute(
-        f"UPDATE ordenes SET {sets}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        vals,
-    )
+    try:
+        c.execute(
+            f"UPDATE ordenes SET {sets}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            vals,
+        )
+    except Exception as e:
+        # Auto-migración: añade columnas faltantes y reintenta
+        if "no such column" in str(e):
+            _ensure_ordenes_cols(c)
+            c.execute(
+                f"UPDATE ordenes SET {sets}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                vals,
+            )
+        else:
+            raise
     conn.commit()
     conn.close()
+
+
+def _ensure_ordenes_cols(cursor):
+    cursor.execute("PRAGMA table_info(ordenes)")
+    existing = {row[1] for row in cursor.fetchall()}
+    for col, defn in [
+        ("delivery_method", "TEXT"),
+        ("updated_at",      "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+        ("es_test",         "INTEGER DEFAULT 0"),
+    ]:
+        if col not in existing:
+            cursor.execute(f"ALTER TABLE ordenes ADD COLUMN {col} {defn}")
 
 
 # ── Util ──────────────────────────────────────────────────────────────────────
