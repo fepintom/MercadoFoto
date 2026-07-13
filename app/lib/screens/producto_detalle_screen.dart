@@ -682,6 +682,14 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
         imagenUrl: imagenUrl,
       );
 
+      // ── Modo prueba: el pago ya quedó simulado como aprobado en el backend.
+      // No hay checkout real que abrir — solo avisamos y listo.
+      if (data['test_mode'] == true) {
+        if (!mounted) return;
+        await _mostrarConfirmacionTestMode();
+        return;
+      }
+
       final initPoint = data['init_point'] as String? ??
           data['sandbox_init_point'] as String? ??
           '';
@@ -704,6 +712,35 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     } finally {
       if (mounted) setState(() => _comprando = false);
     }
+  }
+
+  // ── Confirmación visual de compra simulada (modo prueba) ────────────────
+  Future<void> _mostrarConfirmacionTestMode() {
+    return showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.science_rounded, color: Colors.orange),
+            SizedBox(width: 8),
+            Expanded(child: Text('Compra simulada (modo prueba)')),
+          ],
+        ),
+        content: const Text(
+          'No se realizó ningún cobro real. El vendedor ya fue notificado '
+          'como si el pago hubiera sido aprobado, para que pruebes el flujo '
+          'completo de entrega.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Entendido'),
+          ),
+        ],
+      ),
+    );
   }
 
   // ── OFERTAR ────────────────────────────────────────────────────────────

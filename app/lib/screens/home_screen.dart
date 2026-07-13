@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/notification_router.dart';
+import '../services/navigation_service.dart';
 import '../services/session_service.dart';
 import '../services/cart_service.dart';
 import '../theme/app_theme.dart';
@@ -1675,6 +1677,11 @@ class _NotificacionesSheetState extends State<_NotificacionesSheet> {
       case 'pregunta':   return Icons.help_outline_rounded;
       case 'chat':       return Icons.chat_bubble_outline_rounded;
       case 'interes_compra': return Icons.favorite_outline;
+      case 'precio':     return Icons.sell_outlined;
+      case 'elegir_entrega': return Icons.payments_outlined;
+      case 'en_camino':  return Icons.local_shipping_outlined;
+      case 'entrega_confirmada': return Icons.check_circle_outline;
+      case 'disputa':    return Icons.warning_amber_rounded;
       default:           return Icons.notifications_outlined;
     }
   }
@@ -1742,17 +1749,23 @@ class _NotificacionesSheetState extends State<_NotificacionesSheet> {
                           final pubId = n['publicacion_id'];
                           return InkWell(
                             onTap: () {
-                              Navigator.pop(context);
-                              if (pubId == null) return; // sin destino: cierra el panel
                               final tipo = n['tipo'] ?? '';
-                              if (tipo == 'oferta') {
+                              // Usamos el navigator raíz (no el de este bottom
+                              // sheet) porque al cerrar el sheet este context
+                              // se desmonta y la navegación quedaría sin
+                              // efecto — "tocar la notificación no hace nada".
+                              Navigator.pop(context);
+                              final navContext = rootContext;
+                              if (navContext == null || !navContext.mounted) return;
+                              if (tipo == 'oferta' && pubId != null) {
+                                // Caso especial: vista de oferta con monto extraído del mensaje.
                                 final msg = n['mensaje'] ?? '';
                                 final match = RegExp(r'\$([\d,]+)').firstMatch(msg);
                                 final montoStr = (match?.group(1) ?? '0').replaceAll(',', '');
                                 final monto = double.tryParse(montoStr) ?? 0.0;
                                 final remitenteId = n['remitente_id'] ?? 0;
                                 Navigator.push(
-                                  context,
+                                  navContext,
                                   MaterialPageRoute(
                                     builder: (_) => OfertaScreen(
                                       publicacionId: pubId,
@@ -1763,20 +1776,12 @@ class _NotificacionesSheetState extends State<_NotificacionesSheet> {
                                     ),
                                   ),
                                 );
-                              } else {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => ChatScreen(
-                                      publicacionId:  pubId,
-                                      tituloProducto: '',
-                                      imagenUrl:      '',
-                                      vendedorId:     0,
-                                      nombreVendedor: '',
-                                    ),
-                                  ),
-                                );
+                                return;
                               }
+                              // Todo lo demás (chat, ofertas de respuesta, pagos,
+                              // entregas, okdelivery, disputas...) pasa por el
+                              // router central de notificaciones.
+                              NotificationRouter.abrir(navContext, n);
                             },
                             child: Container(
                             color: leida ? Colors.transparent : AppColors.primary.withOpacity(0.05),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
@@ -11,6 +12,7 @@ import '../theme/app_theme.dart';
 import 'agregar_servicio_screen.dart';
 import 'delivery_registro_screen.dart';
 import 'mapa_ubicacion_picker_screen.dart';
+import 'okdelivery_pendientes_screen.dart';
 import 'servicio_detalle_screen.dart';
 import '../widgets/net_image.dart';
 class ServiciosScreen extends StatefulWidget {
@@ -186,23 +188,12 @@ class _ServiciosScreenState extends State<ServiciosScreen>
           ),
         ],
       ),
-      floatingActionButton: AnimatedBuilder(
-        animation: _tabController,
-        builder: (_, __) {
-          final label = _tabController.index == 1
-              ? 'Publicar solicitud'
-              : _tabController.index == 3
-                  ? 'Registrarme como Delivery'
-                  : 'Publicar servicio';
-          return FloatingActionButton.extended(
-            onPressed: _irAAgregar,
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            icon: const Icon(Icons.add),
-            label: Text(label,
-                style: const TextStyle(fontWeight: FontWeight.w700)),
-          );
-        },
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: FloatingActionButton(
+        onPressed: _irAAgregar,
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        child: const Icon(Icons.add, size: 26),
       ),
     );
   }
@@ -211,24 +202,20 @@ class _ServiciosScreenState extends State<ServiciosScreen>
 // ── Constantes compartidas ───────────────────────────────────────────────────
 
 const _kCategorias = [
-  'Hogar', 'Tecnología', 'Transporte', 'Educación', 'Salud',
-  'Belleza', 'Construcción', 'Fotografía', 'Limpieza', 'Mascotas',
-  'Negocios', 'Otros',
+  'Construcción', 'Transporte', 'Electrodomésticos', 'Servicio',
+  'Salud', 'Profesional', 'Asesorías', 'Computación', 'Otros',
 ];
 
 const _kCategoriaIconos = <String, IconData>{
-  'Hogar':         Icons.home_outlined,
-  'Tecnología':    Icons.computer_outlined,
-  'Transporte':    Icons.directions_car_outlined,
-  'Educación':     Icons.school_outlined,
-  'Salud':         Icons.health_and_safety_outlined,
-  'Belleza':       Icons.face_retouching_natural,
-  'Construcción':  Icons.construction_outlined,
-  'Fotografía':    Icons.camera_alt_outlined,
-  'Limpieza':      Icons.cleaning_services_outlined,
-  'Mascotas':      Icons.pets_outlined,
-  'Negocios':      Icons.business_center_outlined,
-  'Otros':         Icons.more_horiz_rounded,
+  'Construcción':       Icons.construction_outlined,
+  'Transporte':         Icons.directions_car_outlined,
+  'Electrodomésticos':  Icons.kitchen_outlined,
+  'Servicio':           Icons.miscellaneous_services_outlined,
+  'Salud':              Icons.health_and_safety_outlined,
+  'Profesional':        Icons.business_center_outlined,
+  'Asesorías':          Icons.support_agent_outlined,
+  'Computación':        Icons.computer_outlined,
+  'Otros':              Icons.more_horiz_rounded,
 };
 
 Color _hexColor(String? hex) {
@@ -242,7 +229,7 @@ Color _hexColor(String? hex) {
 
 // ── Lista de servicios ────────────────────────────────────────────────────────
 
-class _ListaServicios extends StatelessWidget {
+class _ListaServicios extends StatefulWidget {
   final List<Map<String, dynamic>> servicios;
   final String tipo;
   final Future<void> Function() onRefresh;
@@ -254,52 +241,320 @@ class _ListaServicios extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    if (servicios.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
+  State<_ListaServicios> createState() => _ListaServiciosState();
+}
+
+class _ListaServiciosState extends State<_ListaServicios> {
+  String? _categoriaSeleccionada;
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+
+  // ── Tamaño (columnas, persistido y compartido entre Ofrezco/Busco) ───────
+  // 1 columna = tarjeta horizontal ancha (diseño actual, sin cambios).
+  // 2-3 columnas = tarjeta compacta vertical (como el marketplace).
+  int _columnas = ColumnasServicios.valor;
+
+  @override
+  void initState() {
+    super.initState();
+    ColumnasServicios.cargar().then((v) {
+      if (mounted) setState(() => _columnas = v);
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  List<Map<String, dynamic>> get _filtrados {
+    var lista = widget.servicios;
+    if (_categoriaSeleccionada != null) {
+      lista = lista
+          .where((s) => (s['categoria'] ?? 'Otros') == _categoriaSeleccionada)
+          .toList();
+    }
+    if (_query.isNotEmpty) {
+      final q = _query.toLowerCase();
+      lista = lista.where((s) {
+        final titulo = (s['titulo'] ?? '').toString().toLowerCase();
+        final desc   = (s['descripcion'] ?? '').toString().toLowerCase();
+        return titulo.contains(q) || desc.contains(q);
+      }).toList();
+    }
+    return lista;
+  }
+
+  void _mostrarControlTamano() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.handyman_outlined,
-                  size: 64, color: AppColors.grayMid.withOpacity(0.4)),
-              const SizedBox(height: 16),
-              Text(
-                tipo == 'ofrezco'
-                    ? 'Aún no hay servicios publicados'
-                    : 'Aún no hay solicitudes de servicio',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary),
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                      color: AppColors.divider,
+                      borderRadius: BorderRadius.circular(2)),
+                ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                tipo == 'ofrezco'
-                    ? 'Sé el primero en publicar lo que ofreces'
-                    : 'Publica lo que necesitas y recibe propuestas',
-                textAlign: TextAlign.center,
-                style:
-                    const TextStyle(fontSize: 13, color: AppColors.grayMid),
+              const SizedBox(height: 20),
+              const Text('Tamaño de las publicaciones',
+                  style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary)),
+              const SizedBox(height: 4),
+              const Text('Achica para ver más servicios, agranda para verlos más grandes',
+                  style: TextStyle(fontSize: 12, color: AppColors.grayMid)),
+              Row(
+                children: [
+                  const Icon(Icons.grid_view_rounded,
+                      size: 16, color: AppColors.grayMid),
+                  Expanded(
+                    child: Slider(
+                      value: _columnas.toDouble(),
+                      min: 1,
+                      max: 3,
+                      divisions: 2,
+                      activeColor: AppColors.primary,
+                      onChanged: (v) {
+                        final nuevo = v.round();
+                        setSheetState(() => _columnas = nuevo);
+                        setState(() => _columnas = nuevo);
+                        ColumnasServicios.guardar(nuevo);
+                      },
+                    ),
+                  ),
+                  const Icon(Icons.crop_square_rounded,
+                      size: 22, color: AppColors.grayMid),
+                ],
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtrados = _filtrados;
+    return Column(
+      children: [
+        // ── Buscador + control de tamaño ────────────────────────────────────
+        Container(
+          color: AppColors.surface,
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Container(
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.divider),
+                  ),
+                  child: TextField(
+                    controller: _searchCtrl,
+                    onChanged: (v) => setState(() => _query = v.trim()),
+                    style: const TextStyle(fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: widget.tipo == 'ofrezco'
+                          ? 'Buscar servicios...'
+                          : 'Buscar solicitudes...',
+                      hintStyle: const TextStyle(color: AppColors.grayMid, fontSize: 13),
+                      prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.grayMid),
+                      suffixIcon: _query.isNotEmpty
+                          ? GestureDetector(
+                              onTap: () {
+                                _searchCtrl.clear();
+                                setState(() => _query = '');
+                              },
+                              child: const Icon(Icons.close, size: 16, color: AppColors.grayMid),
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 9),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: _mostrarControlTamano,
+                child: Container(
+                  width: 38, height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.divider),
+                  ),
+                  child: const Icon(Icons.photo_size_select_large_outlined,
+                      size: 17, color: AppColors.grayMid),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // ── Categorías (fila propia, no comparte espacio con ningún botón) ──
+        Container(
+          color: AppColors.surface,
+          height: 40,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+            itemCount: _kCategorias.length,
+            itemBuilder: (_, i) {
+              final cat = _kCategorias[i];
+              final sel = _categoriaSeleccionada == cat;
+              final icon = _kCategoriaIconos[cat] ?? Icons.more_horiz_rounded;
+              return GestureDetector(
+                onTap: () => setState(() =>
+                    _categoriaSeleccionada = sel ? null : cat),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: sel ? AppColors.primary : AppColors.background,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: sel ? AppColors.primary : AppColors.divider,
+                      width: 0.5,
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(icon, size: 13,
+                          color: sel ? Colors.white : AppColors.grayMid),
+                      const SizedBox(width: 5),
+                      Text(cat,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: sel ? Colors.white : AppColors.textPrimary,
+                          )),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        Divider(height: 0.5, color: AppColors.divider),
+
+        Expanded(child: _buildLista(filtrados)),
+      ],
+    );
+  }
+
+  Widget _buildVacio() {
+    final sinResultados = _categoriaSeleccionada != null || _query.isNotEmpty;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.handyman_outlined,
+                size: 64, color: AppColors.grayMid.withOpacity(0.4)),
+            const SizedBox(height: 16),
+            Text(
+              sinResultados
+                  ? 'Sin resultados'
+                  : widget.tipo == 'ofrezco'
+                      ? 'Aún no hay servicios publicados'
+                      : 'Aún no hay solicitudes de servicio',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              sinResultados
+                  ? 'Prueba con otra categoría o búsqueda'
+                  : widget.tipo == 'ofrezco'
+                      ? 'Sé el primero en publicar lo que ofreces'
+                      : 'Publica lo que necesitas y recibe propuestas',
+              textAlign: TextAlign.center,
+              style:
+                  const TextStyle(fontSize: 13, color: AppColors.grayMid),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Espacio extra al final para que el FAB '+' no tape el último elemento.
+  static const _kPaddingInferiorFab = 88.0;
+
+  Widget _buildLista(List<Map<String, dynamic>> servicios) {
+    if (servicios.isEmpty) return _buildVacio();
+
+    if (_columnas == 1) {
+      return RefreshIndicator(
+        onRefresh: widget.onRefresh,
+        color: AppColors.primary,
+        child: ListView.separated(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, _kPaddingInferiorFab),
+          itemCount: servicios.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          itemBuilder: (_, i) => _TarjetaServicio(servicio: servicios[i]),
         ),
       );
     }
 
     return RefreshIndicator(
-      onRefresh: onRefresh,
+      onRefresh: widget.onRefresh,
       color: AppColors.primary,
-      child: ListView.separated(
-        padding: const EdgeInsets.all(12),
+      child: GridView.builder(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, _kPaddingInferiorFab),
         itemCount: servicios.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (_, i) => _TarjetaServicio(servicio: servicios[i]),
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: _columnas,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: 0.72,
+        ),
+        itemBuilder: (_, i) =>
+            _TarjetaServicioCompacta(servicio: servicios[i]),
       ),
     );
+  }
+}
+
+// ── Preferencia de columnas (persistida) ─────────────────────────────────────
+
+class ColumnasServicios {
+  static const _kPref = 'srv_columnas';
+  static int valor = 1;
+
+  static Future<int> cargar() async {
+    final prefs = await SharedPreferences.getInstance();
+    valor = prefs.getInt(_kPref) ?? 1;
+    return valor;
+  }
+
+  static Future<void> guardar(int v) async {
+    valor = v;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kPref, v);
   }
 }
 
@@ -311,6 +566,8 @@ class _TarjetaServicio extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const imgW = 63.0;
+    const imgH = 70.0;
     final nombre    = '${servicio['nombre'] ?? ''} ${servicio['apellido'] ?? ''}'.trim();
     final fotoUrl   = servicio['foto_url'] as String? ?? '';
     final tipo      = servicio['tipo'] as String? ?? 'ofrezco';
@@ -348,8 +605,8 @@ class _TarjetaServicio extends StatelessWidget {
           ClipRRect(
             borderRadius: const BorderRadius.horizontal(left: Radius.circular(14)),
             child: fotos.isNotEmpty
-                ? _media(fotos.first as String, 63, 70)
-                : _avatar(fotoUrl, nombre, 63, 70),
+                ? _media(fotos.first as String, imgW, imgH)
+                : _avatar(fotoUrl, nombre, imgW, imgH),
           ),
 
           // Info
@@ -569,6 +826,142 @@ class _TarjetaServicio extends StatelessWidget {
 
 }
 
+// ── Tarjeta compacta (grilla, 2-3 columnas) — imagen arriba, info abajo ──────
+// Se activa cuando el control de tamaño reduce las publicaciones para ver
+// más a la vez, igual que la grilla del marketplace.
+
+class _TarjetaServicioCompacta extends StatelessWidget {
+  final Map<String, dynamic> servicio;
+  const _TarjetaServicioCompacta({required this.servicio});
+
+  @override
+  Widget build(BuildContext context) {
+    final nombre    = '${servicio['nombre'] ?? ''} ${servicio['apellido'] ?? ''}'.trim();
+    final fotoUrl   = servicio['foto_url'] as String? ?? '';
+    final tipo      = servicio['tipo'] as String? ?? 'ofrezco';
+    final titulo    = servicio['titulo'] as String? ?? '';
+    final rating    = (servicio['rating'] as num?)?.toDouble() ?? 0.0;
+    final numVal    = servicio['num_valoraciones'] as int? ?? 0;
+    final modalidad = servicio['modalidad'] as String? ?? 'servicio';
+    final valor     = (servicio['valor'] as num?)?.toDouble() ?? 0;
+    final fotos     = servicio['fotos'] as List? ?? [];
+    final tipoColor = tipo == 'ofrezco' ? AppColors.primary : Colors.orange;
+    final prefix    = tipo == 'ofrezco' ? 'Ofrezco' : 'Busco';
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ServicioDetalleScreen(servicio: servicio),
+        ),
+      ),
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.divider, width: 0.5),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 6,
+                offset: const Offset(0, 2))
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Imagen/avatar — el ancho crece o se achica con las columnas
+            AspectRatio(
+              aspectRatio: 1.3,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  fotos.isNotEmpty
+                      ? NetImage('${ApiService.baseUrl}${fotos.first}',
+                          fit: BoxFit.cover)
+                      : (fotoUrl.isNotEmpty
+                          ? NetImage('${ApiService.baseUrl}$fotoUrl',
+                              fit: BoxFit.cover)
+                          : Container(
+                              color: AppColors.primary.withOpacity(0.12),
+                              child: Center(
+                                child: Text(
+                                  nombre.isNotEmpty
+                                      ? nombre[0].toUpperCase()
+                                      : 'S',
+                                  style: const TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.primary),
+                                ),
+                              ),
+                            )),
+                  Positioned(
+                    left: 0, top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: tipoColor,
+                        borderRadius: const BorderRadius.only(
+                            bottomRight: Radius.circular(10)),
+                      ),
+                      child: Text(prefix,
+                          style: const TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(titulo,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary)),
+                  const SizedBox(height: 4),
+                  if (valor > 0)
+                    Text(
+                      '\$${valor.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]}.')} / $modalidad',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: tipoColor),
+                    ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      _Estrellas(rating: rating, size: 9),
+                      const SizedBox(width: 2),
+                      Text('($numVal)',
+                          style: const TextStyle(
+                              fontSize: 9, color: AppColors.grayMid)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ── Tab Delivery OkVenta ──────────────────────────────────────────────────────
 
 class _DeliveryTab extends StatefulWidget {
@@ -781,6 +1174,35 @@ class _DeliveryTabState extends State<_DeliveryTab> {
                         ),
                       ),
                     ),
+                    if (activo) ...[
+                      const SizedBox(height: 6),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => OkdeliveryPendientesScreen(
+                                    deliveryId: d['id'] as int),
+                              ),
+                            );
+                            widget.onRefresh();
+                          },
+                          icon: const Icon(Icons.delivery_dining_rounded,
+                              size: 16),
+                          label: const Text('Ver entregas disponibles',
+                              style: TextStyle(fontSize: 12)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ],
               ),

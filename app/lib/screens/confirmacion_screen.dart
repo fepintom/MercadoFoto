@@ -121,6 +121,27 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
   final _anchoCtrl = TextEditingController();
   final _pesoCtrl  = TextEditingController();
 
+  // ── Talla de producto (Ropa / Calzado) ─────────────────────────────────
+  // Distinto de la "talla de envío" de arriba: esta es la talla real de la
+  // prenda o el zapato, seleccionada con cuadritos (no texto ni imagen).
+  final Set<String> _tallasProducto = {};
+
+  static const _tallasRopa = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+
+  // Tallas de calzado en numeración EU (35–47, medias tallas incluidas),
+  // igual a la tabla CM/EU/UK/EEUU usada como referencia en Chile.
+  static const _tallasCalzado = [
+    '35', '35,5', '36', '36,5', '37', '37,5', '38', '38,5', '39', '39,5',
+    '40', '40,5', '41', '41,5', '42', '42,5', '43', '43,5', '44', '44,5',
+    '45', '45,5', '46', '46,5', '47',
+  ];
+
+  bool get _esRopa    => _categoria == 'Ropa';
+  bool get _esCalzado => _categoria == 'Calzado';
+  bool get _requiereTallaProducto => _esRopa || _esCalzado;
+  List<String> get _tallasDisponiblesProducto =>
+      _esRopa ? _tallasRopa : _tallasCalzado;
+
   @override
   void initState() {
     super.initState();
@@ -420,6 +441,12 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
         return;
       }
     }
+    if (_requiereTallaProducto && _tallasProducto.isEmpty) {
+      _snack(_esRopa
+          ? "Selecciona al menos una talla de ropa"
+          : "Selecciona al menos una talla de calzado");
+      return;
+    }
 
     // ── Preguntar ubicación al usuario ────────────────────────────────
     final ubicacion = await _elegirUbicacion();
@@ -441,6 +468,16 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
       request.fields["acepta_ofertas"] = _aceptaOfertas ? "1" : "0";
       if (_categoria.isNotEmpty)    request.fields["categoria"]    = _categoria;
       if (_subcategoria.isNotEmpty) request.fields["subcategoria"] = _subcategoria;
+      if (_requiereTallaProducto && _tallasProducto.isNotEmpty) {
+        final valores = _tallasProducto.toList()
+          ..sort((a, b) => _tallasDisponiblesProducto
+              .indexOf(a)
+              .compareTo(_tallasDisponiblesProducto.indexOf(b)));
+        request.fields["tallas"] = jsonEncode({
+          'tipo': _esRopa ? 'ropa' : 'calzado',
+          'valores': valores,
+        });
+      }
       // Coordenadas (si el usuario eligió incluirlas)
       if (ubicacion != null) {
         request.fields["lat"] = ubicacion['lat'].toString();
@@ -1089,6 +1126,90 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
     );
   }
 
+  // ── TALLA DE PRODUCTO (Ropa / Calzado) — cuadritos seleccionables ──────
+  Widget _buildTallaProductoSection() {
+    if (!_requiereTallaProducto) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.straighten_rounded,
+                  size: 15, color: AppColors.grayMid),
+              const SizedBox(width: 6),
+              Text(
+                _esRopa ? 'Tallas de ropa disponibles' : 'Tallas de calzado disponibles',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _esRopa
+                ? 'Selecciona todas las tallas que tengas disponibles.'
+                : 'Selecciona la(s) talla(s) EU disponibles (referencia CM/UK/EEUU según tabla estándar).',
+            style: const TextStyle(fontSize: 12, color: AppColors.grayMid),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _tallasDisponiblesProducto.map((t) {
+              final sel = _tallasProducto.contains(t);
+              return GestureDetector(
+                onTap: () => setState(() {
+                  if (sel) {
+                    _tallasProducto.remove(t);
+                  } else {
+                    _tallasProducto.add(t);
+                  }
+                }),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 120),
+                  width: 56,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: sel
+                        ? AppColors.primary.withOpacity(0.10)
+                        : AppColors.surface,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: sel ? AppColors.primary : AppColors.divider,
+                      width: sel ? 1.5 : 0.8,
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    t,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: sel ? AppColors.primary : AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          if (_tallasProducto.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Seleccionadas: ${(_tallasProducto.toList()..sort((a, b) => _tallasDisponiblesProducto.indexOf(a).compareTo(_tallasDisponiblesProducto.indexOf(b)))).join(', ')}',
+              style: const TextStyle(fontSize: 11, color: AppColors.grayMid),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   // ── TALLA SELECTOR (card tappable → bottom sheet) ─────────────────────
   Widget _buildTallaSection() {
     final tallaActual = _tallas.firstWhere(
@@ -1532,7 +1653,10 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                           ),
                         ),
 
-                      // ── Selector de Talla ─────────────────────────
+                      // ── Selector de talla de producto (Ropa/Calzado) ──
+                      _buildTallaProductoSection(),
+
+                      // ── Selector de Talla de envío ─────────────────
                       _buildTallaSection(),
 
                       // ── Precio interactivo con sugerencia IA ──────

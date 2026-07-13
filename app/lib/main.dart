@@ -7,6 +7,7 @@ import 'screens/auth/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/auth_service.dart';
 import 'services/biometric_service.dart';
+import 'services/navigation_service.dart';
 import 'services/push_service.dart';
 import 'services/session_service.dart';
 import 'theme/app_theme.dart';
@@ -26,6 +27,7 @@ class MercadoFotoApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
+      navigatorKey: rootNavigatorKey,
       title: 'OK Venta',
       theme: AppTheme.theme,
       home: const _AuthGate(),

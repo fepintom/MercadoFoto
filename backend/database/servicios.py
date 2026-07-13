@@ -170,6 +170,16 @@ def actualizar_certificado(servicio_id, user_id, cert_url, verificado: bool):
     conn.close()
 
 
+# ── Categoría ─────────────────────────────────────────────────────────────────
+
+def actualizar_categoria(servicio_id, categoria):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("UPDATE servicios SET categoria = ? WHERE id = ?", (categoria, servicio_id))
+    conn.commit()
+    conn.close()
+
+
 # ── Eliminar ──────────────────────────────────────────────────────────────────
 
 def eliminar_servicio(servicio_id, user_id):

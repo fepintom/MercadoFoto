@@ -141,6 +141,13 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
         servicioId: servicioId,
       );
 
+      // ── Modo prueba: el pago ya quedó simulado como aprobado en el backend.
+      if (data['test_mode'] == true) {
+        if (!mounted) return;
+        await _mostrarConfirmacionTestMode();
+        return;
+      }
+
       final initPoint = data['init_point'] as String? ??
           data['sandbox_init_point'] as String? ??
           '';
@@ -163,6 +170,35 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
     } finally {
       if (mounted) setState(() => _pagando = false);
     }
+  }
+
+  // ── Confirmación visual de pago simulado (modo prueba) ───────────────────
+  Future<void> _mostrarConfirmacionTestMode() {
+    return showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.science_rounded, color: Colors.orange),
+            SizedBox(width: 8),
+            Expanded(child: Text('Pago simulado (modo prueba)')),
+          ],
+        ),
+        content: const Text(
+          'No se realizó ningún cobro real. El prestador del servicio ya fue '
+          'notificado como si el pago hubiera sido aprobado, para que pruebes '
+          'el flujo completo.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Entendido'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
