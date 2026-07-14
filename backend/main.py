@@ -365,6 +365,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/version")
+def version():
+    return {"version": "2a56a1c", "build": "2026-07-13-v2"}
+
 # Flujo OkDelivery (retiro, tracking, entrega, evidencia y auto-cierre)
 app.include_router(okdelivery_router)
 
