@@ -220,6 +220,7 @@ class _SeguimientoEntregaScreenState extends State<SeguimientoEntregaScreen> {
                             TileLayer(
                               urlTemplate:
                                   'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                              userAgentPackageName: 'com.okventa.app',
                             ),
                             MarkerLayer(markers: [
                               // Mi casa (destino)
