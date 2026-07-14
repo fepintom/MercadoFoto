@@ -365,6 +365,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/version")
+def version():
+    return {"version": "2a56a1c", "build": "2026-07-13-v2"}
+
 # Flujo OkDelivery (retiro, tracking, entrega, evidencia y auto-cierre)
 app.include_router(okdelivery_router)
 
@@ -2339,6 +2343,17 @@ def admin_procesar_imagenes(token: str = ""):
             errores.append(f"{archivo.name}: {e}")
 
     return {"ok": ok, "errores": err, "detalle_errores": errores}
+
+
+@app.post("/admin/fix-ordenes-schema")
+def admin_fix_ordenes_schema(token: str = ""):
+    """Migración manual: añade columnas faltantes en ordenes. Seguro llamar N veces (idempotente)."""
+    SECRET = os.environ.get("ADMIN_TOKEN", "okventa-admin-2026")
+    if token != SECRET:
+        raise HTTPException(status_code=403, detail="Token inválido")
+    from database.ordenes import init_ordenes_db
+    init_ordenes_db()
+    return {"ok": True, "mensaje": "Migraciones ejecutadas (delivery_method, updated_at, es_test)"}
 
 
 @app.post("/ordenes/{orden_id}/reembolsar")

@@ -21,11 +21,19 @@ class _MisVentasScreenState extends State<MisVentasScreen> {
   List<Map<String, dynamic>> _ventas = [];
   bool _cargando = true;
   int? _userId;
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
     _cargar();
+    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) => _cargar());
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _cargar() async {

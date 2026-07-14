@@ -24,22 +24,25 @@ class _MisComprasScreenState extends State<MisComprasScreen>
   List<Map<String, dynamic>> _compras = [];
   List<Map<String, dynamic>> _ventas = [];
   bool _cargando = true;
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
     _tab = TabController(length: 2, vsync: this);
     _cargar();
+    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) => _cargar(silencioso: true));
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _tab.dispose();
     super.dispose();
   }
 
-  Future<void> _cargar() async {
-    setState(() => _cargando = true);
+  Future<void> _cargar({bool silencioso = false}) async {
+    if (!silencioso) setState(() => _cargando = true);
     _userId = await SessionService.obtenerUser();
     if (_userId != null) {
       final compras = await ApiService.obtenerMisCompras(_userId!);

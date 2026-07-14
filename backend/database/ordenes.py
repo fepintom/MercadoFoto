@@ -26,11 +26,17 @@ def init_ordenes_db():
         updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
-    # Migración: marca las órdenes creadas en modo prueba (pago simulado, sin cargo real)
+    # Migraciones: columnas añadidas después de la creación inicial
     c.execute("PRAGMA table_info(ordenes)")
     cols = [row[1] for row in c.fetchall()]
-    if "es_test" not in cols:
-        c.execute("ALTER TABLE ordenes ADD COLUMN es_test INTEGER DEFAULT 0")
+    migrations = [
+        ("es_test",         "INTEGER DEFAULT 0"),
+        ("delivery_method", "TEXT"),
+        ("updated_at",      "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+    ]
+    for col, definition in migrations:
+        if col not in cols:
+            c.execute(f"ALTER TABLE ordenes ADD COLUMN {col} {definition}")
     conn.commit()
     conn.close()
 
@@ -96,12 +102,11 @@ def obtener_mis_compras(user_id: int):
 
 
 def obtener_mis_ventas(user_id: int):
-    import json
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("""
         SELECT o.*, uc.nombre AS nombre_comprador, uc.foto_url AS foto_comprador,
-               p.fotos AS producto_fotos
+               p.imagen_url AS foto_producto
         FROM ordenes o
         LEFT JOIN users uc ON o.comprador_id = uc.id
         LEFT JOIN publicaciones p ON o.publicacion_id = p.id
@@ -111,21 +116,7 @@ def obtener_mis_ventas(user_id: int):
     rows = c.fetchall()
     cols = [d[0] for d in c.description]
     conn.close()
-    result = []
-    for r in rows:
-        d = dict(zip(cols, r))
-        fotos_json = d.pop('producto_fotos', None)
-        foto_url = None
-        if fotos_json:
-            try:
-                fotos = json.loads(fotos_json)
-                if fotos:
-                    foto_url = fotos[0]
-            except Exception:
-                pass
-        d['foto_producto'] = foto_url
-        result.append(d)
-    return result
+    return [dict(zip(cols, r)) for r in rows]
 
 
 # ── Actualizar ────────────────────────────────────────────────────────────────
@@ -161,12 +152,35 @@ def _update(orden_id, **kwargs):
     vals = list(kwargs.values()) + [orden_id]
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute(
-        f"UPDATE ordenes SET {sets}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        vals,
-    )
+    try:
+        c.execute(
+            f"UPDATE ordenes SET {sets}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            vals,
+        )
+    except Exception as e:
+        # Auto-migración: añade columnas faltantes y reintenta
+        if "no such column" in str(e):
+            _ensure_ordenes_cols(c)
+            c.execute(
+                f"UPDATE ordenes SET {sets}, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                vals,
+            )
+        else:
+            raise
     conn.commit()
     conn.close()
+
+
+def _ensure_ordenes_cols(cursor):
+    cursor.execute("PRAGMA table_info(ordenes)")
+    existing = {row[1] for row in cursor.fetchall()}
+    for col, defn in [
+        ("delivery_method", "TEXT"),
+        ("updated_at",      "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+        ("es_test",         "INTEGER DEFAULT 0"),
+    ]:
+        if col not in existing:
+            cursor.execute(f"ALTER TABLE ordenes ADD COLUMN {col} {defn}")
 
 
 # ── Util ──────────────────────────────────────────────────────────────────────
