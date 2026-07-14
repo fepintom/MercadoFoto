@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../widgets/blue_express_sheet.dart';
+import 'entrega_vendedor_screen.dart';
 
 class SeleccionarEntregaScreen extends StatefulWidget {
   final int ordenId;
@@ -53,7 +54,22 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
         deliveryId: _deliveryId,
         blueExpressPunto: _blueExpressPunto?['nombre'] as String?,
       );
-      if (mounted) Navigator.pop(context, true);
+      if (!mounted) return;
+      if (_metodo == 'yo') {
+        // Ir directo a la pantalla de entrega: ahí se pide el permiso de
+        // ubicación y se empieza a compartir la posición con el comprador.
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => EntregaVendedorScreen(
+              ordenId: widget.ordenId,
+              titulo: widget.titulo,
+            ),
+          ),
+        );
+      } else {
+        Navigator.pop(context, true);
+      }
     } catch (_) {
       if (mounted) {
         setState(() => _enviando = false);

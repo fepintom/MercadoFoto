@@ -9,6 +9,7 @@ import 'package:latlong2/latlong.dart' as ll;
 import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
+import 'seguimiento_entrega_screen.dart';
 
 class MisComprasScreen extends StatefulWidget {
   const MisComprasScreen({super.key});
@@ -503,6 +504,40 @@ class _MisComprasScreenState extends State<MisComprasScreen>
             if (esCompra && esOkdelivery &&
                 (estado == 'pago_confirmado' || estado == 'en_camino')) ...[
               _OkdeliveryCompradorPanel(ordenId: id),
+            ],
+
+            // El vendedor entrega en persona: ver dónde viene en el mapa.
+            if (esCompra && deliveryMethod == 'yo' &&
+                estado == 'en_camino') ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => SeguimientoEntregaScreen(
+                          ordenId: id,
+                          titulo: orden['titulo'] as String? ?? '',
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.map_rounded, size: 17),
+                  label: const Text('Ver dónde viene el vendedor'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    textStyle: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w600),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(9)),
+                  ),
+                ),
+              ),
             ],
           ],
         ),

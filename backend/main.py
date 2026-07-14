@@ -122,6 +122,13 @@ from database.notifications import (
     init_notifications_db,
     crear_notificacion,
     obtener_notificaciones,
+    marcar_leidas,
+)
+
+from database.tracking import (
+    init_tracking_db,
+    actualizar_ubicacion_vendedor,
+    obtener_ubicacion_vendedor,
 )
 
 from database.guest_sessions import (
@@ -352,6 +359,7 @@ init_servicios_db()
 init_delivery_db()
 init_ayuda_db()
 init_entregas_db()
+init_tracking_db()
 
 # --------------------------------------------------
 # CORS
@@ -890,6 +898,12 @@ def reputacion_vendedor(vendedor_id: int):
 @app.get("/notificaciones/{user_id}")
 def ver_notificaciones(user_id: int):
     return obtener_notificaciones(user_id)
+
+
+@app.post("/notificaciones/{user_id}/marcar-leidas")
+def marcar_notificaciones_leidas(user_id: int):
+    marcar_leidas(user_id)
+    return {"ok": True}
 
 
 # --------------------------------------------------
@@ -2176,6 +2190,46 @@ def elegir_entrega(orden_id: int, body: dict):
         orden_id=orden_id,
     )
     return {"ok": True}
+
+
+# ── Tracking vendedor (entrego yo) ───────────────────────────────────────────
+
+@app.post("/ordenes/{orden_id}/tracking")
+def subir_tracking_vendedor(orden_id: int, body: dict):
+    """El vendedor publica su posición mientras va en camino."""
+    lat = body.get("lat")
+    lng = body.get("lng")
+    if lat is None or lng is None:
+        raise HTTPException(status_code=400, detail="lat/lng requeridos")
+    orden = obtener_orden(orden_id)
+    if not orden:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+    actualizar_ubicacion_vendedor(orden_id, float(lat), float(lng))
+    return {"ok": True}
+
+
+@app.get("/ordenes/{orden_id}/tracking")
+def ver_tracking_vendedor(orden_id: int):
+    """El comprador consulta la posición del vendedor (polling).
+
+    Devuelve la última ubicación del vendedor y el destino
+    (ubicación del comprador) para dibujar ambos en el mapa.
+    """
+    orden = obtener_orden(orden_id)
+    if not orden:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+    vendedor = obtener_ubicacion_vendedor(orden_id)
+    destino = obtener_ubicacion_usuario(orden["comprador_id"]) or {}
+    return {
+        "orden_id": orden_id,
+        "estado": orden["estado"],
+        "vendedor_lat": vendedor["lat"] if vendedor else None,
+        "vendedor_lng": vendedor["lng"] if vendedor else None,
+        "actualizado_at": vendedor["updated_at"] if vendedor else None,
+        "destino_lat": destino.get("lat"),
+        "destino_lng": destino.get("lng"),
+        "destino_direccion": destino.get("direccion"),
+    }
 
 
 # ── Confirmar entrega ─────────────────────────────────────────────────────────

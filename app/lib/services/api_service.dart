@@ -314,6 +314,14 @@ class ApiService {
     return [];
   }
 
+  static Future<void> marcarNotificacionesLeidas(int userId) async {
+    try {
+      await http.post(
+        Uri.parse('$baseUrl/notificaciones/$userId/marcar-leidas'),
+      );
+    } catch (_) {}
+  }
+
   static Future<List<Map<String, dynamic>>> obtenerServicios(
       {String? tipo}) async {
     var uri = Uri.parse('$baseUrl/servicios');
@@ -583,6 +591,30 @@ class ApiService {
     if (response.statusCode != 200) {
       throw Exception('Error al elegir entrega: ${response.body}');
     }
+  }
+
+  // ──────────────────────────────────────────────
+  // TRACKING VENDEDOR (entrego yo)
+  // ──────────────────────────────────────────────
+
+  static Future<void> enviarTrackingVendedor(
+      int ordenId, double lat, double lng) async {
+    await http.post(
+      Uri.parse('$baseUrl/ordenes/$ordenId/tracking'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'lat': lat, 'lng': lng}),
+    );
+  }
+
+  static Future<Map<String, dynamic>?> obtenerTrackingVendedor(
+      int ordenId) async {
+    final response =
+        await http.get(Uri.parse('$baseUrl/ordenes/$ordenId/tracking'));
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(
+          jsonDecode(utf8.decode(response.bodyBytes)));
+    }
+    return null;
   }
 
   // ──────────────────────────────────────────────
