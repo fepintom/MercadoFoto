@@ -856,6 +856,7 @@ class _OkdeliveryCompradorPanelState
                     TileLayer(
                       urlTemplate:
                           'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.okventa.app',
                     ),
                     MarkerLayer(markers: [
                       Marker(

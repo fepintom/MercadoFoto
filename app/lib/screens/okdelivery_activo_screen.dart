@@ -389,6 +389,7 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
                   TileLayer(
                     urlTemplate:
                         'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.okventa.app',
                   ),
                   MarkerLayer(markers: [
                     Marker(
