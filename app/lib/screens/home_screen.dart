@@ -1666,6 +1666,10 @@ class _NotificacionesSheetState extends State<_NotificacionesSheet> {
     try {
       final data = await ApiService.obtenerNotificaciones(widget.userId);
       if (mounted) setState(() { _notifs = data; _cargando = false; });
+      // Abrir el panel cuenta como "visto": se marcan leídas en el servidor.
+      // En esta apertura aún se muestran resaltadas (los datos ya venían con
+      // leido=0); en la próxima apertura aparecerán sin color.
+      ApiService.marcarNotificacionesLeidas(widget.userId);
     } catch (_) {
       if (mounted) setState(() => _cargando = false);
     }

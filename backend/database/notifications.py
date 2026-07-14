@@ -50,6 +50,20 @@ def crear_notificacion(user_id, tipo, mensaje, publicacion_id=None, remitente_id
     conn.close()
 
 
+def marcar_leidas(user_id):
+
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "UPDATE notifications SET leido = 1 WHERE user_id = ? AND leido = 0",
+        (user_id,)
+    )
+
+    conn.commit()
+    conn.close()
+
+
 def obtener_notificaciones(user_id):
 
     conn = sqlite3.connect(DB)
