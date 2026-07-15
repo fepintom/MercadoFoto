@@ -53,36 +53,39 @@ class _MisVentasScreenState extends State<MisVentasScreen> {
 
   // ── Estado y color ──────────────────────────────────────────────────────────
   static const _estadoLabel = {
-    'pendiente_pago':  'Pendiente de pago',
-    'pago_confirmado': 'Pago confirmado',
-    'en_camino':       'En camino',
-    'entregado':       'Entregado',
-    'en_disputa':      'En disputa',
-    'reembolsado':     'Reembolsado',
-    'cancelado':       'Cancelado',
+    'pendiente_pago':     'Pendiente de pago',
+    'pago_confirmado':    'Pago confirmado',
+    'en_camino':          'En camino',
+    'entrega_reportada':  'Esperando al comprador',
+    'entregado':          'Entregado',
+    'en_disputa':         'En disputa',
+    'reembolsado':        'Reembolsado',
+    'cancelado':          'Cancelado',
   };
 
   Color _estadoColor(String estado) {
     switch (estado) {
-      case 'pendiente_pago':  return AppColors.grayMid;
-      case 'pago_confirmado': return Colors.blue;
-      case 'en_camino':       return Colors.orange;
-      case 'entregado':       return Colors.green;
-      case 'en_disputa':      return Colors.red;
-      case 'reembolsado':     return Colors.purple;
-      default:                return AppColors.grayMid;
+      case 'pendiente_pago':    return AppColors.grayMid;
+      case 'pago_confirmado':   return Colors.blue;
+      case 'en_camino':         return Colors.orange;
+      case 'entrega_reportada': return Colors.deepOrange;
+      case 'entregado':         return Colors.green;
+      case 'en_disputa':        return Colors.red;
+      case 'reembolsado':       return Colors.purple;
+      default:                  return AppColors.grayMid;
     }
   }
 
   IconData _estadoIcono(String estado) {
     switch (estado) {
-      case 'pendiente_pago':  return Icons.hourglass_empty_rounded;
-      case 'pago_confirmado': return Icons.payments_outlined;
-      case 'en_camino':       return Icons.local_shipping_outlined;
-      case 'entregado':       return Icons.check_circle_outline_rounded;
-      case 'en_disputa':      return Icons.warning_amber_rounded;
-      case 'reembolsado':     return Icons.undo_rounded;
-      default:                return Icons.circle_outlined;
+      case 'pendiente_pago':    return Icons.hourglass_empty_rounded;
+      case 'pago_confirmado':   return Icons.payments_outlined;
+      case 'en_camino':         return Icons.local_shipping_outlined;
+      case 'entrega_reportada': return Icons.photo_camera_outlined;
+      case 'entregado':         return Icons.check_circle_outline_rounded;
+      case 'en_disputa':        return Icons.warning_amber_rounded;
+      case 'reembolsado':       return Icons.undo_rounded;
+      default:                  return Icons.circle_outlined;
     }
   }
 
@@ -162,20 +165,111 @@ class _MisVentasScreenState extends State<MisVentasScreen> {
                           color: AppColors.primary,
                           child: ListView.builder(
                             padding: const EdgeInsets.all(12),
-                            itemCount: _ventas.length,
-                            itemBuilder: (_, i) => _TarjetaVenta(
-                              venta: _ventas[i],
-                              estadoColor:  _estadoColor,
-                              estadoIcono:  _estadoIcono,
-                              estadoLabel:  _estadoLabel,
-                              deliveryLabel: _deliveryLabel,
-                              formatFecha:  _formatFecha,
-                              userId:       _userId,
-                              onEntregaElegida: _cargar,
-                            ),
+                            itemCount: _ventas.length + 1,
+                            itemBuilder: (_, i) => i == 0
+                                ? _bannerEntregasActivas()
+                                : _TarjetaVenta(
+                                    venta: _ventas[i - 1],
+                                    estadoColor:  _estadoColor,
+                                    estadoIcono:  _estadoIcono,
+                                    estadoLabel:  _estadoLabel,
+                                    deliveryLabel: _deliveryLabel,
+                                    formatFecha:  _formatFecha,
+                                    userId:       _userId,
+                                    onEntregaElegida: _cargar,
+                                  ),
                           ),
                         ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Banner fijo arriba de la lista: entregas que requieren acción del
+  // vendedor (en_camino) o siguen esperando al comprador (entrega_reportada).
+  Widget _bannerEntregasActivas() {
+    final activas = _ventas.where((v) {
+      final e = v['estado'] as String? ?? '';
+      return e == 'en_camino' || e == 'entrega_reportada';
+    }).toList();
+    if (activas.isEmpty) return const SizedBox.shrink();
+
+    final v = activas.first;
+    final estado = v['estado'] as String? ?? '';
+    final titulo = v['titulo'] as String? ?? '';
+    final delivery = v['delivery_method'] as String?;
+    final reportada = estado == 'entrega_reportada';
+
+    return GestureDetector(
+      onTap: () {
+        if (!reportada && delivery == 'yo') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => EntregaVendedorScreen(
+                ordenId: v['id'] as int,
+                titulo: titulo,
+              ),
+            ),
+          ).then((_) => _cargar());
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: reportada
+              ? Colors.deepOrange.withOpacity(0.08)
+              : AppColors.primary.withOpacity(0.07),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: reportada
+                ? Colors.deepOrange.withOpacity(0.45)
+                : AppColors.primary.withOpacity(0.35),
+            width: 1.2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              reportada
+                  ? Icons.hourglass_top_rounded
+                  : Icons.local_shipping_rounded,
+              size: 20,
+              color: reportada ? Colors.deepOrange : AppColors.primary,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    reportada
+                        ? 'Esperando confirmación del comprador: "$titulo"'
+                        : 'Entrega en curso: "$titulo"',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: reportada
+                          ? Colors.deepOrange.shade700
+                          : AppColors.primary,
+                    ),
+                  ),
+                  if (activas.length > 1)
+                    Text(
+                      '+${activas.length - 1} entrega(s) más activa(s)',
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.grayMid),
+                    ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded,
+                size: 20, color: AppColors.grayMid),
           ],
         ),
       ),

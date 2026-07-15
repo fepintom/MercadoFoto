@@ -618,6 +618,79 @@ class ApiService {
   }
 
   // ──────────────────────────────────────────────
+  // EVIDENCIA DE ENTREGA (doble confirmación con foto, entrega 'yo')
+  // ──────────────────────────────────────────────
+
+  static Future<void> reportarEntregaConFoto({
+    required int ordenId,
+    required int userId,
+    required File foto,
+    double? lat,
+    double? lng,
+  }) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/ordenes/$ordenId/reportar-entrega'),
+    );
+    request.fields['user_id'] = userId.toString();
+    request.fields['capturado_en'] = DateTime.now().toIso8601String();
+    if (lat != null) request.fields['lat'] = lat.toString();
+    if (lng != null) request.fields['lng'] = lng.toString();
+    request.files.add(await http.MultipartFile.fromPath('foto', foto.path));
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode != 200) {
+      throw Exception('Error al reportar entrega: ${response.body}');
+    }
+  }
+
+  static Future<void> confirmarRecepcionConFoto({
+    required int ordenId,
+    required int userId,
+    required File foto,
+  }) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/ordenes/$ordenId/confirmar-recepcion'),
+    );
+    request.fields['user_id'] = userId.toString();
+    request.fields['capturado_en'] = DateTime.now().toIso8601String();
+    request.files.add(await http.MultipartFile.fromPath('foto', foto.path));
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode != 200) {
+      throw Exception('Error al confirmar recepción: ${response.body}');
+    }
+  }
+
+  static Future<void> reportarProblemaOrden({
+    required int ordenId,
+    required int userId,
+    required String motivo,
+    String? descripcion,
+    File? fotoReclamo,
+  }) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/ordenes/$ordenId/reportar-problema'),
+    );
+    request.fields['user_id'] = userId.toString();
+    request.fields['motivo'] = motivo;
+    if (descripcion != null && descripcion.isNotEmpty) {
+      request.fields['descripcion'] = descripcion;
+    }
+    if (fotoReclamo != null) {
+      request.files.add(
+          await http.MultipartFile.fromPath('foto_reclamo', fotoReclamo.path));
+    }
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode != 200) {
+      throw Exception('Error al reportar problema: ${response.body}');
+    }
+  }
+
+  // ──────────────────────────────────────────────
   // OKDELIVERY — flujo de entrega propia (retiro, tracking, entrega, evidencia)
   // ──────────────────────────────────────────────
 

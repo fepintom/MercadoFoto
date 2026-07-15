@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart' as ll;
 
 import '../services/api_service.dart';
+import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 
 /// Pantalla del vendedor cuando eligió "Lo entrego yo".
@@ -36,7 +39,9 @@ class _EntregaVendedorScreenState extends State<EntregaVendedorScreen> {
   String _estadoOrden = '';
   bool _permisoDenegado = false;
   bool _compartiendo = false;
+  bool _reportando = false;
   final _mapController = MapController();
+  final _picker = ImagePicker();
 
   @override
   void initState() {
@@ -123,9 +128,55 @@ class _EntregaVendedorScreenState extends State<EntregaVendedorScreen> {
     } catch (_) {}
   }
 
+  Future<void> _reportarEntrega() async {
+    if (_reportando) return;
+    // Solo cámara: la evidencia pierde valor si se puede subir una foto
+    // guardada de la galería.
+    final xfile = await _picker.pickImage(
+        source: ImageSource.camera, imageQuality: 82);
+    if (xfile == null) return;
+    setState(() => _reportando = true);
+    try {
+      final userId = await SessionService.obtenerUser();
+      if (userId == null) throw Exception('Sesión no encontrada');
+      await ApiService.reportarEntregaConFoto(
+        ordenId: widget.ordenId,
+        userId: userId,
+        foto: File(xfile.path),
+        lat: _miPos?.latitude,
+        lng: _miPos?.longitude,
+      );
+      await _cargarTracking();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'Entrega reportada. El comprador debe confirmar la recepción.'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al reportar entrega: $e'),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _reportando = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final entregado = _estadoOrden == 'entregado';
+    final reportada = _estadoOrden == 'entrega_reportada';
+    final enCamino = _estadoOrden == 'en_camino';
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -211,11 +262,13 @@ class _EntregaVendedorScreenState extends State<EntregaVendedorScreen> {
                     child: Text(
                       entregado
                           ? 'Entrega confirmada por el comprador'
-                          : _permisoDenegado
-                              ? 'Activa la ubicación para que el comprador te vea llegar'
-                              : _compartiendo
-                                  ? 'Compartiendo tu ubicación con el comprador'
-                                  : 'Obteniendo tu ubicación…',
+                          : reportada
+                              ? 'Entrega reportada — esperando confirmación del comprador'
+                              : _permisoDenegado
+                                  ? 'Activa la ubicación para que el comprador te vea llegar'
+                                  : _compartiendo
+                                      ? 'Compartiendo tu ubicación con el comprador'
+                                      : 'Obteniendo tu ubicación…',
                       style: TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w600,
@@ -325,13 +378,47 @@ class _EntregaVendedorScreenState extends State<EntregaVendedorScreen> {
               ),
             ),
 
+            // ── Reportar entrega con foto ────────────────────────────
+            if (enCamino)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _reportando ? null : _reportarEntrega,
+                    icon: _reportando
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.photo_camera_rounded, size: 18),
+                    label: Text(_reportando
+                        ? 'Enviando…'
+                        : 'Entregué el paquete (foto)'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      textStyle: const TextStyle(
+                          fontSize: 14, fontWeight: FontWeight.w700),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+              ),
+
             // ── Nota inferior ────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
               child: Text(
                 entregado
                     ? 'La entrega fue confirmada. Ya puedes cerrar esta pantalla.'
-                    : 'Mantén esta pantalla abierta mientras vas en camino para que el comprador vea tu ubicación.',
+                    : reportada
+                        ? 'Reportaste la entrega. Si el comprador no responde en 48h, la venta se confirma automáticamente.'
+                        : 'Al llegar, toma una foto del paquete entregado para reportar la entrega.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 12, color: AppColors.grayMid),
               ),

@@ -131,6 +131,14 @@ from database.tracking import (
     obtener_ubicacion_vendedor,
 )
 
+from database.evidencias import (
+    init_evidencias_db,
+    crear_evidencia,
+    existe_evidencia,
+    obtener_evidencias,
+    crear_disputa,
+)
+
 from database.guest_sessions import (
     init_guest_db,
     crear_guest,
@@ -149,6 +157,10 @@ from database.ordenes import (
     confirmar_entrega,
     abrir_disputa,
     marcar_reembolsado,
+    reportar_entrega as ordenes_reportar_entrega,
+    marcar_recordatorio_enviado,
+    obtener_pendientes_recordatorio,
+    obtener_vencidas_autoconfirmar,
 )
 from services.mp_service import (
     crear_preferencia as mp_crear_preferencia,
@@ -360,6 +372,7 @@ init_delivery_db()
 init_ayuda_db()
 init_entregas_db()
 init_tracking_db()
+init_evidencias_db()
 
 # --------------------------------------------------
 # CORS
@@ -2230,6 +2243,259 @@ def ver_tracking_vendedor(orden_id: int):
         "destino_lng": destino.get("lng"),
         "destino_direccion": destino.get("direccion"),
     }
+
+
+# ── Confirmación de entrega con evidencia fotográfica ────────────────────────
+# Doble confirmación (solo delivery_method='yo'):
+#   en_camino --(vendedor foto)--> entrega_reportada --(comprador foto)--> entregado
+# OkVenta Delivery ya tiene evidencia propia en su flujo (entregas_okdelivery);
+# Blue Express se actualiza por guía/soporte, sin foto manual del courier.
+
+def _guardar_foto_evidencia(upload: UploadFile, prefix: str) -> str:
+    ext = os.path.splitext(upload.filename or "")[1].lower() or ".jpg"
+    name = f"{prefix}_{secrets.token_hex(8)}{ext}"
+    path = os.path.join(UPLOADS_DIR, name)
+    with open(path, "wb") as f:
+        f.write(upload.file.read())
+    return f"/uploads/{name}"
+
+
+def _validar_metodo_evidencia(orden: dict):
+    metodo = orden.get("delivery_method")
+    if metodo == "blueexpress":
+        raise HTTPException(
+            status_code=400,
+            detail="Blue Express no usa confirmación manual con foto; "
+                   "el estado se actualiza por número de guía o soporte OkVenta")
+    if metodo == "okventa":
+        raise HTTPException(
+            status_code=400,
+            detail="Las entregas OkVenta Delivery usan el flujo OkDelivery, "
+                   "que ya incluye evidencia fotográfica propia")
+    if metodo != "yo":
+        raise HTTPException(status_code=400,
+                            detail="La orden no tiene método de entrega asignado")
+
+
+@app.post("/ordenes/{orden_id}/reportar-entrega")
+async def reportar_entrega_con_foto(
+    orden_id: int,
+    user_id: int = Form(...),
+    foto: UploadFile = File(...),
+    lat: Optional[float] = Form(None),
+    lng: Optional[float] = Form(None),
+    capturado_en: Optional[str] = Form(None),
+):
+    """El vendedor reporta la entrega con foto; la orden queda esperando
+    confirmación del comprador (ventana de 48h antes de auto-confirmar)."""
+    orden = obtener_orden(orden_id)
+    if not orden:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+    _validar_metodo_evidencia(orden)
+    if user_id != orden["vendedor_id"]:
+        raise HTTPException(status_code=403,
+                            detail="Solo el vendedor puede reportar la entrega")
+    if orden["estado"] != "en_camino":
+        raise HTTPException(status_code=400,
+                            detail=f"Estado '{orden['estado']}' no permite reportar entrega")
+    if existe_evidencia(orden_id, "entrega"):
+        raise HTTPException(status_code=409,
+                            detail="Ya existe evidencia de entrega para esta orden")
+
+    foto_path = _guardar_foto_evidencia(foto, f"entrega_{orden_id}")
+    if crear_evidencia(orden_id, "entrega", foto_path,
+                       lat=lat, lng=lng, capturado_en=capturado_en) is None:
+        raise HTTPException(status_code=409,
+                            detail="Ya existe evidencia de entrega para esta orden")
+    ordenes_reportar_entrega(orden_id)
+
+    fcm_tok = obtener_fcm_token(orden["comprador_id"])
+    if fcm_tok:
+        try:
+            enviar_push(
+                fcm_tok,
+                "📦 Tu pedido fue entregado",
+                f"Confirma que recibiste '{orden['titulo']}'",
+                {"tipo": "entrega_reportada", "orden_id": str(orden_id)},
+            )
+        except Exception:
+            pass
+    crear_notificacion(
+        orden["comprador_id"], "entrega_reportada",
+        f"📦 El vendedor reportó la entrega de '{orden['titulo']}'. "
+        f"Confirma que lo recibiste.",
+        orden_id=orden_id,
+    )
+    return {"ok": True, "estado": "entrega_reportada", "foto": foto_path}
+
+
+@app.post("/ordenes/{orden_id}/confirmar-recepcion")
+async def confirmar_recepcion_con_foto(
+    orden_id: int,
+    user_id: int = Form(...),
+    foto: UploadFile = File(...),
+    capturado_en: Optional[str] = Form(None),
+):
+    """El comprador confirma la recepción con foto; cierra la orden y
+    habilita la liberación de fondos al vendedor."""
+    orden = obtener_orden(orden_id)
+    if not orden:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+    if user_id != orden["comprador_id"]:
+        raise HTTPException(status_code=403,
+                            detail="Solo el comprador puede confirmar la recepción")
+    if orden["estado"] != "entrega_reportada":
+        raise HTTPException(status_code=400,
+                            detail=f"Estado '{orden['estado']}' no permite confirmar recepción")
+    if existe_evidencia(orden_id, "recepcion"):
+        raise HTTPException(status_code=409,
+                            detail="Ya existe evidencia de recepción para esta orden")
+
+    foto_path = _guardar_foto_evidencia(foto, f"recepcion_{orden_id}")
+    if crear_evidencia(orden_id, "recepcion", foto_path,
+                       capturado_en=capturado_en) is None:
+        raise HTTPException(status_code=409,
+                            detail="Ya existe evidencia de recepción para esta orden")
+    # La liberación efectiva de fondos es la misma del flujo existente:
+    # estado 'entregado' + payout manual mientras no haya payout MP automático.
+    confirmar_entrega(orden_id)
+
+    fcm_tok = obtener_fcm_token(orden["vendedor_id"])
+    if fcm_tok:
+        try:
+            enviar_push(
+                fcm_tok,
+                "🎉 Recepción confirmada — fondos liberados",
+                f"El comprador confirmó '{orden['titulo']}'. El pago será liberado.",
+                {"tipo": "entrega_confirmada", "orden_id": str(orden_id)},
+            )
+        except Exception:
+            pass
+    crear_notificacion(
+        orden["vendedor_id"], "entrega_confirmada",
+        f"🎉 Recepción confirmada de '{orden['titulo']}'. El pago será liberado.",
+        orden_id=orden_id,
+    )
+    return {"ok": True, "estado": "entregado", "foto": foto_path}
+
+
+@app.post("/ordenes/{orden_id}/reportar-problema")
+async def reportar_problema(
+    orden_id: int,
+    user_id: int = Form(...),
+    motivo: str = Form(...),
+    descripcion: Optional[str] = Form(None),
+    foto_reclamo: Optional[UploadFile] = File(None),
+):
+    """El comprador reporta un problema; congela la orden en disputa
+    (excluida de la auto-confirmación) hasta mediación de OkVenta."""
+    orden = obtener_orden(orden_id)
+    if not orden:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+    if user_id != orden["comprador_id"]:
+        raise HTTPException(status_code=403,
+                            detail="Solo el comprador puede reportar un problema")
+    if orden["estado"] not in ("entrega_reportada", "en_camino"):
+        raise HTTPException(status_code=400,
+                            detail=f"Estado '{orden['estado']}' no permite reportar problema")
+
+    foto_path = None
+    if foto_reclamo is not None:
+        foto_path = _guardar_foto_evidencia(foto_reclamo, f"reclamo_{orden_id}")
+    disputa_id = crear_disputa(orden_id, motivo, descripcion, foto_path)
+    abrir_disputa(orden_id)
+
+    # Notificar al equipo OkVenta (user_id=1 es el admin por convención)
+    crear_notificacion(
+        1, "disputa",
+        f"⚠️ Disputa #{disputa_id} en orden #{orden_id}: '{orden['titulo']}' — {motivo}",
+        orden_id=orden_id,
+    )
+    fcm_tok = obtener_fcm_token(orden["vendedor_id"])
+    if fcm_tok:
+        try:
+            enviar_push(
+                fcm_tok,
+                "⚠️ Problema reportado",
+                f"El comprador reportó un problema con '{orden['titulo']}'",
+                {"tipo": "disputa", "orden_id": str(orden_id)},
+            )
+        except Exception:
+            pass
+    crear_notificacion(
+        orden["vendedor_id"], "disputa",
+        f"⚠️ El comprador reportó un problema con '{orden['titulo']}': {motivo}",
+        orden_id=orden_id,
+    )
+    return {"ok": True, "estado": "en_disputa", "disputa_id": disputa_id}
+
+
+@app.get("/ordenes/{orden_id}/evidencias")
+def ver_evidencias(orden_id: int):
+    return obtener_evidencias(orden_id)
+
+
+# ── Jobs (llamados por el delivery worker vía HTTP) ──────────────────────────
+
+@app.post("/admin/ordenes/recordatorios_confirmacion")
+def admin_recordatorios_confirmacion(token: str = "", horas: int = 24):
+    SECRET = os.environ.get("ADMIN_TOKEN", "okventa-admin-2026")
+    if token != SECRET:
+        raise HTTPException(status_code=403, detail="Token inválido")
+    enviados = []
+    for orden in obtener_pendientes_recordatorio(horas):
+        oid = orden["id"]
+        fcm_tok = obtener_fcm_token(orden["comprador_id"])
+        if fcm_tok:
+            try:
+                enviar_push(
+                    fcm_tok,
+                    "⏰ Confirma tu pedido",
+                    f"¿Recibiste '{orden['titulo']}'? Confírmalo o reporta un problema.",
+                    {"tipo": "entrega_reportada", "orden_id": str(oid)},
+                )
+            except Exception:
+                pass
+        crear_notificacion(
+            orden["comprador_id"], "recordatorio_confirmacion",
+            f"⏰ ¿Recibiste '{orden['titulo']}'? Confirma la recepción o "
+            f"reporta un problema. Si no respondes, se confirmará automáticamente.",
+            orden_id=oid,
+        )
+        marcar_recordatorio_enviado(oid)
+        enviados.append(oid)
+    return {"total": len(enviados), "ordenes": enviados}
+
+
+@app.post("/admin/ordenes/auto_confirmar")
+def admin_auto_confirmar(token: str = "", horas: int = 48):
+    SECRET = os.environ.get("ADMIN_TOKEN", "okventa-admin-2026")
+    if token != SECRET:
+        raise HTTPException(status_code=403, detail="Token inválido")
+    confirmadas = []
+    for orden in obtener_vencidas_autoconfirmar(horas):
+        oid = orden["id"]
+        confirmar_entrega(oid)
+        fcm_tok = obtener_fcm_token(orden["vendedor_id"])
+        if fcm_tok:
+            try:
+                enviar_push(
+                    fcm_tok,
+                    "🎉 Venta confirmada automáticamente",
+                    f"'{orden['titulo']}' se confirmó tras 48h sin respuesta. "
+                    f"El pago será liberado.",
+                    {"tipo": "entrega_confirmada", "orden_id": str(oid)},
+                )
+            except Exception:
+                pass
+        crear_notificacion(
+            orden["vendedor_id"], "entrega_confirmada",
+            f"🎉 '{orden['titulo']}' se confirmó automáticamente (48h sin "
+            f"respuesta del comprador). El pago será liberado.",
+            orden_id=oid,
+        )
+        confirmadas.append(oid)
+    return {"total": len(confirmadas), "ordenes": confirmadas}
 
 
 # ── Confirmar entrega ─────────────────────────────────────────────────────────
