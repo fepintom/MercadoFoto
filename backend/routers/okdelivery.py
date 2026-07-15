@@ -50,6 +50,7 @@ from database.delivery import (
 from database.publicaciones import obtener_publicacion_por_id
 from database.users import obtener_ubicacion_usuario, obtener_fcm_token
 from database.notifications import crear_notificacion
+from database.bitacora import registrar_evento
 
 router = APIRouter()
 
@@ -226,6 +227,12 @@ def aceptar_entrega(orden_id: int, body: dict):
         raise HTTPException(status_code=409, detail="Esta entrega ya fue tomada por otro repartidor")
 
     db.asignar_repartidor(orden_id, delivery_id)
+    # Bitácora: hora y lugar (posición actual del repartidor) de la aceptación
+    perfil = obtener_perfil_delivery_por_id(delivery_id) or {}
+    registrar_evento(orden_id, "delivery_aceptado",
+                     actor_id=delivery_id,
+                     lat=perfil.get("lat"), lng=perfil.get("lng"),
+                     detalle=f"repartidor={perfil.get('nombre', delivery_id)}")
     _notificar(orden["vendedor_id"], "okdelivery_asignado",
                "🛵 Repartidor asignado",
                "Un repartidor OkDelivery viene en camino a retirar tu producto",
@@ -411,6 +418,12 @@ async def confirmar_entrega_comprador(orden_id: int, foto: UploadFile = File(...
     orden, entrega = _orden_y_entrega(orden_id)
     foto_url = _guardar_archivo(foto, "okdelivery_entrega")
     db.confirmar_entrega_comprador(orden_id, foto_url)
+    # Bitácora: hora y última posición conocida del repartidor al entregar
+    registrar_evento(orden_id, "entrega_reportada",
+                     actor_id=entrega.get("delivery_id"),
+                     lat=entrega.get("delivery_lat"),
+                     lng=entrega.get("delivery_lng"),
+                     detalle=f"okdelivery foto={foto_url}")
     _notificar(
         orden["comprador_id"], "okdelivery_confirmar_recepcion",
         "📦 Confirma la recepción de tu producto",
@@ -432,6 +445,9 @@ async def confirmar_recepcion_comprador(orden_id: int, video: Optional[UploadFil
 
     video_url = _guardar_archivo(video, "okdelivery_unboxing") if video and video.filename else None
     db.confirmar_recepcion_comprador(orden_id, video_url=video_url)
+    registrar_evento(orden_id, "recepcion_confirmada",
+                     actor_id=orden.get("comprador_id"),
+                     detalle=f"okdelivery video={video_url}")
     _liberar_fondos(orden)
     return {"ok": True, "estado": "cerrado_ok"}
 
