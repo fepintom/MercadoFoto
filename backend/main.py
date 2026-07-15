@@ -13,7 +13,7 @@ import bcrypt
 
 # Centraliza paths (DB y uploads) — debe importarse antes que todo lo demás
 import config  # noqa: F401  (crea los directorios al importarse)
-from config import UPLOADS_DIR
+from config import UPLOADS_DIR, PUBLICACIONES_DB
 
 
 # --------------------------------------------------
@@ -137,6 +137,13 @@ from database.evidencias import (
     existe_evidencia,
     obtener_evidencias,
     crear_disputa,
+    obtener_disputas,
+)
+
+from database.bitacora import (
+    init_bitacora_db,
+    registrar_evento,
+    obtener_bitacora,
 )
 
 from database.guest_sessions import (
@@ -211,7 +218,7 @@ from database.ayuda import (
     cerrar_ticket,
 )
 
-from database.entregas import init_entregas_db
+from database.entregas import init_entregas_db, obtener_entrega as obtener_entrega_okdelivery
 from routers.okdelivery import router as okdelivery_router, crear_y_notificar_entrega
 
 # --------------------------------------------------
@@ -373,6 +380,7 @@ init_ayuda_db()
 init_entregas_db()
 init_tracking_db()
 init_evidencias_db()
+init_bitacora_db()
 
 # --------------------------------------------------
 # CORS
@@ -2047,6 +2055,9 @@ def _procesar_pago_aprobado(orden: dict, payment_id: str):
     """
     orden_id = orden["id"]
     confirmar_pago(orden_id, payment_id)
+    registrar_evento(orden_id, "pago_confirmado",
+                     actor_id=orden["comprador_id"],
+                     detalle=f"payment_id={payment_id}")
     # Obtener ubicación del comprador para informar al vendedor
     comprador = obtener_usuario_por_id(orden["comprador_id"])
     ubicacion_str = ""
@@ -2177,6 +2188,8 @@ def elegir_entrega(orden_id: int, body: dict):
     if not orden:
         raise HTTPException(status_code=404, detail="Orden no encontrada")
     _guardar_delivery(orden_id, method)
+    registrar_evento(orden_id, "entrega_elegida",
+                     actor_id=orden["vendedor_id"], detalle=method)
 
     if method == "okventa":
         try:
@@ -2308,6 +2321,9 @@ async def reportar_entrega_con_foto(
         raise HTTPException(status_code=409,
                             detail="Ya existe evidencia de entrega para esta orden")
     ordenes_reportar_entrega(orden_id)
+    registrar_evento(orden_id, "entrega_reportada",
+                     actor_id=user_id, lat=lat, lng=lng,
+                     detalle=f"foto={foto_path} capturado_en={capturado_en}")
 
     fcm_tok = obtener_fcm_token(orden["comprador_id"])
     if fcm_tok:
@@ -2359,6 +2375,9 @@ async def confirmar_recepcion_con_foto(
     # La liberación efectiva de fondos es la misma del flujo existente:
     # estado 'entregado' + payout manual mientras no haya payout MP automático.
     confirmar_entrega(orden_id)
+    registrar_evento(orden_id, "recepcion_confirmada",
+                     actor_id=user_id,
+                     detalle=f"foto={foto_path} capturado_en={capturado_en}")
 
     fcm_tok = obtener_fcm_token(orden["vendedor_id"])
     if fcm_tok:
@@ -2404,6 +2423,9 @@ async def reportar_problema(
         foto_path = _guardar_foto_evidencia(foto_reclamo, f"reclamo_{orden_id}")
     disputa_id = crear_disputa(orden_id, motivo, descripcion, foto_path)
     abrir_disputa(orden_id)
+    registrar_evento(orden_id, "disputa_abierta",
+                     actor_id=user_id,
+                     detalle=f"disputa_id={disputa_id} motivo={motivo}")
 
     # Notificar al equipo OkVenta (user_id=1 es el admin por convención)
     crear_notificacion(
@@ -2433,6 +2455,52 @@ async def reportar_problema(
 @app.get("/ordenes/{orden_id}/evidencias")
 def ver_evidencias(orden_id: int):
     return obtener_evidencias(orden_id)
+
+
+# ── Backoffice: bitácora completa del proceso en JSON ────────────────────────
+
+@app.get("/admin/ordenes/{orden_id}/bitacora")
+def admin_bitacora_orden(orden_id: int, token: str = ""):
+    """Registro completo del proceso de una orden para auditoría/análisis:
+    orden, eventos con hora y lugar, evidencias fotográficas, disputas,
+    entrega OkDelivery (si aplica) y última posición de tracking."""
+    SECRET = os.environ.get("ADMIN_TOKEN", "okventa-admin-2026")
+    if token != SECRET:
+        raise HTTPException(status_code=403, detail="Token inválido")
+    orden = obtener_orden(orden_id)
+    if not orden:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+    return {
+        "orden": orden,
+        "bitacora": obtener_bitacora(orden_id),
+        "evidencias": obtener_evidencias(orden_id),
+        "disputas": obtener_disputas(orden_id),
+        "okdelivery": obtener_entrega_okdelivery(orden_id),
+        "tracking_ultima_posicion": obtener_ubicacion_vendedor(orden_id),
+    }
+
+
+@app.get("/admin/ordenes")
+def admin_listar_ordenes(token: str = "", limit: int = 50,
+                         estado: Optional[str] = None):
+    """Listado de órdenes recientes para el backoffice (filtrable por estado)."""
+    SECRET = os.environ.get("ADMIN_TOKEN", "okventa-admin-2026")
+    if token != SECRET:
+        raise HTTPException(status_code=403, detail="Token inválido")
+    conn = sqlite3.connect(PUBLICACIONES_DB)
+    c = conn.cursor()
+    if estado:
+        c.execute("""
+            SELECT * FROM ordenes WHERE estado = ?
+            ORDER BY id DESC LIMIT ?
+        """, (estado, min(limit, 200)))
+    else:
+        c.execute("SELECT * FROM ordenes ORDER BY id DESC LIMIT ?",
+                  (min(limit, 200),))
+    rows = c.fetchall()
+    cols = [d[0] for d in c.description]
+    conn.close()
+    return [dict(zip(cols, r)) for r in rows]
 
 
 # ── Jobs (llamados por el delivery worker vía HTTP) ──────────────────────────
@@ -2476,6 +2544,8 @@ def admin_auto_confirmar(token: str = "", horas: int = 48):
     for orden in obtener_vencidas_autoconfirmar(horas):
         oid = orden["id"]
         confirmar_entrega(oid)
+        registrar_evento(oid, "auto_confirmada",
+                         detalle=f"sin respuesta del comprador en {horas}h")
         fcm_tok = obtener_fcm_token(orden["vendedor_id"])
         if fcm_tok:
             try:
@@ -2509,6 +2579,9 @@ def confirmar_orden(orden_id: int, body: dict):
         raise HTTPException(status_code=400,
                             detail=f"Estado actual '{orden['estado']}' no permite confirmar")
     confirmar_entrega(orden_id)
+    registrar_evento(orden_id, "entregado",
+                     actor_id=orden["comprador_id"],
+                     detalle="confirmación legacy sin foto")
     # Notificar al vendedor que puede recibir el dinero
     fcm_tok = obtener_fcm_token(orden["vendedor_id"])
     if fcm_tok:
