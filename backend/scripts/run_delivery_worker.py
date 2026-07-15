@@ -55,6 +55,40 @@ def revisar(api_url: str, admin_token: str, timeout_minutos: int) -> int:
         return 0
 
 
+def _llamar_admin(api_url: str, admin_token: str, path: str,
+                  params: dict, etiqueta: str) -> int:
+    """Llama un endpoint admin y reporta el total procesado."""
+    try:
+        resp = requests.post(
+            f"{api_url.rstrip('/')}{path}",
+            params={"token": admin_token, **params},
+            timeout=30,
+        )
+        if resp.status_code != 200:
+            print(f"  ✗ {etiqueta}: error {resp.status_code}: {resp.text[:200]}")
+            return 0
+        data = resp.json()
+        total = data.get("total", 0)
+        if total:
+            print(f"  ✓ {etiqueta}: {total} orden(es): {data.get('ordenes')}")
+        return total
+    except Exception as e:
+        print(f"  ✗ {etiqueta}: excepción: {e}")
+        return 0
+
+
+def revisar_confirmaciones(api_url: str, admin_token: str,
+                           horas_recordatorio: int, horas_auto: int):
+    """Recordatorio a las 24h y auto-confirmación a las 48h para órdenes
+    en entrega_reportada (las en_disputa quedan excluidas por estado)."""
+    _llamar_admin(api_url, admin_token,
+                  "/admin/ordenes/recordatorios_confirmacion",
+                  {"horas": horas_recordatorio}, "recordatorios")
+    _llamar_admin(api_url, admin_token,
+                  "/admin/ordenes/auto_confirmar",
+                  {"horas": horas_auto}, "auto-confirmadas")
+
+
 def main():
     parser = argparse.ArgumentParser(description="OkDelivery timeout worker")
     parser.add_argument("--once", action="store_true", help="Procesar una vez y salir")
@@ -68,6 +102,8 @@ def main():
     admin_token = os.environ.get("ADMIN_TOKEN", "okventa-admin-2026")
     intervalo = int(os.environ.get("CHECK_INTERVAL", "60"))
     timeout_minutos = int(os.environ.get("TIMEOUT_MINUTOS", "60"))
+    horas_recordatorio = int(os.environ.get("HORAS_RECORDATORIO", "24"))
+    horas_auto = int(os.environ.get("HORAS_AUTO_CONFIRMAR", "48"))
 
     print("=" * 55)
     print("  OkVenta — OkDelivery Timeout Worker")
@@ -78,11 +114,13 @@ def main():
 
     if args.once:
         revisar(api_url, admin_token, timeout_minutos)
+        revisar_confirmaciones(api_url, admin_token, horas_recordatorio, horas_auto)
         return
 
     while True:
         try:
             revisar(api_url, admin_token, timeout_minutos)
+            revisar_confirmaciones(api_url, admin_token, horas_recordatorio, horas_auto)
         except KeyboardInterrupt:
             print("\nDetenido por el usuario.")
             break

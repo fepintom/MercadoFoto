@@ -30,9 +30,11 @@ def init_ordenes_db():
     c.execute("PRAGMA table_info(ordenes)")
     cols = [row[1] for row in c.fetchall()]
     migrations = [
-        ("es_test",         "INTEGER DEFAULT 0"),
-        ("delivery_method", "TEXT"),
-        ("updated_at",      "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+        ("es_test",              "INTEGER DEFAULT 0"),
+        ("delivery_method",      "TEXT"),
+        ("updated_at",           "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+        ("entrega_reportada_en", "TIMESTAMP"),
+        ("recordatorio_enviado", "INTEGER DEFAULT 0"),
     ]
     for col, definition in migrations:
         if col not in cols:
@@ -145,6 +147,57 @@ def guardar_delivery_method(orden_id: int, method: str):
     _update(orden_id, delivery_method=method, estado="en_camino")
 
 
+def reportar_entrega(orden_id: int):
+    """El vendedor reporta que entregó; empieza la ventana de 48h del comprador."""
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("""
+        UPDATE ordenes
+        SET estado = 'entrega_reportada',
+            entrega_reportada_en = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    """, (orden_id,))
+    conn.commit()
+    conn.close()
+
+
+def marcar_recordatorio_enviado(orden_id: int):
+    _update(orden_id, recordatorio_enviado=1)
+
+
+def obtener_pendientes_recordatorio(horas: int = 24):
+    """Órdenes en entrega_reportada hace más de `horas` sin recordatorio enviado."""
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("""
+        SELECT * FROM ordenes
+        WHERE estado = 'entrega_reportada'
+          AND COALESCE(recordatorio_enviado, 0) = 0
+          AND entrega_reportada_en <= datetime('now', ?)
+    """, (f"-{int(horas)} hours",))
+    rows = c.fetchall()
+    result = [_to_dict(c, r) for r in rows]
+    conn.close()
+    return result
+
+
+def obtener_vencidas_autoconfirmar(horas: int = 48):
+    """Órdenes en entrega_reportada hace más de `horas` (en_disputa queda
+    excluida por el filtro de estado — nunca se auto-confirma una disputa)."""
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("""
+        SELECT * FROM ordenes
+        WHERE estado = 'entrega_reportada'
+          AND entrega_reportada_en <= datetime('now', ?)
+    """, (f"-{int(horas)} hours",))
+    rows = c.fetchall()
+    result = [_to_dict(c, r) for r in rows]
+    conn.close()
+    return result
+
+
 def _update(orden_id, **kwargs):
     if not kwargs:
         return
@@ -175,9 +228,11 @@ def _ensure_ordenes_cols(cursor):
     cursor.execute("PRAGMA table_info(ordenes)")
     existing = {row[1] for row in cursor.fetchall()}
     for col, defn in [
-        ("delivery_method", "TEXT"),
-        ("updated_at",      "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
-        ("es_test",         "INTEGER DEFAULT 0"),
+        ("delivery_method",      "TEXT"),
+        ("updated_at",           "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
+        ("es_test",              "INTEGER DEFAULT 0"),
+        ("entrega_reportada_en", "TIMESTAMP"),
+        ("recordatorio_enviado", "INTEGER DEFAULT 0"),
     ]:
         if col not in existing:
             cursor.execute(f"ALTER TABLE ordenes ADD COLUMN {col} {defn}")

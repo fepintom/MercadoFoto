@@ -70,6 +70,8 @@ class _MisComprasScreenState extends State<MisComprasScreen>
         return 'Pago confirmado';
       case 'en_camino':
         return 'En camino';
+      case 'entrega_reportada':
+        return 'Confirma recepción';
       case 'entregado':
         return 'Entregado';
       case 'en_disputa':
@@ -90,6 +92,8 @@ class _MisComprasScreenState extends State<MisComprasScreen>
       case 'pago_confirmado':
       case 'en_camino':
         return AppColors.primary;
+      case 'entrega_reportada':
+        return Colors.deepOrange;
       case 'entregado':
         return Colors.green;
       case 'en_disputa':
@@ -111,6 +115,8 @@ class _MisComprasScreenState extends State<MisComprasScreen>
         return Icons.check_circle_outline_rounded;
       case 'en_camino':
         return Icons.local_shipping_outlined;
+      case 'entrega_reportada':
+        return Icons.photo_camera_outlined;
       case 'entregado':
         return Icons.verified_rounded;
       case 'en_disputa':
@@ -317,6 +323,156 @@ class _MisComprasScreenState extends State<MisComprasScreen>
     }
   }
 
+  // ── Confirmación de recepción con foto (entrega 'yo') ─────────────────────
+
+  Future<void> _confirmarRecepcionConFoto(int ordenId) async {
+    if (_userId == null) return;
+    // Solo cámara: la evidencia pierde valor con fotos recicladas de galería.
+    final xfile = await ImagePicker()
+        .pickImage(source: ImageSource.camera, imageQuality: 82);
+    if (xfile == null || !mounted) return;
+    try {
+      await ApiService.confirmarRecepcionConFoto(
+        ordenId: ordenId,
+        userId: _userId!,
+        foto: File(xfile.path),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🎉 Recepción confirmada. ¡Gracias por comprar en OkVenta!'),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _cargar();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.primary),
+      );
+    }
+  }
+
+  Future<void> _reportarProblema(int ordenId) async {
+    if (_userId == null) return;
+    String motivo = 'no_llego';
+    final descripcionCtrl = TextEditingController();
+    File? fotoReclamo;
+
+    final ok = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.fromLTRB(
+              20, 16, 20, 20 + MediaQuery.of(ctx).viewInsets.bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Reportar un problema',
+                  style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary)),
+              const SizedBox(height: 14),
+              ...[
+                ('no_llego', 'El pedido nunca llegó'),
+                ('dañado', 'Llegó dañado'),
+                ('distinto', 'No es lo que compré'),
+                ('otro', 'Otro problema'),
+              ].map((m) => RadioListTile<String>(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(m.$2, style: const TextStyle(fontSize: 14)),
+                    value: m.$1,
+                    groupValue: motivo,
+                    activeColor: AppColors.primary,
+                    onChanged: (v) => setSheet(() => motivo = v!),
+                  )),
+              TextField(
+                controller: descripcionCtrl,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Describe el problema (opcional)',
+                  hintStyle: const TextStyle(
+                      fontSize: 13, color: AppColors.grayMid),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final x = await ImagePicker().pickImage(
+                      source: ImageSource.camera, imageQuality: 82);
+                  if (x != null) setSheet(() => fotoReclamo = File(x.path));
+                },
+                icon: Icon(
+                    fotoReclamo == null
+                        ? Icons.photo_camera_outlined
+                        : Icons.check_circle_rounded,
+                    size: 16),
+                label: Text(fotoReclamo == null
+                    ? 'Agregar foto (opcional)'
+                    : 'Foto agregada'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: fotoReclamo == null
+                      ? AppColors.grayMid
+                      : Colors.green,
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Enviar reporte'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (ok != true || !mounted) return;
+    try {
+      await ApiService.reportarProblemaOrden(
+        ordenId: ordenId,
+        userId: _userId!,
+        motivo: motivo,
+        descripcion: descripcionCtrl.text.trim(),
+        fotoReclamo: fotoReclamo,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⚠️ Problema reportado. OkVenta mediará el caso.'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _cargar();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.primary),
+      );
+    }
+  }
+
   // ── Tarjeta de orden ───────────────────────────────────────────────────────
 
   Widget _tarjetaOrden(Map<String, dynamic> orden, {bool esCompra = true}) {
@@ -332,11 +488,15 @@ class _MisComprasScreenState extends State<MisComprasScreen>
 
     final deliveryMethod = orden['delivery_method'] as String?;
     final esOkdelivery = deliveryMethod == 'okventa';
+    final esEntregaVendedor = deliveryMethod == 'yo';
 
-    final puedeConfirmar = esCompra && !esOkdelivery &&
+    // La entrega del vendedor ('yo') usa el flujo nuevo con foto:
+    // el comprador confirma solo cuando el vendedor reportó la entrega.
+    final puedeConfirmar = esCompra && !esOkdelivery && !esEntregaVendedor &&
         (estado == 'pago_confirmado' || estado == 'en_camino');
-    final puedeDisputar = esCompra && !esOkdelivery &&
+    final puedeDisputar = esCompra && !esOkdelivery && !esEntregaVendedor &&
         (estado == 'pago_confirmado' || estado == 'en_camino');
+    final debeConfirmarRecepcion = esCompra && estado == 'entrega_reportada';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -501,6 +661,49 @@ class _MisComprasScreenState extends State<MisComprasScreen>
               ),
             ],
 
+            // Doble confirmación: el vendedor reportó la entrega con foto,
+            // ahora el comprador confirma (o reporta un problema).
+            if (debeConfirmarRecepcion) ...[
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _confirmarRecepcionConFoto(id),
+                      icon: const Icon(Icons.photo_camera_rounded, size: 16),
+                      label: const Text('Recibí el paquete'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        textStyle: const TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _reportarProblema(id),
+                      icon: const Icon(Icons.report_outlined, size: 16),
+                      label: const Text('Tuve un problema'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red, width: 1),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        textStyle: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+
             if (esCompra && esOkdelivery &&
                 (estado == 'pago_confirmado' || estado == 'en_camino')) ...[
               _OkdeliveryCompradorPanel(ordenId: id),
@@ -538,7 +741,118 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                   ),
                 ),
               ),
+              const SizedBox(height: 6),
+              Center(
+                child: TextButton(
+                  onPressed: () => _reportarProblema(id),
+                  child: const Text('¿El pedido nunca llegó? Reportar problema',
+                      style: TextStyle(fontSize: 12, color: Colors.red)),
+                ),
+              ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Banner fijo de entregas activas ────────────────────────────────────────
+  // Visible arriba de la lista para cualquier orden en en_camino o
+  // entrega_reportada: el usuario no debe buscar la tarjeta para actuar.
+
+  Widget _bannerActivas(List<Map<String, dynamic>> ordenes,
+      {required bool esCompra}) {
+    final activas = ordenes.where((o) {
+      final e = o['estado'] as String? ?? '';
+      return e == 'en_camino' || e == 'entrega_reportada';
+    }).toList();
+    if (activas.isEmpty) return const SizedBox.shrink();
+
+    final o = activas.first;
+    final id = o['id'] as int? ?? 0;
+    final titulo = o['titulo'] as String? ?? '';
+    final estado = o['estado'] as String? ?? '';
+    final delivery = o['delivery_method'] as String?;
+    final reportada = estado == 'entrega_reportada';
+
+    final String texto;
+    if (esCompra) {
+      texto = reportada
+          ? 'Confirma la recepción de "$titulo"'
+          : 'Tu pedido "$titulo" viene en camino';
+    } else {
+      texto = reportada
+          ? 'Esperando confirmación del comprador por "$titulo"'
+          : 'Tienes una entrega en curso: "$titulo"';
+    }
+
+    return GestureDetector(
+      onTap: () {
+        if (esCompra && reportada) {
+          _confirmarRecepcionConFoto(id);
+        } else if (esCompra && estado == 'en_camino' && delivery == 'yo') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  SeguimientoEntregaScreen(ordenId: id, titulo: titulo),
+            ),
+          );
+        }
+        // Vendedor: la tarjeta con acciones está justo debajo.
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: reportada
+              ? Colors.deepOrange.withOpacity(0.08)
+              : AppColors.primary.withOpacity(0.07),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: reportada
+                ? Colors.deepOrange.withOpacity(0.45)
+                : AppColors.primary.withOpacity(0.35),
+            width: 1.2,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              reportada
+                  ? Icons.photo_camera_rounded
+                  : Icons.local_shipping_rounded,
+              size: 20,
+              color: reportada ? Colors.deepOrange : AppColors.primary,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    texto,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: reportada
+                          ? Colors.deepOrange.shade700
+                          : AppColors.primary,
+                    ),
+                  ),
+                  if (activas.length > 1)
+                    Text(
+                      '+${activas.length - 1} entrega(s) más activa(s)',
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.grayMid),
+                    ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded,
+                size: 20, color: AppColors.grayMid),
           ],
         ),
       ),
@@ -625,9 +939,11 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                           ? _listaVacia('Aún no has realizado compras')
                           : ListView.builder(
                               padding: const EdgeInsets.all(16),
-                              itemCount: _compras.length,
-                              itemBuilder: (_, i) =>
-                                  _tarjetaOrden(_compras[i], esCompra: true),
+                              itemCount: _compras.length + 1,
+                              itemBuilder: (_, i) => i == 0
+                                  ? _bannerActivas(_compras, esCompra: true)
+                                  : _tarjetaOrden(_compras[i - 1],
+                                      esCompra: true),
                             ),
                     ),
 
@@ -639,9 +955,11 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                           ? _listaVacia('Aún no tienes ventas')
                           : ListView.builder(
                               padding: const EdgeInsets.all(16),
-                              itemCount: _ventas.length,
-                              itemBuilder: (_, i) =>
-                                  _tarjetaOrden(_ventas[i], esCompra: false),
+                              itemCount: _ventas.length + 1,
+                              itemBuilder: (_, i) => i == 0
+                                  ? _bannerActivas(_ventas, esCompra: false)
+                                  : _tarjetaOrden(_ventas[i - 1],
+                                      esCompra: false),
                             ),
                     ),
                   ],
