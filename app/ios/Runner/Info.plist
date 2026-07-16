@@ -35,6 +35,14 @@
 				<string>com.googleusercontent.apps.537815017333-5p1je627vflt753hkfeeljlmpej5i2a2</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.okventa.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>okventa</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>

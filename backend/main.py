@@ -168,6 +168,7 @@ from database.ordenes import (
     marcar_recordatorio_enviado,
     obtener_pendientes_recordatorio,
     obtener_vencidas_autoconfirmar,
+    obtener_o_crear_token_confirmacion,
 )
 from services.mp_service import (
     crear_preferencia as mp_crear_preferencia,
@@ -2455,6 +2456,91 @@ async def reportar_problema(
 @app.get("/ordenes/{orden_id}/evidencias")
 def ver_evidencias(orden_id: int):
     return obtener_evidencias(orden_id)
+
+
+# ── Etiqueta de envío con doble QR ────────────────────────────────────────────
+# QR "Ruta": deep link al mapa de tracking (solo orden_id).
+# QR "Confirmar entrega": deep link con token secreto — el comprador lo
+# escanea al recibir y el backend valida token + comprador antes de cerrar.
+
+@app.get("/ordenes/{orden_id}/etiqueta")
+def obtener_etiqueta(orden_id: int):
+    orden = obtener_orden(orden_id)
+    if not orden:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+    if orden["estado"] not in ("pago_confirmado", "en_camino", "entrega_reportada"):
+        raise HTTPException(status_code=400,
+                            detail=f"Estado '{orden['estado']}' no permite generar etiqueta")
+
+    token = obtener_o_crear_token_confirmacion(orden_id)
+
+    # Foto del producto (si la orden viene de una publicación)
+    imagen_url = None
+    if orden.get("publicacion_id"):
+        pub = obtener_publicacion_por_id(orden["publicacion_id"])
+        if pub:
+            imagen_url = pub.get("imagen_url")
+
+    ubic = obtener_ubicacion_usuario(orden["comprador_id"]) or {}
+    direccion = ", ".join(
+        p for p in [ubic.get("direccion"), ubic.get("comuna"), ubic.get("ciudad")] if p)
+    comprador = obtener_usuario_por_id(orden["comprador_id"]) or {}
+
+    return {
+        "orden_id": orden_id,
+        "titulo": orden["titulo"],
+        "monto": orden["monto"],
+        "imagen_url": imagen_url,
+        "comprador_nombre": comprador.get("nombre", ""),
+        "direccion": direccion,
+        "destino_lat": ubic.get("lat"),
+        "destino_lng": ubic.get("lng"),
+        # Payloads para generar los QR client-side (qr_flutter)
+        "qr_ruta": f"okventa://orden/{orden_id}/mapa",
+        "qr_confirmar": f"okventa://orden/{orden_id}/confirmar-entrega?token={token}",
+    }
+
+
+@app.post("/ordenes/{orden_id}/confirmar-entrega")
+def confirmar_entrega_qr(orden_id: int, body: dict):
+    """Confirmación de recepción vía QR de la etiqueta: valida el token
+    secreto y que quien confirma sea el comprador de la orden."""
+    token = body.get("token", "")
+    user_id = body.get("user_id")
+    orden = obtener_orden(orden_id)
+    if not orden:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+    if not token or token != orden.get("token_confirmacion"):
+        raise HTTPException(status_code=403,
+                            detail="Código de confirmación inválido. Escanea el QR de la etiqueta original.")
+    if user_id != orden["comprador_id"]:
+        raise HTTPException(status_code=403,
+                            detail="Solo el comprador de esta orden puede confirmar la entrega.")
+    if orden["estado"] not in ("en_camino", "entrega_reportada"):
+        raise HTTPException(status_code=400,
+                            detail=f"Estado '{orden['estado']}' no permite confirmar la entrega")
+
+    confirmar_entrega(orden_id)
+    registrar_evento(orden_id, "recepcion_confirmada",
+                     actor_id=user_id, detalle="vía QR de etiqueta")
+
+    fcm_tok = obtener_fcm_token(orden["vendedor_id"])
+    if fcm_tok:
+        try:
+            enviar_push(
+                fcm_tok,
+                "🎉 Entrega confirmada por QR",
+                f"El comprador confirmó recepción de '{orden['titulo']}'. El pago será liberado.",
+                {"tipo": "entrega_confirmada", "orden_id": str(orden_id)},
+            )
+        except Exception:
+            pass
+    crear_notificacion(
+        orden["vendedor_id"], "entrega_confirmada",
+        f"🎉 Entrega de '{orden['titulo']}' confirmada por QR. El pago será liberado.",
+        orden_id=orden_id,
+    )
+    return {"ok": True, "estado": "entregado"}
 
 
 # ── Backoffice: bitácora completa del proceso en JSON ────────────────────────

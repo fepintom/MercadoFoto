@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../widgets/blue_express_sheet.dart';
-import 'entrega_vendedor_screen.dart';
+import 'etiqueta_envio_screen.dart';
 
 class SeleccionarEntregaScreen extends StatefulWidget {
   final int ordenId;
@@ -31,11 +32,35 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
   Map<String, dynamic>? _blueExpressPunto;
   List<Map<String, dynamic>> _workers = [];
   bool _enviando = false;
+  double? _distanciaKm;
 
   @override
   void initState() {
     super.initState();
     _cargarWorkers();
+    _calcularDistancia();
+  }
+
+  /// Distancia desde la posición actual del vendedor hasta la dirección
+  /// del comprador (el destino viene del mismo endpoint del tracking).
+  Future<void> _calcularDistancia() async {
+    try {
+      final t = await ApiService.obtenerTrackingVendedor(widget.ordenId);
+      final dLat = (t?['destino_lat'] as num?)?.toDouble();
+      final dLng = (t?['destino_lng'] as num?)?.toDouble();
+      if (dLat == null || dLng == null) return;
+      LocationPermission perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) return;
+      final pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.medium);
+      final metros = Geolocator.distanceBetween(
+          pos.latitude, pos.longitude, dLat, dLng);
+      if (mounted) setState(() => _distanciaKm = metros / 1000);
+    } catch (_) {}
   }
 
   Future<void> _cargarWorkers() async {
@@ -56,12 +81,12 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
       );
       if (!mounted) return;
       if (_metodo == 'yo') {
-        // Ir directo a la pantalla de entrega: ahí se pide el permiso de
-        // ubicación y se empieza a compartir la posición con el comprador.
+        // Paso siguiente: etiqueta de envío con doble QR. Desde ahí el
+        // vendedor comienza la entrega (tracking en vivo).
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => EntregaVendedorScreen(
+            builder: (_) => EtiquetaEnvioScreen(
               ordenId: widget.ordenId,
               titulo: widget.titulo,
             ),
@@ -181,17 +206,81 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
-                                    'Comprador en: ${widget.compradorUbicacion}',
+                                    'Entregar en: ${widget.compradorUbicacion}',
                                     style: const TextStyle(
                                         fontSize: 12,
                                         color: Colors.blue,
                                         fontWeight: FontWeight.w500),
                                   ),
                                 ),
+                                if (_distanciaKm != null)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      _distanciaKm! < 1
+                                          ? '${(_distanciaKm! * 1000).round()} m'
+                                          : 'a ${_distanciaKm!.toStringAsFixed(1)} km',
+                                      style: const TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.blue,
+                                          fontWeight: FontWeight.w700),
+                                    ),
+                                  ),
                               ],
                             ),
                           ),
                         ],
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // ── Entrega tu venta hoy ───────────────────────────
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppColors.primary.withOpacity(0.12),
+                          AppColors.primary.withOpacity(0.04),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: AppColors.primary.withOpacity(0.35)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.bolt_rounded,
+                            color: AppColors.primary, size: 22),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Entrega tu venta hoy',
+                                  style: TextStyle(
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.primary)),
+                              Text(
+                                _distanciaKm != null
+                                    ? 'El comprador está a ${_distanciaKm! < 1 ? '${(_distanciaKm! * 1000).round()} metros' : '${_distanciaKm!.toStringAsFixed(1)} km'} de ti'
+                                    : 'Entrégalo tú mismo y cierra la venta más rápido',
+                                style: const TextStyle(
+                                    fontSize: 12, color: AppColors.grayMid),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),

@@ -35,6 +35,7 @@ def init_ordenes_db():
         ("updated_at",           "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
         ("entrega_reportada_en", "TIMESTAMP"),
         ("recordatorio_enviado", "INTEGER DEFAULT 0"),
+        ("token_confirmacion",   "TEXT"),
     ]
     for col, definition in migrations:
         if col not in cols:
@@ -147,6 +148,20 @@ def guardar_delivery_method(orden_id: int, method: str):
     _update(orden_id, delivery_method=method, estado="en_camino")
 
 
+def obtener_o_crear_token_confirmacion(orden_id: int):
+    """Token del QR 'Confirmar entrega' de la etiqueta. Se genera una sola
+    vez por orden: reimprimir la etiqueta no lo invalida."""
+    import secrets as _secrets
+    orden = obtener_orden(orden_id)
+    if not orden:
+        return None
+    token = orden.get("token_confirmacion")
+    if not token:
+        token = _secrets.token_urlsafe(16)
+        _update(orden_id, token_confirmacion=token)
+    return token
+
+
 def reportar_entrega(orden_id: int):
     """El vendedor reporta que entregó; empieza la ventana de 48h del comprador."""
     conn = sqlite3.connect(DB)
@@ -233,6 +248,7 @@ def _ensure_ordenes_cols(cursor):
         ("es_test",              "INTEGER DEFAULT 0"),
         ("entrega_reportada_en", "TIMESTAMP"),
         ("recordatorio_enviado", "INTEGER DEFAULT 0"),
+        ("token_confirmacion",   "TEXT"),
     ]:
         if col not in existing:
             cursor.execute(f"ALTER TABLE ordenes ADD COLUMN {col} {defn}")
