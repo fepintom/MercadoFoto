@@ -6,7 +6,7 @@ import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
-import 'entrega_vendedor_screen.dart';
+import 'etiqueta_envio_screen.dart';
 import 'producto_detalle_screen.dart';
 import 'seleccionar_entrega_screen.dart';
 import '../widgets/net_image.dart';
@@ -208,7 +208,7 @@ class _MisVentasScreenState extends State<MisVentasScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => EntregaVendedorScreen(
+              builder: (_) => EtiquetaEnvioScreen(
                 ordenId: v['id'] as int,
                 titulo: titulo,
               ),
@@ -833,15 +833,15 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => EntregaVendedorScreen(
+                            builder: (_) => EtiquetaEnvioScreen(
                               ordenId: venta['id'] as int,
                               titulo: titulo,
                             ),
                           ),
                         );
                       },
-                      icon: const Icon(Icons.my_location_rounded, size: 16),
-                      label: const Text('Compartir mi ubicación'),
+                      icon: const Icon(Icons.local_shipping_rounded, size: 16),
+                      label: const Text('Comenzar entrega'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.primary,
                         side: BorderSide(

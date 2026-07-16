@@ -7,6 +7,7 @@ import 'screens/auth/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/auth_service.dart';
 import 'services/biometric_service.dart';
+import 'services/deep_link_service.dart';
 import 'services/navigation_service.dart';
 import 'services/push_service.dart';
 import 'services/session_service.dart';
@@ -18,6 +19,8 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   runApp(const MercadoFotoApp());
+  // Deep links okventa:// (QRs de la etiqueta de envío)
+  DeepLinkService.init();
 }
 
 class MercadoFotoApp extends StatelessWidget {

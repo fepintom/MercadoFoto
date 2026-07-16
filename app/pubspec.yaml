@@ -40,6 +40,11 @@ dependencies:
   # Notificaciones push
   firebase_messaging: ^15.0.0
 
+  # Etiqueta de envío con doble QR
+  qr_flutter: ^4.1.0      # genera los QR client-side, sin internet
+  printing: ^5.13.0       # imprimir / compartir la etiqueta como PDF
+  app_links: ^6.3.0       # deep links okventa:// (QR escaneado con la cámara)
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

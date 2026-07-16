@@ -618,6 +618,39 @@ class ApiService {
   }
 
   // ──────────────────────────────────────────────
+  // ETIQUETA DE ENVÍO (doble QR)
+  // ──────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>?> obtenerEtiqueta(int ordenId) async {
+    final response =
+        await http.get(Uri.parse('$baseUrl/ordenes/$ordenId/etiqueta'));
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(
+          jsonDecode(utf8.decode(response.bodyBytes)));
+    }
+    return null;
+  }
+
+  static Future<void> confirmarEntregaQr({
+    required int ordenId,
+    required int userId,
+    required String token,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/ordenes/$ordenId/confirmar-entrega'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'token': token, 'user_id': userId}),
+    );
+    if (response.statusCode != 200) {
+      String msg = response.body;
+      try {
+        msg = jsonDecode(utf8.decode(response.bodyBytes))['detail'] ?? msg;
+      } catch (_) {}
+      throw Exception(msg);
+    }
+  }
+
+  // ──────────────────────────────────────────────
   // EVIDENCIA DE ENTREGA (doble confirmación con foto, entrega 'yo')
   // ──────────────────────────────────────────────
 
