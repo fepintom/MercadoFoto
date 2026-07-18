@@ -87,6 +87,9 @@ def revisar_confirmaciones(api_url: str, admin_token: str,
     _llamar_admin(api_url, admin_token,
                   "/admin/ordenes/auto_confirmar",
                   {"horas": horas_auto}, "auto-confirmadas")
+    _llamar_admin(api_url, admin_token,
+                  "/admin/ordenes/expirar_pendientes",
+                  {"horas": 24}, "pendiente_pago expiradas")
 
 
 def main():

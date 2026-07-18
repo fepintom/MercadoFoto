@@ -146,6 +146,15 @@ from database.bitacora import (
     obtener_bitacora,
 )
 
+from database.agent_logs import (
+    init_agent_logs_db,
+    registrar_log as registrar_agent_log,
+    obtener_logs as obtener_agent_logs,
+    resumen_logs as resumen_agent_logs,
+    obtener_accion_pendiente,
+    marcar_accion_usada,
+)
+
 from database.guest_sessions import (
     init_guest_db,
     crear_guest,
@@ -169,6 +178,8 @@ from database.ordenes import (
     obtener_pendientes_recordatorio,
     obtener_vencidas_autoconfirmar,
     obtener_o_crear_token_confirmacion,
+    cancelar_orden as ordenes_cancelar_orden,
+    obtener_pendientes_pago_vencidas,
 )
 from services.mp_service import (
     crear_preferencia as mp_crear_preferencia,
@@ -382,6 +393,7 @@ init_entregas_db()
 init_tracking_db()
 init_evidencias_db()
 init_bitacora_db()
+init_agent_logs_db()
 
 # --------------------------------------------------
 # CORS
@@ -2543,6 +2555,98 @@ def confirmar_entrega_qr(orden_id: int, body: dict):
     return {"ok": True, "estado": "entregado"}
 
 
+# ── Agente de soporte (IA) ────────────────────────────────────────────────────
+
+@app.post("/support/chat")
+def support_chat(body: dict):
+    """Chat con el agente de soporte. Nunca expone errores técnicos."""
+    user_id = body.get("user_id")
+    message = (body.get("message") or "").strip()
+    if not user_id or not message:
+        raise HTTPException(status_code=400, detail="user_id y message requeridos")
+    from services.support_agent import chat as agente_chat
+    return agente_chat(
+        user_id=int(user_id),
+        message=message,
+        order_id=body.get("order_id"),
+        conversation_history=body.get("conversation_history") or [],
+        notificar_n8n=_notificar_n8n,
+    )
+
+
+@app.post("/support/confirm-action")
+def support_confirm_action(body: dict):
+    """Ejecuta una acción sensible SOLO tras la confirmación explícita del
+    usuario en el chat (guardrail: el agente nunca ejecuta directo)."""
+    user_id = body.get("user_id")
+    token = body.get("action_token", "")
+    accion = obtener_accion_pendiente(token)
+    if not accion:
+        raise HTTPException(status_code=403,
+                            detail="Acción inválida, expirada o ya ejecutada")
+    if user_id != accion["user_id"]:
+        raise HTTPException(status_code=403,
+                            detail="Solo quien solicitó la acción puede confirmarla")
+
+    orden = obtener_orden(accion["orden_id"])
+    if not orden:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+
+    if accion["accion"] == "cancelar_orden":
+        # Revalidar estado: pudo cambiar entre la solicitud y la confirmación
+        if orden["estado"] != "pago_confirmado":
+            marcar_accion_usada(token)
+            raise HTTPException(
+                status_code=409,
+                detail=f"La orden ya está en '{orden['estado']}' y no se puede "
+                       "cancelar. Si hay un problema, reporta una disputa.")
+        # Reembolso seguro (maneja modo test) + cancelación
+        if orden.get("mp_payment_id"):
+            try:
+                mp_reembolsar_pago(orden)
+            except Exception as e:
+                raise HTTPException(status_code=502,
+                                    detail=f"No se pudo reembolsar: {e}")
+        ordenes_cancelar_orden(orden["id"])
+        marcar_accion_usada(token)
+        registrar_evento(orden["id"], "cancelada", actor_id=user_id,
+                         detalle=f"vía agente de soporte — motivo: {accion.get('motivo')}")
+        registrar_agent_log("soporte_general", user_id, orden["id"], "n/a",
+                            f"confirmó cancelación (token {token[:8]}…)",
+                            ["confirm-action"], "accion_ejecutada", 0.0,
+                            f"Orden #{orden['id']} cancelada y reembolsada")
+        # Notificar al vendedor
+        fcm_tok = obtener_fcm_token(orden["vendedor_id"])
+        if fcm_tok:
+            try:
+                enviar_push(fcm_tok, "Orden cancelada",
+                            f"El comprador canceló '{orden['titulo']}' antes del despacho.",
+                            {"tipo": "orden_cancelada", "orden_id": str(orden["id"])})
+            except Exception:
+                pass
+        crear_notificacion(
+            orden["vendedor_id"], "orden_cancelada",
+            f"El comprador canceló '{orden['titulo']}' antes del despacho. "
+            f"El pago fue devuelto.",
+            orden_id=orden["id"])
+        return {"ok": True, "estado": "cancelado",
+                "mensaje": "Orden cancelada. El pago volverá a tu medio de pago."}
+
+    raise HTTPException(status_code=400, detail="Tipo de acción desconocido")
+
+
+@app.get("/admin/agent-logs")
+def admin_agent_logs(token: str = "", limit: int = 100,
+                     resultado: Optional[str] = None, resumen: bool = False):
+    """Bitácora del agente para auditoría. resumen=true → estadísticas."""
+    SECRET = os.environ.get("ADMIN_TOKEN", "okventa-admin-2026")
+    if token != SECRET:
+        raise HTTPException(status_code=403, detail="Token inválido")
+    if resumen:
+        return resumen_agent_logs()
+    return obtener_agent_logs(limit=limit, resultado=resultado)
+
+
 # ── Backoffice: bitácora completa del proceso en JSON ────────────────────────
 
 @app.get("/admin/ordenes/{orden_id}/bitacora")
@@ -2619,6 +2723,21 @@ def admin_recordatorios_confirmacion(token: str = "", horas: int = 24):
         marcar_recordatorio_enviado(oid)
         enviados.append(oid)
     return {"total": len(enviados), "ordenes": enviados}
+
+
+@app.post("/admin/ordenes/expirar_pendientes")
+def admin_expirar_pendientes(token: str = "", horas: int = 24):
+    """Expira órdenes pendiente_pago >24h (pago nunca completado)."""
+    SECRET = os.environ.get("ADMIN_TOKEN", "okventa-admin-2026")
+    if token != SECRET:
+        raise HTTPException(status_code=403, detail="Token inválido")
+    expiradas = []
+    for orden in obtener_pendientes_pago_vencidas(horas):
+        ordenes_cancelar_orden(orden["id"])
+        registrar_evento(orden["id"], "cancelada",
+                         detalle=f"expirada: pendiente_pago >{horas}h sin completar")
+        expiradas.append(orden["id"])
+    return {"total": len(expiradas), "ordenes": expiradas}
 
 
 @app.post("/admin/ordenes/auto_confirmar")
@@ -2836,7 +2955,11 @@ def admin_fix_ordenes_schema(token: str = ""):
 
 
 @app.post("/ordenes/{orden_id}/reembolsar")
-def reembolsar_orden(orden_id: int):
+def reembolsar_orden(orden_id: int, token: str = ""):
+    # Acción financiera irreversible: solo con token admin.
+    SECRET = os.environ.get("ADMIN_TOKEN", "okventa-admin-2026")
+    if token != SECRET:
+        raise HTTPException(status_code=403, detail="Token inválido")
     orden = obtener_orden(orden_id)
     if not orden or not orden.get("mp_payment_id"):
         raise HTTPException(status_code=404,

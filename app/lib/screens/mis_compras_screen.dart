@@ -10,6 +10,7 @@ import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import 'seguimiento_entrega_screen.dart';
+import 'soporte_chat_screen.dart';
 
 class MisComprasScreen extends StatefulWidget {
   const MisComprasScreen({super.key});
@@ -908,6 +909,28 @@ class _MisComprasScreenState extends State<MisComprasScreen>
         backgroundColor: AppColors.surface,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.carbon),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded,
+                color: AppColors.carbon),
+            tooltip: 'Ayuda',
+            onPressed: () {
+              // Con contexto: si hay una compra activa, pasar su orden al agente
+              final activa = _compras.firstWhere(
+                (o) => ['pago_confirmado', 'en_camino', 'entrega_reportada']
+                    .contains(o['estado']),
+                orElse: () => <String, dynamic>{},
+              );
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      SoporteChatScreen(ordenId: activa['id'] as int?),
+                ),
+              );
+            },
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: TabBar(

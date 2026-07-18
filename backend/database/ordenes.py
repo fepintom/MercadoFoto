@@ -148,6 +148,25 @@ def guardar_delivery_method(orden_id: int, method: str):
     _update(orden_id, delivery_method=method, estado="en_camino")
 
 
+def cancelar_orden(orden_id: int):
+    _update(orden_id, estado="cancelado")
+
+
+def obtener_pendientes_pago_vencidas(horas: int = 24):
+    """Órdenes cuyo pago nunca se completó, para expirarlas (→ cancelado)."""
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("""
+        SELECT * FROM ordenes
+        WHERE estado = 'pendiente_pago'
+          AND created_at <= datetime('now', ?)
+    """, (f"-{int(horas)} hours",))
+    rows = c.fetchall()
+    result = [_to_dict(c, r) for r in rows]
+    conn.close()
+    return result
+
+
 def obtener_o_crear_token_confirmacion(orden_id: int):
     """Token del QR 'Confirmar entrega' de la etiqueta. Se genera una sola
     vez por orden: reimprimir la etiqueta no lo invalida."""
