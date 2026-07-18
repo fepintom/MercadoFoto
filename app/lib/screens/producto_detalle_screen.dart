@@ -14,6 +14,7 @@ import '../widgets/registro_form_widget.dart';
 import 'chat_screen.dart';
 import 'editar_publicacion_screen.dart';
 import 'perfil_publico_screen.dart';
+import 'soporte_chat_screen.dart';
 import '../widgets/net_image.dart';
 
 // ── Modelo para opciones de compartir (fácil de extender) ─────────────────
@@ -1065,6 +1066,19 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.carbon),
         actions: [
+          // Ayuda: agente de soporte
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded,
+                color: AppColors.carbon),
+            tooltip: 'Ayuda',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const SoporteChatScreen()),
+              );
+            },
+          ),
           // Botón favorito
           _toggleandoFavorito
               ? const Padding(

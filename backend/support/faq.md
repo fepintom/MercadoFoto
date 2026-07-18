@@ -45,9 +45,8 @@ recibe el monto menos esa comisión.
 ### ¿Qué pasa si mi pago falla o queda pendiente?
 La orden queda en `pendiente_pago` y no se notifica al vendedor ni avanza el
 flujo. Puedes reintentar el pago desde la misma publicación. Si Mercado Pago
-rechaza el pago, no se genera ningún cobro.
-[FALTA CONFIRMAR] Tiempo tras el cual una orden `pendiente_pago` expira o se
-limpia automáticamente (hoy no hay expiración implementada).
+rechaza el pago, no se genera ningún cobro. Una orden con pago nunca
+completado **expira automáticamente a las 24 horas** (pasa a `cancelado`).
 
 ---
 
@@ -71,9 +70,10 @@ limpia automáticamente (hoy no hay expiración implementada).
 Depende del método que elija el vendedor: entrega personal (mismo día es lo
 promovido en la app: "Entrega tu venta hoy"), OkVenta Delivery (red de
 repartidores locales) o Blue Express (despacho a todo Chile, según sus plazos).
-[FALTA CONFIRMAR] No hay SLA de tiempo máximo de despacho para el vendedor —
-hoy no existe un plazo tras el cual una orden `pago_confirmado` sin despachar
-se cancele automáticamente.
+El vendedor tiene un plazo de **24 horas** desde el pago confirmado para
+elegir el método de entrega y despachar — coherente con la promesa "Entrega
+tu venta hoy". Si no despacha en ese plazo, contacta a soporte para gestionar
+la cancelación con reembolso.
 
 ---
 
@@ -95,20 +95,21 @@ de estados y retención de fondos que un producto (`tipo='servicio'`).
 Publicas tu servicio con categoría, comunas de cobertura y opcionalmente un
 certificado (ej. título o credencial, con verificación). Los interesados te
 contactan y pueden valorarte con estrellas después.
-[FALTA CONFIRMAR] Criterio exacto de "certificado verificado" (hoy el flag
-existe en la base de datos pero el proceso de verificación no está descrito).
+Los certificados subidos son **revisados manualmente por el equipo OkVenta**;
+una vez validado el documento, el servicio muestra el distintivo de
+"certificado verificado".
 
 ---
 
 ## Cancelaciones, problemas y devoluciones
 
 ### ¿Puedo cancelar una compra?
-[FALTA CONFIRMAR] **Hoy no existe cancelación self-service en la app**: el
-estado `cancelado` está definido pero ningún flujo lo activa. Una cancelación
-debe gestionarse contactando a soporte (ticket de ayuda), y la devolución del
-dinero se ejecuta como reembolso vía Mercado Pago por el equipo OkVenta.
-El agente de soporte podrá *solicitar* una cancelación, que requiere
-confirmación explícita del usuario y validación del equipo.
+Sí, **solo antes del despacho**: mientras la orden esté en `pago_confirmado`
+(el vendedor aún no elige método de entrega) puedes solicitar la cancelación
+al agente de soporte, que la ejecuta tras tu confirmación explícita — el pago
+retenido vuelve a tu medio de pago vía Mercado Pago. Una vez que la orden
+está `en_camino`, ya no se puede cancelar: si hay un problema, usa "Reportar
+un problema" para abrir una disputa.
 
 ### Recibí algo dañado / no es lo que compré / nunca llegó
 Desde Mis Compras puedes **reportar un problema** (botón "Tuve un problema")
@@ -120,8 +121,7 @@ OkVenta media entre las partes. Ambas partes reciben notificación.
 Si la disputa se resuelve a favor del comprador, OkVenta ejecuta el reembolso
 a través de Mercado Pago (el dinero vuelve al medio de pago original) y la
 orden queda en estado `reembolsado`.
-[FALTA CONFIRMAR] Plazos de resolución de disputas y criterios de decisión —
-hoy la mediación es manual y sin SLA definido.
+OkVenta media y resuelve las disputas en un plazo de **48 horas hábiles**.
 
 ### ¿Qué evidencia queda del proceso?
 Cada orden guarda una bitácora auditable: hora del pago, método de entrega

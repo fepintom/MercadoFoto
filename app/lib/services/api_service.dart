@@ -618,6 +618,50 @@ class ApiService {
   }
 
   // ──────────────────────────────────────────────
+  // AGENTE DE SOPORTE (IA)
+  // ──────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>?> supportChat({
+    required int userId,
+    required String message,
+    int? orderId,
+    List<Map<String, String>> conversationHistory = const [],
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/support/chat'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'user_id': userId,
+        'message': message,
+        if (orderId != null) 'order_id': orderId,
+        'conversation_history': conversationHistory,
+      }),
+    );
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(
+          jsonDecode(utf8.decode(response.bodyBytes)));
+    }
+    return null;
+  }
+
+  static Future<Map<String, dynamic>> supportConfirmAction({
+    required int userId,
+    required String actionToken,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/support/confirm-action'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'user_id': userId, 'action_token': actionToken}),
+    );
+    final data = Map<String, dynamic>.from(
+        jsonDecode(utf8.decode(response.bodyBytes)));
+    if (response.statusCode != 200) {
+      throw Exception(data['detail'] ?? 'No se pudo ejecutar la acción');
+    }
+    return data;
+  }
+
+  // ──────────────────────────────────────────────
   // ETIQUETA DE ENVÍO (doble QR)
   // ──────────────────────────────────────────────
 
