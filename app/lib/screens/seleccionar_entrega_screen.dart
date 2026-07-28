@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../services/api_service.dart';
+import '../services/app_config.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../widgets/blue_express_sheet.dart';
@@ -310,43 +311,47 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
                     }),
                   ),
 
-                  const SizedBox(height: 10),
-
                   // ── Opción: OkVenta Delivery ──────────────────────
-                  _opcion(
-                    activo: _metodo == 'okventa',
-                    icon: Icons.delivery_dining_rounded,
-                    color: Colors.green,
-                    titulo: _metodo == 'okventa' && _deliveryId != null
-                        ? (_workers
-                                    .where((w) => w['id'] == _deliveryId)
-                                    .firstOrNull?['nombre'] as String? ??
-                                'OkVenta Delivery')
-                        : 'OkVenta Delivery',
-                    subtitulo: _metodo == 'okventa' && _deliveryId != null
-                        ? 'Delivery seleccionado'
-                        : 'Usar la red de repartidores OkVenta',
-                    trailing: const Icon(Icons.chevron_right_rounded,
-                        size: 16, color: AppColors.grayMid),
-                    onTap: () async {
-                      setState(() => _metodo = 'okventa');
-                      if (_workers.isNotEmpty) {
-                        final elegido =
-                            await showModalBottomSheet<Map<String, dynamic>>(
-                          context: context,
-                          backgroundColor: AppColors.surface,
-                          shape: const RoundedRectangleBorder(
-                              borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(20))),
-                          builder: (_) =>
-                              _WorkerPickerSheet(workers: _workers),
-                        );
-                        if (elegido != null && mounted) {
-                          setState(() => _deliveryId = elegido['id'] as int?);
+                  // Oculta temporalmente hasta tener equipo de repartidores
+                  // propio (ver okDeliveryDisponible en app_config.dart).
+                  // El código queda intacto para reactivarla más adelante.
+                  if (okDeliveryDisponible) ...[
+                    const SizedBox(height: 10),
+                    _opcion(
+                      activo: _metodo == 'okventa',
+                      icon: Icons.delivery_dining_rounded,
+                      color: Colors.green,
+                      titulo: _metodo == 'okventa' && _deliveryId != null
+                          ? (_workers
+                                      .where((w) => w['id'] == _deliveryId)
+                                      .firstOrNull?['nombre'] as String? ??
+                                  'OkVenta Delivery')
+                          : 'OkVenta Delivery',
+                      subtitulo: _metodo == 'okventa' && _deliveryId != null
+                          ? 'Delivery seleccionado'
+                          : 'Usar la red de repartidores OkVenta',
+                      trailing: const Icon(Icons.chevron_right_rounded,
+                          size: 16, color: AppColors.grayMid),
+                      onTap: () async {
+                        setState(() => _metodo = 'okventa');
+                        if (_workers.isNotEmpty) {
+                          final elegido =
+                              await showModalBottomSheet<Map<String, dynamic>>(
+                            context: context,
+                            backgroundColor: AppColors.surface,
+                            shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(
+                                    top: Radius.circular(20))),
+                            builder: (_) =>
+                                _WorkerPickerSheet(workers: _workers),
+                          );
+                          if (elegido != null && mounted) {
+                            setState(() => _deliveryId = elegido['id'] as int?);
+                          }
                         }
-                      }
-                    },
-                  ),
+                      },
+                    ),
+                  ],
 
                   const SizedBox(height: 10),
 
