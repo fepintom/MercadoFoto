@@ -10,6 +10,7 @@ import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import 'agregar_servicio_screen.dart';
+import 'delivery_proximamente_screen.dart';
 import 'delivery_registro_screen.dart';
 import 'mapa_ubicacion_picker_screen.dart';
 import 'okdelivery_pendientes_screen.dart';
@@ -85,12 +86,12 @@ class _ServiciosScreenState extends State<ServiciosScreen>
       }
       return;
     }
-    // Tab 3 = Delivery → ir a pantalla de registro
+    // Tab 3 = Delivery → registro en pausa (ver okDeliveryDisponible)
     if (_tabController.index == 3) {
       if (!mounted) return;
       await Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const DeliveryRegistroScreen()),
+        MaterialPageRoute(builder: (_) => const DeliveryProximamenteScreen()),
       );
       _cargar();
       return;
@@ -1022,7 +1023,7 @@ class _DeliveryTabState extends State<_DeliveryTab> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Toca el botón + para registrarte como Delivery OkVenta',
+                'Muy pronto podrás registrarte como Delivery OkVenta',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 13, color: AppColors.grayMid),
               ),
