@@ -63,6 +63,11 @@ class NotificationRouter {
         // ── Siempre comprador ────────────────────────────────────────────
         case 'en_camino':
         case 'okdelivery_en_camino':
+        // El vendedor reportó la entrega con foto: el comprador debe
+        // confirmar recepción o reportar un problema desde Mis Compras.
+        case 'entrega_reportada':
+        // Recordatorio a las 24h de no haber confirmado la recepción.
+        case 'recordatorio_confirmacion':
           _push(ctx, const MisComprasScreen());
           break;
 
@@ -72,6 +77,8 @@ class NotificationRouter {
         case 'fondos_liberados':
         case 'okdelivery_asignado':
         case 'okdelivery_observaciones':
+        // El comprador canceló la orden antes del despacho (vía agente de soporte).
+        case 'orden_cancelada':
           _push(ctx, const MisVentasScreen());
           break;
 

@@ -8,6 +8,7 @@ import '../theme/app_theme.dart';
 import 'auth/login_screen.dart';
 import 'ayuda_chat_screen.dart';
 import 'ayuda_screen.dart';
+import 'favoritos_screen.dart';
 import 'mis_compras_screen.dart';
 import 'mis_publicaciones_screen.dart';
 import 'mis_servicios_screen.dart';
@@ -819,9 +820,21 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                             );
                           }),
                           _itemMenu(Icons.favorite_border_rounded,
-                              "Favoritos", () {}),
+                              "Favoritos", () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const FavoritosScreen()),
+                            );
+                          }),
                           _itemMenu(
-                              Icons.history_rounded, "Historial", () {}),
+                              Icons.history_rounded, "Historial", () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const MisComprasScreen()),
+                            );
+                          }),
                           _itemMenu(
                               Icons.support_agent_rounded, "Obtener ayuda",
                               _mostrarChatSoporte),

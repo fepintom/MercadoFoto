@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -157,6 +158,61 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
     } finally {
       if (mounted) setState(() => _subiendoFoto = false);
     }
+  }
+
+  // ── Política de datos ─────────────────────────────────────────────────────
+  // Nota: copy factual basada en el manejo real de datos de la app (escrow,
+  // evidencia de entregas, ubicación). No reemplaza una política legal
+  // redactada por el equipo — solo evita que el enlace quede en el vacío.
+  void _mostrarPoliticaDatos() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        builder: (_, sc) => ListView(
+          controller: sc,
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+          children: const [
+            Text('Cómo cuidamos tus datos',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary)),
+            SizedBox(height: 16),
+            _ItemPolitica(
+              icon: Icons.lock_outline_rounded,
+              texto: 'Tus datos bancarios son privados: nunca se muestran '
+                  'al comprador ni al vendedor, solo se usan para procesar '
+                  'el pago de tus ventas.',
+            ),
+            _ItemPolitica(
+              icon: Icons.location_on_outlined,
+              texto: 'Tu ubicación en tiempo real solo se comparte con el '
+                  'comprador mientras una entrega está en curso (opción '
+                  '"Lo entrego yo"). Fuera de ese momento no se transmite.',
+            ),
+            _ItemPolitica(
+              icon: Icons.photo_camera_outlined,
+              texto: 'Las fotos de entrega y recepción se guardan como '
+                  'evidencia del proceso de compra-venta, y solo se usan '
+                  'para mediar en caso de un reclamo o disputa.',
+            ),
+            _ItemPolitica(
+              icon: Icons.account_balance_wallet_outlined,
+              texto: 'Los pagos se procesan a través de Mercado Pago; '
+                  'OkVenta no almacena los datos de tu tarjeta.',
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // ── Dirección con geocodificación ─────────────────────────────────────────
@@ -681,6 +737,23 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
                     ),
                     _card([
                       _fila(
+                        icon: Icons.assignment_ind_outlined,
+                        valor: _rut,
+                        sublabel: "RUT del titular de la cuenta.",
+                        verificado: true,
+                        onTap: () => _editarCampo(
+                          titulo: "Número de documento (RUT)",
+                          valorActual: _rut,
+                          hint: "12.345.678-9",
+                          formatters: [_RutInputFormatter()],
+                          onGuardar: (v) async {
+                            final rutFormateado = _formatearRut(v);
+                            setState(() => _rut = rutFormateado);
+                            await _guardarCampo("rut", rutFormateado);
+                          },
+                        ),
+                      ),
+                      _fila(
                         icon: Icons.account_balance_outlined,
                         valor: _banco,
                         sublabel: "Banco donde recibes tus pagos.",
@@ -755,6 +828,8 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
                                     decoration: TextDecoration.underline,
                                     decorationColor: AppColors.primary,
                                   ),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = _mostrarPoliticaDatos,
                                 ),
                               ],
                             ),
@@ -1042,6 +1117,13 @@ class _DireccionSheetState extends State<_DireccionSheet> {
   Timer? _debounce;
   Map<String, dynamic>? _seleccionada;
 
+  // Fallback manual: si el buscador no encuentra la dirección (o no hay
+  // internet), permite guardarla como texto libre sin geocodificar.
+  bool _modoManual = false;
+  final _calleCtrl = TextEditingController();
+  final _comunaCtrl = TextEditingController();
+  final _ciudadCtrl = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -1057,6 +1139,9 @@ class _DireccionSheetState extends State<_DireccionSheet> {
   @override
   void dispose() {
     _ctrl.dispose();
+    _calleCtrl.dispose();
+    _comunaCtrl.dispose();
+    _ciudadCtrl.dispose();
     _debounce?.cancel();
     super.dispose();
   }
@@ -1097,6 +1182,29 @@ class _DireccionSheetState extends State<_DireccionSheet> {
     if (mounted) setState(() => _buscando = false);
   }
 
+  InputDecoration _inputManual(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: AppColors.grayMid, fontSize: 14),
+      filled: true,
+      fillColor: AppColors.background,
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.divider, width: 0.5),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.divider, width: 0.5),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+      ),
+    );
+  }
+
   String _extraerCampo(Map<String, dynamic> addr, List<String> claves) {
     for (final c in claves) {
       final v = addr[c];
@@ -1133,12 +1241,50 @@ class _DireccionSheetState extends State<_DireccionSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Buscar dirección',
-                        style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary)),
-                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(_modoManual ? 'Ingresar dirección' : 'Buscar dirección',
+                            style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary)),
+                        TextButton(
+                          onPressed: () => setState(() {
+                            _modoManual = !_modoManual;
+                            _seleccionada = null;
+                          }),
+                          child: Text(
+                            _modoManual ? 'Buscar en el mapa' : 'Ingresar manualmente',
+                            style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    if (_modoManual) ...[
+                      TextField(
+                        controller: _calleCtrl,
+                        style: const TextStyle(fontSize: 14),
+                        onChanged: (_) => setState(() {}),
+                        decoration: _inputManual('Calle y número'),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _comunaCtrl,
+                        style: const TextStyle(fontSize: 14),
+                        decoration: _inputManual('Comuna'),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _ciudadCtrl,
+                        style: const TextStyle(fontSize: 14),
+                        decoration: _inputManual('Ciudad'),
+                      ),
+                    ] else
                     TextField(
                       controller: _ctrl,
                       autofocus: true,
@@ -1217,7 +1363,9 @@ class _DireccionSheetState extends State<_DireccionSheet> {
               ),
               const Divider(height: 1, thickness: 0.5),
               Expanded(
-                child: _sugerencias.isEmpty
+                child: _modoManual
+                    ? const SizedBox.shrink()
+                    : _sugerencias.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -1301,18 +1449,31 @@ class _DireccionSheetState extends State<_DireccionSheet> {
                 child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _seleccionada == null
-                        ? null
-                        : () async {
-                            Navigator.pop(context);
-                            await widget.onGuardar(
-                              _seleccionada!['dir'] as String,
-                              _seleccionada!['comuna'] as String,
-                              _seleccionada!['ciudad'] as String,
-                              _seleccionada!['lat'] as double?,
-                              _seleccionada!['lng'] as double?,
-                            );
-                          },
+                    onPressed: _modoManual
+                        ? (_calleCtrl.text.trim().isEmpty
+                            ? null
+                            : () async {
+                                Navigator.pop(context);
+                                await widget.onGuardar(
+                                  _calleCtrl.text.trim(),
+                                  _comunaCtrl.text.trim(),
+                                  _ciudadCtrl.text.trim(),
+                                  null,
+                                  null,
+                                );
+                              })
+                        : (_seleccionada == null
+                            ? null
+                            : () async {
+                                Navigator.pop(context);
+                                await widget.onGuardar(
+                                  _seleccionada!['dir'] as String,
+                                  _seleccionada!['comuna'] as String,
+                                  _seleccionada!['ciudad'] as String,
+                                  _seleccionada!['lat'] as double?,
+                                  _seleccionada!['lng'] as double?,
+                                );
+                              }),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -1331,6 +1492,34 @@ class _DireccionSheetState extends State<_DireccionSheet> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ItemPolitica extends StatelessWidget {
+  final IconData icon;
+  final String texto;
+
+  const _ItemPolitica({required this.icon, required this.texto});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: AppColors.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(texto,
+                style: const TextStyle(
+                    fontSize: 13.5,
+                    color: AppColors.textPrimary,
+                    height: 1.4)),
+          ),
+        ],
       ),
     );
   }

@@ -1271,7 +1271,10 @@ def marcar_principal(user_id: int, address_id: int):
 @app.post("/usuarios/{user_id}/foto")
 async def subir_foto_perfil(user_id: int, foto: UploadFile = File(...)):
     ext = os.path.splitext(foto.filename or "foto.jpg")[1] or ".jpg"
-    nombre = f"perfil_{user_id}{ext}"
+    # Nombre único (no perfil_{user_id}{ext} fijo): con nombre fijo la URL nunca
+    # cambia entre subidas y el ImageCache de Flutter sigue sirviendo la foto
+    # anterior aunque el archivo en disco ya se haya reemplazado.
+    nombre = f"perfil_{user_id}_{secrets.token_hex(8)}{ext}"
     ruta = os.path.join(UPLOADS_DIR, nombre)
     contenido = await foto.read()
     with open(ruta, "wb") as f:
