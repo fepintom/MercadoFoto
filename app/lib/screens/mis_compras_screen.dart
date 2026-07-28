@@ -641,7 +641,13 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                     const SizedBox(width: 8),
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: () => _abrirDisputa(id),
+                        // El backend acepta el flujo completo (motivo+foto)
+                        // desde 'en_camino'; el diálogo simple solo aplica a
+                        // 'pago_confirmado', donde aún no hay nada que
+                        // fotografiar porque el vendedor ni siquiera despachó.
+                        onPressed: () => estado == 'en_camino'
+                            ? _reportarProblema(id)
+                            : _abrirDisputa(id),
                         icon: const Icon(Icons.report_outlined, size: 16),
                         label: const Text('Tuve un problema'),
                         style: OutlinedButton.styleFrom(
