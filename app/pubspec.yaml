@@ -56,3 +56,7 @@ flutter:
   assets:
     - assets/images/logo.png
     - assets/images/banner_publicidad.jpg
+    - assets/images/home.png
+    - assets/images/mensajes.png
+    - assets/images/chekin.png
+    - assets/images/carrito.png

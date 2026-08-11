@@ -13,6 +13,8 @@ import '../services/session_service.dart';
 import '../services/cart_service.dart';
 import '../theme/app_theme.dart';
 
+import 'carrito_screen.dart';
+
 import 'vender_screen.dart' as vender;
 import 'marketplace_screen.dart';
 import 'mi_cuenta_screen.dart';
@@ -404,8 +406,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Row(
         children: [
-          // Logo
-          Image.asset('assets/images/logo.png', height: 44),
+          // Logo (dinámico según pantalla)
+          Image.asset('assets/images/home.png', height: 44),
 
           const SizedBox(width: 8),
 
@@ -1116,116 +1118,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── CARRITO MODAL ──────────────────────────────────────────────────────────
+  // ── CARRITO: navega a la pantalla dedicada (antes era un modal) ─────────
   void _mostrarCarrito() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) {
-        return ValueListenableBuilder<List<Map<String, dynamic>>>(
-          valueListenable: CartService.cartNotifier,
-          builder: (_, cart, __) {
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Handle
-                  Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.divider,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        "Mis ofertas",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () {
-                          CartService.clear();
-                          Navigator.pop(context);
-                        },
-                        child: const Text(
-                          "Vaciar",
-                          style: TextStyle(color: AppColors.primary),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  ...cart.map((item) => Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.background,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: AppColors.divider, width: 0.5),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item["titulo"] ?? "",
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "Precio publicado: \$${item["precio"]}",
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.grayMid,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              "Oferta: \$${item["oferta"]}",
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )),
-                ],
-              ),
-            );
-          },
-        );
-      },
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const CarritoScreen()),
     );
   }
 
