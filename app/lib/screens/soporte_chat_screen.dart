@@ -184,6 +184,15 @@ class _SoporteChatScreenState extends State<SoporteChatScreen> {
             ),
           ],
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Center(
+              child: Image.asset('assets/images/mensajes.png',
+                  width: 26, height: 26),
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [

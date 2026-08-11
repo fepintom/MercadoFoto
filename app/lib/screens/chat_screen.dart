@@ -657,6 +657,15 @@ class _ChatScreenState extends State<ChatScreen> {
             ],
           ),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Center(
+              child: Image.asset('assets/images/mensajes.png',
+                  width: 26, height: 26),
+            ),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
           child: Container(height: 0.5, color: AppColors.divider),

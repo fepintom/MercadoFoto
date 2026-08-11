@@ -39,6 +39,9 @@ class _VenderScreenState extends State<VenderScreen> {
 
   // ── Análisis de imagen ────────────────────────────────────────────────
   Future<void> _analizarImagen(File imagen) async {
+    // Bug fix: si veníamos de una pantalla con un campo de texto enfocado,
+    // el teclado se quedaba pegado y el juego no ocupaba toda la pantalla.
+    FocusScope.of(context).unfocus();
     setState(() {
       _loading = true;
       _loadingMsg = "Analizando imagen con IA...";
@@ -130,6 +133,8 @@ class _VenderScreenState extends State<VenderScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      // Bug fix: evita que el teclado residual comprima la pantalla de carga.
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: Image.asset('assets/images/logo.png', height: 36),
         centerTitle: false,

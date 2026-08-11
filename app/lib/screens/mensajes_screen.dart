@@ -88,6 +88,15 @@ class _MensajesScreenState extends State<MensajesScreen> {
             color: AppColors.textPrimary,
           ),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Center(
+              child: Image.asset('assets/images/mensajes.png',
+                  width: 28, height: 28),
+            ),
+          ),
+        ],
         backgroundColor: AppColors.surface,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.carbon),
