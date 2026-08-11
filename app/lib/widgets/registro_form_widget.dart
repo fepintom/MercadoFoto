@@ -149,7 +149,7 @@ class _RegistroFormWidgetState extends State<RegistroFormWidget> {
         // Header
         Row(
           children: [
-            Image.asset('assets/images/logo.png', height: 30),
+            Image.asset('assets/images/home.png', height: 30),
             Expanded(
               child: Center(
                 child: Text(
