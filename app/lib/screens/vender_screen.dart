@@ -136,7 +136,7 @@ class _VenderScreenState extends State<VenderScreen> {
       // Bug fix: evita que el teclado residual comprima la pantalla de carga.
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
-        title: Image.asset('assets/images/logo.png', height: 36),
+        title: Image.asset('assets/images/chekin.png', height: 36),
         centerTitle: false,
         backgroundColor: AppColors.surface,
         elevation: 0,

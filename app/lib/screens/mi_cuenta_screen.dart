@@ -627,7 +627,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                         size: 20, color: AppColors.carbon),
                   ),
                   const SizedBox(width: 12),
-                  Image.asset('assets/images/logo.png', height: 38),
+                  Image.asset('assets/images/home.png', height: 38),
                   const Spacer(),
                   _avatar(size: 44),
                 ],
