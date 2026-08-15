@@ -1332,16 +1332,23 @@ class _BannerCarruselState extends State<_BannerCarrusel> {
       children: [
         Container(
           margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-          height: 130,
-          child: PageView(
-            controller: _controller,
-            onPageChanged: (i) => setState(() => _paginaActual = i),
-            children: const [
-              _BannerImagen('assets/images/banner1.jpg'),
-              _BannerImagen('assets/images/banner2.jpg'),
-              _BannerImagen('assets/images/banner3.jpg'),
-              _BannerBlueExpress(),
-            ],
+          // Los banners (banner1/2/3.jpg) son 16:9. Usamos AspectRatio en
+          // vez de una altura fija para que el recuadro siempre calce con
+          // la imagen completa, sin recortarla (BoxFit.cover ya no tiene
+          // que "cortar" nada porque el contenedor tiene la misma
+          // proporción que la imagen).
+          child: AspectRatio(
+            aspectRatio: 16 / 9,
+            child: PageView(
+              controller: _controller,
+              onPageChanged: (i) => setState(() => _paginaActual = i),
+              children: const [
+                _BannerImagen('assets/images/banner1.jpg'),
+                _BannerImagen('assets/images/banner2.jpg'),
+                _BannerImagen('assets/images/banner3.jpg'),
+                _BannerBlueExpress(),
+              ],
+            ),
           ),
         ),
         // Indicadores de página
