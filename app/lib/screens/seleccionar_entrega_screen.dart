@@ -3,9 +3,11 @@ import 'package:geolocator/geolocator.dart';
 
 import '../services/api_service.dart';
 import '../services/app_config.dart';
+import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../widgets/blue_express_sheet.dart';
+import 'chat_screen.dart';
 import 'etiqueta_envio_screen.dart';
 
 class SeleccionarEntregaScreen extends StatefulWidget {
@@ -34,6 +36,9 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
   List<Map<String, dynamic>> _workers = [];
   bool _enviando = false;
   double? _distanciaKm;
+  String? _destinoDireccion;
+  String? _destinoComuna;
+  bool _abriendoChat = false;
 
   @override
   void initState() {
@@ -47,6 +52,12 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
   Future<void> _calcularDistancia() async {
     try {
       final t = await ApiService.obtenerTrackingVendedor(widget.ordenId);
+      if (mounted) {
+        setState(() {
+          _destinoDireccion = t?['destino_direccion'] as String?;
+          _destinoComuna = t?['destino_comuna'] as String?;
+        });
+      }
       final dLat = (t?['destino_lat'] as num?)?.toDouble();
       final dLng = (t?['destino_lng'] as num?)?.toDouble();
       if (dLat == null || dLng == null) return;
@@ -62,6 +73,63 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
           pos.latitude, pos.longitude, dLat, dLng);
       if (mounted) setState(() => _distanciaKm = metros / 1000);
     } catch (_) {}
+  }
+
+  /// "Comuna, dirección" del destino, cuando el backend entrega ambos datos.
+  String? get _direccionCompleta {
+    final partes = [_destinoComuna, _destinoDireccion]
+        .where((p) => p != null && p.trim().isNotEmpty)
+        .toList();
+    return partes.isEmpty ? null : partes.join(', ');
+  }
+
+  /// Abre el chat con el comprador de esta orden (botón "Otro método"),
+  /// enviando un mensaje inicial automático si la conversación aún está
+  /// vacía.
+  Future<void> _abrirChatOtroMetodo() async {
+    if (_abriendoChat) return;
+    setState(() => _abriendoChat = true);
+    try {
+      final info = await ApiService.obtenerChatInfoOrden(widget.ordenId);
+      if (info == null) throw Exception('No se pudo cargar la orden');
+      final miUserId = await SessionService.obtenerUser();
+      final publicacionId = info['publicacion_id'] as int;
+      if (miUserId != null) {
+        final mensajes = await ApiService.obtenerChat(publicacionId);
+        if (mensajes.isEmpty) {
+          await ApiService.enviarMensaje(
+            publicacionId: publicacionId,
+            remitenteId: miUserId,
+            mensaje: 'Hola, te escribo para coordinar la entrega',
+          );
+        }
+      }
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(
+            publicacionId: publicacionId,
+            tituloProducto: (info['titulo'] as String?) ?? widget.titulo,
+            imagenUrl: (info['imagen_url'] as String?) ?? '',
+            vendedorId: info['vendedor_id'] as int,
+            nombreVendedor: (info['nombre_comprador'] as String?) ?? '',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo abrir el chat. Intenta de nuevo.'),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _abriendoChat = false);
+    }
   }
 
   Future<void> _cargarWorkers() async {
@@ -275,7 +343,10 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
                               Text(
                                 _distanciaKm != null
                                     ? 'El comprador está a ${_distanciaKm! < 1 ? '${(_distanciaKm! * 1000).round()} metros' : '${_distanciaKm!.toStringAsFixed(1)} km'} de ti'
-                                    : 'Entrégalo tú mismo y cierra la venta más rápido',
+                                        '${_direccionCompleta != null ? ', en esta dirección: $_direccionCompleta' : ''}'
+                                    : (_direccionCompleta != null
+                                        ? 'Entrégalo tú mismo, en esta dirección: $_direccionCompleta'
+                                        : 'Entrégalo tú mismo y cierra la venta más rápido'),
                                 style: const TextStyle(
                                     fontSize: 12, color: AppColors.grayMid),
                               ),
@@ -384,6 +455,58 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
                         setState(() => _blueExpressPunto = punto);
                       }
                     },
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // ── Opción: Otro método (coordinar por chat) ──────
+                  GestureDetector(
+                    onTap: _abriendoChat ? null : _abrirChatOtroMetodo,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: AppColors.divider, width: 0.8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.chat_bubble_outline_rounded,
+                              color: AppColors.grayMid, size: 22),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('OTRO MÉTODO',
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textPrimary)),
+                                SizedBox(height: 2),
+                                Text('Coordina la entrega directo con el comprador',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.grayMid)),
+                              ],
+                            ),
+                          ),
+                          _abriendoChat
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.grayMid))
+                              : const Icon(Icons.chevron_right_rounded,
+                                  size: 16, color: AppColors.grayMid),
+                        ],
+                      ),
+                    ),
                   ),
 
                   const SizedBox(height: 28),
