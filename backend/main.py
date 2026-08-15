@@ -2234,6 +2234,29 @@ def elegir_entrega(orden_id: int, body: dict):
     return {"ok": True}
 
 
+@app.get("/ordenes/{orden_id}/chat-info")
+def obtener_chat_info_orden(orden_id: int):
+    """Datos mínimos para abrir el chat comprador-vendedor de esta orden
+    desde la pantalla 'Elegir entrega' (botón 'Otro método')."""
+    orden = obtener_orden(orden_id)
+    if not orden:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+    publicacion_id = orden.get("publicacion_id")
+    if not publicacion_id:
+        raise HTTPException(status_code=400,
+                            detail="Esta orden no tiene una publicación asociada")
+    pub = obtener_publicacion_por_id(publicacion_id) or {}
+    comprador = obtener_usuario_por_id(orden["comprador_id"]) or {}
+    return {
+        "publicacion_id": publicacion_id,
+        "titulo": pub.get("titulo") or orden.get("titulo", ""),
+        "imagen_url": pub.get("imagen_url", ""),
+        "vendedor_id": orden["vendedor_id"],
+        "comprador_id": orden["comprador_id"],
+        "nombre_comprador": comprador.get("nombre", ""),
+    }
+
+
 # ── Tracking vendedor (entrego yo) ───────────────────────────────────────────
 
 @app.post("/ordenes/{orden_id}/tracking")
@@ -2271,6 +2294,7 @@ def ver_tracking_vendedor(orden_id: int):
         "destino_lat": destino.get("lat"),
         "destino_lng": destino.get("lng"),
         "destino_direccion": destino.get("direccion"),
+        "destino_comuna": destino.get("comuna"),
     }
 
 

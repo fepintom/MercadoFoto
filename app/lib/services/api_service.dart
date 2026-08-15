@@ -617,6 +617,17 @@ class ApiService {
     return null;
   }
 
+  static Future<Map<String, dynamic>?> obtenerChatInfoOrden(
+      int ordenId) async {
+    final response =
+        await http.get(Uri.parse('$baseUrl/ordenes/$ordenId/chat-info'));
+    if (response.statusCode == 200) {
+      return Map<String, dynamic>.from(
+          jsonDecode(utf8.decode(response.bodyBytes)));
+    }
+    return null;
+  }
+
   // ──────────────────────────────────────────────
   // AGENTE DE SOPORTE (IA)
   // ──────────────────────────────────────────────
