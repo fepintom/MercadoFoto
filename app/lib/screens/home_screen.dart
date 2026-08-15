@@ -1332,23 +1332,16 @@ class _BannerCarruselState extends State<_BannerCarrusel> {
       children: [
         Container(
           margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-          // Los banners (banner1/2/3.jpg) son 16:9. Usamos AspectRatio en
-          // vez de una altura fija para que el recuadro siempre calce con
-          // la imagen completa, sin recortarla (BoxFit.cover ya no tiene
-          // que "cortar" nada porque el contenedor tiene la misma
-          // proporción que la imagen).
-          child: AspectRatio(
-            aspectRatio: 16 / 9,
-            child: PageView(
-              controller: _controller,
-              onPageChanged: (i) => setState(() => _paginaActual = i),
-              children: const [
-                _BannerImagen('assets/images/banner1.jpg'),
-                _BannerImagen('assets/images/banner2.jpg'),
-                _BannerImagen('assets/images/banner3.jpg'),
-                _BannerBlueExpress(),
-              ],
-            ),
+          height: 130,
+          child: PageView(
+            controller: _controller,
+            onPageChanged: (i) => setState(() => _paginaActual = i),
+            children: const [
+              _BannerImagen('assets/images/banner1.jpg'),
+              _BannerImagen('assets/images/banner2.jpg'),
+              _BannerImagen('assets/images/banner3.jpg'),
+              _BannerBlueExpress(),
+            ],
           ),
         ),
         // Indicadores de página
@@ -1382,14 +1375,21 @@ class _BannerImagen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Mantiene el recuadro del carrusel en su tamaño original: la imagen
+    // se achica para entrar completa (BoxFit.contain) en vez de recortarse.
     return ClipRRect(
       borderRadius: BorderRadius.circular(14),
-      child: Image.asset(
-        asset,
-        fit: BoxFit.cover,
+      child: Container(
         width: double.infinity,
         height: double.infinity,
-        errorBuilder: (_, __, ___) => Container(color: AppColors.carbon),
+        color: AppColors.carbon,
+        child: Image.asset(
+          asset,
+          fit: BoxFit.contain,
+          width: double.infinity,
+          height: double.infinity,
+          errorBuilder: (_, __, ___) => Container(color: AppColors.carbon),
+        ),
       ),
     );
   }
