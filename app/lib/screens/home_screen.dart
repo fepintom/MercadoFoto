@@ -912,10 +912,25 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
                       ),
-                      padding: const EdgeInsets.all(11),
-                      child: Image.asset(
-                        'assets/images/home.png',
-                        fit: BoxFit.contain,
+                      padding: const EdgeInsets.all(8),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.shopping_bag_outlined,
+                                color: Colors.white, size: 16),
+                            SizedBox(width: 2),
+                            Text(
+                              'ok',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -1295,7 +1310,7 @@ class _BannerCarruselState extends State<_BannerCarrusel> {
     super.initState();
     _timer = Timer.periodic(_duracion, (_) {
       if (!mounted) return;
-      final siguiente = (_paginaActual + 1) % 2;
+      final siguiente = (_paginaActual + 1) % 4;
       _controller.animateToPage(
         siguiente,
         duration: const Duration(milliseconds: 600),
@@ -1322,7 +1337,9 @@ class _BannerCarruselState extends State<_BannerCarrusel> {
             controller: _controller,
             onPageChanged: (i) => setState(() => _paginaActual = i),
             children: const [
-              _BannerOkVenta(),
+              _BannerImagen('assets/images/banner1.jpg'),
+              _BannerImagen('assets/images/banner2.jpg'),
+              _BannerImagen('assets/images/banner3.jpg'),
               _BannerBlueExpress(),
             ],
           ),
@@ -1331,7 +1348,7 @@ class _BannerCarruselState extends State<_BannerCarrusel> {
         const SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(2, (i) {
+          children: List.generate(4, (i) {
             final activo = i == _paginaActual;
             return AnimatedContainer(
               duration: const Duration(milliseconds: 300),
@@ -1350,67 +1367,22 @@ class _BannerCarruselState extends State<_BannerCarrusel> {
   }
 }
 
-// ── Banner OkVenta ─────────────────────────────────────────────────────────────
+// ── Banner genérico por imagen (banner1/2/3.jpg) ───────────────────────────────
 
-class _BannerOkVenta extends StatelessWidget {
-  const _BannerOkVenta();
+class _BannerImagen extends StatelessWidget {
+  final String asset;
+  const _BannerImagen(this.asset);
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(14),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Imagen de fondo
-          Image.asset(
-            'assets/images/banner_publicidad.jpg',
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(color: AppColors.carbon),
-          ),
-          // Overlay degradado
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  AppColors.carbon.withOpacity(0.75),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
-          // Texto
-          const Positioned(
-            left: 18,
-            top: 20,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'OkVenta',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'El marketplace\nde tu comunidad',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    height: 1.3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+      child: Image.asset(
+        asset,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        errorBuilder: (_, __, ___) => Container(color: AppColors.carbon),
       ),
     );
   }
