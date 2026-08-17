@@ -88,6 +88,7 @@ from database.chat import (
     guardar_mensaje,
     obtener_chat,
     obtener_conversaciones,
+    limpiar_videos_expirados,
 )
 
 from database.favoritos import (
@@ -1050,6 +1051,62 @@ def registrar_fcm_token(user_id: int, body: dict):
     return {"ok": True}
 
 
+def _notificar_nuevo_mensaje_chat(publicacion_id: int, remitente_id: int, cuerpo: str):
+    """Notifica al otro participante del chat de una publicación (dueño o
+    comprador, según quién envía): push FCM + notificación in-app (campana).
+    Usada por los 3 caminos de envío: texto, imagen y video.
+
+    Antes de este fix: (1) solo el mensaje de texto enviaba push — uno con
+    foto o video podía pasar inadvertido; (2) cuando quien escribía era el
+    dueño de la publicación, la condición `owner_id != remitente_id` nunca
+    se cumplía, así que las respuestas del vendedor JAMÁS notificaban al
+    comprador; (3) ningún mensaje de chat creaba una notificación in-app
+    (la campana), aunque el frontend ya sabía mostrarlas (tipo 'chat') —
+    solo llegaban como push, que puede perderse silenciosamente."""
+    try:
+        pub = obtener_publicacion_por_id(publicacion_id)
+        if not pub:
+            return
+        owner_id = pub.get("user_id")
+        # Determinar al otro participante: si quien envía es el dueño,
+        # el destinatario es quien inició esa conversación (el remitente
+        # más reciente que no es el dueño); si no, el destinatario es el dueño.
+        destinatario_id = None
+        if owner_id and owner_id != remitente_id:
+            destinatario_id = owner_id
+        else:
+            chat = obtener_chat(publicacion_id)
+            for msg in reversed(chat):
+                if msg.get("remitente") != remitente_id:
+                    destinatario_id = msg.get("remitente")
+                    break
+        if not destinatario_id:
+            return
+
+        remitente = obtener_usuario_por_id(remitente_id)
+        nombre_remitente = remitente.get("nombre", "Alguien") if remitente else "Alguien"
+
+        # Notificación in-app (campana) — persiste aunque el push falle.
+        crear_notificacion(
+            destinatario_id, "chat",
+            f"💬 {nombre_remitente}: {cuerpo[:100]}",
+            publicacion_id=publicacion_id,
+            remitente_id=remitente_id,
+        )
+
+        # Push FCM (best-effort, puede no llegar si no hay token registrado).
+        fcm_token = obtener_fcm_token(destinatario_id)
+        if fcm_token:
+            enviar_push(
+                fcm_token=fcm_token,
+                titulo=f"Nuevo mensaje de {nombre_remitente}",
+                cuerpo=cuerpo[:100],
+                data={"publicacion_id": str(publicacion_id), "tipo": "chat"},
+            )
+    except Exception as e:
+        print(f"Push chat error: {e}")
+
+
 @app.post("/chat/enviar")
 def enviar_mensaje(data: Mensaje):
     guardar_mensaje(
@@ -1057,26 +1114,7 @@ def enviar_mensaje(data: Mensaje):
         data.remitente_id,
         data.mensaje,
     )
-
-    # ── Notificación push al dueño del producto ──────────────────────
-    try:
-        pub = obtener_publicacion_por_id(data.publicacion_id)
-        if pub:
-            owner_id = pub.get("user_id")
-            if owner_id and owner_id != data.remitente_id:
-                fcm_token = obtener_fcm_token(owner_id)
-                if fcm_token:
-                    remitente = obtener_usuario_por_id(data.remitente_id)
-                    nombre_remitente = remitente.get("nombre", "Alguien") if remitente else "Alguien"
-                    enviar_push(
-                        fcm_token=fcm_token,
-                        titulo=f"Nuevo mensaje de {nombre_remitente}",
-                        cuerpo=data.mensaje[:100],
-                        data={"publicacion_id": str(data.publicacion_id), "tipo": "chat"},
-                    )
-    except Exception as e:
-        print(f"Push chat error: {e}")
-
+    _notificar_nuevo_mensaje_chat(data.publicacion_id, data.remitente_id, data.mensaje)
     return {"mensaje": "Mensaje enviado"}
 
 
@@ -1108,7 +1146,55 @@ async def enviar_imagen_chat(
         f.write(contenido)
     imagen_url = f"/uploads/{nombre}"
     guardar_mensaje(publicacion_id, remitente_id, "", imagen_url=imagen_url)
+    _notificar_nuevo_mensaje_chat(publicacion_id, remitente_id, "📷 Foto")
     return {"imagen_url": imagen_url}
+
+
+@app.post("/chat/{publicacion_id}/video")
+async def enviar_video_chat(
+    publicacion_id: int,
+    remitente_id: int = Form(...),
+    video: UploadFile = File(...),
+):
+    """Video corto grabado desde la cámara del chat (máx. ~10s, validado en
+    la app al capturar). Permanece disponible 48h y luego se elimina
+    automáticamente (ver limpiar_videos_expirados / worker de limpieza)."""
+    import time as _time
+    from datetime import datetime, timedelta
+    ext = os.path.splitext(video.filename or "video.mp4")[1] or ".mp4"
+    nombre = f"chatvid_{publicacion_id}_{remitente_id}_{int(_time.time())}{ext}"
+    ruta = os.path.join(UPLOADS_DIR, nombre)
+    contenido = await video.read()
+    with open(ruta, "wb") as f:
+        f.write(contenido)
+    video_url = f"/uploads/{nombre}"
+    expira_en = (datetime.utcnow() + timedelta(hours=48)).strftime("%Y-%m-%d %H:%M:%S")
+    guardar_mensaje(publicacion_id, remitente_id, "", video_url=video_url,
+                    video_expira_en=expira_en)
+    _notificar_nuevo_mensaje_chat(publicacion_id, remitente_id, "🎥 Video")
+    return {"video_url": video_url}
+
+
+@app.post("/admin/chat/limpiar_videos_expirados")
+def admin_limpiar_videos_expirados(token: str = ""):
+    """Borra los videos de chat con más de 48h (archivo + referencia en la
+    DB) para evitar acumular memoria. Pensado para llamarse periódicamente
+    desde el worker de limpieza (igual que las demás tareas /admin/...)."""
+    SECRET = os.environ.get("ADMIN_TOKEN", "okventa-admin-2026")
+    if token != SECRET:
+        raise HTTPException(status_code=403, detail="Token inválido")
+    urls = limpiar_videos_expirados()
+    borrados = 0
+    for url in urls:
+        try:
+            nombre = url.rsplit("/", 1)[-1]
+            ruta = os.path.join(UPLOADS_DIR, nombre)
+            if os.path.exists(ruta):
+                os.remove(ruta)
+                borrados += 1
+        except Exception:
+            pass
+    return {"total": len(urls), "archivos_borrados": borrados}
 
 
 # --------------------------------------------------
