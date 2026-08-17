@@ -92,6 +92,26 @@ def revisar_confirmaciones(api_url: str, admin_token: str,
                   {"horas": 24}, "pendiente_pago expiradas")
 
 
+def revisar_videos_chat(api_url: str, admin_token: str):
+    """Borra los videos de chat con más de 48h (archivo + referencia)."""
+    try:
+        resp = requests.post(
+            f"{api_url.rstrip('/')}/admin/chat/limpiar_videos_expirados",
+            params={"token": admin_token},
+            timeout=30,
+        )
+        if resp.status_code != 200:
+            print(f"  ✗ videos chat: error {resp.status_code}: {resp.text[:200]}")
+            return
+        data = resp.json()
+        total = data.get("total", 0)
+        if total:
+            print(f"  ✓ videos chat: {total} video(s) expirado(s), "
+                  f"{data.get('archivos_borrados', 0)} archivo(s) borrado(s)")
+    except Exception as e:
+        print(f"  ✗ videos chat: excepción: {e}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="OkDelivery timeout worker")
     parser.add_argument("--once", action="store_true", help="Procesar una vez y salir")
@@ -118,12 +138,14 @@ def main():
     if args.once:
         revisar(api_url, admin_token, timeout_minutos)
         revisar_confirmaciones(api_url, admin_token, horas_recordatorio, horas_auto)
+        revisar_videos_chat(api_url, admin_token)
         return
 
     while True:
         try:
             revisar(api_url, admin_token, timeout_minutos)
             revisar_confirmaciones(api_url, admin_token, horas_recordatorio, horas_auto)
+            revisar_videos_chat(api_url, admin_token)
         except KeyboardInterrupt:
             print("\nDetenido por el usuario.")
             break

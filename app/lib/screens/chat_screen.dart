@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
@@ -45,6 +46,7 @@ class _ChatScreenState extends State<ChatScreen> {
   String _titulo    = '';
   String _imagenUrl = '';
   int    _vendedorId = 0;
+  bool   _esProductoUsado = false;
 
   @override
   void initState() {
@@ -68,6 +70,18 @@ class _ChatScreenState extends State<ChatScreen> {
             _titulo     = pub['titulo']?.toString() ?? _titulo;
             _imagenUrl  = pub['imagen_url']?.toString() ?? _imagenUrl;
             _vendedorId = pub['user_id'] as int? ?? _vendedorId;
+            _esProductoUsado = (pub['condicion']?.toString() ?? 'nuevo') == 'usado';
+          });
+        }
+      } catch (_) {}
+    } else {
+      // Ya teníamos título/imagen (venimos del listado), pero igual
+      // necesitamos la condición del producto para el aviso de fotos/videos.
+      try {
+        final pub = await ApiService.obtenerPublicacion(widget.publicacionId);
+        if (pub != null && mounted) {
+          setState(() {
+            _esProductoUsado = (pub['condicion']?.toString() ?? 'nuevo') == 'usado';
           });
         }
       } catch (_) {}
@@ -97,6 +111,18 @@ class _ChatScreenState extends State<ChatScreen> {
       _scrollAlFinal();
     } catch (e) {
       debugPrint("ERROR chat: $e");
+    }
+  }
+
+  Future<void> _reproducirVideo(String url) async {
+    final uri = Uri.parse(url);
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo reproducir el video')));
+      }
     }
   }
 
@@ -204,6 +230,20 @@ class _ChatScreenState extends State<ChatScreen> {
                 _enviarImagen(ImageSource.gallery);
               },
             ),
+            ListTile(
+              leading: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                    color: AppColors.carbon.withOpacity(0.08), shape: BoxShape.circle),
+                child: const Icon(Icons.videocam_outlined, color: AppColors.carbon, size: 20),
+              ),
+              title: const Text('Grabar video (máx. 10 s)',
+                  style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+              onTap: () {
+                Navigator.pop(context);
+                _grabarYEnviarVideo();
+              },
+            ),
             const SizedBox(height: 8),
           ],
         ),
@@ -240,6 +280,46 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No se pudo enviar la imagen')));
+      }
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
+  }
+
+  /// Graba un video corto directamente desde la cámara (no desde la
+  /// galería) y lo envía por chat. maxDuration limita la grabación a 10s
+  /// desde la propia cámara del picker.
+  Future<void> _grabarYEnviarVideo() async {
+    if (_miUserId == null) return;
+    try {
+      final picked = await ImagePicker().pickVideo(
+        source: ImageSource.camera,
+        maxDuration: const Duration(seconds: 10),
+      );
+      if (picked == null) return;
+
+      if (mounted) setState(() => _enviando = true);
+
+      final bytes = await File(picked.path).readAsBytes();
+      final req = http.MultipartRequest(
+        'POST',
+        Uri.parse('${ApiService.baseUrl}/chat/${widget.publicacionId}/video'),
+      );
+      req.fields['remitente_id'] = '${_miUserId!}';
+      req.files.add(http.MultipartFile.fromBytes(
+        'video', bytes,
+        filename: 'chatvid_${DateTime.now().millisecondsSinceEpoch}.mp4',
+      ));
+      final streamed = await req.send().timeout(const Duration(seconds: 40));
+      if (streamed.statusCode == 200) {
+        await _cargarMensajes();
+      } else {
+        throw Exception('status ${streamed.statusCode}');
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo enviar el video')));
       }
     } finally {
       if (mounted) setState(() => _enviando = false);
@@ -377,6 +457,44 @@ class _ChatScreenState extends State<ChatScreen> {
     final texto  = (m['mensaje'] ?? '') as String;
     final hora   = _formatHora(m['fecha'] ?? '');
     final imagenUrl = m['imagen_url'] as String?;
+    final videoUrl  = m['video_url'] as String?;
+
+    // Burbuja de video
+    if (videoUrl != null && videoUrl.isNotEmpty) {
+      return Align(
+        alignment: esMio ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Column(
+            crossAxisAlignment: esMio ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              GestureDetector(
+                onTap: () => _reproducirVideo('${ApiService.baseUrl}$videoUrl'),
+                child: Container(
+                  width: 220, height: 160,
+                  decoration: BoxDecoration(
+                    color: AppColors.carbon,
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(16),
+                      topRight: const Radius.circular(16),
+                      bottomLeft: Radius.circular(esMio ? 16 : 4),
+                      bottomRight: Radius.circular(esMio ? 4 : 16),
+                    ),
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.play_circle_fill_rounded,
+                        size: 48, color: Colors.white),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(hora,
+                  style: const TextStyle(fontSize: 10, color: AppColors.grayMid)),
+            ],
+          ),
+        ),
+      );
+    }
 
     // Burbuja de imagen
     if (imagenUrl != null && imagenUrl.isNotEmpty) {
@@ -673,6 +791,33 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
+          // Aviso: producto usado → sugerir pedir fotos/video del estado
+          if (_esProductoUsado)
+            Container(
+              width: double.infinity,
+              color: AppColors.primary.withOpacity(0.08),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.info_outline_rounded,
+                      size: 16, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "Te sugerimos solicitar imágenes o videos cortos "
+                      "(máx 10 segundos) del producto para visualizar su estado",
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.primary,
+                          height: 1.3,
+                          fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // Lista de mensajes
           Expanded(
             child: _mensajes.isEmpty
