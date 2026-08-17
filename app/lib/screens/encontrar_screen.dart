@@ -36,6 +36,11 @@ class _EncontrarScreenState extends State<EncontrarScreen>
   bool _filtroCategoriasActivo = false;
   bool _panelFiltroAbierto     = false;
 
+  // ── Filtro por precio ────────────────────────────────────────────────────
+  double? _precioMin;
+  double? _precioMax;
+  bool get _tieneFiltroPrecio => _precioMin != null || _precioMax != null;
+
   // ── Buscador ──────────────────────────────────────────────────────────────
   final _searchCtrl = TextEditingController();
   String _query = '';
@@ -54,6 +59,12 @@ class _EncontrarScreenState extends State<EncontrarScreen>
         final cat    = (p['categoria'] ?? '').toString().toLowerCase();
         return titulo.contains(q) || cat.contains(q);
       }).toList();
+    }
+    if (_precioMin != null) {
+      lista = lista.where((p) => (p['precio'] as num? ?? 0) >= _precioMin!).toList();
+    }
+    if (_precioMax != null) {
+      lista = lista.where((p) => (p['precio'] as num? ?? 0) <= _precioMax!).toList();
     }
     return lista;
   }
@@ -332,6 +343,7 @@ class _EncontrarScreenState extends State<EncontrarScreen>
             Container(
               margin: const EdgeInsets.only(top: 3),
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              constraints: const BoxConstraints(maxWidth: 64),
               decoration: BoxDecoration(
                 color: sel ? AppColors.primary : AppColors.carbon,
                 borderRadius: BorderRadius.circular(4),
@@ -342,12 +354,18 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                       offset: const Offset(0, 1))
                 ],
               ),
-              child: Text(
-                _formatPrecio(precio),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
+              // FittedBox: el marcador tiene un ancho fijo y angosto; si el
+              // precio no entra, se achica en vez de cortarse a la mitad.
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  _formatPrecio(precio),
+                  maxLines: 1,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
@@ -900,6 +918,130 @@ class _EncontrarScreenState extends State<EncontrarScreen>
     );
   }
 
+  // ── Bottom sheet: filtro por precio ──────────────────────────────────────
+  void _mostrarFiltroPrecio() {
+    final minCtrl = TextEditingController(text: _precioMin?.toStringAsFixed(0) ?? '');
+    final maxCtrl = TextEditingController(text: _precioMax?.toStringAsFixed(0) ?? '');
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => Padding(
+        padding: EdgeInsets.only(
+            left: 20, right: 20, top: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                    color: AppColors.divider,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text('Filtrar por precio',
+                style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 16),
+            Row(children: [
+              Expanded(
+                child: TextField(
+                  controller: minCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    hintText: 'Mínimo', prefixText: '\$',
+                    hintStyle: const TextStyle(color: AppColors.grayMid, fontSize: 14),
+                    filled: true, fillColor: AppColors.background,
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.divider)),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.divider)),
+                    focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.primary)),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Text('—', style: TextStyle(color: AppColors.grayMid, fontSize: 18)),
+              ),
+              Expanded(
+                child: TextField(
+                  controller: maxCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    hintText: 'Máximo', prefixText: '\$',
+                    hintStyle: const TextStyle(color: AppColors.grayMid, fontSize: 14),
+                    filled: true, fillColor: AppColors.background,
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.divider)),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.divider)),
+                    focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppColors.primary)),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 20),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    setState(() { _precioMin = null; _precioMax = null; });
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.divider),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Limpiar', style: TextStyle(color: AppColors.textSecondary)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    setState(() {
+                      _precioMin = double.tryParse(minCtrl.text.trim());
+                      _precioMax = double.tryParse(maxCtrl.text.trim());
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Aplicar', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+            ]),
+          ],
+        ),
+      ),
+    );
+  }
+
   // ── Panel de filtro lateral colapsable ───────────────────────────────────
   Widget _buildPanelFiltro() {
     final cats = _categoriasDisponibles;
@@ -971,6 +1113,41 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                   ),
                 ),
               ),
+
+              // Precio (siempre visible cuando el panel está abierto)
+              if (_panelFiltroAbierto)
+                InkWell(
+                  onTap: _mostrarFiltroPrecio,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    color: _tieneFiltroPrecio
+                        ? AppColors.primary.withOpacity(0.1)
+                        : null,
+                    child: Column(
+                      children: [
+                        Icon(Icons.attach_money_rounded,
+                            size: 16,
+                            color: _tieneFiltroPrecio
+                                ? AppColors.primary
+                                : AppColors.grayMid),
+                        const SizedBox(height: 2),
+                        Text('Precio',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: _tieneFiltroPrecio
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: _tieneFiltroPrecio
+                                  ? AppColors.primary
+                                  : AppColors.grayMid,
+                            )),
+                      ],
+                    ),
+                  ),
+                ),
+              if (_panelFiltroAbierto)
+                Container(height: 0.5, color: AppColors.divider),
 
               // Categorías (solo cuando abierto)
               if (_panelFiltroAbierto && cats.isNotEmpty)
