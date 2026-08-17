@@ -153,7 +153,13 @@ def obtener_publicaciones():
             ELSE 'Usuario invitado'
         END,
         p.lat,
-        p.lng
+        p.lng,
+        p.condicion,
+        p.acepta_ofertas,
+        p.sku,
+        p.stock,
+        p.codigo_universal,
+        p.tallas
     FROM publicaciones p
     LEFT JOIN users u
     ON p.user_id = u.id
@@ -188,6 +194,12 @@ def obtener_publicaciones():
             "nombre_vendedor": nombre_vendedor,
             "lat": row[13],
             "lng": row[14],
+            "condicion": row[15],
+            "acepta_ofertas": row[16],
+            "sku": row[17],
+            "stock": row[18],
+            "codigo_universal": row[19],
+            "tallas": row[20],
         })
 
     return publicaciones
@@ -354,7 +366,8 @@ def obtener_publicacion_por_id(publicacion_id):
         p.categoria, p.subcategoria, p.imagenes_extra,
         CASE WHEN u.nombre IS NOT NULL AND TRIM(u.nombre) <> ''
              THEN u.nombre ELSE 'Usuario invitado' END,
-        p.lat, p.lng
+        p.lat, p.lng, p.condicion, p.acepta_ofertas,
+        p.sku, p.stock, p.codigo_universal, p.tallas
     FROM publicaciones p
     LEFT JOIN users u ON p.user_id = u.id
     WHERE p.id = ?
@@ -375,6 +388,9 @@ def obtener_publicacion_por_id(publicacion_id):
         "seller_status": "🙂" if row[6] else "🙁",
         "nombre_vendedor": row[12],
         "lat": row[13], "lng": row[14],
+        "condicion": row[15], "acepta_ofertas": row[16],
+        "sku": row[17], "stock": row[18],
+        "codigo_universal": row[19], "tallas": row[20],
     }
 
 
@@ -462,7 +478,8 @@ def obtener_publicaciones_cercanas(lat, lng, radio_km=5.0):
         p.categoria, p.subcategoria, p.imagenes_extra,
         CASE WHEN u.nombre IS NOT NULL AND TRIM(u.nombre) <> ''
              THEN u.nombre ELSE 'Usuario invitado' END,
-        p.lat, p.lng
+        p.lat, p.lng, p.condicion, p.acepta_ofertas,
+        p.sku, p.stock, p.codigo_universal, p.tallas
     FROM publicaciones p
     LEFT JOIN users u ON p.user_id = u.id
     WHERE p.estado = 'disponible'
@@ -499,6 +516,9 @@ def obtener_publicaciones_cercanas(lat, lng, radio_km=5.0):
                 "nombre_vendedor": row[12],
                 "lat": p_lat, "lng": p_lng,
                 "distancia_km": round(distancia_km, 2),
+                "condicion": row[15], "acepta_ofertas": row[16],
+                "sku": row[17], "stock": row[18],
+                "codigo_universal": row[19], "tallas": row[20],
             })
 
     resultado.sort(key=lambda x: x["distancia_km"])

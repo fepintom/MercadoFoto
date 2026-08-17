@@ -527,6 +527,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     final vendedor  = item['nombre_vendedor'] ?? "Usuario invitado";
     final bool registrado = item['user_id'] != null;
     final categoria = item['categoria'];
+    final condicion = (item['condicion'] as String?) ?? 'nuevo';
+    final bool esNuevo = condicion == 'nuevo';
 
     double? distKm;
     if (_radioActivo && item['lat'] != null && item['lng'] != null) {
@@ -596,23 +598,56 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (categoria != null && categoria.toString().isNotEmpty)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(4),
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: [
+                      // Condición: nuevo / usado
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: (esNuevo ? const Color(0xFF34C759) : Colors.orange)
+                              .withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(esNuevo ? 'Nuevo' : 'Usado',
+                            style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                color: esNuevo
+                                    ? const Color(0xFF34C759)
+                                    : Colors.orange)),
                       ),
-                      child: Text(categoria.toString(),
-                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.primary)),
-                    ),
+                      if (categoria != null && categoria.toString().isNotEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(categoria.toString(),
+                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.primary)),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
                   Text(titulo,
                       maxLines: 2, overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary)),
                   const SizedBox(height: 6),
-                  Text(formatPrecio(precio),
-                      style: const TextStyle(fontSize: 17, color: AppColors.primary, fontWeight: FontWeight.w700)),
+                  // FittedBox: si la tarjeta queda muy angosta (más columnas),
+                  // el precio se achica para seguir viéndose completo en una
+                  // sola línea en vez de cortarse.
+                  SizedBox(
+                    width: double.infinity,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(formatPrecio(precio),
+                          maxLines: 1,
+                          style: const TextStyle(fontSize: 17, color: AppColors.primary, fontWeight: FontWeight.w700)),
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
