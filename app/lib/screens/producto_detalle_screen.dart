@@ -958,6 +958,31 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     }
   }
 
+  // ── Fila de información adicional (solo lectura) ───────────────────────
+  Widget _filaInfoAdicional(String label, String valor) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 150,
+            child: Text(label,
+                style: const TextStyle(
+                    fontSize: 12.5, color: AppColors.grayMid)),
+          ),
+          Expanded(
+            child: Text(valor,
+                style: const TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary)),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── CAMPO EXPANDIBLE ───────────────────────────────────────────────────
   Widget _campoExpandible({
     required String titulo,
@@ -1469,6 +1494,59 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                             ),
                           ],
                         ),
+                      ),
+                    ),
+
+                  // Información adicional — solo lectura, visible para
+                  // compradores/otros usuarios (el dueño la edita más abajo).
+                  if (!esDueno &&
+                      (((widget.producto['sku']?.toString() ?? '').isNotEmpty) ||
+                          widget.producto['stock'] != null ||
+                          ((widget.producto['codigo_universal']?.toString() ?? '')
+                              .isNotEmpty)))
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: AppColors.divider, width: 0.5),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.info_outline_rounded,
+                                  size: 16, color: AppColors.grayMid),
+                              SizedBox(width: 6),
+                              Text(
+                                "Información adicional",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          if ((widget.producto['codigo_universal']
+                                      ?.toString() ??
+                                  '')
+                              .isNotEmpty)
+                            _filaInfoAdicional("Código universal (UPC/EAN)",
+                                widget.producto['codigo_universal'].toString()),
+                          if ((widget.producto['sku']?.toString() ?? '')
+                              .isNotEmpty)
+                            _filaInfoAdicional(
+                                "SKU", widget.producto['sku'].toString()),
+                          if (widget.producto['stock'] != null)
+                            _filaInfoAdicional("Stock disponible",
+                                widget.producto['stock'].toString()),
+                        ],
                       ),
                     ),
 

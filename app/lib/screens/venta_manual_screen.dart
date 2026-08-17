@@ -9,6 +9,7 @@ import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/space_invaders_widget.dart';
+import '../widgets/vista_previa_publicacion.dart';
 import 'mis_publicaciones_screen.dart';
 
 class VentaManualScreen extends StatefulWidget {
@@ -122,6 +123,23 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
   }
 
   // ── Publicar ─────────────────────────────────────────────────────────────
+  void _mostrarVistaPrevia() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VistaPreviaPublicacion(
+          imagenes: _imagenes,
+          titulo: _titulo.text.trim().isEmpty ? "Sin título" : _titulo.text.trim(),
+          descripcion: _descripcion.text.trim(),
+          precio: double.tryParse(_precio.text.trim()) ?? 0,
+          categoria: _categoria,
+          subcategoria: '',
+          condicion: _condicion,
+        ),
+      ),
+    );
+  }
+
   Future<void> _publicar() async {
     if (_imagenes.isEmpty) {
       _snack("Agrega al menos una foto");
@@ -315,6 +333,27 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
                 _buildDropdownCategoria(),
                 if (_esRopaOCalzado) _buildSelectorTallas(),
                 const SizedBox(height: 28),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _mostrarVistaPrevia,
+                    icon: const Icon(Icons.visibility_outlined, size: 18),
+                    label: const Text("Vista previa"),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.carbon,
+                      side: const BorderSide(color: AppColors.divider),
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      textStyle: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
