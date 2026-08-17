@@ -11,6 +11,7 @@ import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/space_invaders_widget.dart';
+import '../widgets/vista_previa_publicacion.dart';
 import 'mis_publicaciones_screen.dart';
 
 // ── Modelo Talla de envío ─────────────────────────────────────────────────
@@ -422,6 +423,24 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
             Icon(Icons.chevron_right_rounded,
                 color: AppColors.grayMid, size: 18),
           ],
+        ),
+      ),
+    );
+  }
+
+  // ── Vista previa ─────────────────────────────────────────────────────
+  void _mostrarVistaPrevia() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VistaPreviaPublicacion(
+          imagenes: _imagenes,
+          titulo: titulo.text.trim().isEmpty ? "Sin título" : titulo.text.trim(),
+          descripcion: descripcion.text.trim(),
+          precio: _precioActual,
+          categoria: _categoria,
+          subcategoria: _subcategoria,
+          condicion: _condicion,
         ),
       ),
     );
@@ -1671,7 +1690,31 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                       // ── Precio interactivo con sugerencia IA ──────
                       _buildPrecioInteractivo(),
 
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 12),
+
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _mostrarVistaPrevia,
+                          icon: const Icon(Icons.visibility_outlined, size: 18),
+                          label: const Text("Vista previa"),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.carbon,
+                            side: const BorderSide(color: AppColors.divider),
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 15),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
 
                       SizedBox(
                         width: double.infinity,
@@ -1704,4 +1747,3 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
     );
   }
 }
-
