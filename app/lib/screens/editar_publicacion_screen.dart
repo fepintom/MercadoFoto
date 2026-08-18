@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/net_image.dart';
+import '../widgets/vista_previa_publicacion.dart';
 
 class EditarPublicacionScreen extends StatefulWidget {
   final Map<String, dynamic> producto;
@@ -132,6 +133,28 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
     } finally {
       if (mounted) setState(() => _guardando = false);
     }
+  }
+
+  // ── Vista previa ─────────────────────────────────────────────────────────
+
+  void _mostrarVistaPrevia() {
+    final precio = double.tryParse(_precioCtrl.text.trim()) ?? 0;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VistaPreviaPublicacion(
+          imagenesUrl: _fotosExistentes,
+          baseUrl:     ApiService.baseUrl,
+          imagenes:    _fotosNuevas,
+          titulo:      _tituloCtrl.text.trim(),
+          descripcion: _descCtrl.text.trim(),
+          precio:      precio,
+          categoria:    widget.producto['categoria']?.toString() ?? '',
+          subcategoria: widget.producto['subcategoria']?.toString() ?? '',
+          condicion:    _condicion,
+        ),
+      ),
+    );
   }
 
   // ── Fotos ─────────────────────────────────────────────────────────────────
@@ -337,6 +360,28 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
                                   color: AppColors.textOnPrimary,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // ── Botón vista previa (después de guardar) ────────────
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _mostrarVistaPrevia,
+                      icon: const Icon(Icons.visibility_outlined,
+                          size: 18, color: AppColors.primary),
+                      label: const Text("Vista previa",
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.primary),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),

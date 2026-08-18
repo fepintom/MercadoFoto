@@ -616,7 +616,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                                 fontWeight: FontWeight.w500,
                                 color: esNuevo
                                     ? const Color(0xFF34C759)
-                                    : Colors.orange)),
+                                    : Colors.orange,
+                                shadows: const [
+                                  Shadow(
+                                      color: Colors.black26,
+                                      blurRadius: 1.5,
+                                      offset: Offset(0, 0.4)),
+                                ])),
                       ),
                       if (categoria != null && categoria.toString().isNotEmpty)
                         Container(
@@ -626,7 +632,16 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(categoria.toString(),
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.primary)),
+                              style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.primary,
+                                  shadows: [
+                                    Shadow(
+                                        color: Colors.black26,
+                                        blurRadius: 1.5,
+                                        offset: Offset(0, 0.4)),
+                                  ])),
                         ),
                     ],
                   ),

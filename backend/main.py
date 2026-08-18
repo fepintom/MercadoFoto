@@ -117,6 +117,7 @@ from database.reviews import (
     init_reviews_db,
     guardar_review,
     obtener_reviews_vendedor,
+    ya_califico_orden,
 )
 
 from database.notifications import (
@@ -459,6 +460,7 @@ class Review(BaseModel):
     comprador_id: int
     estrellas: int
     comentario: str
+    orden_id: Optional[int] = None
 
 
 class Mensaje(BaseModel):
@@ -910,12 +912,39 @@ def calificar(review: Review):
             status_code=400,
             detail="Las estrellas deben ser entre 1 y 5",
         )
+    if not review.comentario or not review.comentario.strip():
+        raise HTTPException(status_code=400, detail="El comentario es obligatorio")
+
+    # La calificación siempre debe estar amarrada a una compra real y
+    # entregada: evita que cualquiera pueda calificar a cualquiera sin haber
+    # comprado, y evita calificar dos veces la misma orden.
+    if review.orden_id is None:
+        raise HTTPException(status_code=400,
+                            detail="Falta la orden asociada a la calificación")
+    orden = obtener_orden(review.orden_id)
+    if not orden:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+    if orden["comprador_id"] != review.comprador_id:
+        raise HTTPException(status_code=403,
+                            detail="Solo el comprador de esta orden puede calificarla")
+    if orden["estado"] != "entregado":
+        raise HTTPException(status_code=400,
+                            detail="Solo puedes calificar compras ya entregadas")
+    if ya_califico_orden(review.orden_id):
+        raise HTTPException(status_code=409,
+                            detail="Ya calificaste esta compra")
 
     guardar_review(
-        review.vendedor_id,
+        orden["vendedor_id"],
         review.comprador_id,
         review.estrellas,
-        review.comentario,
+        review.comentario.strip(),
+        orden_id=review.orden_id,
+    )
+    crear_notificacion(
+        orden["vendedor_id"], "review",
+        f"⭐ Recibiste una calificación de {review.estrellas}★ por '{orden['titulo']}'",
+        orden_id=review.orden_id,
     )
 
     return {"mensaje": "Calificación registrada"}
@@ -924,6 +953,13 @@ def calificar(review: Review):
 @app.get("/reputacion/{vendedor_id}")
 def reputacion_vendedor(vendedor_id: int):
     return obtener_reviews_vendedor(vendedor_id)
+
+
+@app.get("/ordenes/{orden_id}/calificacion")
+def calificacion_orden(orden_id: int):
+    """Indica si esta orden ya fue calificada, para que la app deje de
+    mostrar el aviso de "califica a tu vendedor" una vez hecho."""
+    return {"calificado": ya_califico_orden(orden_id)}
 
 
 # --------------------------------------------------

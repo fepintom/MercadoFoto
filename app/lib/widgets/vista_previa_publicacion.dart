@@ -4,14 +4,23 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
+import '../widgets/net_image.dart';
 
-// ── Vista previa de la publicación (antes de publicar) ─────────────────────
+// ── Vista previa de la publicación (antes de publicar / al editar) ─────────
 // Reproduce visualmente cómo se verá el producto para otros usuarios, usando
 // las fotos e info que el vendedor ya cargó en el formulario. No es
 // interactiva (no hay chat, ofertas ni edición): es solo una previsualización
 // de solo lectura.
+//
+// Admite dos tipos de fotos a la vez: locales recién tomadas (`imagenes`,
+// archivos en el dispositivo) y ya existentes en el servidor (`imagenesUrl`,
+// rutas relativas resueltas con `baseUrl`) — esto último es lo que necesita
+// la pantalla de edición, donde la mayoría de las fotos ya están subidas y
+// solo algunas pueden ser nuevas.
 class VistaPreviaPublicacion extends StatelessWidget {
   final List<File> imagenes;
+  final List<String> imagenesUrl;
+  final String? baseUrl;
   final String titulo;
   final String descripcion;
   final double precio;
@@ -20,7 +29,9 @@ class VistaPreviaPublicacion extends StatelessWidget {
   final String condicion;
 
   const VistaPreviaPublicacion({
-    required this.imagenes,
+    this.imagenes = const [],
+    this.imagenesUrl = const [],
+    this.baseUrl,
     required this.titulo,
     required this.descripcion,
     required this.precio,
@@ -81,22 +92,31 @@ class VistaPreviaPublicacion extends StatelessWidget {
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
-                  // Carrusel de fotos locales
+                  // Carrusel de fotos (existentes en el servidor + locales nuevas)
                   AspectRatio(
                     aspectRatio: 1,
-                    child: imagenes.isEmpty
+                    child: (imagenesUrl.isEmpty && imagenes.isEmpty)
                         ? Container(
                             color: AppColors.surface,
                             child: const Icon(Icons.image_outlined,
                                 size: 48, color: AppColors.grayMid),
                           )
                         : PageView.builder(
-                            itemCount: imagenes.length,
-                            itemBuilder: (_, i) => Image.file(
-                              imagenes[i],
-                              fit: BoxFit.contain,
-                              width: double.infinity,
-                            ),
+                            itemCount: imagenesUrl.length + imagenes.length,
+                            itemBuilder: (_, i) {
+                              if (i < imagenesUrl.length) {
+                                return NetImage(
+                                  "${baseUrl ?? ''}${imagenesUrl[i]}",
+                                  fit: BoxFit.contain,
+                                  width: double.infinity,
+                                );
+                              }
+                              return Image.file(
+                                imagenes[i - imagenesUrl.length],
+                                fit: BoxFit.contain,
+                                width: double.infinity,
+                              );
+                            },
                           ),
                   ),
                   Padding(
@@ -125,7 +145,13 @@ class VistaPreviaPublicacion extends StatelessWidget {
                                       fontWeight: FontWeight.w600,
                                       color: esNuevo
                                           ? const Color(0xFF34C759)
-                                          : Colors.orange)),
+                                          : Colors.orange,
+                                      shadows: const [
+                                        Shadow(
+                                            color: Colors.black26,
+                                            blurRadius: 1.5,
+                                            offset: Offset(0, 0.4)),
+                                      ])),
                             ),
                             if (categoria.isNotEmpty)
                               Container(
@@ -142,7 +168,13 @@ class VistaPreviaPublicacion extends StatelessWidget {
                                     style: const TextStyle(
                                         fontSize: 11,
                                         color: AppColors.primary,
-                                        fontWeight: FontWeight.w500)),
+                                        fontWeight: FontWeight.w500,
+                                        shadows: [
+                                          Shadow(
+                                              color: Colors.black26,
+                                              blurRadius: 1.5,
+                                              offset: Offset(0, 0.4)),
+                                        ])),
                               ),
                           ],
                         ),

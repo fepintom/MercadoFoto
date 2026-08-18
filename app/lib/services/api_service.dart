@@ -1009,4 +1009,60 @@ class ApiService {
   static Future<void> establecerPrincipal(int userId, int addressId) async {
     await http.patch(Uri.parse('$baseUrl/usuarios/$userId/direcciones/$addressId/principal'));
   }
+
+  // ──────────────────────────────────────────────
+  // VALORACIÓN / REPUTACIÓN DEL VENDEDOR
+  // ──────────────────────────────────────────────
+
+  static Future<void> calificarVendedor({
+    required int ordenId,
+    required int vendedorId,
+    required int compradorId,
+    required int estrellas,
+    required String comentario,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/calificar'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'orden_id': ordenId,
+        'vendedor_id': vendedorId,
+        'comprador_id': compradorId,
+        'estrellas': estrellas,
+        'comentario': comentario,
+      }),
+    );
+    if (res.statusCode != 200) {
+      String msg = res.body;
+      try {
+        msg = jsonDecode(utf8.decode(res.bodyBytes))['detail'] ?? msg;
+      } catch (_) {}
+      throw Exception(msg);
+    }
+  }
+
+  static Future<Map<String, dynamic>> obtenerReputacion(int vendedorId) async {
+    final res = await http.get(Uri.parse('$baseUrl/reputacion/$vendedorId'));
+    if (res.statusCode == 200) {
+      return Map<String, dynamic>.from(
+          jsonDecode(utf8.decode(res.bodyBytes)));
+    }
+    return {
+      'promedio': 0,
+      'total_reviews': 0,
+      'distribucion': {'malas': 0, 'regular': 0, 'buena': 0, 'excelente': 0},
+      'comentarios': [],
+    };
+  }
+
+  static Future<bool> ordenYaCalificada(int ordenId) async {
+    try {
+      final res =
+          await http.get(Uri.parse('$baseUrl/ordenes/$ordenId/calificacion'));
+      if (res.statusCode == 200) {
+        return jsonDecode(utf8.decode(res.bodyBytes))['calificado'] == true;
+      }
+    } catch (_) {}
+    return false;
+  }
 }
