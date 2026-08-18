@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import 'producto_detalle_screen.dart';
 import '../widgets/net_image.dart';
+import '../widgets/reputacion_vendedor.dart';
 class PerfilPublicoScreen extends StatefulWidget {
   final int userId;
   final String nombre;
@@ -24,6 +25,7 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
   bool _cargando = true;
   String _nombre = '';
   List<dynamic> _publicaciones = [];
+  Map<String, dynamic>? _reputacion;
   String? _error;
 
   @override
@@ -44,11 +46,16 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
       final res =
           await http.get(url).timeout(const Duration(seconds: 10));
 
+      // La reputación se carga aparte (no es crítica): si falla, el perfil
+      // igual se muestra sin la tarjeta de calificaciones.
+      final reputacion = await ApiService.obtenerReputacion(widget.userId);
+
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
         setState(() {
           _nombre = data['nombre'] ?? widget.nombre;
           _publicaciones = data['publicaciones'] ?? [];
+          _reputacion = reputacion;
           _cargando = false;
         });
       } else {
@@ -229,6 +236,11 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
 
         // ── Separador ───────────────────────────────────────────────────────
         const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+        // ── Reputación (calificaciones acumuladas) ──────────────────────────
+        if (_reputacion != null)
+          SliverToBoxAdapter(child: ReputacionCard(reputacion: _reputacion!)),
+        const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
         // ── Grid de publicaciones ────────────────────────────────────────────
         _publicaciones.isEmpty

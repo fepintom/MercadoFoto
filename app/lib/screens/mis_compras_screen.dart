@@ -9,6 +9,7 @@ import 'package:latlong2/latlong.dart' as ll;
 import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
+import 'calificar_vendedor_screen.dart';
 import 'seguimiento_entrega_screen.dart';
 import 'soporte_chat_screen.dart';
 
@@ -754,6 +755,47 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                   onPressed: () => _reportarProblema(id),
                   child: const Text('¿El pedido nunca llegó? Reportar problema',
                       style: TextStyle(fontSize: 12, color: Colors.red)),
+                ),
+              ),
+            ],
+
+            // Compra ya entregada y aún sin calificar: invitamos a calificar
+            // al vendedor. La calificación queda amarrada a esta orden.
+            if (esCompra && estado == 'entregado' &&
+                (orden['ya_calificado'] as int? ?? 0) == 0) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final vendedorId = orden['vendedor_id'] as int?;
+                    if (vendedorId == null) return;
+                    final ok = await Navigator.push<bool>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CalificarVendedorScreen(
+                          ordenId: id,
+                          vendedorId: vendedorId,
+                          compradorId: orden['comprador_id'] as int? ?? 0,
+                          nombreVendedor: contraparte,
+                          tituloProducto: titulo,
+                        ),
+                      ),
+                    );
+                    if (ok == true) _cargar();
+                  },
+                  icon: const Icon(Icons.star_outline_rounded,
+                      size: 17, color: AppColors.primary),
+                  label: const Text('Calificar vendedor',
+                      style: TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primary,
+                    side: const BorderSide(color: AppColors.primary),
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(9)),
+                  ),
                 ),
               ),
             ],

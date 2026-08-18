@@ -1562,6 +1562,7 @@ class _NotificacionesSheetState extends State<_NotificacionesSheet> {
       case 'en_camino':  return Icons.local_shipping_outlined;
       case 'entrega_confirmada': return Icons.check_circle_outline;
       case 'disputa':    return Icons.warning_amber_rounded;
+      case 'review':     return Icons.star_outline_rounded;
       default:           return Icons.notifications_outlined;
     }
   }

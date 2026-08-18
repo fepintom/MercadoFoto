@@ -12,10 +12,12 @@ import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../widgets/registro_form_widget.dart';
 import 'chat_screen.dart';
+import 'compra_protegida_screen.dart';
 import 'editar_publicacion_screen.dart';
 import 'perfil_publico_screen.dart';
 import 'soporte_chat_screen.dart';
 import '../widgets/net_image.dart';
+import '../widgets/reputacion_vendedor.dart';
 
 // ── Modelo para opciones de compartir (fácil de extender) ─────────────────
 class _OpcionCompartir {
@@ -64,6 +66,10 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   int _imgPagina = 0;
   late PageController _imgPageController;
 
+  // Reputación del vendedor (estrellas junto al nombre)
+  double _promedioVendedor = 0;
+  int _totalReviewsVendedor = 0;
+
   @override
   void initState() {
     super.initState();
@@ -72,6 +78,18 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     _stockController   = TextEditingController(text: widget.producto['stock']?.toString() ?? '');
     _codigoController  = TextEditingController(text: widget.producto['codigo_universal']?.toString() ?? '');
     _cargarSesion();
+    _cargarReputacionVendedor();
+  }
+
+  Future<void> _cargarReputacionVendedor() async {
+    final vendedorId = widget.producto["user_id"] as int?;
+    if (vendedorId == null) return;
+    final rep = await ApiService.obtenerReputacion(vendedorId);
+    if (!mounted) return;
+    setState(() {
+      _promedioVendedor = (rep['promedio'] as num?)?.toDouble() ?? 0;
+      _totalReviewsVendedor = (rep['total_reviews'] as num?)?.toInt() ?? 0;
+    });
   }
 
   @override
@@ -1052,6 +1070,49 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     );
   }
 
+  // ── Talla del paquete: badge compacto sobre la esquina de la foto ────────
+  // Reemplaza la tarjeta grande de "dimensiones estimadas" (se sentía muy
+  // invasiva) por una sola etiqueta chica, igual que "Principal"/"Nueva" en
+  // otras pantallas.
+  Widget _tallaPaqueteBadge(dynamic dimensiones, bool esInvitado) {
+    final tieneDimensiones = dimensiones != null &&
+        dimensiones.toString().isNotEmpty &&
+        dimensiones.toString() != "No determinado";
+    if (!tieneDimensiones) return const SizedBox.shrink();
+
+    return Positioned(
+      bottom: 10,
+      right: 12,
+      child: GestureDetector(
+        onTap: esInvitado ? _abrirRegistroModal : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+          decoration: BoxDecoration(
+            color: AppColors.carbon.withOpacity(0.78),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                esInvitado ? Icons.lock_outline_rounded : Icons.straighten_rounded,
+                size: 12, color: Colors.white,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                esInvitado ? "Talla del paquete" : dimensiones.toString(),
+                style: const TextStyle(
+                    fontSize: 11,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // ── BUILD ──────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
@@ -1142,24 +1203,29 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
             if (imagenes.length > 1)
               Column(
                 children: [
-                  AspectRatio(
-                    aspectRatio: 1,
-                    child: PageView.builder(
-                      controller: _imgPageController,
-                      itemCount: imagenes.length,
-                      onPageChanged: (i) =>
-                          setState(() => _imgPagina = i),
-                      itemBuilder: (ctx, i) => GestureDetector(
-                        onTap: () => _verFotoCompleta(imagenes, i),
-                        child: ColoredBox(
-                          color: Colors.white,
-                          child: NetImage(
-                            "${ApiService.baseUrl}${imagenes[i]}",
-                            fit: BoxFit.contain,
+                  Stack(
+                    children: [
+                      AspectRatio(
+                        aspectRatio: 1,
+                        child: PageView.builder(
+                          controller: _imgPageController,
+                          itemCount: imagenes.length,
+                          onPageChanged: (i) =>
+                              setState(() => _imgPagina = i),
+                          itemBuilder: (ctx, i) => GestureDetector(
+                            onTap: () => _verFotoCompleta(imagenes, i),
+                            child: ColoredBox(
+                              color: Colors.white,
+                              child: NetImage(
+                                "${ApiService.baseUrl}${imagenes[i]}",
+                                fit: BoxFit.contain,
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                      _tallaPaqueteBadge(dimensiones, esInvitado),
+                    ],
                   ),
                   // Dots de paginación
                   Container(
@@ -1187,18 +1253,23 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                 ],
               )
             else
-              GestureDetector(
-                onTap: () => _verFotoCompleta(imagenes, 0),
-                child: AspectRatio(
-                  aspectRatio: 1,
-                  child: ColoredBox(
-                    color: Colors.white,
-                    child: NetImage(
-                      "${ApiService.baseUrl}${imagenes.isNotEmpty ? imagenes[0] : ''}",
-                      fit: BoxFit.contain,
+              Stack(
+                children: [
+                  GestureDetector(
+                    onTap: () => _verFotoCompleta(imagenes, 0),
+                    child: AspectRatio(
+                      aspectRatio: 1,
+                      child: ColoredBox(
+                        color: Colors.white,
+                        child: NetImage(
+                          "${ApiService.baseUrl}${imagenes.isNotEmpty ? imagenes[0] : ''}",
+                          fit: BoxFit.contain,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  _tallaPaqueteBadge(dimensiones, esInvitado),
+                ],
               ),
 
             Padding(
@@ -1245,6 +1316,12 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                   color: condicion == 'nuevo'
                                       ? const Color(0xFF34C759)
                                       : Colors.orange,
+                                  shadows: const [
+                                    Shadow(
+                                        color: Colors.black26,
+                                        blurRadius: 1.5,
+                                        offset: Offset(0, 0.4)),
+                                  ],
                                 ),
                               ),
                             ],
@@ -1266,6 +1343,12 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.primary,
+                                shadows: [
+                                  Shadow(
+                                      color: Colors.black26,
+                                      blurRadius: 1.5,
+                                      offset: Offset(0, 0.4)),
+                                ],
                               ),
                             ),
                           ),
@@ -1369,6 +1452,13 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                               size: 14,
                               color: AppColors.carbon.withOpacity(0.5)),
                         ],
+                        if (_totalReviewsVendedor > 0) ...[
+                          const SizedBox(width: 8),
+                          EstrellasResumen(
+                            promedio: _promedioVendedor,
+                            totalReviews: _totalReviewsVendedor,
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -1414,88 +1504,55 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-                  // Dimensiones (usuarios registrados)
-                  if (!esInvitado &&
-                      dimensiones != null &&
-                      dimensiones.toString().isNotEmpty &&
-                      dimensiones.toString() != "No determinado")
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: AppColors.divider, width: 0.5),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.straighten_rounded,
-                              size: 18, color: AppColors.grayMid),
-                          const SizedBox(width: 10),
-                          Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                "Dimensiones estimadas",
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.grayMid,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                dimensiones.toString(),
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  color: AppColors.textPrimary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  if (esInvitado &&
-                      dimensiones != null &&
-                      dimensiones.toString().isNotEmpty &&
-                      dimensiones.toString() != "No determinado")
-                    GestureDetector(
-                      onTap: _abrirRegistroModal,
-                      child: Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.only(bottom: 16),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppColors.background,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: AppColors.divider, width: 0.5),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.lock_outline_rounded,
-                                size: 18, color: AppColors.grayMid),
-                            SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                "Regístrate para ver las dimensiones del producto",
-                                style: TextStyle(
-                                    fontSize: 13,
-                                    color: AppColors.grayMid),
-                              ),
+                  // Devolución gratis + Compra protegida
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: const [
+                            Icon(Icons.assignment_return_outlined,
+                                size: 15, color: AppColors.grayMid),
+                            SizedBox(width: 5),
+                            Flexible(
+                              child: Text("Devolución gratis",
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary,
+                                      fontWeight: FontWeight.w500)),
                             ),
                           ],
                         ),
                       ),
-                    ),
+                      GestureDetector(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const CompraProtegidaScreen()),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.verified_user_outlined,
+                                size: 15, color: AppColors.primary),
+                            SizedBox(width: 5),
+                            Text("Compra protegida",
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.w600,
+                                    decoration: TextDecoration.underline)),
+                            SizedBox(width: 2),
+                            Icon(Icons.chevron_right_rounded,
+                                size: 15, color: AppColors.primary),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
 
                   // Información adicional — solo lectura, visible para
                   // compradores/otros usuarios (el dueño la edita más abajo).

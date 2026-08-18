@@ -92,9 +92,11 @@ def obtener_mis_compras(user_id: int):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("""
-        SELECT o.*, uc.nombre AS nombre_vendedor, uc.foto_url AS foto_vendedor
+        SELECT o.*, uc.nombre AS nombre_vendedor, uc.foto_url AS foto_vendedor,
+               CASE WHEN r.orden_id IS NOT NULL THEN 1 ELSE 0 END AS ya_calificado
         FROM ordenes o
         LEFT JOIN users uc ON o.vendedor_id = uc.id
+        LEFT JOIN reviews r ON r.orden_id = o.id
         WHERE o.comprador_id = ?
         ORDER BY o.created_at DESC
     """, (user_id,))
