@@ -117,6 +117,7 @@ from database.reviews import (
     init_reviews_db,
     guardar_review,
     obtener_reviews_vendedor,
+    obtener_reviews_vendedor_agrupadas,
     ya_califico_orden,
 )
 
@@ -969,6 +970,13 @@ def calificar(review: Review):
 @app.get("/reputacion/{vendedor_id}")
 def reputacion_vendedor(vendedor_id: int):
     return obtener_reviews_vendedor(vendedor_id)
+
+
+@app.get("/vendedores/{vendedor_id}/evaluaciones")
+def evaluaciones_vendedor_muro(vendedor_id: int):
+    """Evaluaciones del vendedor agrupadas por producto, para el "muro" de
+    reseñas (se accede tocando su calificación en cualquier publicación)."""
+    return {"grupos": obtener_reviews_vendedor_agrupadas(vendedor_id)}
 
 
 @app.get("/ordenes/{orden_id}/calificacion")
