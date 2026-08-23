@@ -71,6 +71,24 @@ class CompraProtegidaScreen extends StatelessWidget {
                   'plazo se extiende a 90 días.',
             ),
             _seccion(
+              icono: Icons.local_shipping_rounded,
+              titulo: 'Devolución gratis: ¿quién paga el envío?',
+              cuerpo:
+                  'Depende del motivo de la devolución:\n\n'
+                  '• Te arrepentiste de la compra (derecho a retracto): el '
+                  'envío de vuelta corre por tu cuenta, como comprador. Es '
+                  'justo — el vendedor y el repartidor ya cumplieron su '
+                  'parte cuando te llegó el producto en buen estado.\n\n'
+                  '• El producto llegó defectuoso, incompleto o distinto a '
+                  'lo publicado: el envío de vuelta lo paga el vendedor, '
+                  'sin costo para ti.\n\n'
+                  'En ambos casos, quien haga el viaje de devolución recibe '
+                  'su pago completo — valoramos el trabajo de nuestros '
+                  'repartidores, así que un viaje ejecutado siempre se paga, '
+                  'nunca se descuenta de su bolsillo aunque la devolución '
+                  'sea gratis para ti.',
+            ),
+            _seccion(
               icono: Icons.build_outlined,
               titulo: 'Garantía legal (6 meses)',
               cuerpo:
