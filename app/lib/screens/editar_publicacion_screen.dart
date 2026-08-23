@@ -24,6 +24,9 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
   late TextEditingController _tituloCtrl;
   late TextEditingController _descCtrl;
   late TextEditingController _precioCtrl;
+  late TextEditingController _skuCtrl;
+  late TextEditingController _stockCtrl;
+  late TextEditingController _codigoCtrl;
   bool _guardando       = false;
   final _picker         = ImagePicker();
 
@@ -45,6 +48,9 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
     _tituloCtrl = TextEditingController(text: widget.producto['titulo']?.toString() ?? '');
     _descCtrl   = TextEditingController(text: widget.producto['descripcion']?.toString() ?? '');
     _precioCtrl = TextEditingController(text: widget.producto['precio']?.toString() ?? '');
+    _skuCtrl    = TextEditingController(text: widget.producto['sku']?.toString() ?? '');
+    _stockCtrl  = TextEditingController(text: widget.producto['stock']?.toString() ?? '');
+    _codigoCtrl = TextEditingController(text: widget.producto['codigo_universal']?.toString() ?? '');
     _pageCtrl   = PageController();
 
     _condicion     = widget.producto['condicion'] as String? ?? 'nuevo';
@@ -68,6 +74,9 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
     _tituloCtrl.dispose();
     _descCtrl.dispose();
     _precioCtrl.dispose();
+    _skuCtrl.dispose();
+    _stockCtrl.dispose();
+    _codigoCtrl.dispose();
     _pageCtrl.dispose();
     super.dispose();
   }
@@ -108,8 +117,9 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
     setState(() => _guardando = true);
 
     try {
+      final pubId = widget.producto['id'] as int;
       await ApiService.editarPublicacion(
-        id:            widget.producto['id'] as int,
+        id:            pubId,
         titulo:        _tituloCtrl.text.trim(),
         descripcion:   _descCtrl.text.trim(),
         precio:        double.parse(_precioCtrl.text.trim()),
@@ -117,6 +127,16 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
         fotosNuevas:   _fotosNuevas,
         condicion:     _condicion,
         aceptaOfertas: _aceptaOfertas,
+      );
+      // La información adicional (SKU/stock/código) se guarda por su propio
+      // endpoint — un solo botón "Guardar cambios" hace las dos cosas, en
+      // vez de tener un botón de guardado aparte como antes.
+      await ApiService.guardarInfoAdicional(
+        pubId,
+        sku: _skuCtrl.text.trim().isEmpty ? null : _skuCtrl.text.trim(),
+        stock: int.tryParse(_stockCtrl.text.trim()),
+        codigoUniversal:
+            _codigoCtrl.text.trim().isEmpty ? null : _codigoCtrl.text.trim(),
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -334,6 +354,24 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
 
                   // ── Acepta ofertas ─────────────────────────────────────
                   _buildAceptaOfertas(),
+                  const SizedBox(height: 20),
+
+                  // ── Información adicional (opcional) ────────────────────
+                  const Text('Información adicional (opcional)',
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary)),
+                  const SizedBox(height: 8),
+                  _campo(label: 'Código universal (UPC/EAN)', ctrl: _codigoCtrl),
+                  const SizedBox(height: 12),
+                  _campo(label: 'SKU', ctrl: _skuCtrl),
+                  const SizedBox(height: 12),
+                  _campo(
+                    label: 'Stock disponible',
+                    ctrl: _stockCtrl,
+                    teclado: TextInputType.number,
+                  ),
                   const SizedBox(height: 28),
 
                   // ── Botón guardar (también al fondo) ───────────────────

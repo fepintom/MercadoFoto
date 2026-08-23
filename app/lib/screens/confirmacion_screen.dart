@@ -11,6 +11,7 @@ import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/space_invaders_widget.dart';
+import '../widgets/tipo_publicacion_selector.dart';
 import '../widgets/vista_previa_publicacion.dart';
 import 'mis_publicaciones_screen.dart';
 
@@ -115,6 +116,12 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
   String _condicion = 'nuevo';
   bool _aceptaOfertas = true;
 
+  // ── Tipo de publicación: exprés (rápida) o full (con inventario) ───────
+  String _tipoPublicacion = 'expres';
+  final _skuCtrl    = TextEditingController();
+  final _stockCtrl  = TextEditingController();
+  final _codigoCtrl = TextEditingController();
+
   // ── Talla de envío ────────────────────────────────────────────────────
   String _tallaId = 'S';
   final _altoCtrl  = TextEditingController();
@@ -181,6 +188,9 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
     _largoCtrl.dispose();
     _anchoCtrl.dispose();
     _pesoCtrl.dispose();
+    _skuCtrl.dispose();
+    _stockCtrl.dispose();
+    _codigoCtrl.dispose();
     super.dispose();
   }
 
@@ -485,6 +495,18 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
       request.fields["dimensiones"]  = _getDimensiones();
       request.fields["condicion"]    = _condicion;
       request.fields["acepta_ofertas"] = _aceptaOfertas ? "1" : "0";
+      request.fields["tipo_publicacion"] = _tipoPublicacion;
+      if (_tipoPublicacion == 'full') {
+        if (_skuCtrl.text.trim().isNotEmpty) {
+          request.fields["sku"] = _skuCtrl.text.trim();
+        }
+        if (_stockCtrl.text.trim().isNotEmpty) {
+          request.fields["stock"] = _stockCtrl.text.trim();
+        }
+        if (_codigoCtrl.text.trim().isNotEmpty) {
+          request.fields["codigo_universal"] = _codigoCtrl.text.trim();
+        }
+      }
       if (_categoria.isNotEmpty)    request.fields["categoria"]    = _categoria;
       if (_subcategoria.isNotEmpty) request.fields["subcategoria"] = _subcategoria;
       if (_requiereTallaProducto && _tallasProducto.isNotEmpty) {
@@ -1646,6 +1668,19 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                       // Condición + ofertas
                       _buildCondicion(),
                       _buildAceptaOfertas(),
+
+                      // Tipo de publicación (exprés / full)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: TipoPublicacionSelector(
+                          tipo: _tipoPublicacion,
+                          onChanged: (v) =>
+                              setState(() => _tipoPublicacion = v),
+                          skuCtrl: _skuCtrl,
+                          stockCtrl: _stockCtrl,
+                          codigoCtrl: _codigoCtrl,
+                        ),
+                      ),
 
                       // Categoría detectada
                       if (_categoria.isNotEmpty)

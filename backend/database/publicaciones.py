@@ -45,6 +45,7 @@ def init_publicaciones_db():
         "stock INTEGER",
         "codigo_universal TEXT",
         "tallas TEXT",
+        "tipo_publicacion TEXT DEFAULT 'expres'",
     ]:
         try:
             cursor.execute(f"ALTER TABLE publicaciones ADD COLUMN {col}")
@@ -76,6 +77,10 @@ def guardar_publicacion(
     condicion=None,
     acepta_ofertas=1,
     tallas=None,
+    tipo_publicacion='expres',
+    sku=None,
+    stock=None,
+    codigo_universal=None,
 ):
 
     conn = sqlite3.connect(DB)
@@ -98,9 +103,13 @@ def guardar_publicacion(
             delivery_id,
             condicion,
             acepta_ofertas,
-            tallas
+            tallas,
+            tipo_publicacion,
+            sku,
+            stock,
+            codigo_universal
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         titulo,
         descripcion,
@@ -118,6 +127,10 @@ def guardar_publicacion(
         condicion or 'nuevo',
         acepta_ofertas,
         tallas,
+        tipo_publicacion or 'expres',
+        sku,
+        stock,
+        codigo_universal,
     ))
 
     conn.commit()
@@ -159,7 +172,8 @@ def obtener_publicaciones():
         p.sku,
         p.stock,
         p.codigo_universal,
-        p.tallas
+        p.tallas,
+        p.tipo_publicacion
     FROM publicaciones p
     LEFT JOIN users u
     ON p.user_id = u.id
@@ -200,6 +214,7 @@ def obtener_publicaciones():
             "stock": row[18],
             "codigo_universal": row[19],
             "tallas": row[20],
+            "tipo_publicacion": row[21],
         })
 
     return publicaciones
@@ -271,13 +286,16 @@ def obtener_vendedor_publicacion(publicacion_id):
 # PRODUCTOS SIMILARES
 # --------------------------------------------------
 
-def obtener_productos_similares(publicacion_id):
+def obtener_productos_similares(publicacion_id, limite=12):
+    """Otras publicaciones disponibles de la misma categoría (idealmente la
+    misma subcategoría), para mostrar como "también te puede interesar" al
+    final del detalle de un producto sin salir de esa pantalla."""
 
     conn = sqlite3.connect(DB)
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT titulo
+        SELECT titulo, categoria, subcategoria
         FROM publicaciones
         WHERE id = ?
     """, (publicacion_id,))
@@ -288,31 +306,60 @@ def obtener_productos_similares(publicacion_id):
         conn.close()
         return []
 
-    titulo = row[0]
-    palabra = titulo.split(" ")[0]
+    titulo, categoria, subcategoria = row
+    rows = []
 
-    cursor.execute("""
-        SELECT id, titulo, precio, imagen_url
-        FROM publicaciones
-        WHERE titulo LIKE ?
-        AND id != ?
-        LIMIT 10
-    """, (f"%{palabra}%", publicacion_id))
+    if subcategoria:
+        cursor.execute("""
+            SELECT id, titulo, precio, imagen_url, categoria, subcategoria, condicion
+            FROM publicaciones
+            WHERE estado = 'disponible' AND id != ? AND subcategoria = ?
+            ORDER BY id DESC
+            LIMIT ?
+        """, (publicacion_id, subcategoria, limite))
+        rows = cursor.fetchall()
 
-    rows = cursor.fetchall()
+    # Si la subcategoría no alcanza el límite, se completa con la categoría.
+    if len(rows) < limite and categoria:
+        vistos = {r[0] for r in rows}
+        cursor.execute("""
+            SELECT id, titulo, precio, imagen_url, categoria, subcategoria, condicion
+            FROM publicaciones
+            WHERE estado = 'disponible' AND id != ? AND categoria = ?
+            ORDER BY id DESC
+            LIMIT ?
+        """, (publicacion_id, categoria, limite))
+        for r in cursor.fetchall():
+            if r[0] not in vistos and len(rows) < limite:
+                rows.append(r)
+
+    # Última opción: sin categoría registrada, se aproxima por palabra del
+    # título (comportamiento anterior), para no dejar la sección vacía.
+    if not rows:
+        palabra = titulo.split(" ")[0] if titulo else ""
+        if palabra:
+            cursor.execute("""
+                SELECT id, titulo, precio, imagen_url, categoria, subcategoria, condicion
+                FROM publicaciones
+                WHERE estado = 'disponible' AND titulo LIKE ? AND id != ?
+                LIMIT ?
+            """, (f"%{palabra}%", publicacion_id, limite))
+            rows = cursor.fetchall()
+
     conn.close()
 
-    data = []
-
-    for r in rows:
-        data.append({
+    return [
+        {
             "id": r[0],
             "titulo": r[1],
             "precio": r[2],
             "imagen_url": r[3],
-        })
-
-    return data
+            "categoria": r[4],
+            "subcategoria": r[5],
+            "condicion": r[6],
+        }
+        for r in rows
+    ]
 
 
 # --------------------------------------------------
@@ -367,7 +414,7 @@ def obtener_publicacion_por_id(publicacion_id):
         CASE WHEN u.nombre IS NOT NULL AND TRIM(u.nombre) <> ''
              THEN u.nombre ELSE 'Usuario invitado' END,
         p.lat, p.lng, p.condicion, p.acepta_ofertas,
-        p.sku, p.stock, p.codigo_universal, p.tallas
+        p.sku, p.stock, p.codigo_universal, p.tallas, p.tipo_publicacion
     FROM publicaciones p
     LEFT JOIN users u ON p.user_id = u.id
     WHERE p.id = ?
@@ -391,6 +438,7 @@ def obtener_publicacion_por_id(publicacion_id):
         "condicion": row[15], "acepta_ofertas": row[16],
         "sku": row[17], "stock": row[18],
         "codigo_universal": row[19], "tallas": row[20],
+        "tipo_publicacion": row[21],
     }
 
 
@@ -559,3 +607,4 @@ def obtener_publicaciones_por_usuario(user_id: int):
         }
         for r in rows
     ]
+

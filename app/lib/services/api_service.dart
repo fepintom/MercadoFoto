@@ -348,6 +348,20 @@ class ApiService {
     return null;
   }
 
+  static Future<List<dynamic>> obtenerProductosRelacionados(
+      int publicacionId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/recomendados/$publicacionId'),
+      );
+      if (response.statusCode == 200) {
+        return List<dynamic>.from(
+            jsonDecode(utf8.decode(response.bodyBytes)));
+      }
+    } catch (_) {}
+    return [];
+  }
+
   // ──────────────────────────────────────────────
   // PAGOS / MERCADOPAGO
   // ──────────────────────────────────────────────

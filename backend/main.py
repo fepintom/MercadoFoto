@@ -625,6 +625,10 @@ async def publicar_producto(
     condicion: Optional[str] = Form("nuevo"),
     acepta_ofertas: int = Form(1),
     tallas: Optional[str] = Form(None),
+    tipo_publicacion: Optional[str] = Form("expres"),
+    sku: Optional[str] = Form(None),
+    stock: Optional[int] = Form(None),
+    codigo_universal: Optional[str] = Form(None),
 ):
     if not guest_id and not user_id:
         raise HTTPException(
@@ -655,6 +659,14 @@ async def publicar_producto(
         if not categoria:
             categoria, subcategoria = detectar_categoria(titulo)
 
+        # Los datos de inventario (SKU/stock/código) solo aplican a una
+        # publicación "full" — en "expres" se ignoran aunque llegaran.
+        tipo_pub = (tipo_publicacion or "expres").lower()
+        if tipo_pub != "full":
+            sku = None
+            stock = None
+            codigo_universal = None
+
         guardar_publicacion(
             titulo,
             descripcion,
@@ -672,6 +684,10 @@ async def publicar_producto(
             condicion,
             acepta_ofertas,
             tallas,
+            tipo_publicacion=tipo_pub,
+            sku=sku,
+            stock=stock,
+            codigo_universal=codigo_universal,
         )
 
         return {

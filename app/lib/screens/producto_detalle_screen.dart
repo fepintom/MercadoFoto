@@ -52,14 +52,6 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   bool _toggleandoFavorito = false;
   bool _registrandoInteres = false;
   bool _comprando = false;
-  bool _campoSKU = false;
-  bool _campoStock = false;
-  bool _campoCodigo = false;
-  bool _guardandoInfoAdicional = false;
-
-  late TextEditingController _skuController;
-  late TextEditingController _stockController;
-  late TextEditingController _codigoController;
   final _ofertaController = TextEditingController();
 
   // Galería multi-imagen
@@ -70,15 +62,24 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   double _promedioVendedor = 0;
   int _totalReviewsVendedor = 0;
 
+  // Productos relacionados (misma categoría), al final de la publicación
+  List<dynamic> _relacionados = [];
+
   @override
   void initState() {
     super.initState();
     _imgPageController = PageController();
-    _skuController     = TextEditingController(text: widget.producto['sku']?.toString() ?? '');
-    _stockController   = TextEditingController(text: widget.producto['stock']?.toString() ?? '');
-    _codigoController  = TextEditingController(text: widget.producto['codigo_universal']?.toString() ?? '');
     _cargarSesion();
     _cargarReputacionVendedor();
+    _cargarRelacionados();
+  }
+
+  Future<void> _cargarRelacionados() async {
+    final pubId = widget.producto["id"] as int?;
+    if (pubId == null) return;
+    final rel = await ApiService.obtenerProductosRelacionados(pubId);
+    if (!mounted) return;
+    setState(() => _relacionados = rel);
   }
 
   Future<void> _cargarReputacionVendedor() async {
@@ -95,9 +96,6 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   @override
   void dispose() {
     _imgPageController.dispose();
-    _codigoController.dispose();
-    _skuController.dispose();
-    _stockController.dispose();
     _ofertaController.dispose();
     super.dispose();
   }
@@ -946,34 +944,159 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     );
   }
 
-  // ── GUARDAR INFO ADICIONAL ─────────────────────────────────────────────
-  Future<void> _guardarInfoAdicional() async {
-    final pubId = widget.producto['id'] as int?;
-    if (pubId == null) return;
-    setState(() => _guardandoInfoAdicional = true);
-    try {
-      await ApiService.guardarInfoAdicional(
-        pubId,
-        sku: _skuController.text.trim().isEmpty ? null : _skuController.text.trim(),
-        stock: int.tryParse(_stockController.text.trim()),
-        codigoUniversal: _codigoController.text.trim().isEmpty ? null : _codigoController.text.trim(),
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text("Información adicional guardada"),
-        backgroundColor: AppColors.carbon,
-        behavior: SnackBarBehavior.floating,
-      ));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text("Error al guardar: $e"),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-      ));
-    } finally {
-      if (mounted) setState(() => _guardandoInfoAdicional = false);
-    }
+  // ── Medios de pago aceptados ─────────────────────────────────────────────
+  // Íconos genéricos (no logos oficiales) para no reproducir marcas
+  // registradas de terceros; el color y la sigla bastan para que se
+  // reconozca cada medio.
+  Widget _mediosDePago() {
+    final medios = [
+      ('VISA', const Color(0xFF1A1F71)),
+      ('Mastercard', const Color(0xFFEB5424)),
+      ('Mercado Pago', const Color(0xFF009EE3)),
+      ('Webpay', const Color(0xFF2E3092)),
+      ('Transferencia', AppColors.carbon),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Medios de pago',
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: medios.map((m) {
+            return Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: m.$2.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: m.$2.withOpacity(0.25), width: 0.8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.credit_card_rounded, size: 14, color: m.$2),
+                  const SizedBox(width: 5),
+                  Text(m.$1,
+                      style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: m.$2)),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  // ── Productos relacionados (misma categoría) ────────────────────────────
+  Widget _productosRelacionados() {
+    if (_relacionados.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: const Text('También te puede interesar',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary)),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 190,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: _relacionados.length,
+              itemBuilder: (_, i) {
+                final p = _relacionados[i] as Map;
+                final imagenUrl = p['imagen_url']?.toString() ?? '';
+                final titulo = p['titulo']?.toString() ?? '';
+                final precio = p['precio'];
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProductoDetalleScreen(
+                          producto: Map<String, dynamic>.from(p),
+                        ),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: 130,
+                    margin: const EdgeInsets.only(right: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: AppColors.divider, width: 0.5),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(12)),
+                            child: imagenUrl.isNotEmpty
+                                ? NetImage(
+                                    "${ApiService.baseUrl}$imagenUrl",
+                                    width: double.infinity,
+                                    fit: BoxFit.contain,
+                                  )
+                                : Container(
+                                    color: AppColors.surface,
+                                    child: const Icon(Icons.image_outlined,
+                                        color: AppColors.grayMid),
+                                  ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 6),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(titulo,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary)),
+                              const SizedBox(height: 2),
+                              if (precio != null)
+                                Text(formatPrecio((precio as num).toDouble()),
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.primary)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // ── Fila de información adicional (solo lectura) ───────────────────────
@@ -1001,74 +1124,6 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     );
   }
 
-  // ── CAMPO EXPANDIBLE ───────────────────────────────────────────────────
-  Widget _campoExpandible({
-    required String titulo,
-    required bool abierto,
-    required VoidCallback toggle,
-    TextEditingController? controller,
-    TextInputType teclado = TextInputType.text,
-  }) {
-    return Column(
-      children: [
-        InkWell(
-          onTap: toggle,
-          borderRadius: BorderRadius.circular(8),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  titulo,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                Icon(
-                  abierto ? Icons.remove_rounded : Icons.add_rounded,
-                  color: AppColors.grayMid,
-                  size: 20,
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (abierto)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: TextField(
-              controller: controller,
-              keyboardType: teclado,
-              style: const TextStyle(
-                  fontSize: 14, color: AppColors.textPrimary),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: AppColors.background,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(
-                      color: AppColors.divider, width: 0.5),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(
-                      color: AppColors.divider, width: 0.5),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(
-                      color: AppColors.primary, width: 1.5),
-                ),
-              ),
-            ),
-          ),
-        const Divider(height: 1, thickness: 0.5),
-      ],
-    );
-  }
 
   // ── Talla del paquete: badge compacto sobre la esquina de la foto ────────
   // Reemplaza la tarjeta grande de "dimensiones estimadas" (se sentía muy
@@ -1504,6 +1559,11 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                     ),
                   ),
 
+                  const SizedBox(height: 20),
+
+                  // Medios de pago aceptados
+                  _mediosDePago(),
+
                   const SizedBox(height: 16),
 
                   // Devolución gratis + Compra protegida
@@ -1554,10 +1614,10 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Información adicional — solo lectura, visible para
-                  // compradores/otros usuarios (el dueño la edita más abajo).
-                  if (!esDueno &&
-                      (((widget.producto['sku']?.toString() ?? '').isNotEmpty) ||
+                  // Información adicional — siempre de solo lectura aquí.
+                  // El dueño la edita desde "Editar publicación" (un solo
+                  // lugar para editar, en vez de duplicar la edición aquí).
+                  if ((((widget.producto['sku']?.toString() ?? '').isNotEmpty) ||
                           widget.producto['stock'] != null ||
                           ((widget.producto['codigo_universal']?.toString() ?? '')
                               .isNotEmpty)))
@@ -1606,68 +1666,6 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                         ],
                       ),
                     ),
-
-                  // Info adicional — solo visible para el dueño
-                  if (esDueno) ...[
-                    const Text(
-                      "Información adicional",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    _campoExpandible(
-                      titulo: "Código universal (UPC/EAN)",
-                      abierto: _campoCodigo,
-                      controller: _codigoController,
-                      toggle: () =>
-                          setState(() => _campoCodigo = !_campoCodigo),
-                    ),
-                    _campoExpandible(
-                      titulo: "SKU",
-                      abierto: _campoSKU,
-                      controller: _skuController,
-                      toggle: () =>
-                          setState(() => _campoSKU = !_campoSKU),
-                    ),
-                    _campoExpandible(
-                      titulo: "Stock disponible",
-                      abierto: _campoStock,
-                      controller: _stockController,
-                      teclado: TextInputType.number,
-                      toggle: () =>
-                          setState(() => _campoStock = !_campoStock),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _guardandoInfoAdicional ? null : _guardarInfoAdicional,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.carbon,
-                          disabledBackgroundColor: AppColors.grayMid,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          elevation: 0,
-                        ),
-                        child: _guardandoInfoAdicional
-                            ? const SizedBox(
-                                width: 18, height: 18,
-                                child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2))
-                            : const Text("Guardar información adicional",
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600)),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
 
                   const SizedBox(height: 28),
 
@@ -2005,10 +2003,14 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                       ],
                     ),
 
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
+
+            // Productos relacionados: fuera del padding de 20px para que
+            // el carrusel horizontal pueda usar todo el ancho.
+            _productosRelacionados(),
           ],
         ),
       ),
