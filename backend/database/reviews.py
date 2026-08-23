@@ -128,3 +128,60 @@ def obtener_reviews_vendedor(vendedor_id):
         },
         "comentarios": comentarios,
     }
+
+
+def obtener_reviews_vendedor_agrupadas(vendedor_id):
+    """Evaluaciones del vendedor organizadas por producto (para el "muro"
+    de reseñas). Cada review se liga a su producto a través de
+    reviews.orden_id -> ordenes.publicacion_id. Las reviews antiguas sin
+    orden_id (o cuya orden ya no tenga publicacion_id, p.ej. servicios)
+    se agrupan aparte bajo "Otras reseñas"."""
+
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT r.estrellas, r.comentario, r.created_at, u.nombre,
+               o.publicacion_id, o.titulo, p.imagen_url
+        FROM reviews r
+        LEFT JOIN users u ON u.id = r.comprador_id
+        LEFT JOIN ordenes o ON o.id = r.orden_id
+        LEFT JOIN publicaciones p ON p.id = o.publicacion_id
+        WHERE r.vendedor_id = ?
+        ORDER BY r.created_at DESC
+    """, (vendedor_id,))
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    grupos = {}
+    orden_grupos = []
+
+    for r in rows:
+        (estrellas, comentario, fecha, nombre_comprador,
+         publicacion_id, titulo_orden, imagen_url) = r
+
+        if publicacion_id:
+            clave = f"pub_{publicacion_id}"
+            titulo = titulo_orden or "Producto"
+        else:
+            clave = "otras"
+            titulo = "Otras reseñas"
+
+        if clave not in grupos:
+            grupos[clave] = {
+                "publicacion_id": publicacion_id,
+                "titulo": titulo,
+                "imagen_url": imagen_url,
+                "evaluaciones": [],
+            }
+            orden_grupos.append(clave)
+
+        grupos[clave]["evaluaciones"].append({
+            "estrellas": estrellas,
+            "comentario": comentario,
+            "fecha": fecha,
+            "nombre_comprador": nombre_comprador or "Usuario",
+        })
+
+    return [grupos[c] for c in orden_grupos]

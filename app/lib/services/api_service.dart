@@ -1079,4 +1079,37 @@ class ApiService {
     } catch (_) {}
     return false;
   }
+
+  /// Evaluaciones del vendedor agrupadas por producto (pantalla "muro").
+  static Future<List<dynamic>> obtenerEvaluacionesVendedor(
+      int vendedorId) async {
+    try {
+      final res = await http
+          .get(Uri.parse('$baseUrl/vendedores/$vendedorId/evaluaciones'));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(res.bodyBytes));
+        return List<dynamic>.from(data['grupos'] ?? []);
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// Ubicación actual del usuario (lat/lng de su dirección principal),
+  /// usada para estimar tiempos de entrega en las publicaciones.
+  static Future<Map<String, dynamic>?> obtenerUbicacionUsuario(
+      int userId) async {
+    try {
+      final res =
+          await http.get(Uri.parse('$baseUrl/usuarios/$userId/ubicacion'));
+      if (res.statusCode == 200) {
+        final data = Map<String, dynamic>.from(
+            jsonDecode(utf8.decode(res.bodyBytes)));
+        if (data.isEmpty || data['lat'] == null || data['lng'] == null) {
+          return null;
+        }
+        return data;
+      }
+    } catch (_) {}
+    return null;
+  }
 }

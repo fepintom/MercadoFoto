@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -14,6 +15,7 @@ import '../widgets/registro_form_widget.dart';
 import 'chat_screen.dart';
 import 'compra_protegida_screen.dart';
 import 'editar_publicacion_screen.dart';
+import 'evaluaciones_vendedor_screen.dart';
 import 'perfil_publico_screen.dart';
 import 'soporte_chat_screen.dart';
 import '../widgets/net_image.dart';
@@ -65,6 +67,9 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   // Productos relacionados (misma categoría), al final de la publicación
   List<dynamic> _relacionados = [];
 
+  // Estimación de entrega según distancia comprador-vendedor
+  String? _mensajeEntrega;
+
   @override
   void initState() {
     super.initState();
@@ -111,7 +116,43 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
         if (!mounted) return;
         setState(() => _esFavorito = fav);
       }
+      _cargarEstimacionEntrega(id);
     }
+  }
+
+  // ── Estimación de entrega según distancia comprador-vendedor ────────────
+  // Usa la ubicación principal guardada del comprador (no pide GPS en vivo)
+  // y la ubicación de la publicación. < 20 km: puede recibirlo hoy;
+  // >= 20 km: a partir de mañana. Si falta algún dato, no se muestra nada.
+  Future<void> _cargarEstimacionEntrega(int compradorId) async {
+    final pubLat = (widget.producto["lat"] as num?)?.toDouble();
+    final pubLng = (widget.producto["lng"] as num?)?.toDouble();
+    if (pubLat == null || pubLng == null) return;
+
+    final ubicacion = await ApiService.obtenerUbicacionUsuario(compradorId);
+    if (ubicacion == null || !mounted) return;
+    final compradorLat = (ubicacion["lat"] as num?)?.toDouble();
+    final compradorLng = (ubicacion["lng"] as num?)?.toDouble();
+    if (compradorLat == null || compradorLng == null) return;
+
+    final distanciaKm =
+        _distanciaKm(compradorLat, compradorLng, pubLat, pubLng);
+    setState(() {
+      _mensajeEntrega = distanciaKm < 20
+          ? "Puedes recibirlo hoy"
+          : "Puedes recibirlo a partir de mañana";
+    });
+  }
+
+  double _distanciaKm(double lat1, double lng1, double lat2, double lng2) {
+    const radioTierraKm = 6371.0;
+    double rad(double deg) => deg * (3.141592653589793 / 180);
+    final dLat = rad(lat2 - lat1);
+    final dLng = rad(lng2 - lng1);
+    final a = (sin(dLat / 2) * sin(dLat / 2)) +
+        cos(rad(lat1)) * cos(rad(lat2)) * (sin(dLng / 2) * sin(dLng / 2));
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return radioTierraKm * c;
   }
 
   Future<void> _toggleFavorito() async {
@@ -944,18 +985,120 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     );
   }
 
+  // ── "Devolución gratis" — resumen corto con link a la política completa ──
+  void _mostrarDevolucionGratis() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(22, 22, 22, 30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.assignment_return_outlined,
+                      size: 20, color: AppColors.primary),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text('Devolución gratis',
+                      style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _puntoDevolucion(
+                '10 días para arrepentirte', 'sin dar explicaciones, desde que recibes el producto.'),
+            _puntoDevolucion('¿Te arrepentiste?',
+                'el envío de vuelta lo pagas tú, como comprador.'),
+            _puntoDevolucion('¿Llegó con defectos?',
+                'el envío de vuelta lo paga el vendedor, sin costo para ti.'),
+            _puntoDevolucion('Nuestros repartidores siempre cobran',
+                'un viaje ejecutado se paga completo, sin importar quién asuma el costo del envío.'),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const CompraProtegidaScreen()),
+                  );
+                },
+                icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                label: const Text('Ver política completa'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _puntoDevolucion(String titulo, String detalle) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 4),
+            child: Icon(Icons.check_circle_rounded,
+                size: 14, color: Color(0xFF34C759)),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(
+                    fontSize: 13, height: 1.4, color: AppColors.textPrimary),
+                children: [
+                  TextSpan(
+                      text: '$titulo: ',
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                  TextSpan(text: detalle),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Medios de pago aceptados ─────────────────────────────────────────────
-  // Íconos genéricos (no logos oficiales) para no reproducir marcas
-  // registradas de terceros; el color y la sigla bastan para que se
-  // reconozca cada medio.
+  // Mini-tarjetas con la paleta de color de cada red y una marca gráfica
+  // propia (no se reproduce el archivo/vector oficial de ninguna marca):
+  // Mastercard usa sus dos círculos superpuestos —un símbolo genérico y muy
+  // reconocible—, Visa un rótulo en itálica sobre su azul característico,
+  // y Mercado Pago / Webpay su color de marca con su propio ícono.
+  // "Transferencia" se sacó de esta lista a pedido — no es un medio con
+  // logo propio y no aporta a esta sección.
   Widget _mediosDePago() {
-    final medios = [
-      ('VISA', const Color(0xFF1A1F71)),
-      ('Mastercard', const Color(0xFFEB5424)),
-      ('Mercado Pago', const Color(0xFF009EE3)),
-      ('Webpay', const Color(0xFF2E3092)),
-      ('Transferencia', AppColors.carbon),
-    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -968,31 +1111,125 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: medios.map((m) {
-            return Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: m.$2.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: m.$2.withOpacity(0.25), width: 0.8),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.credit_card_rounded, size: 14, color: m.$2),
-                  const SizedBox(width: 5),
-                  Text(m.$1,
-                      style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
-                          color: m.$2)),
-                ],
-              ),
-            );
-          }).toList(),
+          children: [
+            _tarjetaVisa(),
+            _tarjetaMastercard(),
+            _tarjetaMercadoPago(),
+            _tarjetaWebpay(),
+          ],
         ),
       ],
+    );
+  }
+
+  BoxDecoration _decoracionMedioPago(Color color) => BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [color, Color.lerp(color, Colors.black, 0.25)!],
+        ),
+        boxShadow: [
+          BoxShadow(
+              color: color.withOpacity(0.25),
+              blurRadius: 4,
+              offset: const Offset(0, 2)),
+        ],
+      );
+
+  Widget _tarjetaVisa() {
+    const azulVisa = Color(0xFF1A1F71);
+    return Container(
+      width: 52,
+      height: 32,
+      alignment: Alignment.center,
+      decoration: _decoracionMedioPago(azulVisa),
+      child: const Text('VISA',
+          style: TextStyle(
+              fontSize: 13,
+              fontStyle: FontStyle.italic,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.5,
+              color: Colors.white)),
+    );
+  }
+
+  Widget _tarjetaMastercard() {
+    return Container(
+      width: 52,
+      height: 32,
+      alignment: Alignment.center,
+      decoration: _decoracionMedioPago(const Color(0xFF232323)),
+      child: SizedBox(
+        width: 30,
+        height: 18,
+        child: Stack(
+          children: [
+            Positioned(
+              left: 0,
+              child: Container(
+                width: 18,
+                height: 18,
+                decoration: const BoxDecoration(
+                    color: Color(0xFFEB001B), shape: BoxShape.circle),
+              ),
+            ),
+            Positioned(
+              right: 0,
+              child: Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                    color: const Color(0xFFFF5F00).withOpacity(0.92),
+                    shape: BoxShape.circle),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _tarjetaMercadoPago() {
+    const azulMP = Color(0xFF00AEEF);
+    return Container(
+      width: 68,
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      decoration: _decoracionMedioPago(azulMP),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.front_hand_rounded, size: 13, color: Color(0xFFFFE600)),
+          SizedBox(width: 4),
+          Flexible(
+            child: Text('Mercado\nPago',
+                textAlign: TextAlign.left,
+                style: TextStyle(
+                    fontSize: 8.5,
+                    height: 1.05,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _tarjetaWebpay() {
+    const azulWebpay = Color(0xFF2E3092);
+    return Container(
+      width: 58,
+      height: 32,
+      alignment: Alignment.center,
+      decoration: _decoracionMedioPago(azulWebpay),
+      child: const Text('webpay',
+          style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.2,
+              color: Colors.white)),
     );
   }
 
@@ -1509,9 +1746,25 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                         ],
                         if (_totalReviewsVendedor > 0) ...[
                           const SizedBox(width: 8),
-                          EstrellasResumen(
-                            promedio: _promedioVendedor,
-                            totalReviews: _totalReviewsVendedor,
+                          GestureDetector(
+                            onTap: () {
+                              final vendedorId =
+                                  widget.producto["user_id"] as int?;
+                              if (vendedorId == null) return;
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => EvaluacionesVendedorScreen(
+                                    vendedorId: vendedorId,
+                                    nombreVendedor: vendedor,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: EstrellasResumen(
+                              promedio: _promedioVendedor,
+                              totalReviews: _totalReviewsVendedor,
+                            ),
                           ),
                         ],
                       ],
@@ -1545,6 +1798,23 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                     ),
                   ),
 
+                  if (_mensajeEntrega != null) ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.bolt_rounded,
+                            size: 15, color: Color(0xFF34C759)),
+                        const SizedBox(width: 5),
+                        Text(_mensajeEntrega!,
+                            style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF34C759))),
+                      ],
+                    ),
+                  ],
+
                   const SizedBox(height: 20),
                   const Divider(height: 1, thickness: 0.5),
                   const SizedBox(height: 16),
@@ -1570,19 +1840,29 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                   Row(
                     children: [
                       Expanded(
-                        child: Row(
-                          children: const [
-                            Icon(Icons.assignment_return_outlined,
-                                size: 15, color: AppColors.grayMid),
-                            SizedBox(width: 5),
-                            Flexible(
-                              child: Text("Devolución gratis",
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.textSecondary,
-                                      fontWeight: FontWeight.w500)),
-                            ),
-                          ],
+                        child: GestureDetector(
+                          onTap: _mostrarDevolucionGratis,
+                          child: const Row(
+                            children: [
+                              Icon(Icons.assignment_return_outlined,
+                                  size: 15, color: AppColors.grayMid),
+                              SizedBox(width: 5),
+                              Flexible(
+                                child: Text("Devolución gratis",
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.textSecondary,
+                                        fontWeight: FontWeight.w500,
+                                        decoration:
+                                            TextDecoration.underline,
+                                        decorationColor:
+                                            AppColors.grayMid)),
+                              ),
+                              SizedBox(width: 2),
+                              Icon(Icons.chevron_right_rounded,
+                                  size: 15, color: AppColors.grayMid),
+                            ],
+                          ),
                         ),
                       ),
                       GestureDetector(
