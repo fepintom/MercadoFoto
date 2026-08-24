@@ -6,6 +6,11 @@ import '../theme/app_theme.dart';
 // Para usar junto al nombre del vendedor en una publicación (detalle,
 // tarjeta, etc.). No hace ninguna llamada de red: recibe el promedio y el
 // total ya cargados por la pantalla que la usa.
+//
+// Siempre se muestra (con o sin evaluaciones) — es importante que el
+// comprador pueda ver de un vistazo si el vendedor ya ha sido evaluado.
+// Sin evaluaciones: 5 estrellas sin pintar + aviso explícito. Con
+// evaluaciones: estrellas pintadas de amarillo según el promedio.
 class EstrellasResumen extends StatelessWidget {
   final double promedio;
   final int totalReviews;
@@ -18,17 +23,39 @@ class EstrellasResumen extends StatelessWidget {
     this.size = 13,
   });
 
+  static const Color _amarilloEstrella = Color(0xFFFFB800);
+
   @override
   Widget build(BuildContext context) {
     if (totalReviews == 0) {
-      return Text('Sin calificaciones aún',
-          style: TextStyle(fontSize: size - 1, color: AppColors.grayMid));
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ...List.generate(
+              5,
+              (i) => Icon(Icons.star_outline_rounded,
+                  size: size, color: AppColors.grayMid)),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text('El vendedor aún no ha recibido valoraciones',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: size - 2, color: AppColors.grayMid)),
+          ),
+        ],
+      );
     }
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.star_rounded, size: size, color: AppColors.primary),
-        const SizedBox(width: 2),
+        ...List.generate(5, (i) {
+          final lleno = i < promedio.round();
+          return Icon(
+              lleno ? Icons.star_rounded : Icons.star_outline_rounded,
+              size: size,
+              color: lleno ? _amarilloEstrella : AppColors.grayMid);
+        }),
+        const SizedBox(width: 4),
         Text(promedio.toStringAsFixed(1),
             style: TextStyle(
                 fontSize: size - 1,
@@ -102,7 +129,9 @@ class ReputacionCard extends StatelessWidget {
                 return Icon(
                     lleno ? Icons.star_rounded : Icons.star_outline_rounded,
                     size: 18,
-                    color: AppColors.primary);
+                    color: lleno
+                        ? EstrellasResumen._amarilloEstrella
+                        : AppColors.grayMid);
               }),
               const SizedBox(width: 8),
               Text(promedio.toStringAsFixed(1),
@@ -184,7 +213,9 @@ class _ComentarioTile extends StatelessWidget {
                           ? Icons.star_rounded
                           : Icons.star_outline_rounded,
                       size: 12,
-                      color: AppColors.primary)),
+                      color: i < estrellas
+                          ? EstrellasResumen._amarilloEstrella
+                          : AppColors.grayMid)),
               const SizedBox(width: 6),
               Text(nombre,
                   style: const TextStyle(

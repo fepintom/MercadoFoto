@@ -365,6 +365,12 @@ class _ListaServiciosState extends State<_ListaServicios> {
                     color: AppColors.background,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: AppColors.divider),
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 3,
+                          offset: const Offset(0, 1)),
+                    ],
                   ),
                   child: TextField(
                     controller: _searchCtrl,
