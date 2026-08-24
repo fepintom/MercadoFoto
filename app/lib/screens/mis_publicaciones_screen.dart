@@ -552,7 +552,7 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
                         )
                       : null,
                   filled: true,
-                  fillColor: AppColors.surface,
+                  fillColor: AppColors.background,
                   contentPadding: const EdgeInsets.symmetric(vertical: 10),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),

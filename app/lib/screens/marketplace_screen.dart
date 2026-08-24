@@ -733,9 +733,18 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                   child: Container(
                     height: 40,
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
+                      // Fondo gris (no blanco) para que se distinga del
+                      // header, que también es blanco — antes quedaba
+                      // camuflada con solo un borde de 1px.
+                      color: AppColors.background,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: AppColors.divider),
+                      boxShadow: [
+                        BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 3,
+                            offset: const Offset(0, 1)),
+                      ],
                     ),
                     child: TextField(
                       controller: _searchCtrl,

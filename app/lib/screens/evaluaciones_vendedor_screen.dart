@@ -180,7 +180,9 @@ class _EvaluacionTile extends StatelessWidget {
                           ? Icons.star_rounded
                           : Icons.star_outline_rounded,
                       size: 13,
-                      color: AppColors.primary)),
+                      color: i < estrellas
+                          ? const Color(0xFFFFB800)
+                          : AppColors.grayMid)),
               const SizedBox(width: 6),
               Text(nombre,
                   style: const TextStyle(

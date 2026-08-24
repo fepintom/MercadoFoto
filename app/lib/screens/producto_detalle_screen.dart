@@ -1141,7 +1141,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     const azulVisa = Color(0xFF1A1F71);
     return Container(
       width: 52,
-      height: 32,
+      height: 42,
       alignment: Alignment.center,
       decoration: _decoracionMedioPago(azulVisa),
       child: const Text('VISA',
@@ -1157,7 +1157,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   Widget _tarjetaMastercard() {
     return Container(
       width: 52,
-      height: 32,
+      height: 42,
       alignment: Alignment.center,
       decoration: _decoracionMedioPago(const Color(0xFF232323)),
       child: SizedBox(
@@ -1193,25 +1193,28 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   Widget _tarjetaMercadoPago() {
     const azulMP = Color(0xFF00AEEF);
     return Container(
-      width: 68,
-      height: 32,
-      padding: const EdgeInsets.symmetric(horizontal: 6),
+      width: 58,
+      height: 42,
+      alignment: Alignment.center,
       decoration: _decoracionMedioPago(azulMP),
-      child: const Row(
+      child: const Column(
         mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.front_hand_rounded, size: 13, color: Color(0xFFFFE600)),
-          SizedBox(width: 4),
-          Flexible(
-            child: Text('Mercado\nPago',
-                textAlign: TextAlign.left,
-                style: TextStyle(
-                    fontSize: 8.5,
-                    height: 1.05,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white)),
-          ),
+          // El logo real de Mercado Pago son dos manos dándose la mano.
+          Icon(Icons.handshake_rounded, size: 15, color: Color(0xFFFFE600)),
+          SizedBox(height: 2),
+          Text('Mercado',
+              style: TextStyle(
+                  fontSize: 8.5,
+                  height: 1.1,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white)),
+          Text('Pago',
+              style: TextStyle(
+                  fontSize: 8.5,
+                  height: 1.1,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white)),
         ],
       ),
     );
@@ -1221,7 +1224,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     const azulWebpay = Color(0xFF2E3092);
     return Container(
       width: 58,
-      height: 32,
+      height: 42,
       alignment: Alignment.center,
       decoration: _decoracionMedioPago(azulWebpay),
       child: const Text('webpay',
@@ -1744,26 +1747,29 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                               size: 14,
                               color: AppColors.carbon.withOpacity(0.5)),
                         ],
-                        if (_totalReviewsVendedor > 0) ...[
+                        if (ownerId != null) ...[
                           const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () {
-                              final vendedorId =
-                                  widget.producto["user_id"] as int?;
-                              if (vendedorId == null) return;
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => EvaluacionesVendedorScreen(
-                                    vendedorId: vendedorId,
-                                    nombreVendedor: vendedor,
+                          Flexible(
+                            child: GestureDetector(
+                              onTap: () {
+                                final vendedorId =
+                                    widget.producto["user_id"] as int?;
+                                if (vendedorId == null) return;
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        EvaluacionesVendedorScreen(
+                                      vendedorId: vendedorId,
+                                      nombreVendedor: vendedor,
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
-                            child: EstrellasResumen(
-                              promedio: _promedioVendedor,
-                              totalReviews: _totalReviewsVendedor,
+                                );
+                              },
+                              child: EstrellasResumen(
+                                promedio: _promedioVendedor,
+                                totalReviews: _totalReviewsVendedor,
+                              ),
                             ),
                           ),
                         ],
