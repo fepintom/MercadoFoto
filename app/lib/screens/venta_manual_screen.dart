@@ -314,6 +314,12 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        // Flecha de volver explícita (ver misma nota en confirmacion_screen).
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              size: 18, color: AppColors.carbon),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
           "Publicación manual",
           style: TextStyle(

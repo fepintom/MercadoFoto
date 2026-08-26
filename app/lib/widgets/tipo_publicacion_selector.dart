@@ -69,7 +69,7 @@ class TipoPublicacionSelector extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                   color: AppColors.textSecondary)),
           const SizedBox(height: 8),
-          _campo(label: 'Código universal (UPC/EAN)', ctrl: codigoCtrl),
+          _campo(label: 'Código universal', ctrl: codigoCtrl),
           const SizedBox(height: 10),
           _campo(label: 'SKU', ctrl: skuCtrl),
           const SizedBox(height: 10),

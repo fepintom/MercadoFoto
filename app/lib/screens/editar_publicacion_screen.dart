@@ -363,7 +363,7 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
                           fontWeight: FontWeight.w600,
                           color: AppColors.textSecondary)),
                   const SizedBox(height: 8),
-                  _campo(label: 'Código universal (UPC/EAN)', ctrl: _codigoCtrl),
+                  _campo(label: 'Código universal', ctrl: _codigoCtrl),
                   const SizedBox(height: 12),
                   _campo(label: 'SKU', ctrl: _skuCtrl),
                   const SizedBox(height: 12),

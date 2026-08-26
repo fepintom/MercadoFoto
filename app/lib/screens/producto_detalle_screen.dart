@@ -52,7 +52,6 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   int? userId;
   bool _esFavorito = false;
   bool _toggleandoFavorito = false;
-  bool _registrandoInteres = false;
   bool _comprando = false;
   final _ofertaController = TextEditingController();
 
@@ -63,6 +62,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   // Reputación del vendedor (estrellas junto al nombre)
   double _promedioVendedor = 0;
   int _totalReviewsVendedor = 0;
+  int _productosVendidosVendedor = 0;
 
   // Productos relacionados (misma categoría), al final de la publicación
   List<dynamic> _relacionados = [];
@@ -95,6 +95,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     setState(() {
       _promedioVendedor = (rep['promedio'] as num?)?.toDouble() ?? 0;
       _totalReviewsVendedor = (rep['total_reviews'] as num?)?.toInt() ?? 0;
+      _productosVendidosVendedor =
+          (rep['productos_vendidos'] as num?)?.toInt() ?? 0;
     });
   }
 
@@ -199,91 +201,6 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
           imagenUrl: imagenUrl,
           vendedorId: vendedorId,
           nombreVendedor: nombreVendedor,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _registrarInteres() async {
-    if (userId == null) {
-      _abrirRegistroModal();
-      return;
-    }
-    final pubId = widget.producto["id"] as int?;
-    if (pubId == null || _registrandoInteres) return;
-
-    setState(() => _registrandoInteres = true);
-    try {
-      await ApiService.registrarInteres(
-        publicacionId: pubId,
-        compradorId: userId!,
-      );
-      if (!mounted) return;
-      _mostrarConfirmacionInteres();
-    } catch (e) {
-      debugPrint("ERROR interes: $e");
-    } finally {
-      if (mounted) setState(() => _registrandoInteres = false);
-    }
-  }
-
-  void _mostrarConfirmacionInteres() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 56, height: 56,
-              decoration: const BoxDecoration(
-                color: Color(0xFFE8F5E9),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.check_circle_outline,
-                  size: 32, color: Color(0xFF2E7D32)),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              "¡Interés registrado!",
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              "Le avisamos al vendedor que quieres este producto. Puedes coordinar los detalles por chat.",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: AppColors.grayMid, fontSize: 14, height: 1.5),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _abrirChat();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text("Ir al chat",
-                    style: TextStyle(
-                        color: AppColors.textOnPrimary,
-                        fontWeight: FontWeight.w600)),
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -1137,39 +1054,42 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
         ],
       );
 
+  // Tarjetas de medios de pago achicadas (~35-40% más chicas que antes) —
+  // se dejó algo de margen sobre el 60% pedido porque a ese tamaño el
+  // texto (VISA, Mercado/Pago, webpay) dejaba de leerse bien.
   Widget _tarjetaVisa() {
     const azulVisa = Color(0xFF1A1F71);
     return Container(
-      width: 52,
-      height: 42,
+      width: 34,
+      height: 24,
       alignment: Alignment.center,
       decoration: _decoracionMedioPago(azulVisa),
       child: const Text('VISA',
           style: TextStyle(
-              fontSize: 13,
+              fontSize: 9,
               fontStyle: FontStyle.italic,
               fontWeight: FontWeight.w800,
-              letterSpacing: 0.5,
+              letterSpacing: 0.3,
               color: Colors.white)),
     );
   }
 
   Widget _tarjetaMastercard() {
     return Container(
-      width: 52,
-      height: 42,
+      width: 34,
+      height: 24,
       alignment: Alignment.center,
       decoration: _decoracionMedioPago(const Color(0xFF232323)),
       child: SizedBox(
-        width: 30,
-        height: 18,
+        width: 20,
+        height: 12,
         child: Stack(
           children: [
             Positioned(
               left: 0,
               child: Container(
-                width: 18,
-                height: 18,
+                width: 12,
+                height: 12,
                 decoration: const BoxDecoration(
                     color: Color(0xFFEB001B), shape: BoxShape.circle),
               ),
@@ -1177,8 +1097,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
             Positioned(
               right: 0,
               child: Container(
-                width: 18,
-                height: 18,
+                width: 12,
+                height: 12,
                 decoration: BoxDecoration(
                     color: const Color(0xFFFF5F00).withOpacity(0.92),
                     shape: BoxShape.circle),
@@ -1193,26 +1113,25 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   Widget _tarjetaMercadoPago() {
     const azulMP = Color(0xFF00AEEF);
     return Container(
-      width: 58,
-      height: 42,
+      width: 38,
+      height: 28,
       alignment: Alignment.center,
       decoration: _decoracionMedioPago(azulMP),
       child: const Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // El logo real de Mercado Pago son dos manos dándose la mano.
-          Icon(Icons.handshake_rounded, size: 15, color: Color(0xFFFFE600)),
-          SizedBox(height: 2),
+          Icon(Icons.handshake_rounded, size: 10, color: Color(0xFFFFE600)),
           Text('Mercado',
               style: TextStyle(
-                  fontSize: 8.5,
-                  height: 1.1,
+                  fontSize: 6,
+                  height: 1.05,
                   fontWeight: FontWeight.w800,
                   color: Colors.white)),
           Text('Pago',
               style: TextStyle(
-                  fontSize: 8.5,
-                  height: 1.1,
+                  fontSize: 6,
+                  height: 1.05,
                   fontWeight: FontWeight.w800,
                   color: Colors.white)),
         ],
@@ -1223,15 +1142,15 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   Widget _tarjetaWebpay() {
     const azulWebpay = Color(0xFF2E3092);
     return Container(
-      width: 58,
-      height: 42,
+      width: 38,
+      height: 24,
       alignment: Alignment.center,
       decoration: _decoracionMedioPago(azulWebpay),
       child: const Text('webpay',
           style: TextStyle(
-              fontSize: 11,
+              fontSize: 7.5,
               fontWeight: FontWeight.w800,
-              letterSpacing: 0.2,
+              letterSpacing: 0.1,
               color: Colors.white)),
     );
   }
@@ -1369,7 +1288,11 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   // Reemplaza la tarjeta grande de "dimensiones estimadas" (se sentía muy
   // invasiva) por una sola etiqueta chica, igual que "Principal"/"Nueva" en
   // otras pantallas.
-  Widget _tallaPaqueteBadge(dynamic dimensiones, bool esInvitado) {
+  // Solo la ve el vendedor (dueño de la publicación): es un dato para
+  // cuando le toque despachar el envío, no algo que el comprador necesite.
+  Widget _tallaPaqueteBadge(dynamic dimensiones, bool esInvitado,
+      {required bool esDueno}) {
+    if (!esDueno) return const SizedBox.shrink();
     final tieneDimensiones = dimensiones != null &&
         dimensiones.toString().isNotEmpty &&
         dimensiones.toString() != "No determinado";
@@ -1519,7 +1442,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                           ),
                         ),
                       ),
-                      _tallaPaqueteBadge(dimensiones, esInvitado),
+                      _tallaPaqueteBadge(dimensiones, esInvitado, esDueno: esDueno),
                     ],
                   ),
                   // Dots de paginación
@@ -1563,7 +1486,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                       ),
                     ),
                   ),
-                  _tallaPaqueteBadge(dimensiones, esInvitado),
+                  _tallaPaqueteBadge(dimensiones, esInvitado, esDueno: esDueno),
                 ],
               ),
 
@@ -1647,9 +1570,11 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                               ),
                             ),
                           ),
-                        // Subcategoría
+                        // Subcategoría — "Otros" no aporta nada como chip
+                        // (p.ej. bajo "General"), así que se oculta.
                         if (subcategoria != null &&
-                            subcategoria.toString().isNotEmpty)
+                            subcategoria.toString().isNotEmpty &&
+                            subcategoria.toString() != "Otros")
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 4),
@@ -1776,6 +1701,39 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                       ],
                     ),
                   ),
+
+                  // Productos vendidos por el vendedor + stock disponible
+                  if ((ownerId != null && _productosVendidosVendedor > 0) ||
+                      widget.producto['stock'] != null) ...[
+                    const SizedBox(height: 4),
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (ownerId != null && _productosVendidosVendedor > 0)
+                          Text(
+                            '$_productosVendidosVendedor '
+                            '${_productosVendidosVendedor == 1 ? "producto vendido" : "productos vendidos"}',
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.grayMid),
+                          ),
+                        if (ownerId != null &&
+                            _productosVendidosVendedor > 0 &&
+                            widget.producto['stock'] != null)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 6),
+                            child: Text('|',
+                                style: TextStyle(
+                                    fontSize: 12, color: AppColors.divider)),
+                          ),
+                        if (widget.producto['stock'] != null)
+                          Text(
+                            'Stock: ${widget.producto['stock']}',
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.grayMid),
+                          ),
+                      ],
+                    ),
+                  ],
 
                   const SizedBox(height: 16),
 
@@ -1940,7 +1898,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                       ?.toString() ??
                                   '')
                               .isNotEmpty)
-                            _filaInfoAdicional("Código universal (UPC/EAN)",
+                            _filaInfoAdicional("Código universal",
                                 widget.producto['codigo_universal'].toString()),
                           if ((widget.producto['sku']?.toString() ?? '')
                               .isNotEmpty)
@@ -2053,66 +2011,99 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                           ],
                         ),
                         const SizedBox(height: 10),
-                        // Botón principal: Quiero comprar (chat + interés)
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed:
-                                _registrandoInteres ? null : _registrarInteres,
-                            icon: _registrandoInteres
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white),
-                                  )
-                                : const Icon(
-                                    Icons.shopping_cart_checkout_rounded,
-                                    size: 18),
-                            label: const Text("Quiero comprar"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: AppColors.surface,
-                              elevation: 0,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                              textStyle: const TextStyle(
-                                  fontSize: 15, fontWeight: FontWeight.w700),
+                        // Botón de compra — antes decía "Pagar con
+                        // MercadoPago" en el azul de esa marca; ahora usa
+                        // el rojo principal de OkVenta y el texto es
+                        // "Comprar" (MercadoPago sigue siendo el medio de
+                        // pago por debajo, solo que ya no hace falta
+                        // nombrarlo en el botón). Se sacó el botón "Quiero
+                        // comprar": llevaba al mismo chat que el botón
+                        // "Chat" de arriba, era redundante.
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ValueListenableBuilder<
+                                  List<Map<String, dynamic>>>(
+                                valueListenable: CartService.cartNotifier,
+                                builder: (_, __, ___) {
+                                  final pubId =
+                                      widget.producto["id"] as int?;
+                                  final enCarro =
+                                      CartService.contiene(pubId);
+                                  return OutlinedButton.icon(
+                                    onPressed: () {
+                                      final agregado = CartService
+                                          .addProducto(widget.producto);
+                                      ScaffoldMessenger.of(context)
+                                          .clearSnackBars();
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(SnackBar(
+                                        content: Text(agregado
+                                            ? "Agregado al carro"
+                                            : "Ya estaba en tu carro"),
+                                        backgroundColor: AppColors.carbon,
+                                        behavior: SnackBarBehavior.floating,
+                                        duration:
+                                            const Duration(seconds: 2),
+                                      ));
+                                    },
+                                    icon: Icon(
+                                        enCarro
+                                            ? Icons.check_rounded
+                                            : Icons.add_shopping_cart_rounded,
+                                        size: 17),
+                                    label: Text(enCarro
+                                        ? "En tu carro"
+                                        : "Agregar al carro"),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppColors.primary,
+                                      side: const BorderSide(
+                                          color: AppColors.primary),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 14),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12)),
+                                      textStyle: const TextStyle(
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w700),
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        // Botón MercadoPago
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: _comprando ? null : _comprarConMP,
-                            icon: _comprando
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white),
-                                  )
-                                : const Icon(Icons.credit_card_rounded,
-                                    size: 18),
-                            label: const Text("Pagar con MercadoPago"),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF009EE3),
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                              textStyle: const TextStyle(
-                                  fontSize: 15, fontWeight: FontWeight.w700),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed:
+                                    _comprando ? null : _comprarConMP,
+                                icon: _comprando
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white),
+                                      )
+                                    : const Icon(Icons.shopping_bag_rounded,
+                                        size: 18),
+                                label: const Text("Comprar"),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(12)),
+                                  textStyle: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700),
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
                       ],
                     ),

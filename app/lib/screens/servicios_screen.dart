@@ -354,7 +354,9 @@ class _ListaServiciosState extends State<_ListaServicios> {
       children: [
         // ── Buscador + control de tamaño ────────────────────────────────────
         Container(
-          color: AppColors.surface,
+          // Gris, igual que el resto de la app: resalta contra el blanco de
+          // arriba en vez de camuflarse.
+          color: AppColors.background,
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
           child: Row(
             children: [
@@ -362,13 +364,13 @@ class _ListaServiciosState extends State<_ListaServicios> {
                 child: Container(
                   height: 38,
                   decoration: BoxDecoration(
-                    color: AppColors.background,
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: AppColors.divider),
                     boxShadow: [
                       BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 3,
+                          color: Colors.black.withOpacity(0.06),
+                          blurRadius: 4,
                           offset: const Offset(0, 1)),
                     ],
                   ),

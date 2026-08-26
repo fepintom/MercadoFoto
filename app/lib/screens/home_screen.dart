@@ -424,9 +424,10 @@ class _HomeScreenState extends State<HomeScreen> {
             valueListenable: CartService.cartNotifier,
             builder: (_, cart, __) {
               return GestureDetector(
-                onTap: () {
-                  if (cart.isNotEmpty) _mostrarCarrito();
-                },
+                // Antes solo abría si ya tenía algo — con el carro vacío
+                // no hacía nada al tocarlo. Ahora siempre abre la
+                // pantalla del carro (que ya maneja su propio estado vacío).
+                onTap: _mostrarCarrito,
                 child: Stack(
                   children: [
                     Container(

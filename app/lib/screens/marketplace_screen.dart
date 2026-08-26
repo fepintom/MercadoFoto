@@ -9,6 +9,7 @@ import '../utils/format_utils.dart';
 import '../services/api_service.dart';
 import '../services/cart_service.dart';
 import '../theme/app_theme.dart';
+import 'carrito_screen.dart';
 import 'producto_detalle_screen.dart';
 import '../widgets/net_image.dart';
 
@@ -58,7 +59,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     Categoria(nombre: "Fotografía",   icono: Icons.camera_alt_outlined,          subcategorias: ["Cámaras", "Lentes", "Iluminación", "Trípodes"]),
     Categoria(nombre: "Educación",    icono: Icons.menu_book_outlined,           subcategorias: ["Libros", "Cursos", "Instrumentos"]),
     Categoria(nombre: "Negocios",     icono: Icons.business_center_outlined,     subcategorias: ["Equipos", "Mobiliario", "Tecnología"]),
-    Categoria(nombre: "General",      icono: Icons.category_rounded,             subcategorias: ["Otros"]),
+    // "General" no tiene subcategorías propias — decir "Otros" bajo
+    // "General" era redundante.
+    Categoria(nombre: "General",      icono: Icons.category_rounded,             subcategorias: []),
   ];
   String? _categoriaSeleccionada;
   String? _subcategoriaSeleccionada;
@@ -392,8 +395,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     return TextField(
       controller: ctrl,
       keyboardType: TextInputType.number,
+      // Se fija el color del texto explícitamente: sin esto, lo escrito no
+      // se veía al abrir el teclado.
+      style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
+      cursorColor: AppColors.primary,
       decoration: InputDecoration(
         hintText: hint, prefixText: prefix,
+        prefixStyle: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
         hintStyle: const TextStyle(color: AppColors.grayMid, fontSize: 14),
         filled: true, fillColor: AppColors.background,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.divider)),
@@ -720,7 +728,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
 
   Widget _buildStickyHeader() {
     return Container(
-      color: AppColors.surface,
+      // Gris (igual que el fondo bajo las miniaturas de productos), para que
+      // la barra resalte del blanco de arriba en vez de camuflarse.
+      color: AppColors.background,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -733,16 +743,15 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                   child: Container(
                     height: 40,
                     decoration: BoxDecoration(
-                      // Fondo gris (no blanco) para que se distinga del
-                      // header, que también es blanco — antes quedaba
-                      // camuflada con solo un borde de 1px.
-                      color: AppColors.background,
+                      // Blanco para que resalte sobre el fondo gris del
+                      // header (antes ambos eran blancos y se camuflaba).
+                      color: AppColors.surface,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: AppColors.divider),
                       boxShadow: [
                         BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
-                            blurRadius: 3,
+                            color: Colors.black.withOpacity(0.06),
+                            blurRadius: 4,
                             offset: const Offset(0, 1)),
                       ],
                     ),
@@ -868,7 +877,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                 ),
                 GestureDetector(
-                  onTap: _mostrarConteoProductos,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CarritoScreen()),
+                  ),
                   child: ValueListenableBuilder<List<Map<String, dynamic>>>(
                     valueListenable: CartService.cartNotifier,
                     builder: (_, cart, __) => Stack(

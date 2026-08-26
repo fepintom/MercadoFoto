@@ -183,6 +183,7 @@ from database.ordenes import (
     obtener_o_crear_token_confirmacion,
     cancelar_orden as ordenes_cancelar_orden,
     obtener_pendientes_pago_vencidas,
+    contar_ventas_completadas,
 )
 from services.mp_service import (
     crear_preferencia as mp_crear_preferencia,
@@ -969,7 +970,9 @@ def calificar(review: Review):
 
 @app.get("/reputacion/{vendedor_id}")
 def reputacion_vendedor(vendedor_id: int):
-    return obtener_reviews_vendedor(vendedor_id)
+    data = obtener_reviews_vendedor(vendedor_id)
+    data["productos_vendidos"] = contar_ventas_completadas(vendedor_id)
+    return data
 
 
 @app.get("/vendedores/{vendedor_id}/evaluaciones")
