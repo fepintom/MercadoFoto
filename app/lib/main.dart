@@ -11,6 +11,7 @@ import 'services/deep_link_service.dart';
 import 'services/navigation_service.dart';
 import 'services/push_service.dart';
 import 'services/session_service.dart';
+import 'services/theme_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -18,6 +19,7 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await ThemeService.init();
   runApp(const MercadoFotoApp());
   // Deep links okventa:// (QRs de la etiqueta de envío)
   DeepLinkService.init();
@@ -28,18 +30,28 @@ class MercadoFotoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      navigatorKey: rootNavigatorKey,
-      title: 'OK Venta',
-      theme: AppTheme.theme,
-      home: const _AuthGate(),
-      // Toca cualquier zona fuera del teclado → baja el teclado en toda la app
-      builder: (context, child) => GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-        child: child!,
-      ),
+    // ValueListenableBuilder reconstruye el MaterialApp cuando cambia el
+    // modo claro/oscuro (ThemeService.toggle(), llamado desde el ícono de
+    // ojo en el header del home).
+    return ValueListenableBuilder<bool>(
+      valueListenable: ThemeService.isDarkNotifier,
+      builder: (context, isDark, __) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          navigatorKey: rootNavigatorKey,
+          title: 'OK Venta',
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+          home: const _AuthGate(),
+          // Toca cualquier zona fuera del teclado → baja el teclado en toda la app
+          builder: (context, child) => GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+            child: child!,
+          ),
+        );
+      },
     );
   }
 }

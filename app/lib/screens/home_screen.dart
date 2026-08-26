@@ -11,6 +11,7 @@ import '../services/notification_router.dart';
 import '../services/navigation_service.dart';
 import '../services/session_service.dart';
 import '../services/cart_service.dart';
+import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 
 import 'carrito_screen.dart';
@@ -406,8 +407,17 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Row(
         children: [
-          // Logo del celular — agrandado 30% (44 → 57).
-          Image.asset('assets/images/home.png', height: 57),
+          // Logo: celular en modo claro (agrandado 30%, 44 → 57), okventin
+          // en modo oscuro, misma altura.
+          ValueListenableBuilder<bool>(
+            valueListenable: ThemeService.isDarkNotifier,
+            builder: (_, isDark, __) {
+              return Image.asset(
+                isDark ? 'assets/images/okventin.png' : 'assets/images/home.png',
+                height: 57,
+              );
+            },
+          ),
 
           const SizedBox(width: 8),
 
@@ -418,6 +428,32 @@ class _HomeScreenState extends State<HomeScreen> {
             const Spacer(),
 
           const SizedBox(width: 4),
+
+          // Ícono de ojo: alterna modo claro/oscuro
+          ValueListenableBuilder<bool>(
+            valueListenable: ThemeService.isDarkNotifier,
+            builder: (_, isDark, __) {
+              return GestureDetector(
+                onTap: ThemeService.toggle,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  margin: const EdgeInsets.only(right: 4),
+                  decoration: const BoxDecoration(
+                    color: AppColors.background,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isDark
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    size: 20,
+                    color: AppColors.grayMid,
+                  ),
+                ),
+              );
+            },
+          ),
 
           // Carrito
           ValueListenableBuilder<List<Map<String, dynamic>>>(
