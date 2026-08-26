@@ -1603,6 +1603,14 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
+        // Flecha de volver explícita: esta pantalla se abre con una
+        // transición personalizada (PageRouteBuilder) y el ícono
+        // automático de AppBar no siempre aparecía con ella.
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              size: 18, color: AppColors.carbon),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
           "Confirmar producto",
           style: TextStyle(
@@ -1703,7 +1711,7 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                                 Expanded(
                                   child: Text(
                                     "Categoría detectada: $_categoria"
-                                    "${_subcategoria.isNotEmpty ? ' › $_subcategoria' : ''}",
+                                    "${_subcategoria.isNotEmpty && _subcategoria != 'Otros' ? ' › $_subcategoria' : ''}",
                                     style: const TextStyle(
                                       fontSize: 13,
                                       color: AppColors.primary,

@@ -106,6 +106,20 @@ def obtener_mis_compras(user_id: int):
     return [dict(zip(cols, r)) for r in rows]
 
 
+def contar_ventas_completadas(vendedor_id: int) -> int:
+    """Cantidad de órdenes entregadas de este vendedor — se muestra junto a
+    su calificación como "n productos vendidos"."""
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute(
+        "SELECT COUNT(*) FROM ordenes WHERE vendedor_id = ? AND estado = 'entregado'",
+        (vendedor_id,),
+    )
+    total = c.fetchone()[0]
+    conn.close()
+    return total
+
+
 def obtener_mis_ventas(user_id: int):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
