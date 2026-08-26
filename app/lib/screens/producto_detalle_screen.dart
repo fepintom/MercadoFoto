@@ -2032,8 +2032,9 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                       CartService.contiene(pubId);
                                   return OutlinedButton.icon(
                                     onPressed: () {
-                                      final agregado = CartService
-                                          .addProducto(widget.producto);
+                                      final agregado = CartService.addProducto(
+                                          Map<String, dynamic>.from(
+                                              widget.producto));
                                       ScaffoldMessenger.of(context)
                                           .clearSnackBars();
                                       ScaffoldMessenger.of(context)
