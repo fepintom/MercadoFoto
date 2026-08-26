@@ -406,8 +406,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Row(
         children: [
-          // Logo (dinámico según pantalla)
-          Image.asset('assets/images/home.png', height: 44),
+          // Mascota OkVentín en vez del logo con el celular.
+          Image.asset('assets/images/okventin.png', height: 44),
 
           const SizedBox(width: 8),
 
