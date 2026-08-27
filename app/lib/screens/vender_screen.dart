@@ -141,14 +141,23 @@ class _VenderScreenState extends State<VenderScreen> {
         backgroundColor: AppColors.surface,
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.carbon),
-        // Botón volver al selector si estamos en modo automático
-        leading: _estado == 'automatica' && !_loading
-            ? IconButton(
+        // Botón volver: en modo automático vuelve al selector de métodos;
+        // en el selector (pantalla inicial de "vender") vuelve al home —
+        // antes no había flecha aquí y no se podía salir de "vender" sin
+        // completar el flujo o usar el gesto del sistema.
+        leading: _loading
+            ? null
+            : IconButton(
                 icon: const Icon(Icons.arrow_back_ios_rounded,
                     color: AppColors.carbon, size: 20),
-                onPressed: () => setState(() => _estado = 'selector'),
-              )
-            : null,
+                onPressed: () {
+                  if (_estado == 'automatica') {
+                    setState(() => _estado = 'selector');
+                  } else {
+                    Navigator.pop(context);
+                  }
+                },
+              ),
         automaticallyImplyLeading: false,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
