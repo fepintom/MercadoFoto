@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
+import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import 'mapa_ubicacion_picker_screen.dart';
 
@@ -354,6 +355,22 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: colors.textPrimary)),
+        actions: [
+          // Okventin servicios: solo en modo oscuro
+          ValueListenableBuilder<bool>(
+            valueListenable: ThemeService.isDarkNotifier,
+            builder: (_, isDark, __) {
+              if (!isDark) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Center(
+                  child: Image.asset('assets/images/okventin_servicios.png',
+                      width: 32, height: 32),
+                ),
+              );
+            },
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
           child: Container(height: 0.5, color: colors.divider),

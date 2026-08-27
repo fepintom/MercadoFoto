@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
+import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import 'servicio_detalle_screen.dart';
 import 'agregar_servicio_screen.dart';
@@ -101,6 +102,20 @@ class _MisServiciosScreenState extends State<MisServiciosScreen>
                               color: colors.textPrimary,
                             ),
                           ),
+                        ),
+                        // Okventin servicios: solo en modo oscuro
+                        ValueListenableBuilder<bool>(
+                          valueListenable: ThemeService.isDarkNotifier,
+                          builder: (_, isDark, __) {
+                            if (!isDark) return const SizedBox.shrink();
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 10),
+                              child: Image.asset(
+                                  'assets/images/okventin_servicios.png',
+                                  width: 32,
+                                  height: 32),
+                            );
+                          },
                         ),
                         // Botón nuevo servicio
                         GestureDetector(
@@ -213,12 +228,21 @@ class _ListaServicios extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              tipo == 'ofrezco'
-                  ? Icons.handyman_outlined
-                  : Icons.search_outlined,
-              size: 56,
-              color: colors.grayMid,
+            ValueListenableBuilder<bool>(
+              valueListenable: ThemeService.isDarkNotifier,
+              builder: (_, isDark, __) {
+                if (isDark) {
+                  return Image.asset('assets/images/okventin_servicios.png',
+                      height: 64);
+                }
+                return Icon(
+                  tipo == 'ofrezco'
+                      ? Icons.handyman_outlined
+                      : Icons.search_outlined,
+                  size: 56,
+                  color: colors.grayMid,
+                );
+              },
             ),
             const SizedBox(height: 12),
             Text(
