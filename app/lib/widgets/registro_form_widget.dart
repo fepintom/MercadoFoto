@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 
 class RegistroFormWidget extends StatefulWidget {
@@ -149,8 +150,17 @@ class _RegistroFormWidgetState extends State<RegistroFormWidget> {
         // Header
         Row(
           children: [
-            // +30% igual que el logo del home (30 -> 39)
-            Image.asset('assets/images/home.png', height: 39),
+            // +30% igual que el logo del home (30 -> 39). Celular en modo
+            // claro, okventin en modo oscuro (sin fondo cuadrado).
+            ValueListenableBuilder<bool>(
+              valueListenable: ThemeService.isDarkNotifier,
+              builder: (_, isDark, __) {
+                return Image.asset(
+                  isDark ? 'assets/images/okventin.png' : 'assets/images/home.png',
+                  height: 39,
+                );
+              },
+            ),
             Expanded(
               child: Center(
                 child: Text(

@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
+import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/space_invaders_widget.dart';
 import '../widgets/tipo_publicacion_selector.dart';
@@ -332,9 +333,18 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Center(
-              // +30% igual que el logo del home (28 -> 36)
-              child: Image.asset('assets/images/chekin.png',
-                  width: 36, height: 36),
+              // +30% igual que el logo del home (28 -> 36). Celular en modo
+              // claro, okventin (variante vender) en modo oscuro.
+              child: ValueListenableBuilder<bool>(
+                valueListenable: ThemeService.isDarkNotifier,
+                builder: (_, isDark, __) {
+                  return Image.asset(
+                    isDark ? 'assets/images/okventin_vender.png' : 'assets/images/chekin.png',
+                    width: 36,
+                    height: 36,
+                  );
+                },
+              ),
             ),
           ),
         ],

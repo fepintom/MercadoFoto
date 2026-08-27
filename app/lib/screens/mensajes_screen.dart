@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
+import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import 'chat_screen.dart';
 import '../widgets/net_image.dart';
@@ -92,8 +93,16 @@ class _MensajesScreenState extends State<MensajesScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Center(
-              child: Image.asset('assets/images/mensajes.png',
-                  width: 28, height: 28),
+              child: ValueListenableBuilder<bool>(
+                valueListenable: ThemeService.isDarkNotifier,
+                builder: (_, isDark, __) {
+                  return Image.asset(
+                    isDark ? 'assets/images/okventin_chat.png' : 'assets/images/mensajes.png',
+                    width: 28,
+                    height: 28,
+                  );
+                },
+              ),
             ),
           ),
         ],
