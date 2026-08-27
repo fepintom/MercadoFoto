@@ -211,8 +211,8 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Logo (dinámico según pantalla)
-              Image.asset('assets/images/home.png', height: 44),
+              // Logo (dinámico según pantalla) — mismo +30% que en el home
+              Image.asset('assets/images/home.png', height: 57),
               const SizedBox(height: 36),
 
               // Headline

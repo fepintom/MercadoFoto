@@ -332,8 +332,9 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Center(
+              // +30% igual que el logo del home (28 -> 36)
               child: Image.asset('assets/images/chekin.png',
-                  width: 28, height: 28),
+                  width: 36, height: 36),
             ),
           ),
         ],
