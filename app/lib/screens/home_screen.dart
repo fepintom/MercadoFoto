@@ -429,31 +429,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
           const SizedBox(width: 4),
 
-          // Ícono de ojo: alterna modo claro/oscuro
-          ValueListenableBuilder<bool>(
-            valueListenable: ThemeService.isDarkNotifier,
-            builder: (_, isDark, __) {
-              return GestureDetector(
-                onTap: ThemeService.toggle,
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  margin: const EdgeInsets.only(right: 4),
-                  decoration: BoxDecoration(
-                    color: colors.background,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    isDark
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    size: 20,
-                    color: colors.grayMid,
-                  ),
-                ),
-              );
-            },
-          ),
+          // El toggle de modo claro/oscuro se movió a Mi cuenta > MODO —
+          // ya no vive como ícono en este header.
 
           // Carrito
           ValueListenableBuilder<List<Map<String, dynamic>>>(

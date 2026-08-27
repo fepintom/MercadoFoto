@@ -31,7 +31,13 @@ class ThemeService {
 
   /// Alterna entre claro/oscuro y guarda la elección.
   static Future<void> toggle() async {
-    isDarkNotifier.value = !isDarkNotifier.value;
+    await setDarkMode(!isDarkNotifier.value);
+  }
+
+  /// Fija el modo explícitamente (usado por el selector "MODO" en Mi
+  /// cuenta: Modo diurno / Modo nocturno) y guarda la elección.
+  static Future<void> setDarkMode(bool value) async {
+    isDarkNotifier.value = value;
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_prefsKey, isDarkNotifier.value);

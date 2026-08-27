@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/biometric_service.dart';
+import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import 'auth/login_screen.dart';
 import 'ayuda_chat_screen.dart';
@@ -443,6 +444,103 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
     );
   }
 
+  // ── MODO (claro / oscuro) ────────────────────────────────────────────
+  void _abrirSelectorModo() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => ValueListenableBuilder<bool>(
+        valueListenable: ThemeService.isDarkNotifier,
+        builder: (context, isDark, __) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: colors.divider,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text('MODO',
+                  style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary)),
+              const SizedBox(height: 4),
+              Text('Elige cómo se ve OkVenta.',
+                  style: TextStyle(fontSize: 13, color: colors.grayMid)),
+              const SizedBox(height: 16),
+              _opcionModo(
+                icono: Icons.wb_sunny_outlined,
+                titulo: 'Modo diurno',
+                seleccionado: !isDark,
+                onTap: () => ThemeService.setDarkMode(false),
+              ),
+              const SizedBox(height: 10),
+              _opcionModo(
+                icono: Icons.nightlight_outlined,
+                titulo: 'Modo nocturno',
+                seleccionado: isDark,
+                onTap: () => ThemeService.setDarkMode(true),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _opcionModo({
+    required IconData icono,
+    required String titulo,
+    required bool seleccionado,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: seleccionado ? colors.primary.withOpacity(0.08) : colors.background,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: seleccionado ? colors.primary : colors.divider,
+            width: seleccionado ? 1.5 : 0.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icono,
+                size: 20,
+                color: seleccionado ? colors.primary : colors.textPrimary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(titulo,
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary)),
+            ),
+            if (seleccionado)
+              Icon(Icons.check_circle_rounded, size: 20, color: colors.primary)
+            else
+              Icon(Icons.circle_outlined, size: 20, color: colors.grayMid),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _mostrarChatSoporte() async {
     bool abriendo = false;
 
@@ -627,7 +725,8 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                         size: 20, color: colors.textPrimary),
                   ),
                   const SizedBox(width: 12),
-                  Image.asset('assets/images/home.png', height: 38),
+                  // +30% igual que en el home (38 -> 49)
+                  Image.asset('assets/images/home.png', height: 49),
                   const Spacer(),
                   _avatar(size: 44),
                 ],
@@ -838,6 +937,8 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                           _itemMenu(
                               Icons.support_agent_rounded, "Obtener ayuda",
                               _mostrarChatSoporte),
+                          _itemMenu(
+                              Icons.dark_mode_outlined, "MODO", _abrirSelectorModo),
                           _itemFaceId(),
                         ],
                       ),
