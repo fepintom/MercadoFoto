@@ -189,7 +189,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void _mostrarOpcionesImagen() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => SafeArea(
@@ -200,17 +200,17 @@ class _ChatScreenState extends State<ChatScreen> {
               width: 40, height: 4,
               margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                  color: AppColors.divider, borderRadius: BorderRadius.circular(2)),
+                  color: colors.divider, borderRadius: BorderRadius.circular(2)),
             ),
             ListTile(
               leading: Container(
                 width: 40, height: 40,
                 decoration: BoxDecoration(
-                    color: AppColors.carbon.withOpacity(0.08), shape: BoxShape.circle),
-                child: const Icon(Icons.camera_alt_outlined, color: AppColors.carbon, size: 20),
+                    color: colors.carbon.withOpacity(0.08), shape: BoxShape.circle),
+                child: Icon(Icons.camera_alt_outlined, color: colors.textPrimary, size: 20),
               ),
-              title: const Text('Tomar foto',
-                  style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+              title: Text('Tomar foto',
+                  style: TextStyle(fontWeight: FontWeight.w600, color: colors.textPrimary)),
               onTap: () {
                 Navigator.pop(context);
                 _enviarImagen(ImageSource.camera);
@@ -220,11 +220,11 @@ class _ChatScreenState extends State<ChatScreen> {
               leading: Container(
                 width: 40, height: 40,
                 decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.08), shape: BoxShape.circle),
-                child: const Icon(Icons.photo_library_outlined, color: AppColors.primary, size: 20),
+                    color: colors.primary.withOpacity(0.08), shape: BoxShape.circle),
+                child: Icon(Icons.photo_library_outlined, color: colors.primary, size: 20),
               ),
-              title: const Text('Elegir de la galería',
-                  style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+              title: Text('Elegir de la galería',
+                  style: TextStyle(fontWeight: FontWeight.w600, color: colors.textPrimary)),
               onTap: () {
                 Navigator.pop(context);
                 _enviarImagen(ImageSource.gallery);
@@ -234,11 +234,11 @@ class _ChatScreenState extends State<ChatScreen> {
               leading: Container(
                 width: 40, height: 40,
                 decoration: BoxDecoration(
-                    color: AppColors.carbon.withOpacity(0.08), shape: BoxShape.circle),
-                child: const Icon(Icons.videocam_outlined, color: AppColors.carbon, size: 20),
+                    color: colors.carbon.withOpacity(0.08), shape: BoxShape.circle),
+                child: Icon(Icons.videocam_outlined, color: colors.textPrimary, size: 20),
               ),
-              title: const Text('Grabar video (máx. 10 s)',
-                  style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+              title: Text('Grabar video (máx. 10 s)',
+                  style: TextStyle(fontWeight: FontWeight.w600, color: colors.textPrimary)),
               onTap: () {
                 Navigator.pop(context);
                 _grabarYEnviarVideo();
@@ -387,7 +387,7 @@ class _ChatScreenState extends State<ChatScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -400,11 +400,11 @@ class _ChatScreenState extends State<ChatScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Contraofertar',
+            Text('Contraofertar',
                 style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary)),
+                    color: colors.textPrimary)),
             const SizedBox(height: 16),
             TextField(
               controller: _contraCtrl,
@@ -434,7 +434,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: colors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
@@ -473,7 +473,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: Container(
                   width: 220, height: 160,
                   decoration: BoxDecoration(
-                    color: AppColors.carbon,
+                    color: colors.carbon,
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(16),
                       topRight: const Radius.circular(16),
@@ -489,7 +489,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               const SizedBox(height: 2),
               Text(hora,
-                  style: const TextStyle(fontSize: 10, color: AppColors.grayMid)),
+                  style: TextStyle(fontSize: 10, color: colors.grayMid)),
             ],
           ),
         ),
@@ -523,7 +523,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               const SizedBox(height: 2),
               Text(hora,
-                  style: const TextStyle(fontSize: 10, color: AppColors.grayMid)),
+                  style: TextStyle(fontSize: 10, color: colors.grayMid)),
             ],
           ),
         ),
@@ -548,10 +548,10 @@ class _ChatScreenState extends State<ChatScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
           color: esOferta
-              ? AppColors.primary.withOpacity(0.12)
+              ? colors.primary.withOpacity(0.12)
               : esMio
-                  ? AppColors.primary
-                  : AppColors.surface,
+                  ? colors.primary
+                  : colors.surface,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
@@ -559,11 +559,11 @@ class _ChatScreenState extends State<ChatScreen> {
             bottomRight: Radius.circular(esMio ? 4 : 16),
           ),
           border: esOferta
-              ? Border.all(color: AppColors.primary.withOpacity(0.4))
+              ? Border.all(color: colors.primary.withOpacity(0.4))
               : null,
           boxShadow: [
             BoxShadow(
-              color: AppColors.carbon.withOpacity(0.06),
+              color: colors.carbon.withOpacity(0.06),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -577,10 +577,10 @@ class _ChatScreenState extends State<ChatScreen> {
               texto,
               style: TextStyle(
                 color: esOferta
-                    ? AppColors.primary
+                    ? colors.primary
                     : esMio
-                        ? AppColors.textOnPrimary
-                        : AppColors.textPrimary,
+                        ? colors.textOnPrimary
+                        : colors.textPrimary,
                 fontSize: esOferta ? 16 : 15,
                 fontWeight:
                     esOferta ? FontWeight.w700 : FontWeight.normal,
@@ -592,10 +592,10 @@ class _ChatScreenState extends State<ChatScreen> {
               style: TextStyle(
                 fontSize: 10,
                 color: esOferta
-                    ? AppColors.primary.withOpacity(0.6)
+                    ? colors.primary.withOpacity(0.6)
                     : esMio
-                        ? AppColors.textOnPrimary.withOpacity(0.7)
-                        : AppColors.grayMid,
+                        ? colors.textOnPrimary.withOpacity(0.7)
+                        : colors.grayMid,
               ),
             ),
           ],
@@ -614,11 +614,11 @@ class _ChatScreenState extends State<ChatScreen> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
           child: _enviando
-              ? const Center(
+              ? Center(
                   child: Padding(
                     padding: EdgeInsets.all(8),
                     child: CircularProgressIndicator(
-                        color: AppColors.primary, strokeWidth: 2),
+                        color: colors.primary, strokeWidth: 2),
                   ),
                 )
               : Row(
@@ -641,7 +641,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       child: _botonOferta(
                         label: 'Contraofertar',
                         icon: Icons.swap_horiz_rounded,
-                        color: AppColors.primary,
+                        color: colors.primary,
                         onTap: () =>
                             _mostrarDialogoContraoferta(compradorId),
                       ),
@@ -713,13 +713,13 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios,
-              size: 18, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back_ios,
+              size: 18, color: colors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         title: GestureDetector(
@@ -738,9 +738,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     : Container(
                         width: 36,
                         height: 36,
-                        color: AppColors.background,
-                        child: const Icon(Icons.image_outlined,
-                            size: 18, color: AppColors.grayMid),
+                        color: colors.background,
+                        child: Icon(Icons.image_outlined,
+                            size: 18, color: colors.grayMid),
                       ),
               ),
               const SizedBox(width: 10),
@@ -752,10 +752,10 @@ class _ChatScreenState extends State<ChatScreen> {
                       _titulo.isNotEmpty ? _titulo : widget.tituloProducto,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: colors.textPrimary,
                       ),
                     ),
                     Text(
@@ -764,14 +764,14 @@ class _ChatScreenState extends State<ChatScreen> {
                           : widget.nombreVendedor,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.grayMid),
+                      style: TextStyle(
+                          fontSize: 11, color: colors.grayMid),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  size: 18, color: AppColors.grayMid),
+              Icon(Icons.chevron_right_rounded,
+                  size: 18, color: colors.grayMid),
             ],
           ),
         ),
@@ -786,7 +786,7 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: AppColors.divider),
+          child: Container(height: 0.5, color: colors.divider),
         ),
       ),
       body: Column(
@@ -796,13 +796,13 @@ class _ChatScreenState extends State<ChatScreen> {
           // siempre, en todas las conversaciones de compra.
           Container(
             width: double.infinity,
-            color: AppColors.primary.withOpacity(0.08),
+            color: colors.primary.withOpacity(0.08),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.info_outline_rounded,
-                    size: 16, color: AppColors.primary),
+                Icon(Icons.info_outline_rounded,
+                    size: 16, color: colors.primary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -811,7 +811,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     "visualizar su estado",
                     style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.primary,
+                        color: colors.primary,
                         height: 1.3,
                         fontWeight: FontWeight.w500),
                   ),
@@ -829,12 +829,12 @@ class _ChatScreenState extends State<ChatScreen> {
                       children: [
                         Icon(Icons.chat_bubble_outline,
                             size: 48,
-                            color: AppColors.grayMid.withOpacity(0.4)),
+                            color: colors.grayMid.withOpacity(0.4)),
                         const SizedBox(height: 12),
-                        const Text(
+                        Text(
                           "Sé el primero en escribir",
                           style: TextStyle(
-                              color: AppColors.grayMid, fontSize: 14),
+                              color: colors.grayMid, fontSize: 14),
                         ),
                       ],
                     ),
@@ -849,7 +849,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
           // Input
           Container(
-            color: AppColors.surface,
+            color: colors.surface,
             padding: const EdgeInsets.only(
               left: 12, right: 12, top: 10, bottom: 10,
             ),
@@ -860,37 +860,37 @@ class _ChatScreenState extends State<ChatScreen> {
                   // Botón bajar teclado
                   GestureDetector(
                     onTap: () => FocusScope.of(context).unfocus(),
-                    child: const Padding(
+                    child: Padding(
                       padding: EdgeInsets.only(right: 6),
                       child: Icon(Icons.keyboard_hide_rounded,
-                          size: 22, color: AppColors.grayMid),
+                          size: 22, color: colors.grayMid),
                     ),
                   ),
                   // Botón imagen
                   GestureDetector(
                     onTap: _enviando ? null : _mostrarOpcionesImagen,
-                    child: const Padding(
+                    child: Padding(
                       padding: EdgeInsets.only(right: 8),
                       child: Icon(Icons.image_outlined,
-                          size: 22, color: AppColors.grayMid),
+                          size: 22, color: colors.grayMid),
                     ),
                   ),
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: AppColors.background,
+                        color: colors.background,
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: AppColors.divider),
+                        border: Border.all(color: colors.divider),
                       ),
                       child: TextField(
                         controller: _controller,
                         minLines: 1,
                         maxLines: 4,
                         textCapitalization: TextCapitalization.sentences,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: "Escribe un mensaje...",
                           hintStyle: TextStyle(
-                              color: AppColors.grayMid, fontSize: 14),
+                              color: colors.grayMid, fontSize: 14),
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(
                               horizontal: 16, vertical: 10),
@@ -908,8 +908,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       height: 44,
                       decoration: BoxDecoration(
                         color: _enviando
-                            ? AppColors.grayMid
-                            : AppColors.primary,
+                            ? colors.grayMid
+                            : colors.primary,
                         shape: BoxShape.circle,
                       ),
                       child: _enviando

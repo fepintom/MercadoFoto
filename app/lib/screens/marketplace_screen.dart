@@ -105,7 +105,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   void _mostrarControlTamano() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => StatefulBuilder(
@@ -119,30 +119,30 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 child: Container(
                   width: 40, height: 4,
                   decoration: BoxDecoration(
-                      color: AppColors.divider,
+                      color: colors.divider,
                       borderRadius: BorderRadius.circular(2)),
                 ),
               ),
               const SizedBox(height: 20),
-              const Text('Tamaño de las publicaciones',
+              Text('Tamaño de las publicaciones',
                   style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary)),
+                      color: colors.textPrimary)),
               const SizedBox(height: 4),
-              const Text('Achica para ver más productos, agranda para verlos más grandes',
-                  style: TextStyle(fontSize: 12, color: AppColors.grayMid)),
+              Text('Achica para ver más productos, agranda para verlos más grandes',
+                  style: TextStyle(fontSize: 12, color: colors.grayMid)),
               Row(
                 children: [
-                  const Icon(Icons.grid_view_rounded,
-                      size: 16, color: AppColors.grayMid),
+                  Icon(Icons.grid_view_rounded,
+                      size: 16, color: colors.grayMid),
                   Expanded(
                     child: Slider(
                       value: _columnas.toDouble(),
                       min: 1,
                       max: 4,
                       divisions: 3,
-                      activeColor: AppColors.primary,
+                      activeColor: colors.primary,
                       onChanged: (v) {
                         setSheetState(() => _columnas = v.round());
                         setState(() => _columnas = v.round());
@@ -150,8 +150,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       },
                     ),
                   ),
-                  const Icon(Icons.crop_square_rounded,
-                      size: 22, color: AppColors.grayMid),
+                  Icon(Icons.crop_square_rounded,
+                      size: 22, color: colors.grayMid),
                 ],
               ),
             ],
@@ -313,7 +313,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
         const SizedBox(width: 8),
         Text(msg, style: const TextStyle(fontSize: 13)),
       ]),
-      backgroundColor: AppColors.carbon,
+      backgroundColor: colors.carbon,
       duration: const Duration(seconds: 2),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -329,7 +329,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       // StatefulBuilder: el botón de "ocultar teclado" necesita poder pedir
       // un rebuild propio del sheet (sin esto, el ícono no reflejaba bien
@@ -350,13 +350,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Center(child: Container(width: 40, height: 4,
-                  decoration: BoxDecoration(color: AppColors.divider, borderRadius: BorderRadius.circular(2)))),
+                  decoration: BoxDecoration(color: colors.divider, borderRadius: BorderRadius.circular(2)))),
                 const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Filtrar por precio",
-                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    Text("Filtrar por precio",
+                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: colors.textPrimary)),
                     // Botón para esconder el teclado y poder ver/tocar
                     // los botones de abajo (Limpiar / Aplicar).
                     TextButton.icon(
@@ -364,9 +364,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                         FocusScope.of(sheetCtx).unfocus();
                         setSheetState(() {});
                       },
-                      icon: const Icon(Icons.keyboard_hide_outlined, size: 18, color: AppColors.primary),
-                      label: const Text("Ocultar teclado",
-                          style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600)),
+                      icon: Icon(Icons.keyboard_hide_outlined, size: 18, color: colors.primary),
+                      label: Text("Ocultar teclado",
+                          style: TextStyle(color: colors.primary, fontSize: 13, fontWeight: FontWeight.w600)),
                       style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 0)),
                     ),
                   ],
@@ -374,8 +374,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 const SizedBox(height: 16),
                 Row(children: [
                   Expanded(child: _campoFiltro(ctrl: minCtrl, hint: "Mínimo", prefix: "\$")),
-                  const Padding(padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text("—", style: TextStyle(color: AppColors.grayMid, fontSize: 18))),
+                  Padding(padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Text("—", style: TextStyle(color: colors.grayMid, fontSize: 18))),
                   Expanded(child: _campoFiltro(ctrl: maxCtrl, hint: "Máximo", prefix: "\$")),
                 ]),
                 const SizedBox(height: 20),
@@ -387,11 +387,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                         setState(() { _precioMin = null; _precioMax = null; cargarPublicaciones(); });
                       },
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.divider),
+                        side: BorderSide(color: colors.divider),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text("Limpiar", style: TextStyle(color: AppColors.textSecondary)),
+                      child: Text("Limpiar", style: TextStyle(color: colors.textSecondary)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -406,11 +406,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                         });
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: colors.primary,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text("Aplicar", style: TextStyle(color: AppColors.textOnPrimary)),
+                      child: Text("Aplicar", style: TextStyle(color: colors.textOnPrimary)),
                     ),
                   ),
                 ]),
@@ -428,16 +428,16 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
       keyboardType: TextInputType.number,
       // Se fija el color del texto explícitamente: sin esto, lo escrito no
       // se veía al abrir el teclado.
-      style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
-      cursorColor: AppColors.primary,
+      style: TextStyle(color: colors.textPrimary, fontSize: 15),
+      cursorColor: colors.primary,
       decoration: InputDecoration(
         hintText: hint, prefixText: prefix,
-        prefixStyle: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
-        hintStyle: const TextStyle(color: AppColors.grayMid, fontSize: 14),
-        filled: true, fillColor: AppColors.background,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.divider)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.divider)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.primary)),
+        prefixStyle: TextStyle(color: colors.textPrimary, fontSize: 15),
+        hintStyle: TextStyle(color: colors.grayMid, fontSize: 14),
+        filled: true, fillColor: colors.background,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: colors.divider)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: colors.divider)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: colors.primary)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       ),
     );
@@ -473,10 +473,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                   margin: const EdgeInsets.only(right: 8),
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   decoration: BoxDecoration(
-                    color: selected ? AppColors.primary : AppColors.surface,
+                    color: selected ? colors.primary : colors.surface,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: selected ? AppColors.primary : AppColors.divider,
+                      color: selected ? colors.primary : colors.divider,
                       width: 0.5,
                     ),
                   ),
@@ -484,12 +484,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(cat.icono, size: 13,
-                          color: selected ? Colors.white : AppColors.grayMid),
+                          color: selected ? Colors.white : colors.grayMid),
                       const SizedBox(width: 5),
                       Text(cat.nombre,
                           style: TextStyle(
                             fontSize: 12, fontWeight: FontWeight.w500,
-                            color: selected ? Colors.white : AppColors.textPrimary,
+                            color: selected ? Colors.white : colors.textPrimary,
                           )),
                     ],
                   ),
@@ -520,10 +520,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     margin: const EdgeInsets.only(right: 6),
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
-                      color: selected ? AppColors.carbon : AppColors.surface,
+                      color: selected ? colors.carbon : colors.surface,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: selected ? AppColors.carbon : AppColors.divider,
+                        color: selected ? colors.carbon : colors.divider,
                         width: 0.5,
                       ),
                     ),
@@ -531,7 +531,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       child: Text(sub,
                           style: TextStyle(
                             fontSize: 11, fontWeight: FontWeight.w500,
-                            color: selected ? Colors.white : AppColors.textSecondary,
+                            color: selected ? Colors.white : colors.textSecondary,
                           )),
                     ),
                   ),
@@ -590,9 +590,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
       }),
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.divider, width: 0.5),
+          border: Border.all(color: colors.divider, width: 0.5),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -616,7 +616,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                       decoration: BoxDecoration(
-                        color: AppColors.carbon.withValues(alpha: 0.80),
+                        color: colors.carbon.withValues(alpha: 0.80),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -667,14 +667,14 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.08),
+                            color: colors.primary.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(categoria.toString(),
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w500,
-                                  color: AppColors.primary,
+                                  color: colors.primary,
                                   shadows: [
                                     Shadow(
                                         color: Colors.black26,
@@ -687,7 +687,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                   const SizedBox(height: 4),
                   Text(titulo,
                       maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary)),
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: colors.textPrimary)),
                   const SizedBox(height: 6),
                   // FittedBox: si la tarjeta queda muy angosta (más columnas),
                   // el precio se achica para seguir viéndose completo en una
@@ -699,19 +699,19 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       alignment: Alignment.centerLeft,
                       child: Text(formatPrecio(precio),
                           maxLines: 1,
-                          style: const TextStyle(fontSize: 17, color: AppColors.primary, fontWeight: FontWeight.w700)),
+                          style: TextStyle(fontSize: 17, color: colors.primary, fontWeight: FontWeight.w700)),
                     ),
                   ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
                       Icon(registrado ? Icons.verified_user : Icons.person_outline,
-                          size: 12, color: registrado ? AppColors.carbon : AppColors.grayMid),
+                          size: 12, color: registrado ? colors.textPrimary : colors.grayMid),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(vendedor,
                             maxLines: 1, overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 11, color: registrado ? AppColors.carbon : AppColors.grayMid)),
+                            style: TextStyle(fontSize: 11, color: registrado ? colors.textPrimary : colors.grayMid)),
                       ),
                     ],
                   ),
@@ -730,15 +730,15 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.08),
+        color: colors.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w500)),
+          Text(label, style: TextStyle(fontSize: 12, color: colors.primary, fontWeight: FontWeight.w500)),
           const SizedBox(width: 4),
-          GestureDetector(onTap: onClear, child: const Icon(Icons.close, size: 14, color: AppColors.primary)),
+          GestureDetector(onTap: onClear, child: Icon(Icons.close, size: 14, color: colors.primary)),
         ],
       ),
     );
@@ -761,7 +761,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     return Container(
       // Gris (igual que el fondo bajo las miniaturas de productos), para que
       // la barra resalte del blanco de arriba en vez de camuflarse.
-      color: AppColors.background,
+      color: colors.background,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -776,9 +776,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     decoration: BoxDecoration(
                       // Blanco para que resalte sobre el fondo gris del
                       // header (antes ambos eran blancos y se camuflaba).
-                      color: AppColors.surface,
+                      color: colors.surface,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.divider),
+                      border: Border.all(color: colors.divider),
                       boxShadow: [
                         BoxShadow(
                             color: Colors.black.withOpacity(0.06),
@@ -794,18 +794,18 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       onSubmitted: _buscarEnBackend,
                       decoration: InputDecoration(
                         hintText: "Buscar productos...",
-                        hintStyle: const TextStyle(color: AppColors.grayMid, fontSize: 13),
+                        hintStyle: TextStyle(color: colors.grayMid, fontSize: 13),
                         prefixIcon: _buscando
-                            ? const Padding(
+                            ? Padding(
                                 padding: EdgeInsets.all(10),
                                 child: SizedBox(width: 16, height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)),
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: colors.primary)),
                               )
-                            : const Icon(Icons.search, size: 18, color: AppColors.grayMid),
+                            : Icon(Icons.search, size: 18, color: colors.grayMid),
                         suffixIcon: _searchCtrl.text.isNotEmpty
                             ? GestureDetector(
                                 onTap: () { _searchCtrl.clear(); setState(() => cargarPublicaciones()); },
-                                child: const Icon(Icons.close, size: 16, color: AppColors.grayMid))
+                                child: Icon(Icons.close, size: 16, color: colors.grayMid))
                             : null,
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(vertical: 10),
@@ -820,12 +820,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     duration: const Duration(milliseconds: 200),
                     width: 40, height: 40,
                     decoration: BoxDecoration(
-                      color: _tieneFiltroPrecio ? AppColors.primary : AppColors.surface,
+                      color: _tieneFiltroPrecio ? colors.primary : colors.surface,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: _tieneFiltroPrecio ? AppColors.primary : AppColors.divider),
+                      border: Border.all(color: _tieneFiltroPrecio ? colors.primary : colors.divider),
                     ),
                     child: Icon(Icons.tune, size: 18,
-                        color: _tieneFiltroPrecio ? AppColors.textOnPrimary : AppColors.grayMid),
+                        color: _tieneFiltroPrecio ? colors.textOnPrimary : colors.grayMid),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -834,12 +834,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                   child: Container(
                     width: 40, height: 40,
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
+                      color: colors.surface,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.divider),
+                      border: Border.all(color: colors.divider),
                     ),
-                    child: const Icon(Icons.photo_size_select_large_outlined,
-                        size: 17, color: AppColors.grayMid),
+                    child: Icon(Icons.photo_size_select_large_outlined,
+                        size: 17, color: colors.grayMid),
                   ),
                 ),
               ],
@@ -870,9 +870,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Center(child: Padding(
+      return Center(child: Padding(
         padding: EdgeInsets.all(40),
-        child: CircularProgressIndicator(color: AppColors.primary),
+        child: CircularProgressIndicator(color: colors.primary),
       ));
     }
 
@@ -905,7 +905,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
               children: [
                 Expanded(
                   child: Text(tituloSeccion,
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: colors.textPrimary)),
                 ),
                 GestureDetector(
                   onTap: () => Navigator.push(
@@ -920,18 +920,18 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                         Container(
                           width: 34, height: 34,
                           decoration: BoxDecoration(
-                            color: cart.isNotEmpty ? AppColors.primary.withValues(alpha: 0.10) : AppColors.background,
+                            color: cart.isNotEmpty ? colors.primary.withValues(alpha: 0.10) : colors.background,
                             shape: BoxShape.circle,
                           ),
                           child: Icon(Icons.shopping_bag_outlined, size: 18,
-                              color: cart.isNotEmpty ? AppColors.primary : AppColors.grayMid),
+                              color: cart.isNotEmpty ? colors.primary : colors.grayMid),
                         ),
                         if (cart.isNotEmpty)
                           Positioned(
                             right: -2, top: -2,
                             child: Container(
                               width: 15, height: 15,
-                              decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                              decoration: BoxDecoration(color: colors.primary, shape: BoxShape.circle),
                               child: Center(child: Text("${cart.length}",
                                   style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w700))),
                             ),
@@ -961,7 +961,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                               ? Icons.explore_off_rounded
                               : Icons.inventory_2_outlined,
                       size: 48,
-                      color: _errorConexion ? AppColors.primary : AppColors.grayMid,
+                      color: _errorConexion ? colors.primary : colors.grayMid,
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -976,7 +976,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                                       : "No hay productos disponibles",
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: _errorConexion ? AppColors.textPrimary : AppColors.grayMid,
+                        color: _errorConexion ? colors.textPrimary : colors.grayMid,
                         fontSize: 14,
                         fontWeight: _errorConexion ? FontWeight.w600 : FontWeight.normal,
                       ),
@@ -986,23 +986,23 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       Text(
                         "Verifica que el servidor esté activo\n(${ApiService.baseUrl})",
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: AppColors.grayMid, fontSize: 12),
+                        style: TextStyle(color: colors.grayMid, fontSize: 12),
                       ),
                       const SizedBox(height: 16),
                       TextButton.icon(
                         onPressed: cargarPublicaciones,
-                        icon: const Icon(Icons.refresh_rounded,
-                            size: 18, color: AppColors.primary),
-                        label: const Text("Reintentar",
-                            style: TextStyle(color: AppColors.primary,
+                        icon: Icon(Icons.refresh_rounded,
+                            size: 18, color: colors.primary),
+                        label: Text("Reintentar",
+                            style: TextStyle(color: colors.primary,
                                 fontWeight: FontWeight.w600)),
                       ),
                     ],
                     if (_radioActivo && !_errorConexion)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(top: 8),
                         child: Text("Ajusta el radio en la barra inferior",
-                            style: TextStyle(color: AppColors.grayMid, fontSize: 12)),
+                            style: TextStyle(color: colors.grayMid, fontSize: 12)),
                       ),
                   ],
                 ),
@@ -1049,7 +1049,7 @@ class _SearchHeaderDelegate extends SliverPersistentHeaderDelegate {
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         boxShadow: overlapsContent
             ? [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 6, offset: const Offset(0, 2))]
             : [],
