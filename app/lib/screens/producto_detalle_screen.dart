@@ -1396,31 +1396,6 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     );
   }
 
-  // ── Fila de información adicional (solo lectura) ───────────────────────
-  Widget _filaInfoAdicional(String label, String valor) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 150,
-            child: Text(label,
-                style: TextStyle(
-                    fontSize: 12.5, color: colors.grayMid)),
-          ),
-          Expanded(
-            child: Text(valor,
-                style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: colors.textPrimary)),
-          ),
-        ],
-      ),
-    );
-  }
-
 
   // ── Talla del paquete: badge compacto sobre la esquina de la foto ────────
   // Reemplaza la tarjeta grande de "dimensiones estimadas" (se sentía muy
