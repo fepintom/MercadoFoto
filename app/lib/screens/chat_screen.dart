@@ -791,34 +791,32 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
-          // Aviso: sugerir pedir fotos/video del producto en funcionamiento.
-          // Antes solo aparecía si el producto era usado — ahora se muestra
-          // siempre, en todas las conversaciones de compra.
-          Container(
-            width: double.infinity,
-            color: colors.primary.withOpacity(0.08),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.info_outline_rounded,
-                    size: 16, color: colors.primary),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    "Te sugerimos solicitar imágenes o videos cortos "
-                    "(máx 10 segundos) del producto en funcionamiento para "
-                    "visualizar su estado",
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: colors.primary,
-                        height: 1.3,
-                        fontWeight: FontWeight.w500),
+          // Aviso: producto usado → sugerir pedir fotos/video del estado
+          if (_esProductoUsado)
+            Container(
+              width: double.infinity,
+              color: colors.primary.withOpacity(0.08),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline_rounded,
+                      size: 16, color: colors.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "Te sugerimos solicitar imágenes o videos cortos "
+                      "(máx 10 segundos) del producto para visualizar su estado",
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: colors.primary,
+                          height: 1.3,
+                          fontWeight: FontWeight.w500),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
           // Lista de mensajes
           Expanded(
