@@ -994,7 +994,10 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── CONTENIDO POR TAB ──────────────────────────────────────────────────────
   Widget _buildInicio() {
     return MarketplaceScreen(
-      banner: const _BannerCarrusel(),
+      // Sin "const": mismo motivo que ServiciosScreen — el banner usa
+      // colors.carbon como color de fondo de sus placeholders y necesita
+      // poder redibujarse en vivo con el toggle de modo oscuro.
+      banner: _BannerCarrusel(),
       miLat: _miPosicion?.latitude,
       miLng: _miPosicion?.longitude,
       radioKm: _radioKm,
@@ -1201,7 +1204,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       _buildInicio(),
                       const SizedBox.shrink(), // slot 1 reservado (notif abre como sheet)
-                      const ServiciosScreen(),
+                      // Sin "const": para que el modo oscuro se redibuje en
+                      // vivo cuando se toca el ícono de ojo estando en esta
+                      // pestaña (un widget const idéntico se "saltea" en el
+                      // rebuild y quedaba con los colores del modo anterior).
+                      ServiciosScreen(),
                     ],
                   ),
                 ),

@@ -4,7 +4,7 @@ import 'package:flutter/scheduler.dart';
 
 /// Space Invaders mini-game para la pantalla de espera de análisis IA.
 /// Implementado con CustomPainter + Ticker. Sin dependencias externas.
-/// Los colores aquí son intencionalmente retro/arcade, no AppColors.
+/// Los colores aquí son intencionalmente retro/arcade, no colors.
 class SpaceInvadersWidget extends StatefulWidget {
   const SpaceInvadersWidget({super.key});
 

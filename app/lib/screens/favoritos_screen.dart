@@ -69,12 +69,12 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.divider, width: 0.5),
+          border: Border.all(color: colors.divider, width: 0.5),
           boxShadow: [
             BoxShadow(
-              color: AppColors.carbon.withOpacity(0.04),
+              color: colors.carbon.withOpacity(0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -107,15 +107,15 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.08),
+                          color: colors.primary.withOpacity(0.08),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           categoria.toString(),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
-                            color: AppColors.primary,
+                            color: colors.primary,
                           ),
                         ),
                       ),
@@ -123,10 +123,10 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
                       titulo,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
-                        color: AppColors.textPrimary,
+                        color: colors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -134,9 +134,9 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
                       children: [
                         Text(
                           formatPrecio(precio),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
-                            color: AppColors.primary,
+                            color: colors.primary,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -146,13 +146,13 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppColors.grayMid.withOpacity(0.15),
+                              color: colors.grayMid.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: const Text(
+                            child: Text(
                               "Vendido",
                               style: TextStyle(
-                                  fontSize: 10, color: AppColors.grayMid),
+                                  fontSize: 10, color: colors.grayMid),
                             ),
                           ),
                         ],
@@ -172,11 +172,11 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.08),
+                    color: colors.primary.withOpacity(0.08),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.favorite,
-                      color: AppColors.primary, size: 18),
+                  child: Icon(Icons.favorite,
+                      color: colors.primary, size: 18),
                 ),
               ),
             ),
@@ -189,7 +189,7 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
   Future<void> _confirmarQuitar(int id, String titulo) async {
     final confirmar = await showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -201,20 +201,20 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
             Container(
               width: 40, height: 4,
               decoration: BoxDecoration(
-                color: AppColors.divider,
+                color: colors.divider,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(height: 20),
-            const Icon(Icons.favorite_border, size: 40, color: AppColors.grayMid),
+            Icon(Icons.favorite_border, size: 40, color: colors.grayMid),
             const SizedBox(height: 12),
             Text(
               '¿Quitar "$titulo" de favoritos?',
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary),
+                  color: colors.textPrimary),
             ),
             const SizedBox(height: 24),
             Row(
@@ -223,13 +223,13 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(context, false),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.divider),
+                      side: BorderSide(color: colors.divider),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text("Cancelar",
-                        style: TextStyle(color: AppColors.textSecondary)),
+                    child: Text("Cancelar",
+                        style: TextStyle(color: colors.textSecondary)),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -237,13 +237,13 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context, true),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: colors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text("Quitar",
-                        style: TextStyle(color: AppColors.textOnPrimary)),
+                    child: Text("Quitar",
+                        style: TextStyle(color: colors.textOnPrimary)),
                   ),
                 ),
               ],
@@ -259,36 +259,36 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios,
-              size: 18, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back_ios,
+              size: 18, color: colors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           "Mis favoritos",
           style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary),
+              color: colors.textPrimary),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: AppColors.divider),
+          child: Container(height: 0.5, color: colors.divider),
         ),
       ),
       body: _loading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary))
+          ? Center(
+              child: CircularProgressIndicator(color: colors.primary))
           : _userId == null
               ? _sinLogin()
               : _favoritos.isEmpty
                   ? _vacio()
                   : RefreshIndicator(
-                      color: AppColors.primary,
+                      color: colors.primary,
                       onRefresh: _cargar,
                       child: ListView.builder(
                         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -305,20 +305,20 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.favorite_border,
-              size: 60, color: AppColors.grayMid.withOpacity(0.4)),
+              size: 60, color: colors.grayMid.withOpacity(0.4)),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             "No tienes favoritos todavía",
             style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary),
+                color: colors.textSecondary),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             "Guarda productos que te interesen\npara verlos rápido después",
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.grayMid, fontSize: 13),
+            style: TextStyle(color: colors.grayMid, fontSize: 13),
           ),
         ],
       ),
@@ -331,14 +331,14 @@ class _FavoritosScreenState extends State<FavoritosScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.lock_outline,
-              size: 48, color: AppColors.grayMid.withOpacity(0.4)),
+              size: 48, color: colors.grayMid.withOpacity(0.4)),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             "Inicia sesión para ver tus favoritos",
             style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary),
+                color: colors.textSecondary),
           ),
         ],
       ),

@@ -96,7 +96,7 @@ class _RegistroFormWidgetState extends State<RegistroFormWidget> {
           ElevatedButton(
             onPressed: () => Navigator.pop(context),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
+              backgroundColor: colors.primary,
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -113,7 +113,7 @@ class _RegistroFormWidgetState extends State<RegistroFormWidget> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: AppColors.carbon,
+        backgroundColor: colors.carbon,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
@@ -138,7 +138,7 @@ class _RegistroFormWidgetState extends State<RegistroFormWidget> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.divider,
+              color: colors.divider,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -154,10 +154,10 @@ class _RegistroFormWidgetState extends State<RegistroFormWidget> {
               child: Center(
                 child: Text(
                   titulo,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: colors.textPrimary,
                   ),
                 ),
               ),
@@ -172,28 +172,28 @@ class _RegistroFormWidgetState extends State<RegistroFormWidget> {
         TextField(
           controller: emailCtrl,
           keyboardType: TextInputType.emailAddress,
-          style: const TextStyle(
-              fontSize: 15, color: AppColors.textPrimary),
+          style: TextStyle(
+              fontSize: 15, color: colors.textPrimary),
           decoration: InputDecoration(
             labelText: "Correo electrónico",
-            labelStyle: const TextStyle(
-                color: AppColors.grayMid, fontSize: 14),
+            labelStyle: TextStyle(
+                color: colors.grayMid, fontSize: 14),
             filled: true,
-            fillColor: AppColors.background,
+            fillColor: colors.background,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide:
-                  const BorderSide(color: AppColors.divider, width: 0.5),
+                  BorderSide(color: colors.divider, width: 0.5),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide:
-                  const BorderSide(color: AppColors.divider, width: 0.5),
+                  BorderSide(color: colors.divider, width: 0.5),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide:
-                  const BorderSide(color: AppColors.primary, width: 1.5),
+                  BorderSide(color: colors.primary, width: 1.5),
             ),
           ),
         ),
@@ -204,28 +204,28 @@ class _RegistroFormWidgetState extends State<RegistroFormWidget> {
         TextField(
           controller: passCtrl,
           obscureText: true,
-          style: const TextStyle(
-              fontSize: 15, color: AppColors.textPrimary),
+          style: TextStyle(
+              fontSize: 15, color: colors.textPrimary),
           decoration: InputDecoration(
             labelText: "Contraseña",
-            labelStyle: const TextStyle(
-                color: AppColors.grayMid, fontSize: 14),
+            labelStyle: TextStyle(
+                color: colors.grayMid, fontSize: 14),
             filled: true,
-            fillColor: AppColors.background,
+            fillColor: colors.background,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide:
-                  const BorderSide(color: AppColors.divider, width: 0.5),
+                  BorderSide(color: colors.divider, width: 0.5),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide:
-                  const BorderSide(color: AppColors.divider, width: 0.5),
+                  BorderSide(color: colors.divider, width: 0.5),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide:
-                  const BorderSide(color: AppColors.primary, width: 1.5),
+                  BorderSide(color: colors.primary, width: 1.5),
             ),
           ),
         ),
@@ -236,9 +236,9 @@ class _RegistroFormWidgetState extends State<RegistroFormWidget> {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: _solicitarReset,
-              child: const Text(
+              child: Text(
                 '¿Olvidaste tu contraseña?',
-                style: TextStyle(color: AppColors.grayMid, fontSize: 13),
+                style: TextStyle(color: colors.grayMid, fontSize: 13),
               ),
             ),
           ),
@@ -252,19 +252,19 @@ class _RegistroFormWidgetState extends State<RegistroFormWidget> {
           child: ElevatedButton(
             onPressed: _loading ? null : _submit,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.surface,
+              backgroundColor: colors.primary,
+              foregroundColor: colors.textOnPrimary,
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
             child: _loading
-                ? const SizedBox(
+                ? SizedBox(
                     width: 22,
                     height: 22,
                     child: CircularProgressIndicator(
-                        color: AppColors.surface, strokeWidth: 2.5),
+                        color: colors.surface, strokeWidth: 2.5),
                   )
                 : Text(
                     textoBoton,
@@ -284,7 +284,7 @@ class _RegistroFormWidgetState extends State<RegistroFormWidget> {
               widget.isLogin
                   ? "¿No tienes cuenta? Regístrate"
                   : "¿Ya tienes cuenta? Ingresa",
-              style: const TextStyle(color: AppColors.primary),
+              style: TextStyle(color: colors.primary),
             ),
           ),
         ),
@@ -294,18 +294,18 @@ class _RegistroFormWidgetState extends State<RegistroFormWidget> {
           children: [
             Expanded(
                 child: Divider(
-                    color: AppColors.divider.withOpacity(0.8))),
-            const Padding(
+                    color: colors.divider.withOpacity(0.8))),
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 10),
               child: Text(
                 "o",
                 style: TextStyle(
-                    color: AppColors.grayMid, fontSize: 13),
+                    color: colors.grayMid, fontSize: 13),
               ),
             ),
             Expanded(
                 child: Divider(
-                    color: AppColors.divider.withOpacity(0.8))),
+                    color: colors.divider.withOpacity(0.8))),
           ],
         ),
 
@@ -320,18 +320,18 @@ class _RegistroFormWidgetState extends State<RegistroFormWidget> {
                 ? null
                 : _submitGoogle,
             style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.divider),
+              side: BorderSide(color: colors.divider),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              backgroundColor: AppColors.surface,
+              backgroundColor: colors.surface,
             ),
             child: _loadingGoogle
-                ? const SizedBox(
+                ? SizedBox(
                     width: 22,
                     height: 22,
                     child: CircularProgressIndicator(
-                        color: AppColors.primary, strokeWidth: 2.5),
+                        color: colors.primary, strokeWidth: 2.5),
                   )
                 : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -339,17 +339,17 @@ class _RegistroFormWidgetState extends State<RegistroFormWidget> {
                       Image.network(
                         "https://developers.google.com/identity/images/g-logo.png",
                         height: 20,
-                        errorBuilder: (_, __, ___) => const Icon(
+                        errorBuilder: (_, __, ___) => Icon(
                           Icons.g_mobiledata_rounded,
-                          color: AppColors.carbon,
+                          color: colors.textPrimary,
                           size: 22,
                         ),
                       ),
                       const SizedBox(width: 10),
-                      const Text(
+                      Text(
                         "Continuar con Google",
                         style: TextStyle(
-                          color: AppColors.textPrimary,
+                          color: colors.textPrimary,
                           fontWeight: FontWeight.w500,
                           fontSize: 15,
                         ),

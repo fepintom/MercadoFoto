@@ -59,10 +59,10 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
       final disponible = await BiometricService.isAvailable();
       if (!disponible) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(
               "Face ID no está disponible. Verifica que esté configurado en Ajustes del dispositivo."),
-          backgroundColor: AppColors.carbon,
+          backgroundColor: colors.carbon,
           behavior: SnackBarBehavior.floating,
           duration: Duration(seconds: 3),
         ));
@@ -118,9 +118,9 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
     if (!mounted) return;
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text("Datos guardados correctamente"),
-        backgroundColor: AppColors.carbon,
+        backgroundColor: colors.carbon,
       ),
     );
     await cargarDatos();
@@ -131,7 +131,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
     final tienefoto = _fotoUrl.isNotEmpty;
     return CircleAvatar(
       radius: size / 2,
-      backgroundColor: AppColors.carbon,
+      backgroundColor: colors.carbon,
       backgroundImage: tienefoto ? NetworkImage(_fotoUrl) : null,
       onBackgroundImageError: tienefoto ? (_, __) {} : null,
       child: tienefoto
@@ -158,27 +158,27 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
       child: TextField(
         controller: controller,
         keyboardType: keyboardType,
-        style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+        style: TextStyle(fontSize: 15, color: colors.textPrimary),
         decoration: InputDecoration(
-          prefixIcon: Icon(icon, color: AppColors.grayMid, size: 20),
+          prefixIcon: Icon(icon, color: colors.grayMid, size: 20),
           labelText: label,
-          labelStyle: const TextStyle(color: AppColors.grayMid, fontSize: 14),
+          labelStyle: TextStyle(color: colors.grayMid, fontSize: 14),
           filled: true,
-          fillColor: AppColors.surface,
+          fillColor: colors.surface,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide:
-                const BorderSide(color: AppColors.divider, width: 0.5),
+                BorderSide(color: colors.divider, width: 0.5),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide:
-                const BorderSide(color: AppColors.divider, width: 0.5),
+                BorderSide(color: colors.divider, width: 0.5),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide:
-                const BorderSide(color: AppColors.primary, width: 1.5),
+                BorderSide(color: colors.primary, width: 1.5),
           ),
         ),
       ),
@@ -203,10 +203,10 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 11),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary : AppColors.background,
+          color: selected ? colors.primary : colors.background,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: selected ? AppColors.primary : AppColors.divider,
+            color: selected ? colors.primary : colors.divider,
             width: 0.5,
           ),
         ),
@@ -216,7 +216,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
             style: TextStyle(
               fontWeight: FontWeight.w600,
               fontSize: 13,
-              color: selected ? Colors.white : AppColors.textSecondary,
+              color: selected ? Colors.white : colors.textSecondary,
             ),
           ),
         ),
@@ -228,7 +228,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -253,19 +253,19 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.divider,
+                color: colors.divider,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
           ),
           const SizedBox(height: 20),
 
-          const Text(
+          Text(
             "Mis datos",
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 16),
@@ -312,14 +312,14 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
               icon: Icons.map_outlined,
               controller: ciudadCtrl),
 
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
             child: Text(
               "Datos bancarios",
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: colors.textPrimary,
               ),
             ),
           ),
@@ -351,7 +351,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
             child: ElevatedButton(
               onPressed: guardarDatos,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
+                backgroundColor: colors.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
@@ -381,27 +381,27 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.background,
+              color: colors.background,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.face_retouching_natural_rounded,
-              color: AppColors.carbon,
+              color: colors.textPrimary,
               size: 20,
             ),
           ),
-          title: const Text(
+          title: Text(
             "Face ID",
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
+              color: colors.textPrimary,
             ),
           ),
           trailing: Switch(
             value: _biometricEnabled,
             onChanged: _toggleFaceId,
-            activeColor: AppColors.primary,
+            activeColor: colors.primary,
           ),
         ),
         const Divider(height: 1, thickness: 0.5),
@@ -418,23 +418,23 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.background,
+              color: colors.background,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: AppColors.carbon, size: 20),
+            child: Icon(icon, color: colors.textPrimary, size: 20),
           ),
           title: Text(
             titulo,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
+              color: colors.textPrimary,
             ),
           ),
-          trailing: const Icon(
+          trailing: Icon(
             Icons.arrow_forward_ios_rounded,
             size: 14,
-            color: AppColors.grayMid,
+            color: colors.grayMid,
           ),
           onTap: onTap,
         ),
@@ -448,7 +448,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
 
     await showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -462,7 +462,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
               Container(
                 width: 40, height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.divider,
+                  color: colors.divider,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -470,28 +470,28 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
               Container(
                 width: 64, height: 64,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.08),
+                  color: colors.primary.withOpacity(0.08),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.support_agent_rounded,
-                    color: AppColors.primary, size: 32),
+                child: Icon(Icons.support_agent_rounded,
+                    color: colors.primary, size: 32),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Chatea con nosotros',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Nuestro equipo responde a la brevedad.\nSe generará un número de caso automáticamente.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13,
-                  color: AppColors.grayMid,
+                  color: colors.grayMid,
                   height: 1.5,
                 ),
               ),
@@ -549,7 +549,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                           }
                         },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: colors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 15),
                     elevation: 0,
@@ -577,11 +577,11 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                         builder: (_) => const AyudaScreen()),
                   );
                 },
-                child: const Text(
+                child: Text(
                   'Ver mis consultas anteriores',
                   style: TextStyle(
                     fontSize: 13,
-                    color: AppColors.primary,
+                    color: colors.primary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -606,7 +606,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -614,17 +614,17 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
             Container(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 border: Border(
-                  bottom: BorderSide(color: AppColors.divider, width: 0.5),
+                  bottom: BorderSide(color: colors.divider, width: 0.5),
                 ),
               ),
               child: Row(
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.arrow_back_ios_new_rounded,
-                        size: 20, color: AppColors.carbon),
+                    child: Icon(Icons.arrow_back_ios_new_rounded,
+                        size: 20, color: colors.textPrimary),
                   ),
                   const SizedBox(width: 12),
                   Image.asset('assets/images/home.png', height: 38),
@@ -641,12 +641,12 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       "Mi cuenta",
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: colors.textPrimary,
                       ),
                     ),
                     if (nombreMostrado.isNotEmpty)
@@ -654,9 +654,9 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
                           "Hola, $nombreMostrado",
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
-                            color: AppColors.grayMid,
+                            color: colors.grayMid,
                           ),
                         ),
                       ),
@@ -665,14 +665,14 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                         padding: const EdgeInsets.only(top: 4),
                         child: Row(
                           children: [
-                            const Icon(Icons.tag_rounded,
-                                size: 13, color: AppColors.grayMid),
+                            Icon(Icons.tag_rounded,
+                                size: 13, color: colors.grayMid),
                             const SizedBox(width: 4),
                             Text(
                               "ID de usuario: $_userId",
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
-                                color: AppColors.grayMid,
+                                color: colors.grayMid,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -699,8 +699,8 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                               child: Container(
                                 width: 26,
                                 height: 26,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.primary,
+                                decoration: BoxDecoration(
+                                  color: colors.primary,
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(Icons.edit_rounded,
@@ -724,10 +724,10 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: AppColors.surface,
+                          color: colors.surface,
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
-                              color: AppColors.divider, width: 0.5),
+                              color: colors.divider, width: 0.5),
                         ),
                         child: Row(
                           children: [
@@ -735,14 +735,14 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                               width: 44,
                               height: 44,
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withOpacity(0.1),
+                                color: colors.primary.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Icon(Icons.edit_outlined,
-                                  color: AppColors.primary, size: 22),
+                              child: Icon(Icons.edit_outlined,
+                                  color: colors.primary, size: 22),
                             ),
                             const SizedBox(width: 14),
-                            const Expanded(
+                            Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -751,7 +751,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                                     style: TextStyle(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 15,
-                                      color: AppColors.textPrimary,
+                                      color: colors.textPrimary,
                                     ),
                                   ),
                                   SizedBox(height: 2),
@@ -759,14 +759,14 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                                     "Editar perfil y datos bancarios",
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: AppColors.grayMid,
+                                      color: colors.grayMid,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            const Icon(Icons.arrow_forward_ios_rounded,
-                                size: 14, color: AppColors.grayMid),
+                            Icon(Icons.arrow_forward_ios_rounded,
+                                size: 14, color: colors.grayMid),
                           ],
                         ),
                       ),
@@ -777,10 +777,10 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                     // Menú
                     Container(
                       decoration: BoxDecoration(
-                        color: AppColors.surface,
+                        color: colors.surface,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                            color: AppColors.divider, width: 0.5),
+                            color: colors.divider, width: 0.5),
                       ),
                       padding:
                           const EdgeInsets.symmetric(horizontal: 16),
@@ -856,9 +856,9 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                 child: OutlinedButton(
                   onPressed: _cerrarSesion,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
+                    foregroundColor: colors.primary,
                     side:
-                        const BorderSide(color: AppColors.primary, width: 1),
+                        BorderSide(color: colors.primary, width: 1),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),

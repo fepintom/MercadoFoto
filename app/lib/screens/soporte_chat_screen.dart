@@ -147,13 +147,13 @@ class _SoporteChatScreenState extends State<SoporteChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         elevation: 0.5,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              size: 20, color: AppColors.carbon),
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              size: 20, color: colors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         title: Row(
@@ -162,24 +162,24 @@ class _SoporteChatScreenState extends State<SoporteChatScreen> {
               width: 34,
               height: 34,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
+                color: colors.primary.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.support_agent_rounded,
-                  color: AppColors.primary, size: 20),
+              child: Icon(Icons.support_agent_rounded,
+                  color: colors.primary, size: 20),
             ),
             const SizedBox(width: 10),
-            const Column(
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Ayuda OkVenta',
                     style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary)),
+                        color: colors.textPrimary)),
                 Text('Asistente virtual',
                     style:
-                        TextStyle(fontSize: 11, color: AppColors.grayMid)),
+                        TextStyle(fontSize: 11, color: colors.grayMid)),
               ],
             ),
           ],
@@ -212,9 +212,9 @@ class _SoporteChatScreenState extends State<SoporteChatScreen> {
             padding: EdgeInsets.fromLTRB(
                 12, 8, 12, 8 + MediaQuery.of(context).padding.bottom),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: colors.surface,
               border: Border(
-                  top: BorderSide(color: AppColors.divider, width: 0.5)),
+                  top: BorderSide(color: colors.divider, width: 0.5)),
             ),
             child: Row(
               children: [
@@ -225,10 +225,10 @@ class _SoporteChatScreenState extends State<SoporteChatScreen> {
                     onSubmitted: (_) => _enviar(),
                     decoration: InputDecoration(
                       hintText: 'Escribe tu consulta…',
-                      hintStyle: const TextStyle(
-                          fontSize: 14, color: AppColors.grayMid),
+                      hintStyle: TextStyle(
+                          fontSize: 14, color: colors.grayMid),
                       filled: true,
-                      fillColor: AppColors.background,
+                      fillColor: colors.background,
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 10),
                       border: OutlineInputBorder(
@@ -244,8 +244,8 @@ class _SoporteChatScreenState extends State<SoporteChatScreen> {
                   child: Container(
                     width: 42,
                     height: 42,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
+                    decoration: BoxDecoration(
+                      color: colors.primary,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.send_rounded,
@@ -270,7 +270,7 @@ class _SoporteChatScreenState extends State<SoporteChatScreen> {
         constraints: BoxConstraints(
             maxWidth: MediaQuery.of(context).size.width * 0.78),
         decoration: BoxDecoration(
-          color: esUsuario ? AppColors.primary : AppColors.surface,
+          color: esUsuario ? colors.primary : colors.surface,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
@@ -279,7 +279,7 @@ class _SoporteChatScreenState extends State<SoporteChatScreen> {
           ),
           border: esUsuario
               ? null
-              : Border.all(color: AppColors.divider, width: 0.6),
+              : Border.all(color: colors.divider, width: 0.6),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -289,7 +289,7 @@ class _SoporteChatScreenState extends State<SoporteChatScreen> {
               style: TextStyle(
                 fontSize: 14,
                 height: 1.35,
-                color: esUsuario ? Colors.white : AppColors.textPrimary,
+                color: esUsuario ? Colors.white : colors.textPrimary,
               ),
             ),
             if (m.accion != null) _panelConfirmacion(m),
@@ -315,7 +315,7 @@ class _SoporteChatScreenState extends State<SoporteChatScreen> {
             fontWeight: FontWeight.w700,
             color: m.accionEstado == 'confirmada'
                 ? Colors.green
-                : AppColors.grayMid,
+                : colors.grayMid,
           ),
         ),
       );
@@ -332,10 +332,10 @@ class _SoporteChatScreenState extends State<SoporteChatScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Cancelar "$titulo"${monto != null ? ' (\$$monto)' : ''}',
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary)),
+                  color: colors.textPrimary)),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -362,7 +362,7 @@ class _SoporteChatScreenState extends State<SoporteChatScreen> {
                   onPressed: () =>
                       setState(() => m.accionEstado = 'rechazada'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.grayMid,
+                    foregroundColor: colors.grayMid,
                     padding: const EdgeInsets.symmetric(vertical: 9),
                     textStyle: const TextStyle(
                         fontSize: 12, fontWeight: FontWeight.w600),
@@ -386,17 +386,17 @@ class _SoporteChatScreenState extends State<SoporteChatScreen> {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.divider, width: 0.6),
+          border: Border.all(color: colors.divider, width: 0.6),
         ),
-        child: const SizedBox(
+        child: SizedBox(
           width: 34,
           child: Text('•••',
               style: TextStyle(
                   fontSize: 16,
                   letterSpacing: 2,
-                  color: AppColors.grayMid)),
+                  color: colors.grayMid)),
         ),
       ),
     );

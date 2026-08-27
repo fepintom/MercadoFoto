@@ -80,7 +80,7 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
   Future<ImageSource?> _elegirFuente() async {
     return showModalBottomSheet<ImageSource>(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -93,25 +93,25 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
               height: 4,
               margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: AppColors.divider,
+                color: colors.divider,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.camera_alt_rounded,
-                  color: AppColors.carbon),
-              title: const Text('Cámara',
+              leading: Icon(Icons.camera_alt_rounded,
+                  color: colors.textPrimary),
+              title: Text('Cámara',
                   style: TextStyle(
-                      color: AppColors.textPrimary,
+                      color: colors.textPrimary,
                       fontWeight: FontWeight.w500)),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_rounded,
-                  color: AppColors.carbon),
-              title: const Text('Galería',
+              leading: Icon(Icons.photo_library_rounded,
+                  color: colors.textPrimary),
+              title: Text('Galería',
                   style: TextStyle(
-                      color: AppColors.textPrimary,
+                      color: colors.textPrimary,
                       fontWeight: FontWeight.w500)),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
@@ -246,7 +246,7 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: AppColors.primary,
+        backgroundColor: colors.primary,
         behavior: SnackBarBehavior.floating,
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -262,21 +262,21 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-          color: AppColors.surface,
-          child: const Column(
+          color: colors.surface,
+          child: Column(
             children: [
               Text(
                 "Publicando tu producto…",
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                 ),
               ),
               SizedBox(height: 4),
               Text(
                 "Mientras suben las fotos, ¡juega un poco!",
-                style: TextStyle(fontSize: 13, color: AppColors.grayMid),
+                style: TextStyle(fontSize: 13, color: colors.grayMid),
               ),
             ],
           ),
@@ -284,23 +284,23 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
         const Divider(height: 1, thickness: 0.5),
         const Expanded(child: SpaceInvadersWidget()),
         Container(
-          color: AppColors.surface,
+          color: colors.surface,
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const SizedBox(
+              SizedBox(
                 width: 14,
                 height: 14,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: AppColors.primary,
+                  color: colors.primary,
                 ),
               ),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 "Procesando y subiendo imágenes…",
-                style: TextStyle(fontSize: 12, color: AppColors.grayMid),
+                style: TextStyle(fontSize: 12, color: colors.grayMid),
               ),
             ],
           ),
@@ -312,20 +312,20 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
         // Flecha de volver explícita (ver misma nota en confirmacion_screen).
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              size: 18, color: AppColors.carbon),
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              size: 18, color: colors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           "Publicación manual",
           style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: colors.textPrimary,
           ),
         ),
         actions: [
@@ -337,12 +337,12 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
             ),
           ),
         ],
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         elevation: 0,
-        iconTheme: const IconThemeData(color: AppColors.carbon),
+        iconTheme: IconThemeData(color: colors.textPrimary),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(color: AppColors.divider, height: 0.5),
+          child: Container(color: colors.divider, height: 0.5),
         ),
       ),
       body: _publicando
@@ -377,8 +377,8 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
                     icon: const Icon(Icons.visibility_outlined, size: 18),
                     label: const Text("Vista previa"),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.carbon,
-                      side: const BorderSide(color: AppColors.divider),
+                      foregroundColor: colors.textPrimary,
+                      side: BorderSide(color: colors.divider),
                       padding: const EdgeInsets.symmetric(vertical: 15),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -396,8 +396,8 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
                   child: ElevatedButton(
                     onPressed: _publicar,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.textOnPrimary,
+                      backgroundColor: colors.primary,
+                      foregroundColor: colors.textOnPrimary,
                       elevation: 0,
                       padding: const EdgeInsets.symmetric(vertical: 15),
                       shape: RoundedRectangleBorder(
@@ -422,18 +422,18 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           "Fotos del producto",
           style: TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: colors.textPrimary,
           ),
         ),
         const SizedBox(height: 4),
-        const Text(
+        Text(
           "Hasta 4 fotos · La primera será la imagen principal",
-          style: TextStyle(fontSize: 12, color: AppColors.grayMid),
+          style: TextStyle(fontSize: 12, color: colors.grayMid),
         ),
         const SizedBox(height: 12),
         SizedBox(
@@ -475,13 +475,13 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AppColors.primary,
+                  color: colors.primary,
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text(
+                child: Text(
                   "Principal",
                   style: TextStyle(
-                    color: AppColors.textOnPrimary,
+                    color: colors.textOnPrimary,
                     fontSize: 9,
                     fontWeight: FontWeight.w600,
                   ),
@@ -498,11 +498,11 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
                 width: 22,
                 height: 22,
                 decoration: BoxDecoration(
-                  color: AppColors.carbon.withOpacity(0.8),
+                  color: colors.carbon.withOpacity(0.8),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.close_rounded,
-                    color: AppColors.surface, size: 14),
+                child: Icon(Icons.close_rounded,
+                    color: colors.surface, size: 14),
               ),
             ),
           ),
@@ -518,21 +518,21 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
         width: 110,
         height: 110,
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-              color: AppColors.divider, width: 1.5),
+              color: colors.divider, width: 1.5),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.add_photo_alternate_outlined,
-                color: AppColors.grayMid, size: 28),
+            Icon(Icons.add_photo_alternate_outlined,
+                color: colors.grayMid, size: 28),
             const SizedBox(height: 4),
             Text(
               _imagenes.isEmpty ? "Agregar foto" : "Agregar más",
-              style: const TextStyle(
-                  fontSize: 11, color: AppColors.grayMid),
+              style: TextStyle(
+                  fontSize: 11, color: colors.grayMid),
             ),
           ],
         ),
@@ -546,8 +546,8 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
       padding: const EdgeInsets.only(bottom: 16),
       child: TextField(
         controller: ctrl,
-        style: const TextStyle(
-            fontSize: 15, color: AppColors.textPrimary),
+        style: TextStyle(
+            fontSize: 15, color: colors.textPrimary),
         decoration: _inputDeco(label),
       ),
     );
@@ -560,8 +560,8 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
       child: TextField(
         controller: ctrl,
         maxLines: 3,
-        style: const TextStyle(
-            fontSize: 15, color: AppColors.textPrimary),
+        style: TextStyle(
+            fontSize: 15, color: colors.textPrimary),
         decoration: _inputDeco(label),
       ),
     );
@@ -574,12 +574,12 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
         controller: _precio,
         keyboardType: TextInputType.number,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        style: const TextStyle(
-            fontSize: 15, color: AppColors.textPrimary),
+        style: TextStyle(
+            fontSize: 15, color: colors.textPrimary),
         decoration: _inputDeco("Precio *").copyWith(
           prefixText: "\$ ",
-          prefixStyle: const TextStyle(
-            color: AppColors.textPrimary,
+          prefixStyle: TextStyle(
+            color: colors.textPrimary,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -593,17 +593,17 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(10),
           border:
-              Border.all(color: AppColors.divider, width: 0.5),
+              Border.all(color: colors.divider, width: 0.5),
         ),
         child: DropdownButtonHideUnderline(
           child: DropdownButton<String>(
             value: _categoria,
             isExpanded: true,
-            style: const TextStyle(
-                fontSize: 15, color: AppColors.textPrimary),
+            style: TextStyle(
+                fontSize: 15, color: colors.textPrimary),
             items: _categorias
                 .map((c) =>
                     DropdownMenuItem(value: c, child: Text(c)))
@@ -624,11 +624,11 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Estado del producto',
+          Text('Estado del producto',
               style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary)),
+                  color: colors.textPrimary)),
           const SizedBox(height: 10),
           Row(
             children: [
@@ -651,10 +651,10 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: sel ? AppColors.primary.withOpacity(0.08) : AppColors.surface,
+            color: sel ? colors.primary.withOpacity(0.08) : colors.surface,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: sel ? AppColors.primary : AppColors.divider,
+              color: sel ? colors.primary : colors.divider,
               width: sel ? 1.5 : 0.8,
             ),
           ),
@@ -663,13 +663,13 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
             children: [
               Icon(icono,
                   size: 16,
-                  color: sel ? AppColors.primary : AppColors.grayMid),
+                  color: sel ? colors.primary : colors.grayMid),
               const SizedBox(width: 6),
               Text(label,
                   style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: sel ? AppColors.primary : AppColors.textSecondary)),
+                      color: sel ? colors.primary : colors.textSecondary)),
             ],
           ),
         ),
@@ -685,17 +685,17 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: colors.surface,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.divider, width: 0.8),
+            border: Border.all(color: colors.divider, width: 0.8),
           ),
           child: Row(
             children: [
               Icon(Icons.handshake_outlined,
                   size: 18,
-                  color: _aceptaOfertas ? AppColors.primary : AppColors.grayMid),
+                  color: _aceptaOfertas ? colors.primary : colors.grayMid),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -703,16 +703,16 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
                         style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary)),
+                            color: colors.textPrimary)),
                     Text('Otros usuarios podrán proponer un precio o canje',
-                        style: TextStyle(fontSize: 11, color: AppColors.grayMid)),
+                        style: TextStyle(fontSize: 11, color: colors.grayMid)),
                   ],
                 ),
               ),
               Switch(
                 value: _aceptaOfertas,
                 onChanged: (v) => setState(() => _aceptaOfertas = v),
-                activeThumbColor: AppColors.primary,
+                activeThumbColor: colors.primary,
               ),
             ],
           ),
@@ -738,24 +738,24 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
         children: [
           Row(
             children: [
-              const Text(
+              Text(
                 'Tallas disponibles',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                 ),
               ),
               const Spacer(),
               GestureDetector(
                 onTap: _mostrarGuiaTallas,
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.straighten_rounded, size: 14, color: AppColors.primary),
+                    Icon(Icons.straighten_rounded, size: 14, color: colors.primary),
                     SizedBox(width: 4),
                     Text(
                       'Guía de tallas',
-                      style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600),
+                      style: TextStyle(fontSize: 12, color: colors.primary, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
@@ -767,9 +767,9 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
           Container(
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.background,
+              color: colors.background,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.divider, width: 0.5),
+              border: Border.all(color: colors.divider, width: 0.5),
             ),
             child: Row(
               children: ['adulto', 'niño'].map((tipo) {
@@ -783,7 +783,7 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
                       decoration: BoxDecoration(
-                        color: sel ? AppColors.primary : Colors.transparent,
+                        color: sel ? colors.primary : Colors.transparent,
                         borderRadius: BorderRadius.circular(7),
                       ),
                       alignment: Alignment.center,
@@ -792,7 +792,7 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: sel ? AppColors.textOnPrimary : AppColors.textSecondary,
+                          color: sel ? colors.textOnPrimary : colors.textSecondary,
                         ),
                       ),
                     ),
@@ -821,10 +821,10 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
                   width: 52,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: sel ? AppColors.primary.withOpacity(0.10) : AppColors.surface,
+                    color: sel ? colors.primary.withOpacity(0.10) : colors.surface,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: sel ? AppColors.primary : AppColors.divider,
+                      color: sel ? colors.primary : colors.divider,
                       width: sel ? 1.5 : 0.8,
                     ),
                   ),
@@ -834,7 +834,7 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: sel ? AppColors.primary : AppColors.textSecondary,
+                      color: sel ? colors.primary : colors.textSecondary,
                     ),
                   ),
                 ),
@@ -845,7 +845,7 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
             const SizedBox(height: 8),
             Text(
               'Seleccionadas: ${_tallasSeleccionadas.join(', ')}',
-              style: const TextStyle(fontSize: 11, color: AppColors.grayMid),
+              style: TextStyle(fontSize: 11, color: colors.grayMid),
             ),
           ],
         ],
@@ -857,7 +857,7 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -877,24 +877,24 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
   InputDecoration _inputDeco(String label) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(
-          color: AppColors.grayMid, fontSize: 14),
+      labelStyle: TextStyle(
+          color: colors.grayMid, fontSize: 14),
       filled: true,
-      fillColor: AppColors.surface,
+      fillColor: colors.surface,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide:
-            const BorderSide(color: AppColors.divider, width: 0.5),
+            BorderSide(color: colors.divider, width: 0.5),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide:
-            const BorderSide(color: AppColors.divider, width: 0.5),
+            BorderSide(color: colors.divider, width: 0.5),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide:
-            const BorderSide(color: AppColors.primary, width: 1.5),
+            BorderSide(color: colors.primary, width: 1.5),
       ),
     );
   }
@@ -975,7 +975,7 @@ class _GuiaTallasSheetState extends State<_GuiaTallasSheet> {
           width: 40, height: 4,
           margin: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: AppColors.divider,
+            color: colors.divider,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -985,14 +985,14 @@ class _GuiaTallasSheetState extends State<_GuiaTallasSheet> {
             children: [
               Text(
                 widget.esCalzado ? 'Guía de tallas — Calzado' : 'Guía de tallas — Ropa',
-                style: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
+                style: TextStyle(
+                  fontSize: 16, fontWeight: FontWeight.w700, color: colors.textPrimary,
                 ),
               ),
               const Spacer(),
               IconButton(
                 onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close_rounded, color: AppColors.grayMid),
+                icon: Icon(Icons.close_rounded, color: colors.grayMid),
               ),
             ],
           ),
@@ -1003,9 +1003,9 @@ class _GuiaTallasSheetState extends State<_GuiaTallasSheet> {
           child: Container(
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.background,
+              color: colors.background,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.divider, width: 0.5),
+              border: Border.all(color: colors.divider, width: 0.5),
             ),
             child: Row(
               children: ['adulto', 'niño'].map((tipo) {
@@ -1016,7 +1016,7 @@ class _GuiaTallasSheetState extends State<_GuiaTallasSheet> {
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
                       decoration: BoxDecoration(
-                        color: sel ? AppColors.primary : Colors.transparent,
+                        color: sel ? colors.primary : Colors.transparent,
                         borderRadius: BorderRadius.circular(7),
                       ),
                       alignment: Alignment.center,
@@ -1025,7 +1025,7 @@ class _GuiaTallasSheetState extends State<_GuiaTallasSheet> {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: sel ? AppColors.textOnPrimary : AppColors.textSecondary,
+                          color: sel ? colors.textOnPrimary : colors.textSecondary,
                         ),
                       ),
                     ),
@@ -1053,13 +1053,13 @@ class _GuiaTallasSheetState extends State<_GuiaTallasSheet> {
     final filas = _tipo == 'adulto' ? _ropaAdulto : _ropaNino;
     final isAdulto = _tipo == 'adulto';
     return Table(
-      border: TableBorder.all(color: AppColors.divider, width: 0.5),
+      border: TableBorder.all(color: colors.divider, width: 0.5),
       columnWidths: isAdulto
           ? const {0: FixedColumnWidth(48), 1: FlexColumnWidth(), 2: FlexColumnWidth(), 3: FlexColumnWidth()}
           : const {0: FixedColumnWidth(48), 1: FlexColumnWidth()},
       children: [
         TableRow(
-          decoration: const BoxDecoration(color: AppColors.background),
+          decoration: BoxDecoration(color: colors.background),
           children: [
             _th('Talla'),
             if (isAdulto) ...[_th('Pecho\n(cm)'), _th('Cintura\n(cm)'), _th('Cadera\n(cm)')],
@@ -1076,11 +1076,11 @@ class _GuiaTallasSheetState extends State<_GuiaTallasSheet> {
   Widget _tablaCalzado() {
     final filas = _tipo == 'adulto' ? _zapatoAdulto : _zapatoNino;
     return Table(
-      border: TableBorder.all(color: AppColors.divider, width: 0.5),
+      border: TableBorder.all(color: colors.divider, width: 0.5),
       columnWidths: const {0: FixedColumnWidth(60), 1: FlexColumnWidth()},
       children: [
         TableRow(
-          decoration: const BoxDecoration(color: AppColors.background),
+          decoration: BoxDecoration(color: colors.background),
           children: [_th('Talla'), _th('Pie (cm)')],
         ),
         ...filas.map((f) => TableRow(children: f.map((c) => _td(c)).toList())),
@@ -1091,12 +1091,12 @@ class _GuiaTallasSheetState extends State<_GuiaTallasSheet> {
   Widget _th(String t) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
         child: Text(t, textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: colors.textPrimary)),
       );
 
   Widget _td(String t) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
         child: Text(t, textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+            style: TextStyle(fontSize: 13, color: colors.textPrimary)),
       );
 }

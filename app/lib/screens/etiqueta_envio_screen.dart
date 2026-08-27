@@ -112,7 +112,7 @@ class _EtiquetaEnvioScreenState extends State<EtiquetaEnvioScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -120,19 +120,19 @@ class _EtiquetaEnvioScreenState extends State<EtiquetaEnvioScreen> {
             Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 border: Border(
-                    bottom: BorderSide(color: AppColors.divider, width: 0.5)),
+                    bottom: BorderSide(color: colors.divider, width: 0.5)),
               ),
               child: Row(
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.arrow_back_ios_new_rounded,
-                        size: 20, color: AppColors.carbon),
+                    child: Icon(Icons.arrow_back_ios_new_rounded,
+                        size: 20, color: colors.textPrimary),
                   ),
                   const SizedBox(width: 14),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -140,10 +140,10 @@ class _EtiquetaEnvioScreenState extends State<EtiquetaEnvioScreen> {
                             style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary)),
+                                color: colors.textPrimary)),
                         Text('Paso 1: imprime o guarda la etiqueta',
                             style: TextStyle(
-                                fontSize: 12, color: AppColors.grayMid)),
+                                fontSize: 12, color: colors.grayMid)),
                       ],
                     ),
                   ),
@@ -153,13 +153,13 @@ class _EtiquetaEnvioScreenState extends State<EtiquetaEnvioScreen> {
 
             Expanded(
               child: _cargando
-                  ? const Center(
+                  ? Center(
                       child:
-                          CircularProgressIndicator(color: AppColors.primary))
+                          CircularProgressIndicator(color: colors.primary))
                   : _etiqueta == null
-                      ? const Center(
+                      ? Center(
                           child: Text('No se pudo cargar la etiqueta',
-                              style: TextStyle(color: AppColors.grayMid)))
+                              style: TextStyle(color: colors.grayMid)))
                       : SingleChildScrollView(
                           padding: const EdgeInsets.all(16),
                           child: Column(
@@ -179,9 +179,9 @@ class _EtiquetaEnvioScreenState extends State<EtiquetaEnvioScreen> {
                                           size: 17),
                                       label: const Text('Imprimir'),
                                       style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppColors.primary,
+                                        foregroundColor: colors.primary,
                                         side: BorderSide(
-                                            color: AppColors.primary
+                                            color: colors.primary
                                                 .withOpacity(0.5)),
                                         padding: const EdgeInsets.symmetric(
                                             vertical: 12),
@@ -201,9 +201,9 @@ class _EtiquetaEnvioScreenState extends State<EtiquetaEnvioScreen> {
                                           size: 17),
                                       label: const Text('Descargar'),
                                       style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppColors.primary,
+                                        foregroundColor: colors.primary,
                                         side: BorderSide(
-                                            color: AppColors.primary
+                                            color: colors.primary
                                                 .withOpacity(0.5)),
                                         padding: const EdgeInsets.symmetric(
                                             vertical: 12),
@@ -216,12 +216,12 @@ class _EtiquetaEnvioScreenState extends State<EtiquetaEnvioScreen> {
                                 ],
                               ),
                               const SizedBox(height: 12),
-                              const Text(
+                              Text(
                                 'Si no tienes impresora, guarda la etiqueta y '
                                 'muéstrala desde el teléfono al entregar.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                    fontSize: 12, color: AppColors.grayMid),
+                                    fontSize: 12, color: colors.grayMid),
                               ),
                               const SizedBox(height: 20),
                               SizedBox(
@@ -243,7 +243,7 @@ class _EtiquetaEnvioScreenState extends State<EtiquetaEnvioScreen> {
                                       size: 18),
                                   label: const Text('Comenzar entrega'),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
+                                    backgroundColor: colors.primary,
                                     foregroundColor: Colors.white,
                                     elevation: 0,
                                     padding: const EdgeInsets.symmetric(

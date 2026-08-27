@@ -92,7 +92,7 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
     if (_userId == null) return;
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => SafeArea(
@@ -104,24 +104,24 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
               width: 40, height: 4,
               margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                  color: AppColors.divider,
+                  color: colors.divider,
                   borderRadius: BorderRadius.circular(2)),
             ),
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(bottom: 8),
               child: Text('Foto de perfil',
                   style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary)),
+                      color: colors.textPrimary)),
             ),
             ListTile(
-              leading: const Icon(Icons.camera_alt_rounded, color: AppColors.carbon),
+              leading: Icon(Icons.camera_alt_rounded, color: colors.textPrimary),
               title: const Text('Cámara'),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_rounded, color: AppColors.carbon),
+              leading: Icon(Icons.photo_library_rounded, color: colors.textPrimary),
               title: const Text('Galería'),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
@@ -151,8 +151,8 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error al subir foto'),
-              backgroundColor: AppColors.carbon),
+          SnackBar(content: Text('Error al subir foto'),
+              backgroundColor: colors.carbon),
         );
       }
     } finally {
@@ -168,7 +168,7 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => DraggableScrollableSheet(
@@ -179,12 +179,12 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
         builder: (_, sc) => ListView(
           controller: sc,
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-          children: const [
+          children: [
             Text('Cómo cuidamos tus datos',
                 style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary)),
+                    color: colors.textPrimary)),
             SizedBox(height: 16),
             _ItemPolitica(
               icon: Icons.lock_outline_rounded,
@@ -220,7 +220,7 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => _DireccionSheet(
@@ -267,7 +267,7 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => Padding(
@@ -283,44 +283,44 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
               child: Container(
                 width: 40, height: 4,
                 decoration: BoxDecoration(
-                    color: AppColors.divider,
+                    color: colors.divider,
                     borderRadius: BorderRadius.circular(2)),
               ),
             ),
             const SizedBox(height: 20),
             Text(titulo,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary)),
+                    color: colors.textPrimary)),
             const SizedBox(height: 14),
             TextField(
               controller: ctrl,
               keyboardType: teclado,
               inputFormatters: formatters,
               autofocus: true,
-              style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+              style: TextStyle(fontSize: 15, color: colors.textPrimary),
               decoration: InputDecoration(
                 hintText: hint,
-                hintStyle: const TextStyle(color: AppColors.grayMid, fontSize: 14),
+                hintStyle: TextStyle(color: colors.grayMid, fontSize: 14),
                 filled: true,
-                fillColor: AppColors.background,
+                fillColor: colors.background,
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide:
-                      const BorderSide(color: AppColors.divider, width: 0.5),
+                      BorderSide(color: colors.divider, width: 0.5),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide:
-                      const BorderSide(color: AppColors.divider, width: 0.5),
+                      BorderSide(color: colors.divider, width: 0.5),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide:
-                      const BorderSide(color: AppColors.primary, width: 1.5),
+                      BorderSide(color: colors.primary, width: 1.5),
                 ),
               ),
             ),
@@ -334,7 +334,7 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
                   await _cargarDatos();
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: colors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   elevation: 0,
@@ -373,7 +373,7 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Icon(icon, size: 22, color: AppColors.grayMid),
+                Icon(icon, size: 22, color: colors.grayMid),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -385,15 +385,15 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
                           color: estaCompleto
-                              ? AppColors.textPrimary
-                              : AppColors.grayMid,
+                              ? colors.textPrimary
+                              : colors.grayMid,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         sublabel,
-                        style: const TextStyle(
-                            fontSize: 12, color: AppColors.grayMid, height: 1.3),
+                        style: TextStyle(
+                            fontSize: 12, color: colors.grayMid, height: 1.3),
                       ),
                     ],
                   ),
@@ -409,15 +409,15 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
                     child: const Icon(Icons.check_rounded,
                         size: 13, color: Colors.white),
                   ),
-                const Icon(Icons.chevron_right_rounded,
-                    size: 20, color: AppColors.grayMid),
+                Icon(Icons.chevron_right_rounded,
+                    size: 20, color: colors.grayMid),
               ],
             ),
           ),
         ),
         if (!isLast)
-          const Divider(
-              height: 1, thickness: 0.5, indent: 54, color: AppColors.divider),
+          Divider(
+              height: 1, thickness: 0.5, indent: 54, color: colors.divider),
       ],
     );
   }
@@ -427,8 +427,8 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
       padding: const EdgeInsets.fromLTRB(0, 28, 0, 10),
       child: Text(
         titulo,
-        style: const TextStyle(
-          fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
+        style: TextStyle(
+          fontSize: 17, fontWeight: FontWeight.w700, color: colors.textPrimary,
         ),
       ),
     );
@@ -437,9 +437,9 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
   Widget _card(List<Widget> filas) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.divider, width: 0.5),
+        border: Border.all(color: colors.divider, width: 0.5),
       ),
       clipBehavior: Clip.hardEdge,
       child: Column(children: filas),
@@ -453,7 +453,7 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
         [_nombre, _apellido].where((s) => s.isNotEmpty).join(" ");
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -463,29 +463,29 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: GestureDetector(
                 onTap: () => Navigator.pop(context),
-                child: const Icon(Icons.arrow_back_rounded,
-                    size: 24, color: AppColors.textPrimary),
+                child: Icon(Icons.arrow_back_rounded,
+                    size: 24, color: colors.textPrimary),
               ),
             ),
             const SizedBox(height: 16),
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 20),
               child: Text(
                 "Información de tu perfil",
                 style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                   letterSpacing: -0.5,
                 ),
               ),
             ),
             const SizedBox(height: 6),
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 20),
               child: Text(
                 "Toca cualquier campo para editarlo.",
-                style: TextStyle(fontSize: 14, color: AppColors.grayMid, height: 1.4),
+                style: TextStyle(fontSize: 14, color: colors.grayMid, height: 1.4),
               ),
             ),
 
@@ -505,7 +505,7 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
                             onTap: _cambiarFoto,
                             child: CircleAvatar(
                               radius: 48,
-                              backgroundColor: AppColors.divider,
+                              backgroundColor: colors.divider,
                               backgroundImage: _fotoUrl.isNotEmpty
                                   ? NetworkImage(
                                       '${ApiService.baseUrl}$_fotoUrl')
@@ -515,10 +515,10 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
                                       _nombre.isNotEmpty
                                           ? _nombre[0].toUpperCase()
                                           : 'U',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                           fontSize: 36,
                                           fontWeight: FontWeight.w700,
-                                          color: AppColors.grayMid),
+                                          color: colors.grayMid),
                                     )
                                   : null,
                             ),
@@ -530,8 +530,8 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
                               onTap: _cambiarFoto,
                               child: Container(
                                 width: 32, height: 32,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.primary,
+                                decoration: BoxDecoration(
+                                  color: colors.primary,
                                   shape: BoxShape.circle,
                                 ),
                                 child: _subiendoFoto
@@ -550,10 +550,10 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Center(
+                    Center(
                       child: Text('Toca para cambiar foto',
                           style: TextStyle(
-                              fontSize: 12, color: AppColors.grayMid)),
+                              fontSize: 12, color: colors.grayMid)),
                     ),
 
                     // ── SECCIÓN: Información personal ──────────────
@@ -662,24 +662,24 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
                     _seccion("Dirección"),
                     Container(
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.05),
+                        color: colors.primary.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                            color: AppColors.primary.withOpacity(0.15),
+                            color: colors.primary.withOpacity(0.15),
                             width: 0.5),
                       ),
                       padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
                       margin: const EdgeInsets.only(bottom: 10),
                       child: Row(
-                        children: const [
+                        children: [
                           Icon(Icons.info_outline_rounded,
-                              size: 15, color: AppColors.primary),
+                              size: 15, color: colors.primary),
                           SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               "Define la ubicación de tus publicaciones en el mapa. Se valida automáticamente con mapas reales.",
                               style: TextStyle(
-                                  fontSize: 12, color: AppColors.primary, height: 1.4),
+                                  fontSize: 12, color: colors.primary, height: 1.4),
                             ),
                           ),
                         ],
@@ -714,22 +714,22 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
                     _seccion("Datos bancarios"),
                     Container(
                       decoration: BoxDecoration(
-                        color: AppColors.carbon.withOpacity(0.04),
+                        color: colors.carbon.withOpacity(0.04),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.divider, width: 0.5),
+                        border: Border.all(color: colors.divider, width: 0.5),
                       ),
                       padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
                       margin: const EdgeInsets.only(bottom: 10),
                       child: Row(
-                        children: const [
+                        children: [
                           Icon(Icons.lock_outline_rounded,
-                              size: 15, color: AppColors.grayMid),
+                              size: 15, color: colors.grayMid),
                           SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               "Tus datos bancarios son privados y solo se usan para recibir pagos por tus ventas.",
                               style: TextStyle(
-                                  fontSize: 12, color: AppColors.grayMid, height: 1.4),
+                                  fontSize: 12, color: colors.grayMid, height: 1.4),
                             ),
                           ),
                         ],
@@ -806,15 +806,15 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.shield_outlined,
-                            size: 16, color: AppColors.grayMid),
+                        Icon(Icons.shield_outlined,
+                            size: 16, color: colors.grayMid),
                         const SizedBox(width: 10),
                         Expanded(
                           child: RichText(
                             text: TextSpan(
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 12,
-                                  color: AppColors.grayMid,
+                                  color: colors.grayMid,
                                   height: 1.5),
                               children: [
                                 const TextSpan(
@@ -823,10 +823,10 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
                                 ),
                                 TextSpan(
                                   text: "cómo cuidamos tus datos.",
-                                  style: const TextStyle(
-                                    color: AppColors.primary,
+                                  style: TextStyle(
+                                    color: colors.primary,
                                     decoration: TextDecoration.underline,
-                                    decorationColor: AppColors.primary,
+                                    decorationColor: colors.primary,
                                   ),
                                   recognizer: TapGestureRecognizer()
                                     ..onTap = _mostrarPoliticaDatos,
@@ -855,7 +855,7 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => Padding(
@@ -871,16 +871,16 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
               child: Container(
                 width: 40, height: 4,
                 decoration: BoxDecoration(
-                    color: AppColors.divider,
+                    color: colors.divider,
                     borderRadius: BorderRadius.circular(2)),
               ),
             ),
             const SizedBox(height: 20),
-            const Text("Nombre y apellido",
+            Text("Nombre y apellido",
                 style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary)),
+                    color: colors.textPrimary)),
             const SizedBox(height: 14),
             _campoEdicion(nombreCtrl, "Nombre", autofocus: true),
             const SizedBox(height: 10),
@@ -898,7 +898,7 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
                   await _guardarCampo("apellido", a);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: colors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   elevation: 0,
@@ -959,7 +959,7 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
   }) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => SafeArea(
@@ -971,16 +971,16 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
               width: 40, height: 4,
               margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                  color: AppColors.divider,
+                  color: colors.divider,
                   borderRadius: BorderRadius.circular(2)),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
               child: Text(titulo,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary)),
+                      color: colors.textPrimary)),
             ),
             const Divider(height: 1, thickness: 0.5),
             ConstrainedBox(
@@ -999,11 +999,11 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
                     title: Text(op,
                         style: TextStyle(
                             fontSize: 15,
-                            color: sel ? AppColors.primary : AppColors.textPrimary,
+                            color: sel ? colors.primary : colors.textPrimary,
                             fontWeight: sel ? FontWeight.w600 : FontWeight.normal)),
                     trailing: sel
-                        ? const Icon(Icons.check_circle_rounded,
-                            color: AppColors.primary, size: 20)
+                        ? Icon(Icons.check_circle_rounded,
+                            color: colors.primary, size: 20)
                         : null,
                     onTap: () async {
                       Navigator.pop(context);
@@ -1025,24 +1025,24 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
     return TextField(
       controller: ctrl,
       autofocus: autofocus,
-      style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+      style: TextStyle(fontSize: 15, color: colors.textPrimary),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.grayMid, fontSize: 14),
+        hintStyle: TextStyle(color: colors.grayMid, fontSize: 14),
         filled: true,
-        fillColor: AppColors.background,
+        fillColor: colors.background,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.divider, width: 0.5),
+          borderSide: BorderSide(color: colors.divider, width: 0.5),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.divider, width: 0.5),
+          borderSide: BorderSide(color: colors.divider, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+          borderSide: BorderSide(color: colors.primary, width: 1.5),
         ),
       ),
     );
@@ -1185,22 +1185,22 @@ class _DireccionSheetState extends State<_DireccionSheet> {
   InputDecoration _inputManual(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: AppColors.grayMid, fontSize: 14),
+      hintStyle: TextStyle(color: colors.grayMid, fontSize: 14),
       filled: true,
-      fillColor: AppColors.background,
+      fillColor: colors.background,
       contentPadding:
           const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.divider, width: 0.5),
+        borderSide: BorderSide(color: colors.divider, width: 0.5),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.divider, width: 0.5),
+        borderSide: BorderSide(color: colors.divider, width: 0.5),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        borderSide: BorderSide(color: colors.primary, width: 1.5),
       ),
     );
   }
@@ -1225,7 +1225,7 @@ class _DireccionSheetState extends State<_DireccionSheet> {
         minChildSize: 0.5,
         maxChildSize: 0.95,
         builder: (_, sc) => Container(
-          color: AppColors.surface,
+          color: colors.surface,
           child: Column(
             children: [
               // Handle
@@ -1233,7 +1233,7 @@ class _DireccionSheetState extends State<_DireccionSheet> {
                 width: 40, height: 4,
                 margin: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                    color: AppColors.divider,
+                    color: colors.divider,
                     borderRadius: BorderRadius.circular(2)),
               ),
               Padding(
@@ -1245,10 +1245,10 @@ class _DireccionSheetState extends State<_DireccionSheet> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(_modoManual ? 'Ingresar dirección' : 'Buscar dirección',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary)),
+                                color: colors.textPrimary)),
                         TextButton(
                           onPressed: () => setState(() {
                             _modoManual = !_modoManual;
@@ -1256,10 +1256,10 @@ class _DireccionSheetState extends State<_DireccionSheet> {
                           }),
                           child: Text(
                             _modoManual ? 'Buscar en el mapa' : 'Ingresar manualmente',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.primary),
+                                color: colors.primary),
                           ),
                         ),
                       ],
@@ -1289,43 +1289,43 @@ class _DireccionSheetState extends State<_DireccionSheet> {
                       controller: _ctrl,
                       autofocus: true,
                       onChanged: _onCambio,
-                      style: const TextStyle(
-                          fontSize: 15, color: AppColors.textPrimary),
+                      style: TextStyle(
+                          fontSize: 15, color: colors.textPrimary),
                       decoration: InputDecoration(
                         hintText: 'Ej: Av. Providencia 1234, Providencia',
-                        hintStyle: const TextStyle(
-                            color: AppColors.grayMid, fontSize: 14),
-                        prefixIcon: const Icon(Icons.search_rounded,
-                            color: AppColors.grayMid, size: 20),
+                        hintStyle: TextStyle(
+                            color: colors.grayMid, fontSize: 14),
+                        prefixIcon: Icon(Icons.search_rounded,
+                            color: colors.grayMid, size: 20),
                         suffixIcon: _buscando
-                            ? const Padding(
+                            ? Padding(
                                 padding: EdgeInsets.all(12),
                                 child: SizedBox(
                                   width: 16, height: 16,
                                   child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      color: AppColors.primary),
+                                      color: colors.primary),
                                 ),
                               )
                             : null,
                         filled: true,
-                        fillColor: AppColors.background,
+                        fillColor: colors.background,
                         contentPadding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 13),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                              color: AppColors.divider, width: 0.5),
+                          borderSide: BorderSide(
+                              color: colors.divider, width: 0.5),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                              color: AppColors.divider, width: 0.5),
+                          borderSide: BorderSide(
+                              color: colors.divider, width: 0.5),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                              color: AppColors.primary, width: 1.5),
+                          borderSide: BorderSide(
+                              color: colors.primary, width: 1.5),
                         ),
                       ),
                     ),
@@ -1372,13 +1372,13 @@ class _DireccionSheetState extends State<_DireccionSheet> {
                           children: [
                             Icon(Icons.location_searching_rounded,
                                 size: 40,
-                                color: AppColors.grayMid.withOpacity(0.3)),
+                                color: colors.grayMid.withOpacity(0.3)),
                             const SizedBox(height: 12),
-                            const Text(
+                            Text(
                               'Escribe la dirección para ver sugerencias',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                  fontSize: 13, color: AppColors.grayMid),
+                                  fontSize: 13, color: colors.grayMid),
                             ),
                           ],
                         ),
@@ -1403,17 +1403,17 @@ class _DireccionSheetState extends State<_DireccionSheet> {
                               : '';
 
                           return ListTile(
-                            leading: const Icon(Icons.location_on_outlined,
-                                color: AppColors.primary, size: 22),
+                            leading: Icon(Icons.location_on_outlined,
+                                color: colors.primary, size: 22),
                             title: Text(linea1,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
-                                    color: AppColors.textPrimary)),
+                                    color: colors.textPrimary)),
                             subtitle: linea2.isNotEmpty
                                 ? Text(linea2,
-                                    style: const TextStyle(
-                                        fontSize: 12, color: AppColors.grayMid))
+                                    style: TextStyle(
+                                        fontSize: 12, color: colors.grayMid))
                                 : null,
                             onTap: () {
                               final lat = double.tryParse(s['lat'] ?? '');
@@ -1475,9 +1475,9 @@ class _DireccionSheetState extends State<_DireccionSheet> {
                                 );
                               }),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: colors.primary,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor: AppColors.divider,
+                      disabledBackgroundColor: colors.divider,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
@@ -1510,13 +1510,13 @@ class _ItemPolitica extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: AppColors.primary),
+          Icon(icon, size: 18, color: colors.primary),
           const SizedBox(width: 12),
           Expanded(
             child: Text(texto,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 13.5,
-                    color: AppColors.textPrimary,
+                    color: colors.textPrimary,
                     height: 1.4)),
           ),
         ],

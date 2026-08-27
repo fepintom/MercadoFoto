@@ -93,7 +93,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
         return Colors.orange;
       case 'pago_confirmado':
       case 'en_camino':
-        return AppColors.primary;
+        return colors.primary;
       case 'entrega_reportada':
         return Colors.deepOrange;
       case 'entregado':
@@ -101,11 +101,11 @@ class _MisComprasScreenState extends State<MisComprasScreen>
       case 'en_disputa':
         return Colors.red;
       case 'reembolsado':
-        return AppColors.grayMid;
+        return colors.grayMid;
       case 'cancelado':
-        return AppColors.grayMid;
+        return colors.grayMid;
       default:
-        return AppColors.grayMid;
+        return colors.grayMid;
     }
   }
 
@@ -137,7 +137,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
   Future<void> _confirmarEntrega(int ordenId) async {
     final ok = await showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -157,19 +157,19 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                   size: 32, color: Color(0xFF2E7D32)),
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               '¿Confirmar que recibiste el producto/servicio?',
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary),
+                  color: colors.textPrimary),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Al confirmar, el vendedor recibirá el pago. Esta acción no se puede deshacer.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.grayMid, fontSize: 13, height: 1.5),
+              style: TextStyle(color: colors.grayMid, fontSize: 13, height: 1.5),
             ),
             const SizedBox(height: 24),
             Row(
@@ -178,13 +178,13 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(context, false),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.divider),
+                      side: BorderSide(color: colors.divider),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('Cancelar',
-                        style: TextStyle(color: AppColors.textSecondary)),
+                    child: Text('Cancelar',
+                        style: TextStyle(color: colors.textSecondary)),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -224,7 +224,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.primary),
+        SnackBar(content: Text('Error: $e'), backgroundColor: colors.primary),
       );
     }
   }
@@ -234,7 +234,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
   Future<void> _abrirDisputa(int ordenId) async {
     final ok = await showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -253,19 +253,19 @@ class _MisComprasScreenState extends State<MisComprasScreen>
               child: const Icon(Icons.report_outlined, size: 32, color: Colors.red),
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               '¿Tuviste un problema?',
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary),
+                  color: colors.textPrimary),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Abriremos una disputa. Nuestro equipo revisará el caso y se pondrá en contacto contigo.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.grayMid, fontSize: 13, height: 1.5),
+              style: TextStyle(color: colors.grayMid, fontSize: 13, height: 1.5),
             ),
             const SizedBox(height: 24),
             Row(
@@ -274,13 +274,13 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(context, false),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.divider),
+                      side: BorderSide(color: colors.divider),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('Cancelar',
-                        style: TextStyle(color: AppColors.textSecondary)),
+                    child: Text('Cancelar',
+                        style: TextStyle(color: colors.textSecondary)),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -320,7 +320,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.primary),
+        SnackBar(content: Text('Error: $e'), backgroundColor: colors.primary),
       );
     }
   }
@@ -351,7 +351,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.primary),
+        SnackBar(content: Text('Error: $e'), backgroundColor: colors.primary),
       );
     }
   }
@@ -365,7 +365,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
     final ok = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => StatefulBuilder(
@@ -376,11 +376,11 @@ class _MisComprasScreenState extends State<MisComprasScreen>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Reportar un problema',
+              Text('Reportar un problema',
                   style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary)),
+                      color: colors.textPrimary)),
               const SizedBox(height: 14),
               ...[
                 ('no_llego', 'El pedido nunca llegó'),
@@ -393,7 +393,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                     title: Text(m.$2, style: const TextStyle(fontSize: 14)),
                     value: m.$1,
                     groupValue: motivo,
-                    activeColor: AppColors.primary,
+                    activeColor: colors.primary,
                     onChanged: (v) => setSheet(() => motivo = v!),
                   )),
               TextField(
@@ -401,8 +401,8 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                 maxLines: 3,
                 decoration: InputDecoration(
                   hintText: 'Describe el problema (opcional)',
-                  hintStyle: const TextStyle(
-                      fontSize: 13, color: AppColors.grayMid),
+                  hintStyle: TextStyle(
+                      fontSize: 13, color: colors.grayMid),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10)),
                 ),
@@ -424,7 +424,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                     : 'Foto agregada'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: fotoReclamo == null
-                      ? AppColors.grayMid
+                      ? colors.grayMid
                       : Colors.green,
                 ),
               ),
@@ -470,7 +470,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.primary),
+        SnackBar(content: Text('Error: $e'), backgroundColor: colors.primary),
       );
     }
   }
@@ -503,9 +503,9 @@ class _MisComprasScreenState extends State<MisComprasScreen>
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.divider, width: 0.5),
+        border: Border.all(color: colors.divider, width: 0.5),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -520,8 +520,8 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: tipo == 'producto'
-                        ? AppColors.carbon.withOpacity(0.1)
-                        : AppColors.primary.withOpacity(0.1),
+                        ? colors.carbon.withOpacity(0.1)
+                        : colors.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -530,15 +530,15 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: tipo == 'producto'
-                            ? AppColors.carbon
-                            : AppColors.primary),
+                            ? colors.textPrimary
+                            : colors.primary),
                   ),
                 ),
                 const Spacer(),
                 Text(
                   _formatFecha(fecha),
-                  style: const TextStyle(
-                      fontSize: 11, color: AppColors.grayMid),
+                  style: TextStyle(
+                      fontSize: 11, color: colors.grayMid),
                 ),
               ],
             ),
@@ -550,10 +550,10 @@ class _MisComprasScreenState extends State<MisComprasScreen>
               titulo,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary),
+                  color: colors.textPrimary),
             ),
 
             const SizedBox(height: 4),
@@ -564,13 +564,13 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                 Icon(
                   esCompra ? Icons.store_outlined : Icons.person_outline,
                   size: 13,
-                  color: AppColors.grayMid,
+                  color: colors.grayMid,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   contraparte,
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.grayMid),
+                  style: TextStyle(
+                      fontSize: 12, color: colors.grayMid),
                 ),
               ],
             ),
@@ -584,10 +584,10 @@ class _MisComprasScreenState extends State<MisComprasScreen>
               children: [
                 Text(
                   '\$${monto.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]}.')}',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary),
+                      color: colors.textPrimary),
                 ),
                 const Spacer(),
                 Container(
@@ -738,7 +738,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                   icon: const Icon(Icons.map_rounded, size: 17),
                   label: const Text('Ver dónde viene el vendedor'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: colors.primary,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 11),
@@ -784,14 +784,14 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                     );
                     if (ok == true) _cargar();
                   },
-                  icon: const Icon(Icons.star_outline_rounded,
-                      size: 17, color: AppColors.primary),
+                  icon: Icon(Icons.star_outline_rounded,
+                      size: 17, color: colors.primary),
                   label: const Text('Calificar vendedor',
                       style: TextStyle(
                           fontSize: 13, fontWeight: FontWeight.w600)),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: const BorderSide(color: AppColors.primary),
+                    foregroundColor: colors.primary,
+                    side: BorderSide(color: colors.primary),
                     padding: const EdgeInsets.symmetric(vertical: 11),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(9)),
@@ -856,12 +856,12 @@ class _MisComprasScreenState extends State<MisComprasScreen>
         decoration: BoxDecoration(
           color: reportada
               ? Colors.deepOrange.withOpacity(0.08)
-              : AppColors.primary.withOpacity(0.07),
+              : colors.primary.withOpacity(0.07),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: reportada
                 ? Colors.deepOrange.withOpacity(0.45)
-                : AppColors.primary.withOpacity(0.35),
+                : colors.primary.withOpacity(0.35),
             width: 1.2,
           ),
         ),
@@ -872,7 +872,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                   ? Icons.photo_camera_rounded
                   : Icons.local_shipping_rounded,
               size: 20,
-              color: reportada ? Colors.deepOrange : AppColors.primary,
+              color: reportada ? Colors.deepOrange : colors.primary,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -888,20 +888,20 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                       fontWeight: FontWeight.w700,
                       color: reportada
                           ? Colors.deepOrange.shade700
-                          : AppColors.primary,
+                          : colors.primary,
                     ),
                   ),
                   if (activas.length > 1)
                     Text(
                       '+${activas.length - 1} entrega(s) más activa(s)',
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.grayMid),
+                      style: TextStyle(
+                          fontSize: 11, color: colors.grayMid),
                     ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded,
-                size: 20, color: AppColors.grayMid),
+            Icon(Icons.chevron_right_rounded,
+                size: 20, color: colors.grayMid),
           ],
         ),
       ),
@@ -926,14 +926,14 @@ class _MisComprasScreenState extends State<MisComprasScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.receipt_long_outlined,
-                size: 56, color: AppColors.grayMid.withOpacity(0.5)),
+                size: 56, color: colors.grayMid.withOpacity(0.5)),
             const SizedBox(height: 16),
             Text(
               mensaje,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 15,
-                  color: AppColors.grayMid,
+                  color: colors.grayMid,
                   fontWeight: FontWeight.w500),
             ),
           ],
@@ -945,22 +945,22 @@ class _MisComprasScreenState extends State<MisComprasScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Mis órdenes',
           style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary),
+              color: colors.textPrimary),
         ),
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         elevation: 0,
-        iconTheme: const IconThemeData(color: AppColors.carbon),
+        iconTheme: IconThemeData(color: colors.textPrimary),
         actions: [
           IconButton(
-            icon: const Icon(Icons.help_outline_rounded,
-                color: AppColors.carbon),
+            icon: Icon(Icons.help_outline_rounded,
+                color: colors.textPrimary),
             tooltip: 'Ayuda',
             onPressed: () {
               // Con contexto: si hay una compra activa, pasar su orden al agente
@@ -983,9 +983,9 @@ class _MisComprasScreenState extends State<MisComprasScreen>
           preferredSize: const Size.fromHeight(48),
           child: TabBar(
             controller: _tab,
-            labelColor: AppColors.primary,
-            unselectedLabelColor: AppColors.grayMid,
-            indicatorColor: AppColors.primary,
+            labelColor: colors.primary,
+            unselectedLabelColor: colors.grayMid,
+            indicatorColor: colors.primary,
             labelStyle: const TextStyle(
                 fontWeight: FontWeight.w600, fontSize: 14),
             tabs: const [
@@ -1005,7 +1005,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                     // Compras
                     RefreshIndicator(
                       onRefresh: _cargar,
-                      color: AppColors.primary,
+                      color: colors.primary,
                       child: _compras.isEmpty
                           ? _listaVacia('Aún no has realizado compras')
                           : ListView.builder(
@@ -1021,7 +1021,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                     // Ventas
                     RefreshIndicator(
                       onRefresh: _cargar,
-                      color: AppColors.primary,
+                      color: colors.primary,
                       child: _ventas.isEmpty
                           ? _listaVacia('Aún no tienes ventas')
                           : ListView.builder(
@@ -1118,7 +1118,7 @@ class _OkdeliveryCompradorPanelState
   void _mostrarError(Object e) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.primary),
+      SnackBar(content: Text('Error: $e'), backgroundColor: colors.primary),
     );
   }
 
@@ -1155,7 +1155,7 @@ class _OkdeliveryCompradorPanelState
     final resultado = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => _ReclamoSheet(picker: _picker),
@@ -1267,9 +1267,9 @@ class _OkdeliveryCompradorPanelState
 
           if (esperandoComprador) ...[
             const SizedBox(height: 10),
-            const Text(
+            Text(
               'Graba un video de unboxing sin cortes al confirmar. Tienes 1 hora, si no respondes se dará por recibido automáticamente.',
-              style: TextStyle(fontSize: 11, color: AppColors.grayMid, height: 1.4),
+              style: TextStyle(fontSize: 11, color: colors.grayMid, height: 1.4),
             ),
             const SizedBox(height: 10),
             Row(
@@ -1366,19 +1366,19 @@ class _ReclamoSheetState extends State<_ReclamoSheet> {
               width: 40, height: 4,
               margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                  color: AppColors.divider,
+                  color: colors.divider,
                   borderRadius: BorderRadius.circular(2)),
             ),
           ),
-          const Text('Reportar un problema',
+          Text('Reportar un problema',
               style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary)),
+                  color: colors.textPrimary)),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Cuéntanos qué pasó. Tu video de unboxing se adjuntará automáticamente.',
-            style: TextStyle(fontSize: 12, color: AppColors.grayMid),
+            style: TextStyle(fontSize: 12, color: colors.grayMid),
           ),
           const SizedBox(height: 16),
           TextField(
@@ -1397,10 +1397,10 @@ class _ReclamoSheetState extends State<_ReclamoSheet> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
-                color: AppColors.background,
+                color: colors.background,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: _video != null ? Colors.green : AppColors.divider,
+                  color: _video != null ? Colors.green : colors.divider,
                 ),
               ),
               child: Row(
@@ -1411,7 +1411,7 @@ class _ReclamoSheetState extends State<_ReclamoSheet> {
                         ? Icons.check_circle_rounded
                         : Icons.videocam_outlined,
                     size: 18,
-                    color: _video != null ? Colors.green : AppColors.grayMid,
+                    color: _video != null ? Colors.green : colors.grayMid,
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -1425,7 +1425,7 @@ class _ReclamoSheetState extends State<_ReclamoSheet> {
                       fontWeight: FontWeight.w600,
                       color: _video != null
                           ? Colors.green
-                          : AppColors.textSecondary,
+                          : colors.textSecondary,
                     ),
                   ),
                 ],

@@ -198,7 +198,7 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
   Future<ImageSource?> _elegirFuente() {
     return showModalBottomSheet<ImageSource>(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -210,25 +210,25 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
               width: 40, height: 4,
               margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: AppColors.divider,
+                color: colors.divider,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.camera_alt_rounded,
-                  color: AppColors.carbon),
-              title: const Text('Cámara',
+              leading: Icon(Icons.camera_alt_rounded,
+                  color: colors.textPrimary),
+              title: Text('Cámara',
                   style: TextStyle(
-                      color: AppColors.textPrimary,
+                      color: colors.textPrimary,
                       fontWeight: FontWeight.w500)),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_rounded,
-                  color: AppColors.carbon),
-              title: const Text('Galería',
+              leading: Icon(Icons.photo_library_rounded,
+                  color: colors.textPrimary),
+              title: Text('Galería',
                   style: TextStyle(
-                      color: AppColors.textPrimary,
+                      color: colors.textPrimary,
                       fontWeight: FontWeight.w500)),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
@@ -311,7 +311,7 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
     // Mostrar bottom sheet de elección
     final resultado = await showModalBottomSheet<Map<String, double>?>(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -323,27 +323,27 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
             Container(
               width: 40, height: 4,
               decoration: BoxDecoration(
-                color: AppColors.divider,
+                color: colors.divider,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(height: 20),
-            const Icon(Icons.location_on_rounded,
-                color: AppColors.primary, size: 36),
+            Icon(Icons.location_on_rounded,
+                color: colors.primary, size: 36),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               '¿Dónde está ubicado este producto?',
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary),
+                  color: colors.textPrimary),
             ),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               'Esto ayuda a compradores cercanos a encontrarte.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: AppColors.grayMid),
+              style: TextStyle(fontSize: 13, color: colors.grayMid),
             ),
             const SizedBox(height: 20),
 
@@ -400,17 +400,17 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: esNegativo
-              ? AppColors.background
-              : AppColors.primary.withOpacity(0.06),
+              ? colors.background
+              : colors.primary.withOpacity(0.06),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: esNegativo ? AppColors.divider : AppColors.primary.withOpacity(0.3),
+            color: esNegativo ? colors.divider : colors.primary.withOpacity(0.3),
           ),
         ),
         child: Row(
           children: [
             Icon(icono,
-                color: esNegativo ? AppColors.grayMid : AppColors.primary,
+                color: esNegativo ? colors.grayMid : colors.primary,
                 size: 22),
             const SizedBox(width: 14),
             Expanded(
@@ -422,16 +422,16 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: esNegativo
-                              ? AppColors.textSecondary
-                              : AppColors.textPrimary)),
+                              ? colors.textSecondary
+                              : colors.textPrimary)),
                   Text(subtitulo,
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.grayMid)),
+                      style: TextStyle(
+                          fontSize: 12, color: colors.grayMid)),
                 ],
               ),
             ),
             Icon(Icons.chevron_right_rounded,
-                color: AppColors.grayMid, size: 18),
+                color: colors.grayMid, size: 18),
           ],
         ),
       ),
@@ -569,7 +569,7 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: AppColors.primary,
+        backgroundColor: colors.primary,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
@@ -583,11 +583,11 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Estado del producto',
+          Text('Estado del producto',
               style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary)),
+                  color: colors.textPrimary)),
           const SizedBox(height: 10),
           Row(
             children: [
@@ -610,10 +610,10 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: sel ? AppColors.primary.withOpacity(0.08) : AppColors.surface,
+            color: sel ? colors.primary.withOpacity(0.08) : colors.surface,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: sel ? AppColors.primary : AppColors.divider,
+              color: sel ? colors.primary : colors.divider,
               width: sel ? 1.5 : 0.8,
             ),
           ),
@@ -622,13 +622,13 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
             children: [
               Icon(icono,
                   size: 16,
-                  color: sel ? AppColors.primary : AppColors.grayMid),
+                  color: sel ? colors.primary : colors.grayMid),
               const SizedBox(width: 6),
               Text(label,
                   style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: sel ? AppColors.primary : AppColors.textSecondary)),
+                      color: sel ? colors.primary : colors.textSecondary)),
             ],
           ),
         ),
@@ -644,17 +644,17 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: colors.surface,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.divider, width: 0.8),
+            border: Border.all(color: colors.divider, width: 0.8),
           ),
           child: Row(
             children: [
               Icon(Icons.handshake_outlined,
                   size: 18,
-                  color: _aceptaOfertas ? AppColors.primary : AppColors.grayMid),
+                  color: _aceptaOfertas ? colors.primary : colors.grayMid),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -662,16 +662,16 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                         style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary)),
+                            color: colors.textPrimary)),
                     Text('Otros usuarios podrán proponer un precio o canje',
-                        style: TextStyle(fontSize: 11, color: AppColors.grayMid)),
+                        style: TextStyle(fontSize: 11, color: colors.grayMid)),
                   ],
                 ),
               ),
               Switch(
                 value: _aceptaOfertas,
                 onChanged: (v) => setState(() => _aceptaOfertas = v),
-                activeThumbColor: AppColors.primary,
+                activeThumbColor: colors.primary,
               ),
             ],
           ),
@@ -689,27 +689,27 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
         controller: ctrl,
         readOnly: readOnly,
         maxLines: maxLines,
-        style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+        style: TextStyle(fontSize: 15, color: colors.textPrimary),
         decoration: InputDecoration(
           labelText: label,
           labelStyle:
-              const TextStyle(color: AppColors.grayMid, fontSize: 14),
+              TextStyle(color: colors.grayMid, fontSize: 14),
           filled: true,
-          fillColor: readOnly ? AppColors.background : AppColors.surface,
+          fillColor: readOnly ? colors.background : colors.surface,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide:
-                const BorderSide(color: AppColors.divider, width: 0.5),
+                BorderSide(color: colors.divider, width: 0.5),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide:
-                const BorderSide(color: AppColors.divider, width: 0.5),
+                BorderSide(color: colors.divider, width: 0.5),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide:
-                const BorderSide(color: AppColors.primary, width: 1.5),
+                BorderSide(color: colors.primary, width: 1.5),
           ),
         ),
       ),
@@ -746,12 +746,12 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: AppColors.primary,
+                color: colors.primary,
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: const Text("Principal",
+              child: Text("Principal",
                   style: TextStyle(
-                      color: AppColors.textOnPrimary,
+                      color: colors.textOnPrimary,
                       fontSize: 11,
                       fontWeight: FontWeight.w600)),
             ),
@@ -771,11 +771,11 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
               child: Container(
                 width: 32, height: 32,
                 decoration: BoxDecoration(
-                  color: AppColors.carbon.withOpacity(0.7),
+                  color: colors.carbon.withOpacity(0.7),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.close_rounded,
-                    color: AppColors.surface, size: 18),
+                child: Icon(Icons.close_rounded,
+                    color: colors.surface, size: 18),
               ),
             ),
           ),
@@ -787,30 +787,30 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
     return GestureDetector(
       onTap: _agregarFoto,
       child: Container(
-        color: AppColors.background,
+        color: colors.background,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
               width: 72, height: 72,
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.divider, width: 1.5),
+                border: Border.all(color: colors.divider, width: 1.5),
               ),
-              child: const Icon(Icons.add_photo_alternate_outlined,
-                  color: AppColors.grayMid, size: 32),
+              child: Icon(Icons.add_photo_alternate_outlined,
+                  color: colors.grayMid, size: 32),
             ),
             const SizedBox(height: 12),
-            const Text("Agregar foto",
+            Text("Agregar foto",
                 style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary)),
+                    color: colors.textPrimary)),
             const SizedBox(height: 4),
             Text("${_imagenes.length}/4 · Desliza para ver las demás",
-                style: const TextStyle(
-                    fontSize: 13, color: AppColors.grayMid)),
+                style: TextStyle(
+                    fontSize: 13, color: colors.grayMid)),
           ],
         ),
       ),
@@ -824,7 +824,7 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10),
-      color: AppColors.background,
+      color: colors.background,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: List.generate(totalPages, (i) {
@@ -837,10 +837,10 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
             margin: const EdgeInsets.symmetric(horizontal: 3),
             decoration: BoxDecoration(
               color: isAddSlot
-                  ? AppColors.divider
+                  ? colors.divider
                   : isActive
-                      ? AppColors.primary
-                      : AppColors.divider,
+                      ? colors.primary
+                      : colors.divider,
               borderRadius: BorderRadius.circular(4),
             ),
           );
@@ -916,14 +916,14 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
           // ── Label + badge confianza ──────────────────────────────
           Row(
             children: [
-              const Icon(Icons.sell_outlined, size: 15, color: AppColors.grayMid),
+              Icon(Icons.sell_outlined, size: 15, color: colors.grayMid),
               const SizedBox(width: 6),
-              const Text(
+              Text(
                 "Precio",
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                 ),
               ),
               if (tieneSugerencia && labelConfianza.isNotEmpty) ...[
@@ -962,15 +962,15 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
             child: Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: AppColors.primary.withOpacity(0.35),
+                  color: colors.primary.withOpacity(0.35),
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.06),
+                    color: colors.primary.withOpacity(0.06),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -999,7 +999,7 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                                     style: TextStyle(
                                       fontSize: 22,
                                       fontWeight: FontWeight.w700,
-                                      color: AppColors.primary.withOpacity(0.7),
+                                      color: colors.primary.withOpacity(0.7),
                                     ),
                                   ),
                                   const SizedBox(width: 4),
@@ -1007,19 +1007,19 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                                     child: TextField(
                                       controller: precio,
                                       keyboardType: TextInputType.number,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 36,
                                         fontWeight: FontWeight.w800,
-                                        color: AppColors.textPrimary,
+                                        color: colors.textPrimary,
                                         letterSpacing: -1,
                                       ),
-                                      decoration: const InputDecoration(
+                                      decoration: InputDecoration(
                                         border: InputBorder.none,
                                         isDense: true,
                                         contentPadding: EdgeInsets.zero,
                                         hintText: "0",
                                         hintStyle: TextStyle(
-                                          color: AppColors.divider,
+                                          color: colors.divider,
                                           fontSize: 36,
                                           fontWeight: FontWeight.w800,
                                         ),
@@ -1034,9 +1034,9 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                               ),
                               Text(
                                 _moneda,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 11,
-                                  color: AppColors.grayMid,
+                                  color: colors.grayMid,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -1047,10 +1047,10 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                         Column(
                           children: [
                             Icon(Icons.keyboard_arrow_up_rounded,
-                                color: AppColors.primary.withOpacity(0.6), size: 28),
+                                color: colors.primary.withOpacity(0.6), size: 28),
                             const SizedBox(height: 2),
                             Icon(Icons.keyboard_arrow_down_rounded,
-                                color: AppColors.primary.withOpacity(0.6), size: 28),
+                                color: colors.primary.withOpacity(0.6), size: 28),
                           ],
                         ),
                       ],
@@ -1059,19 +1059,19 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
 
                   // ── Rango sugerido ───────────────────────────────
                   if (tieneSugerencia) ...[
-                    const Divider(height: 1, thickness: 0.5, color: AppColors.divider),
+                    Divider(height: 1, thickness: 0.5, color: colors.divider),
                     Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 12),
                       child: Row(
                         children: [
-                          const Icon(Icons.insights_rounded,
-                              size: 14, color: AppColors.grayMid),
+                          Icon(Icons.insights_rounded,
+                              size: 14, color: colors.grayMid),
                           const SizedBox(width: 6),
-                          const Text(
+                          Text(
                             "Precio sugerido IA:",
                             style: TextStyle(
-                                fontSize: 12, color: AppColors.grayMid),
+                                fontSize: 12, color: colors.grayMid),
                           ),
                           const SizedBox(width: 8),
                           // Chip mínimo
@@ -1083,11 +1083,11 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                             }),
                             active: _precioActual == _precioMin,
                           ),
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.symmetric(horizontal: 4),
                             child: Text("–",
                                 style: TextStyle(
-                                    color: AppColors.grayMid, fontSize: 12)),
+                                    color: colors.grayMid, fontSize: 12)),
                           ),
                           // Chip máximo
                           _precioChip(
@@ -1112,13 +1112,13 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                         children: [
                           Icon(Icons.swipe_vertical_rounded,
                               size: 13,
-                              color: AppColors.grayMid.withOpacity(0.6)),
+                              color: colors.grayMid.withOpacity(0.6)),
                           const SizedBox(width: 4),
                           Text(
                             "Desliza ↑↓ para ajustar  ·  Toca para escribir",
                             style: TextStyle(
                               fontSize: 11,
-                              color: AppColors.grayMid.withOpacity(0.6),
+                              color: colors.grayMid.withOpacity(0.6),
                             ),
                           ),
                         ],
@@ -1145,13 +1145,13 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
         decoration: BoxDecoration(
           color: active
-              ? AppColors.primary.withOpacity(0.12)
-              : AppColors.background,
+              ? colors.primary.withOpacity(0.12)
+              : colors.background,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
             color: active
-                ? AppColors.primary.withOpacity(0.5)
-                : AppColors.divider,
+                ? colors.primary.withOpacity(0.5)
+                : colors.divider,
             width: 1,
           ),
         ),
@@ -1160,7 +1160,7 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: active ? AppColors.primary : AppColors.textSecondary,
+            color: active ? colors.primary : colors.textSecondary,
           ),
         ),
       ),
@@ -1178,15 +1178,15 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.straighten_rounded,
-                  size: 15, color: AppColors.grayMid),
+              Icon(Icons.straighten_rounded,
+                  size: 15, color: colors.grayMid),
               const SizedBox(width: 6),
               Text(
                 _esRopa ? 'Tallas de ropa disponibles' : 'Tallas de calzado disponibles',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                 ),
               ),
             ],
@@ -1196,7 +1196,7 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
             _esRopa
                 ? 'Selecciona todas las tallas que tengas disponibles.'
                 : 'Selecciona la(s) talla(s) EU disponibles (referencia CM/UK/EEUU según tabla estándar).',
-            style: const TextStyle(fontSize: 12, color: AppColors.grayMid),
+            style: TextStyle(fontSize: 12, color: colors.grayMid),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -1218,11 +1218,11 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                   height: 40,
                   decoration: BoxDecoration(
                     color: sel
-                        ? AppColors.primary.withOpacity(0.10)
-                        : AppColors.surface,
+                        ? colors.primary.withOpacity(0.10)
+                        : colors.surface,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: sel ? AppColors.primary : AppColors.divider,
+                      color: sel ? colors.primary : colors.divider,
                       width: sel ? 1.5 : 0.8,
                     ),
                   ),
@@ -1232,7 +1232,7 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: sel ? AppColors.primary : AppColors.textSecondary,
+                      color: sel ? colors.primary : colors.textSecondary,
                     ),
                   ),
                 ),
@@ -1243,7 +1243,7 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
             const SizedBox(height: 8),
             Text(
               'Seleccionadas: ${(_tallasProducto.toList()..sort((a, b) => _tallasDisponiblesProducto.indexOf(a).compareTo(_tallasDisponiblesProducto.indexOf(b)))).join(', ')}',
-              style: const TextStyle(fontSize: 11, color: AppColors.grayMid),
+              style: TextStyle(fontSize: 11, color: colors.grayMid),
             ),
           ],
         ],
@@ -1266,15 +1266,15 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
           // Label
           Row(
             children: [
-              const Icon(Icons.local_shipping_outlined,
-                  size: 15, color: AppColors.grayMid),
+              Icon(Icons.local_shipping_outlined,
+                  size: 15, color: colors.grayMid),
               const SizedBox(width: 6),
-              const Text(
+              Text(
                 "Dimensiones de envío",
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(width: 6),
@@ -1282,15 +1282,15 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: colors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text(
+                child: Text(
                   "Auto-detectado",
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
+                    color: colors.primary,
                   ),
                 ),
               ),
@@ -1305,17 +1305,17 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                    color: AppColors.primary.withOpacity(0.4), width: 1),
+                    color: colors.primary.withOpacity(0.4), width: 1),
               ),
               child: Row(
                 children: [
                   Container(
                     width: 36, height: 36,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
+                      color: colors.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Center(
@@ -1324,7 +1324,7 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                         style: TextStyle(
                           fontSize: _tallaId == 'manual' ? 16 : 13,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.primary,
+                          color: colors.primary,
                         ),
                       ),
                     ),
@@ -1336,24 +1336,24 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                       children: [
                         Text(
                           tallaActual.titulo,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
+                            color: colors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           tallaActual.descripcion,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.grayMid),
+                              color: colors.grayMid),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.edit_outlined,
-                      size: 16, color: AppColors.primary),
+                  Icon(Icons.edit_outlined,
+                      size: 16, color: colors.primary),
                 ],
               ),
             ),
@@ -1389,30 +1389,30 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
         controller: ctrl,
         keyboardType:
             const TextInputType.numberWithOptions(decimal: true),
-        style: const TextStyle(
-            fontSize: 14, color: AppColors.textPrimary),
+        style: TextStyle(
+            fontSize: 14, color: colors.textPrimary),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(
-              color: AppColors.grayMid, fontSize: 13),
+          labelStyle: TextStyle(
+              color: colors.grayMid, fontSize: 13),
           filled: true,
-          fillColor: AppColors.surface,
+          fillColor: colors.surface,
           contentPadding: const EdgeInsets.symmetric(
               horizontal: 12, vertical: 10),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide:
-                const BorderSide(color: AppColors.divider, width: 0.5),
+                BorderSide(color: colors.divider, width: 0.5),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
             borderSide:
-                const BorderSide(color: AppColors.divider, width: 0.5),
+                BorderSide(color: colors.divider, width: 0.5),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(
-                color: AppColors.primary, width: 1.5),
+            borderSide: BorderSide(
+                color: colors.primary, width: 1.5),
           ),
         ),
       ),
@@ -1496,7 +1496,7 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
                                     color: selected
-                                        ? AppColors.primary
+                                        ? colors.primary
                                         : Colors.white,
                                   ),
                                 ),
@@ -1506,7 +1506,7 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                                   style: TextStyle(
                                     fontSize: 13,
                                     color: selected
-                                        ? AppColors.primary
+                                        ? colors.primary
                                             .withOpacity(0.8)
                                         : Colors.white60,
                                   ),
@@ -1515,8 +1515,8 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                             ),
                           ),
                           if (selected)
-                            const Icon(Icons.check_circle_rounded,
-                                color: AppColors.primary, size: 20),
+                            Icon(Icons.check_circle_rounded,
+                                color: colors.primary, size: 20),
                         ],
                       ),
                     ),
@@ -1549,21 +1549,21 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
         Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-          color: AppColors.surface,
-          child: const Column(
+          color: colors.surface,
+          child: Column(
             children: [
               Text(
                 "Publicando tu producto…",
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                 ),
               ),
               SizedBox(height: 4),
               Text(
                 "Mientras suben las fotos, ¡juega un poco!",
-                style: TextStyle(fontSize: 13, color: AppColors.grayMid),
+                style: TextStyle(fontSize: 13, color: colors.grayMid),
               ),
             ],
           ),
@@ -1573,23 +1573,23 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
         const Expanded(child: SpaceInvadersWidget()),
         // Badge inferior
         Container(
-          color: AppColors.surface,
+          color: colors.surface,
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const SizedBox(
+              SizedBox(
                 width: 14,
                 height: 14,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: AppColors.primary,
+                  color: colors.primary,
                 ),
               ),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 "Subiendo imágenes al servidor…",
-                style: TextStyle(fontSize: 12, color: AppColors.grayMid),
+                style: TextStyle(fontSize: 12, color: colors.grayMid),
               ),
             ],
           ),
@@ -1601,22 +1601,22 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
         // Flecha de volver explícita: esta pantalla se abre con una
         // transición personalizada (PageRouteBuilder) y el ícono
         // automático de AppBar no siempre aparecía con ella.
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              size: 18, color: AppColors.carbon),
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              size: 18, color: colors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           "Confirmar producto",
           style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: colors.textPrimary,
           ),
         ),
         actions: [
@@ -1628,12 +1628,12 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
             ),
           ),
         ],
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         elevation: 0,
-        iconTheme: const IconThemeData(color: AppColors.carbon),
+        iconTheme: IconThemeData(color: colors.textPrimary),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(color: AppColors.divider, height: 0.5),
+          child: Container(color: colors.divider, height: 0.5),
         ),
       ),
       body: _publicando
@@ -1655,15 +1655,15 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                         padding: const EdgeInsets.only(bottom: 16),
                         child: Row(
                           children: [
-                            const Icon(Icons.photo_library_outlined,
-                                size: 14, color: AppColors.grayMid),
+                            Icon(Icons.photo_library_outlined,
+                                size: 14, color: colors.grayMid),
                             const SizedBox(width: 6),
                             Text(
                               "${_imagenes.length} foto${_imagenes.length != 1 ? 's' : ''} · "
                               "${_imagenes.length < 4 ? 'Desliza para agregar más' : 'Máximo alcanzado'}",
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 12,
-                                  color: AppColors.grayMid),
+                                  color: colors.grayMid),
                             ),
                           ],
                         ),
@@ -1697,24 +1697,24 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.05),
+                              color: colors.primary.withOpacity(0.05),
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
-                                  color: AppColors.primary.withOpacity(0.2),
+                                  color: colors.primary.withOpacity(0.2),
                                   width: 0.5),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.auto_awesome,
-                                    size: 16, color: AppColors.primary),
+                                Icon(Icons.auto_awesome,
+                                    size: 16, color: colors.primary),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
                                     "Categoría detectada: $_categoria"
                                     "${_subcategoria.isNotEmpty && _subcategoria != 'Otros' ? ' › $_subcategoria' : ''}",
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 13,
-                                      color: AppColors.primary,
+                                      color: colors.primary,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -1742,8 +1742,8 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                           icon: const Icon(Icons.visibility_outlined, size: 18),
                           label: const Text("Vista previa"),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.carbon,
-                            side: const BorderSide(color: AppColors.divider),
+                            foregroundColor: colors.textPrimary,
+                            side: BorderSide(color: colors.divider),
                             padding: const EdgeInsets.symmetric(
                                 vertical: 15),
                             shape: RoundedRectangleBorder(
@@ -1764,8 +1764,8 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                         child: ElevatedButton(
                           onPressed: publicar,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: AppColors.textOnPrimary,
+                            backgroundColor: colors.primary,
+                            foregroundColor: colors.textOnPrimary,
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(
                                 vertical: 15),

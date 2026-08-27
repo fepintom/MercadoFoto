@@ -75,7 +75,7 @@ class _OkdeliveryPendientesScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('No se pudo aceptar (¿ya la tomó otro repartidor?): $e'),
-            backgroundColor: AppColors.primary,
+            backgroundColor: colors.primary,
           ),
         );
         _cargar();
@@ -86,26 +86,26 @@ class _OkdeliveryPendientesScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           children: [
             Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 border: Border(
-                    bottom: BorderSide(color: AppColors.divider, width: 0.5)),
+                    bottom: BorderSide(color: colors.divider, width: 0.5)),
               ),
               child: Row(
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.arrow_back_ios_new_rounded,
-                        size: 20, color: AppColors.carbon),
+                    child: Icon(Icons.arrow_back_ios_new_rounded,
+                        size: 20, color: colors.textPrimary),
                   ),
                   const SizedBox(width: 14),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -113,31 +113,31 @@ class _OkdeliveryPendientesScreenState
                             style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary)),
+                                color: colors.textPrimary)),
                         Text('Disponibles cerca de ti',
                             style: TextStyle(
-                                fontSize: 12, color: AppColors.grayMid)),
+                                fontSize: 12, color: colors.grayMid)),
                       ],
                     ),
                   ),
                   GestureDetector(
                     onTap: _cargar,
-                    child: const Icon(Icons.refresh_rounded,
-                        color: AppColors.grayMid, size: 22),
+                    child: Icon(Icons.refresh_rounded,
+                        color: colors.grayMid, size: 22),
                   ),
                 ],
               ),
             ),
             Expanded(
               child: _cargando
-                  ? const Center(
+                  ? Center(
                       child:
-                          CircularProgressIndicator(color: AppColors.primary))
+                          CircularProgressIndicator(color: colors.primary))
                   : _pendientes.isEmpty
                       ? _buildVacio()
                       : RefreshIndicator(
                           onRefresh: _cargar,
-                          color: AppColors.primary,
+                          color: colors.primary,
                           child: ListView.builder(
                             padding: const EdgeInsets.all(12),
                             itemCount: _pendientes.length,
@@ -152,9 +152,9 @@ class _OkdeliveryPendientesScreenState
                                 margin: const EdgeInsets.only(bottom: 10),
                                 padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
-                                  color: AppColors.surface,
+                                  color: colors.surface,
                                   borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(color: AppColors.divider),
+                                  border: Border.all(color: colors.divider),
                                 ),
                                 child: Row(
                                   children: [
@@ -179,17 +179,17 @@ class _OkdeliveryPendientesScreenState
                                           Text(titulo,
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                   fontSize: 14,
                                                   fontWeight: FontWeight.w700,
                                                   color:
-                                                      AppColors.textPrimary)),
+                                                      colors.textPrimary)),
                                           const SizedBox(height: 2),
                                           Text(
                                             '${distancia.toStringAsFixed(1)} km · \$${monto.toStringAsFixed(0)}',
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                                 fontSize: 12,
-                                                color: AppColors.grayMid),
+                                                color: colors.grayMid),
                                           ),
                                         ],
                                       ),
@@ -233,18 +233,18 @@ class _OkdeliveryPendientesScreenState
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.delivery_dining_outlined,
-                  size: 64, color: AppColors.grayMid.withOpacity(0.3)),
+                  size: 64, color: colors.grayMid.withOpacity(0.3)),
               const SizedBox(height: 16),
-              const Text('Sin entregas disponibles',
+              Text('Sin entregas disponibles',
                   style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary)),
+                      color: colors.textPrimary)),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Cuando haya una entrega cerca de ti\naparecerá aquí.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: AppColors.grayMid),
+                style: TextStyle(fontSize: 13, color: colors.grayMid),
               ),
             ],
           ),

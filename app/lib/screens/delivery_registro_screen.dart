@@ -105,7 +105,7 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => Padding(
@@ -121,44 +121,44 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
               child: Container(
                 width: 40, height: 4,
                 decoration: BoxDecoration(
-                    color: AppColors.divider,
+                    color: colors.divider,
                     borderRadius: BorderRadius.circular(2)),
               ),
             ),
             const SizedBox(height: 20),
             Text(titulo,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary)),
+                    color: colors.textPrimary)),
             const SizedBox(height: 14),
             TextField(
               controller: ctrl,
               keyboardType: teclado,
               inputFormatters: formatters,
               autofocus: true,
-              style: const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+              style: TextStyle(fontSize: 15, color: colors.textPrimary),
               decoration: InputDecoration(
                 hintText: hint,
-                hintStyle: const TextStyle(color: AppColors.grayMid, fontSize: 14),
+                hintStyle: TextStyle(color: colors.grayMid, fontSize: 14),
                 filled: true,
-                fillColor: AppColors.background,
+                fillColor: colors.background,
                 contentPadding: const EdgeInsets.symmetric(
                     horizontal: 14, vertical: 13),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide:
-                      const BorderSide(color: AppColors.divider, width: 0.5),
+                      BorderSide(color: colors.divider, width: 0.5),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide:
-                      const BorderSide(color: AppColors.divider, width: 0.5),
+                      BorderSide(color: colors.divider, width: 0.5),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide:
-                      const BorderSide(color: AppColors.primary, width: 1.5),
+                      BorderSide(color: colors.primary, width: 1.5),
                 ),
               ),
             ),
@@ -171,7 +171,7 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
                   onGuardar(ctrl.text.trim());
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: colors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   elevation: 0,
@@ -281,7 +281,7 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,30 +291,30 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: GestureDetector(
                 onTap: () => Navigator.pop(context),
-                child: const Icon(Icons.arrow_back_rounded,
-                    size: 24, color: AppColors.textPrimary),
+                child: Icon(Icons.arrow_back_rounded,
+                    size: 24, color: colors.textPrimary),
               ),
             ),
             const SizedBox(height: 16),
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 20),
               child: Text(
                 'Delivery OkVenta',
                 style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                   letterSpacing: -0.5,
                 ),
               ),
             ),
             const SizedBox(height: 6),
-            const Padding(
+            Padding(
               padding: EdgeInsets.symmetric(horizontal: 20),
               child: Text(
                 'Completa tu perfil para aparecer disponible como repartidor en OkVenta.',
                 style: TextStyle(
-                    fontSize: 14, color: AppColors.grayMid, height: 1.4),
+                    fontSize: 14, color: colors.grayMid, height: 1.4),
               ),
             ),
 
@@ -455,7 +455,7 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
                               fontSize: 15, fontWeight: FontWeight.w700),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.carbon,
+                          backgroundColor: colors.carbon,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14)),
@@ -477,10 +477,10 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
   Widget _seccion(String titulo) => Padding(
         padding: const EdgeInsets.fromLTRB(0, 28, 0, 10),
         child: Text(titulo,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary)),
+                color: colors.textPrimary)),
       );
 
   Widget _infoBox(String msg) => Container(
@@ -492,14 +492,14 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
           border: Border.all(color: Colors.amber.withOpacity(0.4)),
         ),
         child: Text(msg,
-            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            style: TextStyle(fontSize: 12, color: colors.textSecondary)),
       );
 
   Widget _card(List<Widget> children) => Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.divider, width: 0.5),
+          border: Border.all(color: colors.divider, width: 0.5),
         ),
         child: Column(children: children),
       );
@@ -523,7 +523,7 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             child: Row(
               children: [
-                Icon(icon, size: 22, color: AppColors.grayMid),
+                Icon(icon, size: 22, color: colors.grayMid),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -535,28 +535,28 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
                           color: completo
-                              ? AppColors.textPrimary
-                              : AppColors.grayMid,
+                              ? colors.textPrimary
+                              : colors.grayMid,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(sublabel,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.grayMid,
+                              color: colors.grayMid,
                               height: 1.3)),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right_rounded,
-                    size: 20, color: AppColors.grayMid),
+                Icon(Icons.chevron_right_rounded,
+                    size: 20, color: colors.grayMid),
               ],
             ),
           ),
         ),
         if (!isLast)
-          const Divider(
-              height: 1, thickness: 0.5, indent: 54, color: AppColors.divider),
+          Divider(
+              height: 1, thickness: 0.5, indent: 54, color: colors.divider),
       ],
     );
   }
@@ -571,7 +571,7 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
     return InkWell(
       onTap: () => showModalBottomSheet(
         context: context,
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
         builder: (_) => SafeArea(
@@ -580,19 +580,19 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
             children: [
               Container(width: 40, height: 4,
                   margin: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(color: AppColors.divider,
+                  decoration: BoxDecoration(color: colors.divider,
                       borderRadius: BorderRadius.circular(2))),
-              const Text('Tipo de vehículo',
+              Text('Tipo de vehículo',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary)),
+                      color: colors.textPrimary)),
               const SizedBox(height: 12),
               ...vehiculos.map((v) => ListTile(
-                    leading: Icon(iconos[v], color: AppColors.carbon),
+                    leading: Icon(iconos[v], color: colors.textPrimary),
                     title: Text(v[0].toUpperCase() + v.substring(1),
                         style: const TextStyle(fontWeight: FontWeight.w500)),
                     trailing: _tipoVehiculo == v
-                        ? const Icon(Icons.check_rounded,
-                            color: AppColors.primary)
+                        ? Icon(Icons.check_rounded,
+                            color: colors.primary)
                         : null,
                     onTap: () {
                       setState(() => _tipoVehiculo = v);
@@ -609,7 +609,7 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
         child: Row(
           children: [
             Icon(iconos[_tipoVehiculo] ?? Icons.directions_bike_rounded,
-                size: 22, color: AppColors.grayMid),
+                size: 22, color: colors.grayMid),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -617,19 +617,19 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
                 children: [
                   Text(
                     _tipoVehiculo[0].toUpperCase() + _tipoVehiculo.substring(1),
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
-                        color: AppColors.textPrimary),
+                        color: colors.textPrimary),
                   ),
-                  const Text('Tipo de vehículo',
+                  Text('Tipo de vehículo',
                       style: TextStyle(
-                          fontSize: 12, color: AppColors.grayMid, height: 1.3)),
+                          fontSize: 12, color: colors.grayMid, height: 1.3)),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded,
-                size: 20, color: AppColors.grayMid),
+            Icon(Icons.chevron_right_rounded,
+                size: 20, color: colors.grayMid),
           ],
         ),
       ),
@@ -673,15 +673,15 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(label,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
-                              color: AppColors.textPrimary)),
+                              color: colors.textPrimary)),
                       Text(
                         tiene ? '✅ Foto cargada' : 'Toca para tomar foto',
                         style: TextStyle(
                             fontSize: 12,
-                            color: tiene ? Colors.green : AppColors.grayMid),
+                            color: tiene ? Colors.green : colors.grayMid),
                       ),
                     ],
                   ),
@@ -690,7 +690,7 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: AppColors.carbon,
+                    color: colors.carbon,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Row(
@@ -710,8 +710,8 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
           ),
         ),
         if (!isLast)
-          const Divider(
-              height: 1, thickness: 0.5, indent: 76, color: AppColors.divider),
+          Divider(
+              height: 1, thickness: 0.5, indent: 76, color: colors.divider),
       ],
     );
   }
@@ -719,11 +719,11 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
   Widget _fotoPlaceholder(bool tiene) => Container(
         width: 44, height: 44,
         decoration: BoxDecoration(
-          color: AppColors.grayMid.withOpacity(0.1),
+          color: colors.grayMid.withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(Icons.camera_alt_outlined,
-            color: AppColors.grayMid, size: 20),
+            color: colors.grayMid, size: 20),
       );
 
   Widget _filaUbicacion() => InkWell(
@@ -738,7 +738,7 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
                 _lat != null ? Icons.my_location : Icons.map_outlined,
                 size: 22,
                 color:
-                    _lat != null ? AppColors.primary : AppColors.grayMid,
+                    _lat != null ? colors.primary : colors.grayMid,
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -753,20 +753,20 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
                         color: _lat != null
-                            ? AppColors.textPrimary
-                            : AppColors.grayMid,
+                            ? colors.textPrimary
+                            : colors.grayMid,
                       ),
                     ),
-                    const Text('Radio de cobertura en el mapa',
+                    Text('Radio de cobertura en el mapa',
                         style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.grayMid,
+                            color: colors.grayMid,
                             height: 1.3)),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  size: 20, color: AppColors.grayMid),
+              Icon(Icons.chevron_right_rounded,
+                  size: 20, color: colors.grayMid),
             ],
           ),
         ),
@@ -780,12 +780,12 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
               value: _aceptoTerminos,
               onChanged: (v) =>
                   setState(() => _aceptoTerminos = v ?? false),
-              activeColor: AppColors.carbon,
+              activeColor: colors.carbon,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(4)),
             ),
             const SizedBox(width: 4),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -794,13 +794,13 @@ class _DeliveryRegistroScreenState extends State<DeliveryRegistroScreen> {
                     style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
-                        color: AppColors.textPrimary),
+                        color: colors.textPrimary),
                   ),
                   Text(
                     'Mis datos serán verificados. La cuenta bancaria debe estar a mi nombre con el mismo RUT.',
                     style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.grayMid,
+                        color: colors.grayMid,
                         height: 1.3),
                   ),
                 ],

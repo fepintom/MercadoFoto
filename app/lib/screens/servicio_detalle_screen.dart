@@ -123,9 +123,9 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
 
     if (monto <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
             content: Text('Este servicio no tiene un precio definido'),
-            backgroundColor: AppColors.carbon),
+            backgroundColor: colors.carbon),
       );
       return;
     }
@@ -163,7 +163,7 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al iniciar el pago: $e'),
-          backgroundColor: AppColors.primary,
+          backgroundColor: colors.primary,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -177,7 +177,7 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
     return showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
@@ -219,17 +219,17 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
         ((_srv['telefono'] ?? _srv['whatsapp'] ?? '') as String).isNotEmpty;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: CustomScrollView(
         slivers: [
           // ── AppBar con imagen/foto ──────────────────────────────────────
           SliverAppBar(
             expandedHeight: 220,
             pinned: true,
-            backgroundColor: AppColors.surface,
+            backgroundColor: colors.surface,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios,
-                  size: 18, color: AppColors.textPrimary),
+              icon: Icon(Icons.arrow_back_ios,
+                  size: 18, color: colors.textPrimary),
               onPressed: () => Navigator.pop(context),
             ),
             flexibleSpace: FlexibleSpaceBar(
@@ -253,7 +253,7 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                     children: [
                       CircleAvatar(
                         radius: 24,
-                        backgroundColor: AppColors.primary.withOpacity(0.15),
+                        backgroundColor: colors.primary.withOpacity(0.15),
                         backgroundImage: fotoUrl.isNotEmpty
                             ? NetworkImage(
                                 '${ApiService.baseUrl}$fotoUrl')
@@ -263,10 +263,10 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                                 nombre.isNotEmpty
                                     ? nombre[0].toUpperCase()
                                     : 'U',
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w700,
-                                    color: AppColors.primary),
+                                    color: colors.primary),
                               )
                             : null,
                       ),
@@ -276,10 +276,10 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(nombre,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontWeight: FontWeight.w700,
                                     fontSize: 15,
-                                    color: AppColors.textPrimary)),
+                                    color: colors.textPrimary)),
                             Row(
                               children: [
                                 Container(
@@ -287,7 +287,7 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                                       horizontal: 7, vertical: 2),
                                   decoration: BoxDecoration(
                                     color: tipo == 'ofrezco'
-                                        ? AppColors.primary.withOpacity(0.1)
+                                        ? colors.primary.withOpacity(0.1)
                                         : Colors.orange.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
@@ -297,7 +297,7 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,
                                         color: tipo == 'ofrezco'
-                                            ? AppColors.primary
+                                            ? colors.primary
                                             : Colors.orange),
                                   ),
                                 ),
@@ -337,10 +337,10 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
 
                   // ── Título ──────────────────────────────────────────────
                   Text(titulo,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary)),
+                          color: colors.textPrimary)),
 
                   const SizedBox(height: 16),
 
@@ -349,31 +349,31 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.08),
+                        color: colors.primary.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                            color: AppColors.primary.withOpacity(0.25)),
+                            color: colors.primary.withOpacity(0.25)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.payments_outlined,
-                              color: AppColors.primary, size: 22),
+                          Icon(Icons.payments_outlined,
+                              color: colors.primary, size: 22),
                           const SizedBox(width: 10),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 '\$${valor.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]}.')}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.w800,
-                                    color: AppColors.primary),
+                                    color: colors.primary),
                               ),
                               Text(
                                 'por $modalidad',
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 12,
-                                    color: AppColors.grayMid),
+                                    color: colors.grayMid),
                               ),
                             ],
                           ),
@@ -401,11 +401,11 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
 
                   // ── Fotos adicionales ───────────────────────────────────
                   if (fotos.length > 1) ...[
-                    const Text('Fotos',
+                    Text('Fotos',
                         style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary)),
+                            color: colors.textPrimary)),
                     const SizedBox(height: 10),
                     SizedBox(
                       height: 100,
@@ -432,11 +432,11 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                   const SizedBox(height: 24),
 
                   // ── Botones de contacto ─────────────────────────────────
-                  const Text('Contactar',
+                  Text('Contactar',
                       style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
+                          color: colors.textPrimary)),
                   const SizedBox(height: 12),
 
                   if (tieneTelefono)
@@ -464,7 +464,7 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                             icon: const Icon(Icons.call, size: 18),
                             label: const Text('Llamar'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.carbon,
+                              backgroundColor: colors.carbon,
                               foregroundColor: Colors.white,
                               padding:
                                   const EdgeInsets.symmetric(vertical: 14),
@@ -479,19 +479,19 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppColors.background,
+                        color: colors.background,
                         borderRadius: BorderRadius.circular(10),
                         border:
-                            Border.all(color: AppColors.divider, width: 0.5),
+                            Border.all(color: colors.divider, width: 0.5),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
                           Icon(Icons.info_outline,
-                              size: 16, color: AppColors.grayMid),
+                              size: 16, color: colors.grayMid),
                           SizedBox(width: 8),
                           Text('El usuario no tiene teléfono registrado',
                               style: TextStyle(
-                                  fontSize: 12, color: AppColors.grayMid)),
+                                  fontSize: 12, color: colors.grayMid)),
                         ],
                       ),
                     ),
@@ -543,28 +543,28 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.divider, width: 0.5),
+        border: Border.all(color: colors.divider, width: 0.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Text('Calificación',
+              Text('Calificación',
                   style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary)),
+                      color: colors.textPrimary)),
               const Spacer(),
               if (numVal > 0) ...[
                 Text(
                   rating.toStringAsFixed(1),
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary),
+                      color: colors.textPrimary),
                 ),
                 const SizedBox(width: 4),
                 const Icon(Icons.star, color: Colors.amber, size: 22),
@@ -576,34 +576,34 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
           if (numVal == 0) ...[
             // Sin calificaciones aún
             Row(
-              children: const [
+              children: [
                 Icon(Icons.star_border_rounded,
-                    size: 16, color: AppColors.grayMid),
+                    size: 16, color: colors.grayMid),
                 SizedBox(width: 6),
                 Text(
                   'Este profesional aún no ha sido calificado',
-                  style: TextStyle(fontSize: 13, color: AppColors.grayMid),
+                  style: TextStyle(fontSize: 13, color: colors.grayMid),
                 ),
               ],
             ),
             if (puedeValorar) ...[
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Califica este servicio si lo has contratado:',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 12, color: colors.textSecondary),
               ),
               const SizedBox(height: 8),
               _estrellasInteractivas(rating),
             ],
           ] else ...[
             Text('$numVal valoración${numVal == 1 ? '' : 'es'}',
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.grayMid)),
+                style: TextStyle(
+                    fontSize: 12, color: colors.grayMid)),
             if (puedeValorar) ...[
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Tu calificación:',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 12, color: colors.textSecondary),
               ),
               const SizedBox(height: 8),
               _estrellasInteractivas(rating),
@@ -611,9 +611,9 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
           ],
 
           if (_enviandoRating)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 8),
-              child: LinearProgressIndicator(color: AppColors.primary),
+              child: LinearProgressIndicator(color: colors.primary),
             ),
         ],
       ),
@@ -648,14 +648,14 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
 
   Widget _colorPlaceholder(String nombre) {
     return Container(
-      color: AppColors.primary.withOpacity(0.15),
+      color: colors.primary.withOpacity(0.15),
       child: Center(
         child: Text(
           nombre.isNotEmpty ? nombre[0].toUpperCase() : 'S',
-          style: const TextStyle(
+          style: TextStyle(
               fontSize: 64,
               fontWeight: FontWeight.w700,
-              color: AppColors.primary),
+              color: colors.primary),
         ),
       ),
     );
@@ -666,15 +666,15 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(titulo,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary)),
+                color: colors.textPrimary)),
         const SizedBox(height: 8),
         Text(contenido,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 14,
-                color: AppColors.textSecondary,
+                color: colors.textSecondary,
                 height: 1.5)),
       ],
     );
@@ -684,21 +684,21 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icono, size: 18, color: AppColors.primary),
+        Icon(icono, size: 18, color: colors.primary),
         const SizedBox(width: 8),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(titulo,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary)),
+                      color: colors.textPrimary)),
               const SizedBox(height: 2),
               Text(contenido,
-                  style: const TextStyle(
-                      fontSize: 13, color: AppColors.textSecondary)),
+                  style: TextStyle(
+                      fontSize: 13, color: colors.textSecondary)),
             ],
           ),
         ),

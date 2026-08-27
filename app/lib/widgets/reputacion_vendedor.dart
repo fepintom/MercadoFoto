@@ -34,13 +34,13 @@ class EstrellasResumen extends StatelessWidget {
           ...List.generate(
               5,
               (i) => Icon(Icons.star_outline_rounded,
-                  size: size, color: AppColors.grayMid)),
+                  size: size, color: colors.grayMid)),
           const SizedBox(width: 4),
           Flexible(
             child: Text('El vendedor aún no ha recibido valoraciones',
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                    fontSize: size - 2, color: AppColors.grayMid)),
+                    fontSize: size - 2, color: colors.grayMid)),
           ),
         ],
       );
@@ -53,17 +53,17 @@ class EstrellasResumen extends StatelessWidget {
           return Icon(
               lleno ? Icons.star_rounded : Icons.star_outline_rounded,
               size: size,
-              color: lleno ? _amarilloEstrella : AppColors.grayMid);
+              color: lleno ? _amarilloEstrella : colors.grayMid);
         }),
         const SizedBox(width: 4),
         Text(promedio.toStringAsFixed(1),
             style: TextStyle(
                 fontSize: size - 1,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary)),
+                color: colors.textPrimary)),
         const SizedBox(width: 3),
         Text('($totalReviews)',
-            style: TextStyle(fontSize: size - 2, color: AppColors.grayMid)),
+            style: TextStyle(fontSize: size - 2, color: colors.grayMid)),
       ],
     );
   }
@@ -93,16 +93,16 @@ class ReputacionCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.divider, width: 0.5),
+          border: Border.all(color: colors.divider, width: 0.5),
         ),
         child: Row(
           children: [
-            const Icon(Icons.star_outline_rounded,
-                color: AppColors.grayMid, size: 22),
+            Icon(Icons.star_outline_rounded,
+                color: colors.grayMid, size: 22),
             const SizedBox(width: 10),
-            const Expanded(
+            Expanded(
               child: Text('Todavía no tiene calificaciones',
-                  style: TextStyle(fontSize: 13, color: AppColors.grayMid)),
+                  style: TextStyle(fontSize: 13, color: colors.grayMid)),
             ),
           ],
         ),
@@ -117,7 +117,7 @@ class ReputacionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.divider, width: 0.5),
+        border: Border.all(color: colors.divider, width: 0.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,18 +131,18 @@ class ReputacionCard extends StatelessWidget {
                     size: 18,
                     color: lleno
                         ? EstrellasResumen._amarilloEstrella
-                        : AppColors.grayMid);
+                        : colors.grayMid);
               }),
               const SizedBox(width: 8),
               Text(promedio.toStringAsFixed(1),
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary)),
+                      color: colors.textPrimary)),
               const SizedBox(width: 4),
               Text('· $total ${total == 1 ? "opinión" : "opiniones"}',
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.grayMid)),
+                  style: TextStyle(
+                      fontSize: 12, color: colors.grayMid)),
             ],
           ),
           const SizedBox(height: 12),
@@ -176,11 +176,11 @@ class ReputacionCard extends StatelessWidget {
             const SizedBox(height: 16),
             const Divider(height: 1, thickness: 0.5),
             const SizedBox(height: 12),
-            const Text('Comentarios',
+            Text('Comentarios',
                 style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textSecondary)),
+                    color: colors.textSecondary)),
             const SizedBox(height: 8),
             ...comentarios.map((c) => _ComentarioTile(c: c)),
           ],
@@ -215,20 +215,20 @@ class _ComentarioTile extends StatelessWidget {
                       size: 12,
                       color: i < estrellas
                           ? EstrellasResumen._amarilloEstrella
-                          : AppColors.grayMid)),
+                          : colors.grayMid)),
               const SizedBox(width: 6),
               Text(nombre,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary)),
+                      color: colors.textSecondary)),
             ],
           ),
           const SizedBox(height: 3),
           Text(comentario,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 12.5,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                   height: 1.4)),
         ],
       ),

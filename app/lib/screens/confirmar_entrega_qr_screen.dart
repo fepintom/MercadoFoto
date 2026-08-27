@@ -56,7 +56,7 @@ class _ConfirmarEntregaQrScreenState extends State<ConfirmarEntregaQrScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -66,8 +66,8 @@ class _ConfirmarEntregaQrScreenState extends State<ConfirmarEntregaQrScreen> {
                 alignment: Alignment.centerLeft,
                 child: GestureDetector(
                   onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.close_rounded,
-                      size: 26, color: AppColors.carbon),
+                  child: Icon(Icons.close_rounded,
+                      size: 26, color: colors.textPrimary),
                 ),
               ),
               const Spacer(),
@@ -75,7 +75,7 @@ class _ConfirmarEntregaQrScreenState extends State<ConfirmarEntregaQrScreen> {
                 width: 96,
                 height: 96,
                 decoration: BoxDecoration(
-                  color: (_confirmado ? Colors.green : AppColors.primary)
+                  color: (_confirmado ? Colors.green : colors.primary)
                       .withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
@@ -84,7 +84,7 @@ class _ConfirmarEntregaQrScreenState extends State<ConfirmarEntregaQrScreen> {
                       ? Icons.check_circle_rounded
                       : Icons.inventory_2_rounded,
                   size: 52,
-                  color: _confirmado ? Colors.green : AppColors.primary,
+                  color: _confirmado ? Colors.green : colors.primary,
                 ),
               ),
               const SizedBox(height: 24),
@@ -92,10 +92,10 @@ class _ConfirmarEntregaQrScreenState extends State<ConfirmarEntregaQrScreen> {
                 _confirmado
                     ? '¡Entrega confirmada!'
                     : '¿Recibiste tu pedido?',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary),
+                    color: colors.textPrimary),
               ),
               const SizedBox(height: 8),
               Text(
@@ -106,7 +106,7 @@ class _ConfirmarEntregaQrScreenState extends State<ConfirmarEntregaQrScreen> {
                         'paquete en tus manos.',
                 textAlign: TextAlign.center,
                 style:
-                    const TextStyle(fontSize: 14, color: AppColors.grayMid),
+                    TextStyle(fontSize: 14, color: colors.grayMid),
               ),
               if (_error != null) ...[
                 const SizedBox(height: 16),
@@ -141,7 +141,7 @@ class _ConfirmarEntregaQrScreenState extends State<ConfirmarEntregaQrScreen> {
                           : _confirmar,
                   style: ElevatedButton.styleFrom(
                     backgroundColor:
-                        _confirmado ? Colors.green : AppColors.primary,
+                        _confirmado ? Colors.green : colors.primary,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 15),

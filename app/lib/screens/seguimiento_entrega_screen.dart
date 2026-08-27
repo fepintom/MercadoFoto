@@ -95,7 +95,7 @@ class _SeguimientoEntregaScreenState extends State<SeguimientoEntregaScreen> {
     final entregado = _estadoOrden == 'entregado';
     final sinSenal = _vendedorPos == null;
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -103,32 +103,32 @@ class _SeguimientoEntregaScreenState extends State<SeguimientoEntregaScreen> {
             Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 border: Border(
-                    bottom: BorderSide(color: AppColors.divider, width: 0.5)),
+                    bottom: BorderSide(color: colors.divider, width: 0.5)),
               ),
               child: Row(
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.arrow_back_ios_new_rounded,
-                        size: 20, color: AppColors.carbon),
+                    child: Icon(Icons.arrow_back_ios_new_rounded,
+                        size: 20, color: colors.textPrimary),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Tu pedido viene en camino',
+                        Text('Tu pedido viene en camino',
                             style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary)),
+                                color: colors.textPrimary)),
                         Text(widget.titulo,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontSize: 12, color: AppColors.grayMid)),
+                            style: TextStyle(
+                                fontSize: 12, color: colors.grayMid)),
                       ],
                     ),
                   ),
@@ -147,14 +147,14 @@ class _SeguimientoEntregaScreenState extends State<SeguimientoEntregaScreen> {
                     ? Colors.green.withOpacity(0.08)
                     : sinSenal
                         ? Colors.orange.withOpacity(0.08)
-                        : AppColors.primary.withOpacity(0.06),
+                        : colors.primary.withOpacity(0.06),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: entregado
                       ? Colors.green.withOpacity(0.4)
                       : sinSenal
                           ? Colors.orange.withOpacity(0.4)
-                          : AppColors.primary.withOpacity(0.3),
+                          : colors.primary.withOpacity(0.3),
                 ),
               ),
               child: Row(
@@ -170,7 +170,7 @@ class _SeguimientoEntregaScreenState extends State<SeguimientoEntregaScreen> {
                         ? Colors.green
                         : sinSenal
                             ? Colors.orange
-                            : AppColors.primary,
+                            : colors.primary,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -188,7 +188,7 @@ class _SeguimientoEntregaScreenState extends State<SeguimientoEntregaScreen> {
                             ? Colors.green
                             : sinSenal
                                 ? Colors.orange.shade800
-                                : AppColors.primary,
+                                : colors.primary,
                       ),
                     ),
                   ),
@@ -201,9 +201,9 @@ class _SeguimientoEntregaScreenState extends State<SeguimientoEntregaScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: _cargando
-                    ? const Center(
+                    ? Center(
                         child:
-                            CircularProgressIndicator(color: AppColors.primary))
+                            CircularProgressIndicator(color: colors.primary))
                     : ClipRRect(
                         borderRadius: BorderRadius.circular(14),
                         child: FlutterMap(
@@ -229,9 +229,9 @@ class _SeguimientoEntregaScreenState extends State<SeguimientoEntregaScreen> {
                                   point: _destino!,
                                   width: 40,
                                   height: 40,
-                                  builder: (_) => const Icon(
+                                  builder: (_) => Icon(
                                       Icons.home_rounded,
-                                      color: AppColors.primary,
+                                      color: colors.primary,
                                       size: 34),
                                 ),
                               // El vendedor en movimiento
@@ -271,19 +271,19 @@ class _SeguimientoEntregaScreenState extends State<SeguimientoEntregaScreen> {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
+                children: [
                   Icon(Icons.directions_car_rounded,
                       size: 15, color: Colors.green),
                   SizedBox(width: 4),
                   Text('Vendedor',
                       style:
-                          TextStyle(fontSize: 12, color: AppColors.grayMid)),
+                          TextStyle(fontSize: 12, color: colors.grayMid)),
                   SizedBox(width: 16),
-                  Icon(Icons.home_rounded, size: 15, color: AppColors.primary),
+                  Icon(Icons.home_rounded, size: 15, color: colors.primary),
                   SizedBox(width: 4),
                   Text('Tu dirección',
                       style:
-                          TextStyle(fontSize: 12, color: AppColors.grayMid)),
+                          TextStyle(fontSize: 12, color: colors.grayMid)),
                 ],
               ),
             ),

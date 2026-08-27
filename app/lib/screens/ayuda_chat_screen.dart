@@ -145,7 +145,7 @@ class _AyudaChatScreenState extends State<AyudaChatScreen> {
     switch (_ticket?['estado']) {
       case 'en_proceso': return Colors.orange;
       case 'resuelto':   return Colors.green;
-      default:           return AppColors.primary;
+      default:           return colors.primary;
     }
   }
 
@@ -162,7 +162,7 @@ class _AyudaChatScreenState extends State<AyudaChatScreen> {
     final resuelto = _ticket?['estado'] == 'resuelto';
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -170,16 +170,16 @@ class _AyudaChatScreenState extends State<AyudaChatScreen> {
             Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 border: Border(
-                    bottom: BorderSide(color: AppColors.divider, width: 0.5)),
+                    bottom: BorderSide(color: colors.divider, width: 0.5)),
               ),
               child: Row(
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.arrow_back_ios_new_rounded,
-                        size: 20, color: AppColors.carbon),
+                    child: Icon(Icons.arrow_back_ios_new_rounded,
+                        size: 20, color: colors.textPrimary),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -187,15 +187,15 @@ class _AyudaChatScreenState extends State<AyudaChatScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(_tipoLabel,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary)),
+                                color: colors.textPrimary)),
                         if (widget.numeroReferencia != null &&
                             widget.numeroReferencia!.isNotEmpty)
                           Text('Ref: ${widget.numeroReferencia}',
-                              style: const TextStyle(
-                                  fontSize: 11, color: AppColors.grayMid)),
+                              style: TextStyle(
+                                  fontSize: 11, color: colors.grayMid)),
                       ],
                     ),
                   ),
@@ -242,18 +242,18 @@ class _AyudaChatScreenState extends State<AyudaChatScreen> {
               width: double.infinity,
               padding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: AppColors.primary.withOpacity(0.05),
+              color: colors.primary.withOpacity(0.05),
               child: Row(
                 children: [
-                  const Icon(Icons.support_agent_rounded,
-                      size: 14, color: AppColors.primary),
+                  Icon(Icons.support_agent_rounded,
+                      size: 14, color: colors.primary),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       'Ticket #${widget.ticketId} · '
                       'Te responderemos a la brevedad',
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.primary),
+                      style: TextStyle(
+                          fontSize: 11, color: colors.primary),
                     ),
                   ),
                 ],
@@ -263,9 +263,9 @@ class _AyudaChatScreenState extends State<AyudaChatScreen> {
             // ── Mensajes ────────────────────────────────────────────────────
             Expanded(
               child: _cargando
-                  ? const Center(
+                  ? Center(
                       child: CircularProgressIndicator(
-                          color: AppColors.primary))
+                          color: colors.primary))
                   : ListView.builder(
                       controller: _scrollCtrl,
                       padding: const EdgeInsets.all(12),
@@ -280,33 +280,33 @@ class _AyudaChatScreenState extends State<AyudaChatScreen> {
               Container(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: colors.surface,
                   border: Border(
                       top: BorderSide(
-                          color: AppColors.divider, width: 0.5)),
+                          color: colors.divider, width: 0.5)),
                 ),
                 child: Row(
                   children: [
                     Expanded(
                       child: Container(
                         decoration: BoxDecoration(
-                          color: AppColors.background,
+                          color: colors.background,
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
-                              color: AppColors.divider, width: 0.8),
+                              color: colors.divider, width: 0.8),
                         ),
                         child: TextField(
                           controller: _msgCtrl,
                           maxLines: null,
                           textInputAction: TextInputAction.send,
                           onSubmitted: (_) => _enviar(),
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 14,
-                              color: AppColors.textPrimary),
-                          decoration: const InputDecoration(
+                              color: colors.textPrimary),
+                          decoration: InputDecoration(
                             hintText: 'Escribe un mensaje…',
                             hintStyle: TextStyle(
-                                fontSize: 13, color: AppColors.grayMid),
+                                fontSize: 13, color: colors.grayMid),
                             border: InputBorder.none,
                             contentPadding: EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 10),
@@ -320,7 +320,7 @@ class _AyudaChatScreenState extends State<AyudaChatScreen> {
                       child: Container(
                         width: 42, height: 42,
                         decoration: BoxDecoration(
-                          color: AppColors.primary,
+                          color: colors.primary,
                           shape: BoxShape.circle,
                         ),
                         child: _enviando
@@ -379,11 +379,11 @@ class _BurbujaMensaje extends StatelessWidget {
             Container(
               width: 28, height: 28,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
+                color: colors.primary.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.support_agent_rounded,
-                  size: 16, color: AppColors.primary),
+              child: Icon(Icons.support_agent_rounded,
+                  size: 16, color: colors.primary),
             ),
             const SizedBox(width: 6),
           ],
@@ -398,8 +398,8 @@ class _BurbujaMensaje extends StatelessWidget {
                       horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: esSoporte
-                        ? AppColors.surface
-                        : AppColors.primary,
+                        ? colors.surface
+                        : colors.primary,
                     borderRadius: BorderRadius.only(
                       topLeft:     const Radius.circular(16),
                       topRight:    const Radius.circular(16),
@@ -407,7 +407,7 @@ class _BurbujaMensaje extends StatelessWidget {
                       bottomRight: Radius.circular(esSoporte ? 16 : 4),
                     ),
                     border: esSoporte
-                        ? Border.all(color: AppColors.divider, width: 0.5)
+                        ? Border.all(color: colors.divider, width: 0.5)
                         : null,
                     boxShadow: [
                       BoxShadow(
@@ -422,7 +422,7 @@ class _BurbujaMensaje extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 14,
                       color: esSoporte
-                          ? AppColors.textPrimary
+                          ? colors.textPrimary
                           : Colors.white,
                       height: 1.4,
                     ),
@@ -431,8 +431,8 @@ class _BurbujaMensaje extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   esSoporte ? 'Soporte · $hora' : hora,
-                  style: const TextStyle(
-                      fontSize: 10, color: AppColors.grayMid),
+                  style: TextStyle(
+                      fontSize: 10, color: colors.grayMid),
                 ),
               ],
             ),

@@ -95,14 +95,14 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Seguir editando',
-                style: TextStyle(color: AppColors.grayMid)),
+            child: Text('Seguir editando',
+                style: TextStyle(color: colors.grayMid)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Descartar',
+            child: Text('Descartar',
                 style: TextStyle(
-                    color: AppColors.primary, fontWeight: FontWeight.w700)),
+                    color: colors.primary, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -139,16 +139,16 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
             _codigoCtrl.text.trim().isEmpty ? null : _codigoCtrl.text.trim(),
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text("Publicación actualizada"),
-        backgroundColor: AppColors.primary,
+        backgroundColor: colors.primary,
         behavior: SnackBarBehavior.floating,
       ));
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e"), backgroundColor: AppColors.carbon),
+        SnackBar(content: Text("Error: $e"), backgroundColor: colors.carbon),
       );
     } finally {
       if (mounted) setState(() => _guardando = false);
@@ -182,7 +182,7 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
   Future<ImageSource?> _elegirFuente() {
     return showModalBottomSheet<ImageSource>(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => SafeArea(
@@ -193,22 +193,22 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
               width: 40, height: 4,
               margin: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                  color: AppColors.divider,
+                  color: colors.divider,
                   borderRadius: BorderRadius.circular(2)),
             ),
             ListTile(
-              leading: const Icon(Icons.camera_alt_rounded, color: AppColors.carbon),
-              title: const Text('Cámara',
+              leading: Icon(Icons.camera_alt_rounded, color: colors.textPrimary),
+              title: Text('Cámara',
                   style: TextStyle(
-                      color: AppColors.textPrimary,
+                      color: colors.textPrimary,
                       fontWeight: FontWeight.w500)),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_rounded, color: AppColors.carbon),
-              title: const Text('Galería',
+              leading: Icon(Icons.photo_library_rounded, color: colors.textPrimary),
+              title: Text('Galería',
                   style: TextStyle(
-                      color: AppColors.textPrimary,
+                      color: colors.textPrimary,
                       fontWeight: FontWeight.w500)),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
@@ -239,9 +239,9 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
 
   void _quitarFoto(int index) {
     if (_todas.length <= 1) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text("Debe quedar al menos una foto"),
-        backgroundColor: AppColors.carbon,
+        backgroundColor: colors.carbon,
         behavior: SnackBarBehavior.floating,
       ));
       return;
@@ -263,43 +263,43 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, size: 18,
-              color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back_ios, size: 18,
+              color: colors.textPrimary),
           onPressed: _confirmarDescartar,
         ),
-        title: const Text("Editar publicación",
+        title: Text("Editar publicación",
             style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary)),
+                color: colors.textPrimary)),
         actions: [
           // Botón guardar siempre visible en AppBar
           _guardando
-              ? const Padding(
+              ? Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   child: SizedBox(
                     width: 20, height: 20,
                     child: CircularProgressIndicator(
-                        color: AppColors.primary, strokeWidth: 2),
+                        color: colors.primary, strokeWidth: 2),
                   ),
                 )
               : TextButton(
                   onPressed: _guardar,
-                  child: const Text("Guardar",
+                  child: Text("Guardar",
                       style: TextStyle(
-                          color: AppColors.primary,
+                          color: colors.primary,
                           fontSize: 15,
                           fontWeight: FontWeight.w700)),
                 ),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: AppColors.divider),
+          child: Container(height: 0.5, color: colors.divider),
         ),
       ),
       body: Form(
@@ -307,7 +307,7 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
         child: ListView(
           children: [
             // ── Galería ─────────────────────────────────────────────────────
-            Container(color: AppColors.surface, child: _buildGaleria()),
+            Container(color: colors.surface, child: _buildGaleria()),
 
             const SizedBox(height: 12),
 
@@ -357,11 +357,11 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
                   const SizedBox(height: 20),
 
                   // ── Información adicional (opcional) ────────────────────
-                  const Text('Información adicional (opcional)',
+                  Text('Información adicional (opcional)',
                       style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary)),
+                          color: colors.textSecondary)),
                   const SizedBox(height: 8),
                   _campo(label: 'Código universal', ctrl: _codigoCtrl),
                   const SizedBox(height: 12),
@@ -380,8 +380,8 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
                     child: ElevatedButton(
                       onPressed: _guardando ? null : _guardar,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        disabledBackgroundColor: AppColors.grayMid,
+                        backgroundColor: colors.primary,
+                        disabledBackgroundColor: colors.grayMid,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14)),
@@ -393,9 +393,9 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
                               child: CircularProgressIndicator(
                                   color: Colors.white, strokeWidth: 2),
                             )
-                          : const Text("Guardar cambios",
+                          : Text("Guardar cambios",
                               style: TextStyle(
-                                  color: AppColors.textOnPrimary,
+                                  color: colors.textOnPrimary,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600)),
                     ),
@@ -407,15 +407,15 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
                     width: double.infinity,
                     child: OutlinedButton.icon(
                       onPressed: _mostrarVistaPrevia,
-                      icon: const Icon(Icons.visibility_outlined,
-                          size: 18, color: AppColors.primary),
-                      label: const Text("Vista previa",
+                      icon: Icon(Icons.visibility_outlined,
+                          size: 18, color: colors.primary),
+                      label: Text("Vista previa",
                           style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.primary)),
+                              color: colors.primary)),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.primary),
+                        side: BorderSide(color: colors.primary),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14)),
@@ -430,8 +430,8 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
                     child: OutlinedButton(
                       onPressed: _confirmarDescartar,
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.grayMid,
-                        side: const BorderSide(color: AppColors.divider),
+                        foregroundColor: colors.grayMid,
+                        side: BorderSide(color: colors.divider),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14)),
@@ -457,11 +457,11 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Estado del producto',
+        Text('Estado del producto',
             style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary)),
+                color: colors.textSecondary)),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -484,11 +484,11 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: sel
-                ? AppColors.primary.withValues(alpha: 0.08)
-                : AppColors.surface,
+                ? colors.primary.withValues(alpha: 0.08)
+                : colors.surface,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: sel ? AppColors.primary : AppColors.divider,
+              color: sel ? colors.primary : colors.divider,
               width: sel ? 1.5 : 0.8,
             ),
           ),
@@ -497,14 +497,14 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
             children: [
               Icon(icono,
                   size: 16,
-                  color: sel ? AppColors.primary : AppColors.grayMid),
+                  color: sel ? colors.primary : colors.grayMid),
               const SizedBox(width: 6),
               Text(label,
                   style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color:
-                          sel ? AppColors.primary : AppColors.textSecondary)),
+                          sel ? colors.primary : colors.textSecondary)),
             ],
           ),
         ),
@@ -520,17 +520,17 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.divider, width: 0.8),
+          border: Border.all(color: colors.divider, width: 0.8),
         ),
         child: Row(
           children: [
             Icon(Icons.handshake_outlined,
                 size: 18,
-                color: _aceptaOfertas ? AppColors.primary : AppColors.grayMid),
+                color: _aceptaOfertas ? colors.primary : colors.grayMid),
             const SizedBox(width: 10),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -538,17 +538,17 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
                       style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary)),
+                          color: colors.textPrimary)),
                   Text('Otros usuarios podrán proponer un precio o canje',
                       style:
-                          TextStyle(fontSize: 11, color: AppColors.grayMid)),
+                          TextStyle(fontSize: 11, color: colors.grayMid)),
                 ],
               ),
             ),
             Switch(
               value: _aceptaOfertas,
               onChanged: (v) => setState(() => _aceptaOfertas = v),
-              activeThumbColor: AppColors.primary,
+              activeThumbColor: colors.primary,
             ),
           ],
         ),
@@ -569,28 +569,28 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
           child: Row(
             children: [
-              const Text("Fotos",
+              Text("Fotos",
                   style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary)),
+                      color: colors.textSecondary)),
               const SizedBox(width: 6),
               Text("($total/4)",
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.grayMid)),
+                  style: TextStyle(
+                      fontSize: 12, color: colors.grayMid)),
               const Spacer(),
               if (puedeMas)
                 GestureDetector(
                   onTap: _agregarFoto,
-                  child: const Row(
+                  child: Row(
                     children: [
                       Icon(Icons.add_photo_alternate_outlined,
-                          size: 16, color: AppColors.primary),
+                          size: 16, color: colors.primary),
                       SizedBox(width: 4),
                       Text("Agregar",
                           style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.primary,
+                              color: colors.primary,
                               fontWeight: FontWeight.w600)),
                     ],
                   ),
@@ -612,9 +612,9 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 20),
                     decoration: BoxDecoration(
-                      color: AppColors.background,
+                      color: colors.background,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.divider, width: 1.5),
+                      border: Border.all(color: colors.divider, width: 1.5),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -622,22 +622,22 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
                         Container(
                           width: 48, height: 48,
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
+                            color: colors.primary.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.add_photo_alternate_outlined,
-                              color: AppColors.primary, size: 24),
+                          child: Icon(Icons.add_photo_alternate_outlined,
+                              color: colors.primary, size: 24),
                         ),
                         const SizedBox(height: 10),
-                        const Text("Agregar foto",
+                        Text("Agregar foto",
                             style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.primary)),
+                                color: colors.primary)),
                         const SizedBox(height: 4),
-                        const Text("Cámara o galería",
+                        Text("Cámara o galería",
                             style: TextStyle(
-                                fontSize: 11, color: AppColors.grayMid)),
+                                fontSize: 11, color: colors.grayMid)),
                       ],
                     ),
                   ),
@@ -651,7 +651,7 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
                     margin: const EdgeInsets.symmetric(horizontal: 20),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(14),
-                      color: AppColors.background,
+                      color: colors.background,
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(14),
@@ -676,7 +676,7 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 9, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.carbon.withValues(alpha: 0.78),
+                          color: colors.carbon.withValues(alpha: 0.78),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Text("Principal",
@@ -693,7 +693,7 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 9, vertical: 4),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.85),
+                          color: colors.primary.withValues(alpha: 0.85),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Text("Nueva",
@@ -710,7 +710,7 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
                       child: Container(
                         width: 28, height: 28,
                         decoration: BoxDecoration(
-                          color: AppColors.carbon.withValues(alpha: 0.78),
+                          color: colors.carbon.withValues(alpha: 0.78),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(Icons.close,
@@ -741,10 +741,10 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
                     height: 7,
                     decoration: BoxDecoration(
                       color: isPlus
-                          ? AppColors.divider
+                          ? colors.divider
                           : isActive
-                              ? AppColors.primary
-                              : AppColors.grayMid.withValues(alpha: 0.4),
+                              ? colors.primary
+                              : colors.grayMid.withValues(alpha: 0.4),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   );
@@ -770,10 +770,10 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary)),
+                color: colors.textSecondary)),
         const SizedBox(height: 6),
         TextFormField(
           controller: ctrl,
@@ -784,19 +784,19 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
           validator: validator,
           decoration: InputDecoration(
             counterStyle:
-                const TextStyle(color: AppColors.grayMid, fontSize: 11),
+                TextStyle(color: colors.grayMid, fontSize: 11),
             filled: true,
-            fillColor: AppColors.surface,
+            fillColor: colors.surface,
             border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.divider)),
+                borderSide: BorderSide(color: colors.divider)),
             enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.divider)),
+                borderSide: BorderSide(color: colors.divider)),
             focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                    color: AppColors.primary, width: 1.5)),
+                borderSide: BorderSide(
+                    color: colors.primary, width: 1.5)),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           ),

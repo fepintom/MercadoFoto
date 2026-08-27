@@ -62,7 +62,7 @@ class _StampRingPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final paint = Paint()
-      ..color = AppColors.primary.withOpacity(0.85)
+      ..color = colors.primary.withOpacity(0.85)
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
@@ -118,7 +118,7 @@ class _CurvedTextPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final style = TextStyle(
-      color: AppColors.primary.withOpacity(0.85),
+      color: colors.primary.withOpacity(0.85),
       fontSize: size.width * 0.052,
       fontWeight: FontWeight.w800,
       letterSpacing: 1.2,
@@ -174,7 +174,7 @@ class _Ciclista extends StatelessWidget {
             child: Icon(
               Icons.pedal_bike_rounded,
               size: size * 0.72,
-              color: AppColors.primary.withOpacity(0.9),
+              color: colors.primary.withOpacity(0.9),
             ),
           ),
           // Bolso "OK" tipo tag de courier, arriba a la derecha del ciclista
@@ -187,10 +187,10 @@ class _Ciclista extends StatelessWidget {
                 width: size * 0.30,
                 height: size * 0.24,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.9),
+                  color: colors.primary.withOpacity(0.9),
                   borderRadius: BorderRadius.circular(size * 0.05),
                   border: Border.all(
-                      color: AppColors.primary.withOpacity(0.9), width: 1.5),
+                      color: colors.primary.withOpacity(0.9), width: 1.5),
                 ),
                 alignment: Alignment.center,
                 child: Text(
@@ -215,7 +215,7 @@ class _SpeedLinesPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.primary.withOpacity(0.5)
+      ..color = colors.primary.withOpacity(0.5)
       ..strokeWidth = size.width * 0.016
       ..strokeCap = StrokeCap.round;
 

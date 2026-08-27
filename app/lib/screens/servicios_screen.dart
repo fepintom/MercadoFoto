@@ -78,9 +78,9 @@ class _ServiciosScreenState extends State<ServiciosScreen>
     if (uid == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Debes iniciar sesión para publicar'),
-            backgroundColor: AppColors.primary,
+            backgroundColor: colors.primary,
           ),
         );
       }
@@ -112,35 +112,35 @@ class _ServiciosScreenState extends State<ServiciosScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: Column(
         children: [
           // Header
           Container(
-            color: AppColors.surface,
+            color: colors.surface,
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Servicios',
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
+                    color: colors.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   'Encuentra o publica servicios profesionales',
-                  style: TextStyle(fontSize: 13, color: AppColors.grayMid),
+                  style: TextStyle(fontSize: 13, color: colors.grayMid),
                 ),
                 const SizedBox(height: 12),
                 TabBar(
                   controller: _tabController,
-                  labelColor: AppColors.primary,
-                  unselectedLabelColor: AppColors.grayMid,
-                  indicatorColor: AppColors.primary,
+                  labelColor: colors.primary,
+                  unselectedLabelColor: colors.grayMid,
+                  indicatorColor: colors.primary,
                   indicatorWeight: 2.5,
                   labelStyle: const TextStyle(
                       fontWeight: FontWeight.w700, fontSize: 14),
@@ -154,13 +154,13 @@ class _ServiciosScreenState extends State<ServiciosScreen>
               ],
             ),
           ),
-          Divider(height: 0.5, color: AppColors.divider),
+          Divider(height: 0.5, color: colors.divider),
 
           // Contenido
           Expanded(
             child: _cargando
-                ? const Center(
-                    child: CircularProgressIndicator(color: AppColors.primary))
+                ? Center(
+                    child: CircularProgressIndicator(color: colors.primary))
                 : TabBarView(
                     controller: _tabController,
                     children: [
@@ -192,7 +192,7 @@ class _ServiciosScreenState extends State<ServiciosScreen>
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: FloatingActionButton(
         onPressed: _irAAgregar,
-        backgroundColor: AppColors.primary,
+        backgroundColor: colors.primary,
         foregroundColor: Colors.white,
         child: const Icon(Icons.add, size: 26),
       ),
@@ -220,11 +220,11 @@ const _kCategoriaIconos = <String, IconData>{
 };
 
 Color _hexColor(String? hex) {
-  if (hex == null || hex.isEmpty) return AppColors.primary;
+  if (hex == null || hex.isEmpty) return colors.primary;
   try {
     return Color(int.parse('FF${hex.replaceAll('#', '')}', radix: 16));
   } catch (_) {
-    return AppColors.primary;
+    return colors.primary;
   }
 }
 
@@ -290,7 +290,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
   void _mostrarControlTamano() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => StatefulBuilder(
@@ -304,30 +304,30 @@ class _ListaServiciosState extends State<_ListaServicios> {
                 child: Container(
                   width: 40, height: 4,
                   decoration: BoxDecoration(
-                      color: AppColors.divider,
+                      color: colors.divider,
                       borderRadius: BorderRadius.circular(2)),
                 ),
               ),
               const SizedBox(height: 20),
-              const Text('Tamaño de las publicaciones',
+              Text('Tamaño de las publicaciones',
                   style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary)),
+                      color: colors.textPrimary)),
               const SizedBox(height: 4),
-              const Text('Achica para ver más servicios, agranda para verlos más grandes',
-                  style: TextStyle(fontSize: 12, color: AppColors.grayMid)),
+              Text('Achica para ver más servicios, agranda para verlos más grandes',
+                  style: TextStyle(fontSize: 12, color: colors.grayMid)),
               Row(
                 children: [
-                  const Icon(Icons.grid_view_rounded,
-                      size: 16, color: AppColors.grayMid),
+                  Icon(Icons.grid_view_rounded,
+                      size: 16, color: colors.grayMid),
                   Expanded(
                     child: Slider(
                       value: _columnas.toDouble(),
                       min: 1,
                       max: 3,
                       divisions: 2,
-                      activeColor: AppColors.primary,
+                      activeColor: colors.primary,
                       onChanged: (v) {
                         final nuevo = v.round();
                         setSheetState(() => _columnas = nuevo);
@@ -336,8 +336,8 @@ class _ListaServiciosState extends State<_ListaServicios> {
                       },
                     ),
                   ),
-                  const Icon(Icons.crop_square_rounded,
-                      size: 22, color: AppColors.grayMid),
+                  Icon(Icons.crop_square_rounded,
+                      size: 22, color: colors.grayMid),
                 ],
               ),
             ],
@@ -356,7 +356,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
         Container(
           // Gris, igual que el resto de la app: resalta contra el blanco de
           // arriba en vez de camuflarse.
-          color: AppColors.background,
+          color: colors.background,
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
           child: Row(
             children: [
@@ -364,9 +364,9 @@ class _ListaServiciosState extends State<_ListaServicios> {
                 child: Container(
                   height: 38,
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
+                    color: colors.surface,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.divider),
+                    border: Border.all(color: colors.divider),
                     boxShadow: [
                       BoxShadow(
                           color: Colors.black.withOpacity(0.06),
@@ -382,15 +382,15 @@ class _ListaServiciosState extends State<_ListaServicios> {
                       hintText: widget.tipo == 'ofrezco'
                           ? 'Buscar servicios...'
                           : 'Buscar solicitudes...',
-                      hintStyle: const TextStyle(color: AppColors.grayMid, fontSize: 13),
-                      prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.grayMid),
+                      hintStyle: TextStyle(color: colors.grayMid, fontSize: 13),
+                      prefixIcon: Icon(Icons.search, size: 18, color: colors.grayMid),
                       suffixIcon: _query.isNotEmpty
                           ? GestureDetector(
                               onTap: () {
                                 _searchCtrl.clear();
                                 setState(() => _query = '');
                               },
-                              child: const Icon(Icons.close, size: 16, color: AppColors.grayMid),
+                              child: Icon(Icons.close, size: 16, color: colors.grayMid),
                             )
                           : null,
                       border: InputBorder.none,
@@ -405,12 +405,12 @@ class _ListaServiciosState extends State<_ListaServicios> {
                 child: Container(
                   width: 38, height: 38,
                   decoration: BoxDecoration(
-                    color: AppColors.background,
+                    color: colors.background,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.divider),
+                    border: Border.all(color: colors.divider),
                   ),
-                  child: const Icon(Icons.photo_size_select_large_outlined,
-                      size: 17, color: AppColors.grayMid),
+                  child: Icon(Icons.photo_size_select_large_outlined,
+                      size: 17, color: colors.grayMid),
                 ),
               ),
             ],
@@ -419,7 +419,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
 
         // ── Categorías (fila propia, no comparte espacio con ningún botón) ──
         Container(
-          color: AppColors.surface,
+          color: colors.surface,
           height: 40,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
@@ -436,10 +436,10 @@ class _ListaServiciosState extends State<_ListaServicios> {
                   margin: const EdgeInsets.only(right: 8),
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
-                    color: sel ? AppColors.primary : AppColors.background,
+                    color: sel ? colors.primary : colors.background,
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(
-                      color: sel ? AppColors.primary : AppColors.divider,
+                      color: sel ? colors.primary : colors.divider,
                       width: 0.5,
                     ),
                   ),
@@ -448,13 +448,13 @@ class _ListaServiciosState extends State<_ListaServicios> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(icon, size: 13,
-                          color: sel ? Colors.white : AppColors.grayMid),
+                          color: sel ? Colors.white : colors.grayMid),
                       const SizedBox(width: 5),
                       Text(cat,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
-                            color: sel ? Colors.white : AppColors.textPrimary,
+                            color: sel ? Colors.white : colors.textPrimary,
                           )),
                     ],
                   ),
@@ -463,7 +463,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
             },
           ),
         ),
-        Divider(height: 0.5, color: AppColors.divider),
+        Divider(height: 0.5, color: colors.divider),
 
         Expanded(child: _buildLista(filtrados)),
       ],
@@ -479,7 +479,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.handyman_outlined,
-                size: 64, color: AppColors.grayMid.withOpacity(0.4)),
+                size: 64, color: colors.grayMid.withOpacity(0.4)),
             const SizedBox(height: 16),
             Text(
               sinResultados
@@ -488,10 +488,10 @@ class _ListaServiciosState extends State<_ListaServicios> {
                       ? 'Aún no hay servicios publicados'
                       : 'Aún no hay solicitudes de servicio',
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary),
+                  color: colors.textSecondary),
             ),
             const SizedBox(height: 8),
             Text(
@@ -502,7 +502,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
                       : 'Publica lo que necesitas y recibe propuestas',
               textAlign: TextAlign.center,
               style:
-                  const TextStyle(fontSize: 13, color: AppColors.grayMid),
+                  TextStyle(fontSize: 13, color: colors.grayMid),
             ),
           ],
         ),
@@ -519,7 +519,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
     if (_columnas == 1) {
       return RefreshIndicator(
         onRefresh: widget.onRefresh,
-        color: AppColors.primary,
+        color: colors.primary,
         child: ListView.separated(
           padding: const EdgeInsets.fromLTRB(12, 12, 12, _kPaddingInferiorFab),
           itemCount: servicios.length,
@@ -531,7 +531,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
 
     return RefreshIndicator(
       onRefresh: widget.onRefresh,
-      color: AppColors.primary,
+      color: colors.primary,
       child: GridView.builder(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, _kPaddingInferiorFab),
         itemCount: servicios.length,
@@ -588,18 +588,18 @@ class _TarjetaServicio extends StatelessWidget {
     final fotos     = servicio['fotos'] as List? ?? [];
     final verificado = servicio['certificado_verificado'] as bool? ?? false;
     final comunas   = servicio['comunas'] as String? ?? '';
-    final tipoColor = tipo == 'ofrezco' ? AppColors.primary : Colors.orange;
+    final tipoColor = tipo == 'ofrezco' ? colors.primary : Colors.orange;
     final prefix    = tipo == 'ofrezco' ? 'Ofrezco' : 'Busco';
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border(
           left:   BorderSide(color: tipoColor, width: 4),
-          top:    BorderSide(color: AppColors.divider, width: 0.5),
-          right:  BorderSide(color: AppColors.divider, width: 0.5),
-          bottom: BorderSide(color: AppColors.divider, width: 0.5),
+          top:    BorderSide(color: colors.divider, width: 0.5),
+          right:  BorderSide(color: colors.divider, width: 0.5),
+          bottom: BorderSide(color: colors.divider, width: 0.5),
         ),
         boxShadow: [
           BoxShadow(
@@ -631,7 +631,7 @@ class _TarjetaServicio extends StatelessWidget {
                       // Avatar pequeño
                       CircleAvatar(
                         radius: 9,
-                        backgroundColor: AppColors.primary.withOpacity(0.15),
+                        backgroundColor: colors.primary.withOpacity(0.15),
                         backgroundImage: fotoUrl.isNotEmpty
                             ? NetworkImage(
                                 '${ApiService.baseUrl}$fotoUrl')
@@ -641,9 +641,9 @@ class _TarjetaServicio extends StatelessWidget {
                                 nombre.isNotEmpty
                                     ? nombre[0].toUpperCase()
                                     : 'U',
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 8,
-                                    color: AppColors.primary,
+                                    color: colors.primary,
                                     fontWeight: FontWeight.w700),
                               )
                             : null,
@@ -653,8 +653,8 @@ class _TarjetaServicio extends StatelessWidget {
                         child: Text(nombre,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontSize: 10, color: AppColors.grayMid)),
+                            style: TextStyle(
+                                fontSize: 10, color: colors.grayMid)),
                       ),
                       if (verificado)
                         Container(
@@ -699,10 +699,10 @@ class _TarjetaServicio extends StatelessWidget {
                         ),
                         TextSpan(
                           text: titulo,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+                            color: colors.textPrimary,
                           ),
                         ),
                       ],
@@ -714,15 +714,15 @@ class _TarjetaServicio extends StatelessWidget {
                   if (comunas.isNotEmpty)
                     Row(
                       children: [
-                        const Icon(Icons.location_on_outlined,
-                            size: 10, color: AppColors.grayMid),
+                        Icon(Icons.location_on_outlined,
+                            size: 10, color: colors.grayMid),
                         const SizedBox(width: 2),
                         Expanded(
                           child: Text(comunas,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  fontSize: 10, color: AppColors.grayMid)),
+                              style: TextStyle(
+                                  fontSize: 10, color: colors.grayMid)),
                         ),
                       ],
                     ),
@@ -744,8 +744,8 @@ class _TarjetaServicio extends StatelessWidget {
                       _Estrellas(rating: rating, size: 10),
                       const SizedBox(width: 2),
                       Text('($numVal)',
-                          style: const TextStyle(
-                              fontSize: 9, color: AppColors.grayMid)),
+                          style: TextStyle(
+                              fontSize: 9, color: colors.grayMid)),
                     ],
                   ),
 
@@ -763,9 +763,9 @@ class _TarjetaServicio extends StatelessWidget {
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                        side: const BorderSide(
-                            color: AppColors.primary, width: 1),
+                        foregroundColor: colors.primary,
+                        side: BorderSide(
+                            color: colors.primary, width: 1),
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8)),
@@ -820,14 +820,14 @@ class _TarjetaServicio extends StatelessWidget {
   Widget _avatarPlaceholder(String nombre, double w, double h) {
     return Container(
       width: w, height: h,
-      color: AppColors.primary.withOpacity(0.12),
+      color: colors.primary.withOpacity(0.12),
       child: Center(
         child: Text(
           nombre.isNotEmpty ? nombre[0].toUpperCase() : 'S',
-          style: const TextStyle(
+          style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w700,
-              color: AppColors.primary),
+              color: colors.primary),
         ),
       ),
     );
@@ -854,7 +854,7 @@ class _TarjetaServicioCompacta extends StatelessWidget {
     final modalidad = servicio['modalidad'] as String? ?? 'servicio';
     final valor     = (servicio['valor'] as num?)?.toDouble() ?? 0;
     final fotos     = servicio['fotos'] as List? ?? [];
-    final tipoColor = tipo == 'ofrezco' ? AppColors.primary : Colors.orange;
+    final tipoColor = tipo == 'ofrezco' ? colors.primary : Colors.orange;
     final prefix    = tipo == 'ofrezco' ? 'Ofrezco' : 'Busco';
 
     return GestureDetector(
@@ -867,9 +867,9 @@ class _TarjetaServicioCompacta extends StatelessWidget {
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.divider, width: 0.5),
+          border: Border.all(color: colors.divider, width: 0.5),
           boxShadow: [
             BoxShadow(
                 color: Colors.black.withOpacity(0.04),
@@ -894,16 +894,16 @@ class _TarjetaServicioCompacta extends StatelessWidget {
                           ? NetImage('${ApiService.baseUrl}$fotoUrl',
                               fit: BoxFit.cover)
                           : Container(
-                              color: AppColors.primary.withOpacity(0.12),
+                              color: colors.primary.withOpacity(0.12),
                               child: Center(
                                 child: Text(
                                   nombre.isNotEmpty
                                       ? nombre[0].toUpperCase()
                                       : 'S',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontSize: 24,
                                       fontWeight: FontWeight.w700,
-                                      color: AppColors.primary),
+                                      color: colors.primary),
                                 ),
                               ),
                             )),
@@ -936,10 +936,10 @@ class _TarjetaServicioCompacta extends StatelessWidget {
                   Text(titulo,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
+                          color: colors.textPrimary)),
                   const SizedBox(height: 4),
                   if (valor > 0)
                     Text(
@@ -957,8 +957,8 @@ class _TarjetaServicioCompacta extends StatelessWidget {
                       _Estrellas(rating: rating, size: 9),
                       const SizedBox(width: 2),
                       Text('($numVal)',
-                          style: const TextStyle(
-                              fontSize: 9, color: AppColors.grayMid)),
+                          style: TextStyle(
+                              fontSize: 9, color: colors.grayMid)),
                     ],
                   ),
                 ],
@@ -1019,21 +1019,21 @@ class _DeliveryTabState extends State<_DeliveryTab> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.delivery_dining_outlined,
-                  size: 64, color: AppColors.grayMid.withOpacity(0.4)),
+                  size: 64, color: colors.grayMid.withOpacity(0.4)),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'No hay deliveries registrados aún',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary),
+                    color: colors.textSecondary),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Muy pronto podrás registrarte como Delivery OkVenta',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: AppColors.grayMid),
+                style: TextStyle(fontSize: 13, color: colors.grayMid),
               ),
             ],
           ),
@@ -1043,7 +1043,7 @@ class _DeliveryTabState extends State<_DeliveryTab> {
 
     return RefreshIndicator(
       onRefresh: widget.onRefresh,
-      color: AppColors.primary,
+      color: colors.primary,
       child: ListView.separated(
         padding: const EdgeInsets.all(12),
         itemCount: widget.delivery.length,
@@ -1062,12 +1062,12 @@ class _DeliveryTabState extends State<_DeliveryTab> {
 
           return Container(
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: colors.surface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: activo
                     ? Colors.green.withOpacity(0.35)
-                    : AppColors.divider,
+                    : colors.divider,
               ),
               boxShadow: [
                 BoxShadow(
@@ -1083,17 +1083,17 @@ class _DeliveryTabState extends State<_DeliveryTab> {
                 children: [
                   CircleAvatar(
                     radius: 28,
-                    backgroundColor: AppColors.primary.withOpacity(0.15),
+                    backgroundColor: colors.primary.withOpacity(0.15),
                     backgroundImage: fotoUrl.isNotEmpty
                         ? NetworkImage('${ApiService.baseUrl}$fotoUrl')
                         : null,
                     child: fotoUrl.isEmpty
                         ? Text(
                             nombre[0].toUpperCase(),
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.primary),
+                                color: colors.primary),
                           )
                         : null,
                   ),
@@ -1102,7 +1102,7 @@ class _DeliveryTabState extends State<_DeliveryTab> {
                     child: Container(
                       width: 14, height: 14,
                       decoration: BoxDecoration(
-                        color: activo ? Colors.green : AppColors.grayMid,
+                        color: activo ? Colors.green : colors.grayMid,
                         shape: BoxShape.circle,
                         border:
                             Border.all(color: Colors.white, width: 1.5),
@@ -1115,10 +1115,10 @@ class _DeliveryTabState extends State<_DeliveryTab> {
                 children: [
                   Expanded(
                     child: Text(nombre,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary)),
+                            color: colors.textPrimary)),
                   ),
                   _vehiculoIcon(vehiculo),
                 ],
@@ -1135,7 +1135,7 @@ class _DeliveryTabState extends State<_DeliveryTab> {
                         decoration: BoxDecoration(
                           color: activo
                               ? Colors.green.withOpacity(0.1)
-                              : AppColors.grayMid.withOpacity(0.1),
+                              : colors.grayMid.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -1143,15 +1143,15 @@ class _DeliveryTabState extends State<_DeliveryTab> {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: activo ? Colors.green : AppColors.grayMid,
+                            color: activo ? Colors.green : colors.grayMid,
                           ),
                         ),
                       ),
                       if (comunas.isNotEmpty) ...[
                         const SizedBox(width: 8),
                         Text(comunas,
-                            style: const TextStyle(
-                                fontSize: 11, color: AppColors.grayMid)),
+                            style: TextStyle(
+                                fontSize: 11, color: colors.grayMid)),
                       ],
                     ],
                   ),
@@ -1241,7 +1241,7 @@ class _DeliveryTabState extends State<_DeliveryTab> {
       'auto':      Icons.directions_car_rounded,
     };
     return Icon(icons[v] ?? Icons.delivery_dining_outlined,
-        size: 20, color: AppColors.grayMid);
+        size: 20, color: colors.grayMid);
   }
 }
 
@@ -1496,17 +1496,17 @@ class _MapaServiciosState extends State<_MapaServicios> {
                       offset: const Offset(0, 2))
                 ],
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(Icons.info_outline,
-                      size: 13, color: AppColors.grayMid),
+                      size: 13, color: colors.grayMid),
                   SizedBox(width: 5),
                   Flexible(
                     child: Text(
                       'Sin ubicación registrada',
                       style: TextStyle(
-                          fontSize: 11, color: AppColors.grayMid),
+                          fontSize: 11, color: colors.grayMid),
                     ),
                   ),
                 ],
@@ -1534,20 +1534,20 @@ class _MapaServiciosState extends State<_MapaServicios> {
             child: TextField(
               controller: _searchCtrl,
               onChanged: (v) => setState(() => _query = v.trim()),
-              style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+              style: TextStyle(fontSize: 14, color: colors.textPrimary),
               decoration: InputDecoration(
                 hintText: 'Buscar servicio en el mapa…',
-                hintStyle: const TextStyle(fontSize: 13, color: AppColors.grayMid),
-                prefixIcon: const Icon(Icons.search_rounded,
-                    size: 18, color: AppColors.grayMid),
+                hintStyle: TextStyle(fontSize: 13, color: colors.grayMid),
+                prefixIcon: Icon(Icons.search_rounded,
+                    size: 18, color: colors.grayMid),
                 suffixIcon: _query.isNotEmpty
                     ? GestureDetector(
                         onTap: () {
                           _searchCtrl.clear();
                           setState(() => _query = '');
                         },
-                        child: const Icon(Icons.close_rounded,
-                            size: 16, color: AppColors.grayMid),
+                        child: Icon(Icons.close_rounded,
+                            size: 16, color: colors.grayMid),
                       )
                     : null,
                 border: InputBorder.none,
@@ -1607,7 +1607,7 @@ class _MapaServiciosState extends State<_MapaServicios> {
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(
                       horizontal: 8, vertical: 7),
-                  color: AppColors.carbon,
+                  color: colors.carbon,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -1637,13 +1637,13 @@ class _MapaServiciosState extends State<_MapaServicios> {
               if (_panelAbierto) ...[
                 // Filtro por tipo
                 _fBtn(null, Icons.apps_rounded, 'Todos',
-                    _filtroTipo == null, AppColors.carbon),
+                    _filtroTipo == null, colors.textPrimary),
                 _fBtn('ofrezco', Icons.handyman_outlined, 'Ofrezco',
-                    _filtroTipo == 'ofrezco', AppColors.primary),
+                    _filtroTipo == 'ofrezco', colors.primary),
                 _fBtn('busco', Icons.search_rounded, 'Busco',
                     _filtroTipo == 'busco', Colors.orange),
 
-                Container(height: 0.5, color: AppColors.divider),
+                Container(height: 0.5, color: colors.divider),
 
                 // Categorías (scrollable)
                 Flexible(
@@ -1662,15 +1662,15 @@ class _MapaServiciosState extends State<_MapaServicios> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 6),
                             color: sel
-                                ? AppColors.primary.withOpacity(0.1)
+                                ? colors.primary.withOpacity(0.1)
                                 : null,
                             child: Column(
                               children: [
                                 Icon(icon,
                                     size: 16,
                                     color: sel
-                                        ? AppColors.primary
-                                        : AppColors.grayMid),
+                                        ? colors.primary
+                                        : colors.grayMid),
                                 const SizedBox(height: 2),
                                 Text(
                                   cat.length > 8
@@ -1682,8 +1682,8 @@ class _MapaServiciosState extends State<_MapaServicios> {
                                         ? FontWeight.w700
                                         : FontWeight.w500,
                                     color: sel
-                                        ? AppColors.primary
-                                        : AppColors.grayMid,
+                                        ? colors.primary
+                                        : colors.grayMid,
                                   ),
                                 ),
                               ],
@@ -1718,7 +1718,7 @@ class _MapaServiciosState extends State<_MapaServicios> {
           children: [
             Icon(icon,
                 size: 14,
-                color: sel ? color : AppColors.grayMid),
+                color: sel ? color : colors.grayMid),
             const SizedBox(width: 5),
             Flexible(
               child: Text(
@@ -1728,7 +1728,7 @@ class _MapaServiciosState extends State<_MapaServicios> {
                   fontSize: 10,
                   fontWeight:
                       sel ? FontWeight.w700 : FontWeight.w500,
-                  color: sel ? color : AppColors.grayMid,
+                  color: sel ? color : colors.grayMid,
                 ),
               ),
             ),

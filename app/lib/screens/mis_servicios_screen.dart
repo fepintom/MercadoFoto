@@ -58,16 +58,16 @@ class _MisServiciosScreenState extends State<MisServiciosScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           children: [
             // ── Header ──────────────────────────────────────────────────
             Container(
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 border: Border(
-                    bottom: BorderSide(color: AppColors.divider, width: 0.5)),
+                    bottom: BorderSide(color: colors.divider, width: 0.5)),
               ),
               child: Column(
                 children: [
@@ -88,17 +88,17 @@ class _MisServiciosScreenState extends State<MisServiciosScreen>
                               );
                             }
                           },
-                          child: const Icon(Icons.arrow_back_ios_new_rounded,
-                              size: 20, color: AppColors.carbon),
+                          child: Icon(Icons.arrow_back_ios_new_rounded,
+                              size: 20, color: colors.textPrimary),
                         ),
                         const SizedBox(width: 14),
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'Mis servicios',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary,
+                              color: colors.textPrimary,
                             ),
                           ),
                         ),
@@ -140,9 +140,9 @@ class _MisServiciosScreenState extends State<MisServiciosScreen>
                   // Tabs
                   TabBar(
                     controller: _tabCtrl,
-                    indicatorColor: AppColors.primary,
-                    labelColor: AppColors.primary,
-                    unselectedLabelColor: AppColors.grayMid,
+                    indicatorColor: colors.primary,
+                    labelColor: colors.primary,
+                    unselectedLabelColor: colors.grayMid,
                     labelStyle: const TextStyle(
                         fontSize: 13, fontWeight: FontWeight.w700),
                     tabs: [
@@ -163,9 +163,9 @@ class _MisServiciosScreenState extends State<MisServiciosScreen>
             // ── Contenido ───────────────────────────────────────────────
             Expanded(
               child: _cargando
-                  ? const Center(
+                  ? Center(
                       child: CircularProgressIndicator(
-                          color: AppColors.primary))
+                          color: colors.primary))
                   : TabBarView(
                       controller: _tabCtrl,
                       children: [
@@ -218,14 +218,14 @@ class _ListaServicios extends StatelessWidget {
                   ? Icons.handyman_outlined
                   : Icons.search_outlined,
               size: 56,
-              color: AppColors.grayMid,
+              color: colors.grayMid,
             ),
             const SizedBox(height: 12),
             Text(
               tipo == 'ofrezco'
                   ? 'No tienes servicios publicados'
                   : 'No tienes búsquedas publicadas',
-              style: const TextStyle(color: AppColors.grayMid, fontSize: 14),
+              style: TextStyle(color: colors.grayMid, fontSize: 14),
             ),
           ],
         ),
@@ -233,7 +233,7 @@ class _ListaServicios extends StatelessWidget {
     }
 
     return RefreshIndicator(
-      color: AppColors.primary,
+      color: colors.primary,
       onRefresh: () async => onRefresh(),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
@@ -335,9 +335,9 @@ class _TarjetaServicioState extends State<_TarjetaServicio> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.divider, width: 0.5),
+          border: Border.all(color: colors.divider, width: 0.5),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.04),
@@ -375,16 +375,16 @@ class _TarjetaServicioState extends State<_TarjetaServicio> {
                           s['titulo'] as String? ?? '',
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+                            color: colors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            _chip(categoria, AppColors.grayMid),
+                            _chip(categoria, colors.grayMid),
                             const SizedBox(width: 6),
                             if (valor != null && (valor as num) > 0)
                               _chip(
@@ -400,8 +400,8 @@ class _TarjetaServicioState extends State<_TarjetaServicio> {
                   // Fecha
                   Text(
                     _formatFecha(s['created_at'] as String?),
-                    style: const TextStyle(
-                        fontSize: 10, color: AppColors.grayMid),
+                    style: TextStyle(
+                        fontSize: 10, color: colors.grayMid),
                   ),
                 ],
               ),
@@ -416,12 +416,12 @@ class _TarjetaServicioState extends State<_TarjetaServicio> {
                 decoration: BoxDecoration(
                   color: numContactos > 0
                       ? const Color(0xFF00897B).withOpacity(0.06)
-                      : AppColors.background,
+                      : colors.background,
                   borderRadius: const BorderRadius.vertical(
                       bottom: Radius.circular(14)),
                   border: Border(
                     top: BorderSide(
-                        color: AppColors.divider, width: 0.5),
+                        color: colors.divider, width: 0.5),
                   ),
                 ),
                 child: Row(
@@ -431,7 +431,7 @@ class _TarjetaServicioState extends State<_TarjetaServicio> {
                       size: 15,
                       color: numContactos > 0
                           ? const Color(0xFF00897B)
-                          : AppColors.grayMid,
+                          : colors.grayMid,
                     ),
                     const SizedBox(width: 6),
                     Text(
@@ -443,7 +443,7 @@ class _TarjetaServicioState extends State<_TarjetaServicio> {
                         fontWeight: FontWeight.w600,
                         color: numContactos > 0
                             ? const Color(0xFF00897B)
-                            : AppColors.grayMid,
+                            : colors.grayMid,
                       ),
                     ),
                     const Spacer(),
@@ -453,7 +453,7 @@ class _TarjetaServicioState extends State<_TarjetaServicio> {
                             ? Icons.keyboard_arrow_up_rounded
                             : Icons.keyboard_arrow_down_rounded,
                         size: 18,
-                        color: AppColors.grayMid,
+                        color: colors.grayMid,
                       ),
                   ],
                 ),
@@ -463,13 +463,13 @@ class _TarjetaServicioState extends State<_TarjetaServicio> {
             // ── Lista de contactos expandida ─────────────────────────────
             if (_expandido) ...[
               if (_cargandoContactos)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(vertical: 12),
                   child: Center(
                     child: SizedBox(
                       width: 18, height: 18,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: AppColors.primary),
+                          strokeWidth: 2, color: colors.primary),
                     ),
                   ),
                 )
@@ -480,7 +480,7 @@ class _TarjetaServicioState extends State<_TarjetaServicio> {
                   padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
                   itemCount: _contactos!.length,
                   separatorBuilder: (_, __) => Divider(
-                      height: 1, color: AppColors.divider),
+                      height: 1, color: colors.divider),
                   itemBuilder: (_, i) {
                     final c = _contactos![i];
                     final esWpp = c['tipo_contacto'] == 'whatsapp';
@@ -504,7 +504,7 @@ class _TarjetaServicioState extends State<_TarjetaServicio> {
                               decoration: BoxDecoration(
                                 color: esWpp
                                     ? const Color(0xFF25D366).withOpacity(0.1)
-                                    : AppColors.carbon.withOpacity(0.08),
+                                    : colors.carbon.withOpacity(0.08),
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
@@ -512,7 +512,7 @@ class _TarjetaServicioState extends State<_TarjetaServicio> {
                                 size: 15,
                                 color: esWpp
                                     ? const Color(0xFF25D366)
-                                    : AppColors.carbon,
+                                    : colors.textPrimary,
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -523,17 +523,17 @@ class _TarjetaServicioState extends State<_TarjetaServicio> {
                                   Text(
                                     c['nombre_contactante'] as String? ??
                                         'Anónimo',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary,
+                                      color: colors.textPrimary,
                                     ),
                                   ),
                                   Text(
                                     esWpp ? 'WhatsApp' : 'Llamada',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontSize: 11,
-                                        color: AppColors.grayMid),
+                                        color: colors.grayMid),
                                   ),
                                 ],
                               ),
@@ -543,19 +543,19 @@ class _TarjetaServicioState extends State<_TarjetaServicio> {
                               children: [
                                 Text(
                                   _formatFecha(c['created_at'] as String?),
-                                  style: const TextStyle(
-                                      fontSize: 10, color: AppColors.grayMid),
+                                  style: TextStyle(
+                                      fontSize: 10, color: colors.grayMid),
                                 ),
                                 Text(
                                   _formatHora(c['created_at'] as String?),
-                                  style: const TextStyle(
-                                      fontSize: 10, color: AppColors.grayMid),
+                                  style: TextStyle(
+                                      fontSize: 10, color: colors.grayMid),
                                 ),
                               ],
                             ),
                             const SizedBox(width: 6),
-                            const Icon(Icons.arrow_forward_ios_rounded,
-                                size: 11, color: AppColors.grayMid),
+                            Icon(Icons.arrow_forward_ios_rounded,
+                                size: 11, color: colors.grayMid),
                           ],
                         ),
                       ),
@@ -565,9 +565,9 @@ class _TarjetaServicioState extends State<_TarjetaServicio> {
               else
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
-                  child: const Text('No hay contactos registrados aún',
+                  child: Text('No hay contactos registrados aún',
                       style: TextStyle(
-                          fontSize: 12, color: AppColors.grayMid)),
+                          fontSize: 12, color: colors.grayMid)),
                 ),
             ],
           ],

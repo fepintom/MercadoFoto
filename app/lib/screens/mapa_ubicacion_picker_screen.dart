@@ -72,9 +72,9 @@ class _MapaUbicacionPickerScreenState
   void _confirmar() {
     if (!_pinColocado) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Toca el mapa para colocar tu ubicación'),
-          backgroundColor: AppColors.carbon,
+          backgroundColor: colors.carbon,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -89,21 +89,21 @@ class _MapaUbicacionPickerScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Elige tu ubicación',
           style: TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary),
+              color: colors.textPrimary),
         ),
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         elevation: 0,
-        iconTheme: const IconThemeData(color: AppColors.carbon),
+        iconTheme: IconThemeData(color: colors.textPrimary),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: AppColors.divider),
+          child: Container(height: 0.5, color: colors.divider),
         ),
       ),
       body: Column(
@@ -112,18 +112,18 @@ class _MapaUbicacionPickerScreenState
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            color: AppColors.primary.withOpacity(0.08),
-            child: const Row(
+            color: colors.primary.withOpacity(0.08),
+            child: Row(
               children: [
                 Icon(Icons.touch_app_rounded,
-                    size: 18, color: AppColors.primary),
+                    size: 18, color: colors.primary),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Toca el mapa para colocar el pin de tu ubicación',
                     style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.primary,
+                        color: colors.primary,
                         fontWeight: FontWeight.w500),
                   ),
                 ),
@@ -155,9 +155,9 @@ class _MapaUbicacionPickerScreenState
                         point: _pin,
                         radius: _radioKm * 1000, // metros
                         useRadiusInMeter: true,
-                        color: AppColors.primary.withOpacity(0.15),
+                        color: colors.primary.withOpacity(0.15),
                         borderStrokeWidth: 2,
-                        borderColor: AppColors.primary.withOpacity(0.6),
+                        borderColor: colors.primary.withOpacity(0.6),
                       ),
                     ],
                   ),
@@ -171,9 +171,9 @@ class _MapaUbicacionPickerScreenState
                         width: 40,
                         height: 50,
                         anchorPos: AnchorPos.align(AnchorAlign.top),
-                        builder: (_) => const Icon(
+                        builder: (_) => Icon(
                           Icons.location_pin,
-                          color: AppColors.primary,
+                          color: colors.primary,
                           size: 48,
                           shadows: [
                             Shadow(
@@ -194,7 +194,7 @@ class _MapaUbicacionPickerScreenState
           Container(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: colors.surface,
               boxShadow: [
                 BoxShadow(
                     color: Colors.black.withOpacity(0.08),
@@ -208,30 +208,30 @@ class _MapaUbicacionPickerScreenState
                 // Radio
                 Row(
                   children: [
-                    const Icon(Icons.radar_rounded,
-                        size: 18, color: AppColors.grayMid),
+                    Icon(Icons.radar_rounded,
+                        size: 18, color: colors.grayMid),
                     const SizedBox(width: 8),
-                    const Text(
+                    Text(
                       'Radio de cobertura',
                       style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary),
+                          color: colors.textPrimary),
                     ),
                     const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
+                        color: colors.primary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         '${_radioKm.toStringAsFixed(0)} km',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.primary),
+                            color: colors.primary),
                       ),
                     ),
                   ],
@@ -241,19 +241,19 @@ class _MapaUbicacionPickerScreenState
                   min: 1,
                   max: 50,
                   divisions: 49,
-                  activeColor: AppColors.primary,
-                  inactiveColor: AppColors.divider,
+                  activeColor: colors.primary,
+                  inactiveColor: colors.divider,
                   onChanged: (v) => setState(() => _radioKm = v),
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
+                  children: [
                     Text('1 km',
                         style: TextStyle(
-                            fontSize: 11, color: AppColors.grayMid)),
+                            fontSize: 11, color: colors.grayMid)),
                     Text('50 km',
                         style: TextStyle(
-                            fontSize: 11, color: AppColors.grayMid)),
+                            fontSize: 11, color: colors.grayMid)),
                   ],
                 ),
 
@@ -270,7 +270,7 @@ class _MapaUbicacionPickerScreenState
                           fontSize: 15, fontWeight: FontWeight.w700),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: colors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
