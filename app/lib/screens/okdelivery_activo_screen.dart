@@ -502,23 +502,29 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
     required IconData icon,
     required String titulo,
     required String subtitulo,
-    Color color = colors.primary,
+    // Antes: "Color color = colors.primary" -- colors.primary ya no es un
+    // valor constante (depende del modo claro/oscuro en tiempo real), y un
+    // valor por defecto de parámetro debe ser constante en Dart. Se pasa
+    // null cuando no se especifica un color propio y se resuelve dentro
+    // del método.
+    Color? color,
   }) {
+    final colorResuelto = color ?? colors.primary;
     return Column(
       children: [
         const SizedBox(height: 30),
-        Icon(icon, size: 64, color: color),
+        Icon(icon, size: 64, color: colorResuelto),
         const SizedBox(height: 18),
         Text(titulo,
             textAlign: TextAlign.center,
             style: TextStyle(
-                fontSize: 18, fontWeight: FontWeight.w700, color: color)),
+                fontSize: 18, fontWeight: FontWeight.w700, color: colorResuelto)),
         const SizedBox(height: 8),
         Text(subtitulo,
             textAlign: TextAlign.center,
             style: TextStyle(
                 fontSize: 13, color: colors.grayMid, height: 1.4)),
-        if (color != colors.primary) ...[
+        if (color != null) ...[
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
