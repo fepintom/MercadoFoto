@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../services/theme_service.dart';
+
 class AppColors {
   // Paleta Opción 3 — Marketplace Moderno
   static const Color primary = Color(0xFFD62B2B); // Rojo principal
@@ -25,8 +27,13 @@ class AppColors {
 class AppColorsDark {
   static const Color primary = Color(0xFFE94B4B); // Rojo, un poco más vivo
   static const Color primaryDark = Color(0xFFB01E1E);
-  static const Color carbon = Color(0xFFF2F2F2); // Antes texto oscuro sobre
-  // claro; en oscuro se usa como "texto fuerte" sobre fondo negro.
+  // OJO: en el código "carbon" se usa sobre todo como relleno oscuro
+  // (fondo de snackbars, chips seleccionados, botones, scrims) más que
+  // como color de texto/ícono — por eso NO se invierte a un tono claro
+  // como el resto de la paleta: se mantiene oscuro (mismo valor que en
+  // claro) para que esos rellenos sigan leyéndose bien sobre fondo negro.
+  // Los usos que sí son texto/ícono se migraron a colors.textPrimary.
+  static const Color carbon = Color(0xFF2C2C2E);
   static const Color grayMid = Color(0xFF9A9A9E);
   static const Color background = Color(0xFF000000); // Fondo negro
   static const Color surface = Color(0xFF1C1C1E); // Tarjetas, inputs
@@ -35,6 +42,73 @@ class AppColorsDark {
   static const Color textSecondary = Color(0xFF9A9A9E);
   static const Color textOnPrimary = Color(0xFFFFFFFF);
 }
+
+// ── Paleta dinámica ──────────────────────────────────────────────────────
+// AppColors/AppColorsDark siguen siendo static const (no se tocan, cero
+// riesgo de regresión). AppPalette envuelve una de las dos en una instancia
+// normal (no const) para poder elegirla en tiempo de ejecución según el
+// modo actual.
+class AppPalette {
+  final Color primary;
+  final Color primaryDark;
+  final Color carbon;
+  final Color grayMid;
+  final Color background;
+  final Color surface;
+  final Color divider;
+  final Color textPrimary;
+  final Color textSecondary;
+  final Color textOnPrimary;
+
+  const AppPalette({
+    required this.primary,
+    required this.primaryDark,
+    required this.carbon,
+    required this.grayMid,
+    required this.background,
+    required this.surface,
+    required this.divider,
+    required this.textPrimary,
+    required this.textSecondary,
+    required this.textOnPrimary,
+  });
+
+  static const AppPalette light = AppPalette(
+    primary: AppColors.primary,
+    primaryDark: AppColors.primaryDark,
+    carbon: AppColors.carbon,
+    grayMid: AppColors.grayMid,
+    background: AppColors.background,
+    surface: AppColors.surface,
+    divider: AppColors.divider,
+    textPrimary: AppColors.textPrimary,
+    textSecondary: AppColors.textSecondary,
+    textOnPrimary: AppColors.textOnPrimary,
+  );
+
+  static const AppPalette dark = AppPalette(
+    primary: AppColorsDark.primary,
+    primaryDark: AppColorsDark.primaryDark,
+    carbon: AppColorsDark.carbon,
+    grayMid: AppColorsDark.grayMid,
+    background: AppColorsDark.background,
+    surface: AppColorsDark.surface,
+    divider: AppColorsDark.divider,
+    textPrimary: AppColorsDark.textPrimary,
+    textSecondary: AppColorsDark.textSecondary,
+    textOnPrimary: AppColorsDark.textOnPrimary,
+  );
+
+  static AppPalette of(bool isDark) => isDark ? dark : light;
+}
+
+/// Paleta activa según el modo actual. Se usa en las pantallas ya migradas
+/// (home, marketplace, producto_detalle, chat) en vez de `AppColors.*` fijo,
+/// para que respondan al modo claro/oscuro. Un `ValueListenableBuilder`
+/// sobre `ThemeService.isDarkNotifier` en el build() de cada pantalla es lo
+/// que dispara el redibujado; este getter solo entrega el valor correcto
+/// en cada llamada.
+AppPalette get colors => AppPalette.of(ThemeService.isDarkMode);
 
 class AppTheme {
   static ThemeData get theme => lightTheme;

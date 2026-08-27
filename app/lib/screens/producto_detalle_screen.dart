@@ -241,24 +241,24 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
       builder: (ctx) => AlertDialog(
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
+        title: Text(
           'Perfil del vendedor',
           style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary),
+              color: colors.textPrimary),
         ),
         content: RichText(
           text: TextSpan(
-            style: const TextStyle(
-                fontSize: 14, color: AppColors.textSecondary, height: 1.4),
+            style: TextStyle(
+                fontSize: 14, color: colors.textSecondary, height: 1.4),
             children: [
               const TextSpan(text: '¿Ir al perfil de '),
               TextSpan(
                 text: nombre,
-                style: const TextStyle(
+                style: TextStyle(
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary),
+                    color: colors.textPrimary),
               ),
               const TextSpan(text: '?'),
             ],
@@ -269,12 +269,12 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar',
-                style: TextStyle(color: AppColors.grayMid)),
+            child: Text('Cancelar',
+                style: TextStyle(color: colors.grayMid)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
+              backgroundColor: colors.primary,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
@@ -333,7 +333,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     final opciones = <_OpcionCompartir>[
       _OpcionCompartir(
         icon: Icons.link_rounded,
-        color: AppColors.carbon,
+        color: colors.textPrimary,
         label: "Copiar enlace",
         sublabel: "Copia el link del producto",
         accion: (ctx) async {
@@ -343,7 +343,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text("Enlace copiado al portapapeles"),
-              backgroundColor: AppColors.carbon,
+              backgroundColor: colors.carbon,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
@@ -381,7 +381,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
       ),
       _OpcionCompartir(
         icon: Icons.person_search_rounded,
-        color: AppColors.primary,
+        color: colors.primary,
         label: "Usuario OkVenta",
         sublabel: "Envía a un usuario de la app",
         accion: (ctx) async {
@@ -389,7 +389,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text("Próximamente disponible"),
-              backgroundColor: AppColors.grayMid,
+              backgroundColor: colors.grayMid,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
@@ -402,7 +402,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -416,20 +416,20 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.divider,
+                color: colors.divider,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(height: 20),
 
-            const Align(
+            Align(
               alignment: Alignment.centerLeft,
               child: Text(
                 "Compartir producto",
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                 ),
               ),
             ),
@@ -440,8 +440,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                 _safeDecode(titulo),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    fontSize: 13, color: AppColors.grayMid),
+                style: TextStyle(
+                    fontSize: 13, color: colors.grayMid),
               ),
             ),
 
@@ -456,10 +456,10 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: AppColors.background,
+                      color: colors.background,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                          color: AppColors.divider, width: 0.5),
+                          color: colors.divider, width: 0.5),
                     ),
                     child: Row(
                       children: [
@@ -481,24 +481,24 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                             children: [
                               Text(
                                 op.label,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
+                                  color: colors.textPrimary,
                                 ),
                               ),
                               Text(
                                 op.sublabel,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
-                                  color: AppColors.grayMid,
+                                  color: colors.grayMid,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const Icon(Icons.arrow_forward_ios_rounded,
-                            size: 13, color: AppColors.grayMid),
+                        Icon(Icons.arrow_forward_ios_rounded,
+                            size: 13, color: colors.grayMid),
                       ],
                     ),
                   ),
@@ -515,7 +515,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   void _abrirPreguntar() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -529,19 +529,19 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.divider,
+                  color: colors.divider,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
               const SizedBox(height: 20),
-              const Align(
+              Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   "¿Qué deseas preguntar?",
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: colors.textPrimary,
                   ),
                 ),
               ),
@@ -568,25 +568,25 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: colors.background,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.divider, width: 0.5),
+          border: Border.all(color: colors.divider, width: 0.5),
         ),
         child: Row(
           children: [
-            Icon(icono, color: AppColors.carbon, size: 22),
+            Icon(icono, color: colors.textPrimary, size: 22),
             const SizedBox(width: 14),
             Text(
               mensaje,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
+                color: colors.textPrimary,
               ),
             ),
             const Spacer(),
-            const Icon(Icons.arrow_forward_ios_rounded,
-                size: 14, color: AppColors.grayMid),
+            Icon(Icons.arrow_forward_ios_rounded,
+                size: 14, color: colors.grayMid),
           ],
         ),
       ),
@@ -609,7 +609,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Pregunta enviada: \"$mensaje\""),
-          backgroundColor: AppColors.carbon,
+          backgroundColor: colors.carbon,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10)),
@@ -638,9 +638,9 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
 
     if (monto <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
             content: Text('El precio del producto no es válido'),
-            backgroundColor: AppColors.carbon),
+            backgroundColor: colors.carbon),
       );
       return;
     }
@@ -680,7 +680,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error al iniciar el pago: $e'),
-          backgroundColor: AppColors.primary,
+          backgroundColor: colors.primary,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -694,7 +694,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     return showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
@@ -724,15 +724,15 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
+        title: Text(
           "Hacer una oferta",
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
+            color: colors.textPrimary,
           ),
         ),
         content: Column(
@@ -741,8 +741,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
           children: [
             Text(
               "Precio publicado: ${formatPrecio(widget.producto["precio"])}",
-              style: const TextStyle(
-                  fontSize: 13, color: AppColors.grayMid),
+              style: TextStyle(
+                  fontSize: 13, color: colors.grayMid),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -751,36 +751,36 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                   const TextInputType.numberWithOptions(decimal: false),
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
               autofocus: true,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary),
+                  color: colors.textPrimary),
               decoration: InputDecoration(
                 hintText: "0",
                 prefixText: "\$ ",
-                prefixStyle: const TextStyle(
+                prefixStyle: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                 ),
-                hintStyle: const TextStyle(
-                    color: AppColors.grayMid, fontSize: 22),
+                hintStyle: TextStyle(
+                    color: colors.grayMid, fontSize: 22),
                 filled: true,
-                fillColor: AppColors.background,
+                fillColor: colors.background,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                      color: AppColors.divider, width: 0.5),
+                  borderSide: BorderSide(
+                      color: colors.divider, width: 0.5),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                      color: AppColors.divider, width: 0.5),
+                  borderSide: BorderSide(
+                      color: colors.divider, width: 0.5),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                      color: AppColors.primary, width: 1.5),
+                  borderSide: BorderSide(
+                      color: colors.primary, width: 1.5),
                 ),
               ),
             ),
@@ -789,8 +789,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Cancelar",
-                style: TextStyle(color: AppColors.grayMid)),
+            child: Text("Cancelar",
+                style: TextStyle(color: colors.grayMid)),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -813,7 +813,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text("Oferta de \$$t enviada al vendedor"),
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: colors.primary,
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10)),
@@ -824,8 +824,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.surface,
+              backgroundColor: colors.primary,
+              foregroundColor: colors.textOnPrimary,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
             ),
@@ -841,7 +841,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   void _abrirRegistroModal() {
     showDialog(
       context: context,
-      barrierColor: AppColors.carbon.withOpacity(0.4),
+      barrierColor: colors.carbon.withOpacity(0.4),
       builder: (_) => GestureDetector(
         onTap: () => Navigator.pop(context),
         child: Material(
@@ -853,7 +853,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                 width: MediaQuery.of(context).size.width * 0.9,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: colors.surface,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: RegistroFormWidget(
@@ -869,7 +869,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(msg),
-                            backgroundColor: AppColors.primary,
+                            backgroundColor: colors.primary,
                           ),
                         );
                       }
@@ -887,7 +887,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(msg),
-                            backgroundColor: AppColors.primary,
+                            backgroundColor: colors.primary,
                           ),
                         );
                       }
@@ -906,7 +906,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   void _mostrarDevolucionGratis() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -922,19 +922,19 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.08),
+                    color: colors.primary.withOpacity(0.08),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.assignment_return_outlined,
-                      size: 20, color: AppColors.primary),
+                  child: Icon(Icons.assignment_return_outlined,
+                      size: 20, color: colors.primary),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Text('Devolución gratis',
                       style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
+                          color: colors.textPrimary)),
                 ),
               ],
             ),
@@ -962,7 +962,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                 icon: const Icon(Icons.arrow_forward_rounded, size: 18),
                 label: const Text('Ver política completa'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: colors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 13),
                   shape: RoundedRectangleBorder(
@@ -991,8 +991,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
           Expanded(
             child: RichText(
               text: TextSpan(
-                style: const TextStyle(
-                    fontSize: 13, height: 1.4, color: AppColors.textPrimary),
+                style: TextStyle(
+                    fontSize: 13, height: 1.4, color: colors.textPrimary),
                 children: [
                   TextSpan(
                       text: '$titulo: ',
@@ -1019,11 +1019,11 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Medios de pago',
+        Text('Medios de pago',
             style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary)),
+                color: colors.textSecondary)),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -1165,11 +1165,11 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: const Text('También te puede interesar',
+            child: Text('También te puede interesar',
                 style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary)),
+                    color: colors.textPrimary)),
           ),
           const SizedBox(height: 12),
           SizedBox(
@@ -1201,7 +1201,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                          color: AppColors.divider, width: 0.5),
+                          color: colors.divider, width: 0.5),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1217,9 +1217,9 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                     fit: BoxFit.contain,
                                   )
                                 : Container(
-                                    color: AppColors.surface,
-                                    child: const Icon(Icons.image_outlined,
-                                        color: AppColors.grayMid),
+                                    color: colors.surface,
+                                    child: Icon(Icons.image_outlined,
+                                        color: colors.grayMid),
                                   ),
                           ),
                         ),
@@ -1232,17 +1232,17 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                               Text(titulo,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontSize: 11.5,
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.textPrimary)),
+                                      color: colors.textPrimary)),
                               const SizedBox(height: 2),
                               if (precio != null)
                                 Text(formatPrecio((precio as num).toDouble()),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w800,
-                                        color: AppColors.primary)),
+                                        color: colors.primary)),
                             ],
                           ),
                         ),
@@ -1268,15 +1268,15 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
           SizedBox(
             width: 150,
             child: Text(label,
-                style: const TextStyle(
-                    fontSize: 12.5, color: AppColors.grayMid)),
+                style: TextStyle(
+                    fontSize: 12.5, color: colors.grayMid)),
           ),
           Expanded(
             child: Text(valor,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary)),
+                    color: colors.textPrimary)),
           ),
         ],
       ),
@@ -1306,7 +1306,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
           decoration: BoxDecoration(
-            color: AppColors.carbon.withOpacity(0.78),
+            color: colors.carbon.withOpacity(0.78),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Row(
@@ -1356,24 +1356,24 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
         (widget.producto["acepta_ofertas"] as int? ?? 1) == 1;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           "Detalle del producto",
           style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: colors.textPrimary,
           ),
         ),
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         elevation: 0,
-        iconTheme: const IconThemeData(color: AppColors.carbon),
+        iconTheme: IconThemeData(color: colors.textPrimary),
         actions: [
           // Ayuda: agente de soporte
           IconButton(
-            icon: const Icon(Icons.help_outline_rounded,
-                color: AppColors.carbon),
+            icon: Icon(Icons.help_outline_rounded,
+                color: colors.textPrimary),
             tooltip: 'Ayuda',
             onPressed: () {
               Navigator.push(
@@ -1385,32 +1385,32 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
           ),
           // Botón favorito
           _toggleandoFavorito
-              ? const Padding(
+              ? Padding(
                   padding: EdgeInsets.all(12),
                   child: SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: AppColors.primary),
+                        strokeWidth: 2, color: colors.primary),
                   ),
                 )
               : IconButton(
                   icon: Icon(
                     _esFavorito ? Icons.favorite : Icons.favorite_border,
-                    color: _esFavorito ? AppColors.primary : AppColors.carbon,
+                    color: _esFavorito ? colors.primary : colors.textPrimary,
                   ),
                   onPressed: _toggleFavorito,
                   tooltip: _esFavorito ? "Quitar de favoritos" : "Guardar",
                 ),
           IconButton(
-            icon: const Icon(Icons.share_outlined, color: AppColors.carbon),
+            icon: Icon(Icons.share_outlined, color: colors.textPrimary),
             onPressed: _abrirCompartir,
             tooltip: "Compartir",
           ),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(color: AppColors.divider, height: 0.5),
+          child: Container(color: colors.divider, height: 0.5),
         ),
       ),
       body: SingleChildScrollView(
@@ -1447,7 +1447,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                   ),
                   // Dots de paginación
                   Container(
-                    color: AppColors.background,
+                    color: colors.background,
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -1460,8 +1460,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                               horizontal: 3),
                           decoration: BoxDecoration(
                             color: i == _imgPagina
-                                ? AppColors.primary
-                                : AppColors.divider,
+                                ? colors.primary
+                                : colors.divider,
                             borderRadius: BorderRadius.circular(4),
                           ),
                         );
@@ -1552,15 +1552,15 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.1),
+                              color: colors.primary.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
                               categoria.toString(),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.primary,
+                                color: colors.primary,
                                 shadows: [
                                   Shadow(
                                       color: Colors.black26,
@@ -1579,17 +1579,17 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: AppColors.background,
+                              color: colors.background,
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(
-                                  color: AppColors.divider, width: 0.5),
+                                  color: colors.divider, width: 0.5),
                             ),
                             child: Text(
                               subcategoria.toString(),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
-                                color: AppColors.textSecondary,
+                                color: colors.textSecondary,
                               ),
                             ),
                           ),
@@ -1599,20 +1599,20 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: AppColors.grayMid.withOpacity(0.1),
+                              color: colors.grayMid.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(Icons.handshake_outlined,
-                                    size: 11, color: AppColors.grayMid),
+                                    size: 11, color: colors.grayMid),
                                 SizedBox(width: 4),
                                 Text(
                                   'Sin ofertas/canjes',
                                   style: TextStyle(
                                       fontSize: 11,
-                                      color: AppColors.grayMid,
+                                      color: colors.grayMid,
                                       fontWeight: FontWeight.w500),
                                 ),
                               ],
@@ -1625,10 +1625,10 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                   // Título
                   Text(
                     titulo,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: colors.textPrimary,
                     ),
                   ),
 
@@ -1649,8 +1649,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                               : Icons.person_outline_rounded,
                           size: 14,
                           color: ownerId != null
-                              ? AppColors.carbon
-                              : AppColors.grayMid,
+                              ? colors.textPrimary
+                              : colors.grayMid,
                         ),
                         const SizedBox(width: 4),
                         Text(
@@ -1658,19 +1658,19 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                           style: TextStyle(
                             fontSize: 13,
                             color: ownerId != null
-                                ? AppColors.carbon
-                                : AppColors.grayMid,
+                                ? colors.textPrimary
+                                : colors.grayMid,
                             decoration: ownerId != null
                                 ? TextDecoration.underline
                                 : TextDecoration.none,
-                            decorationColor: AppColors.carbon,
+                            decorationColor: colors.textPrimary,
                           ),
                         ),
                         if (ownerId != null) ...[
                           const SizedBox(width: 3),
                           Icon(Icons.chevron_right_rounded,
                               size: 14,
-                              color: AppColors.carbon.withOpacity(0.5)),
+                              color: colors.textPrimary.withOpacity(0.5)),
                         ],
                         if (ownerId != null) ...[
                           const SizedBox(width: 8),
@@ -1713,23 +1713,23 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                           Text(
                             '$_productosVendidosVendedor '
                             '${_productosVendidosVendedor == 1 ? "producto vendido" : "productos vendidos"}',
-                            style: const TextStyle(
-                                fontSize: 12, color: AppColors.grayMid),
+                            style: TextStyle(
+                                fontSize: 12, color: colors.grayMid),
                           ),
                         if (ownerId != null &&
                             _productosVendidosVendedor > 0 &&
                             widget.producto['stock'] != null)
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.symmetric(horizontal: 6),
                             child: Text('|',
                                 style: TextStyle(
-                                    fontSize: 12, color: AppColors.divider)),
+                                    fontSize: 12, color: colors.divider)),
                           ),
                         if (widget.producto['stock'] != null)
                           Text(
                             'Stock: ${widget.producto['stock']}',
-                            style: const TextStyle(
-                                fontSize: 12, color: AppColors.grayMid),
+                            style: TextStyle(
+                                fontSize: 12, color: colors.grayMid),
                           ),
                       ],
                     ),
@@ -1742,19 +1742,19 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 12),
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
+                      color: colors.surface,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                          color: AppColors.divider, width: 0.5),
+                          color: colors.divider, width: 0.5),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
                           formatPrecio(precio),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 28,
-                            color: AppColors.primary,
+                            color: colors.primary,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -1786,9 +1786,9 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                   // Descripción
                   Text(
                     descripcion,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
-                      color: AppColors.textSecondary,
+                      color: colors.textSecondary,
                       height: 1.6,
                     ),
                   ),
@@ -1806,25 +1806,25 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                       Expanded(
                         child: GestureDetector(
                           onTap: _mostrarDevolucionGratis,
-                          child: const Row(
+                          child: Row(
                             children: [
                               Icon(Icons.assignment_return_outlined,
-                                  size: 15, color: AppColors.grayMid),
+                                  size: 15, color: colors.grayMid),
                               SizedBox(width: 5),
                               Flexible(
                                 child: Text("Devolución gratis",
                                     style: TextStyle(
                                         fontSize: 12,
-                                        color: AppColors.textSecondary,
+                                        color: colors.textSecondary,
                                         fontWeight: FontWeight.w500,
                                         decoration:
                                             TextDecoration.underline,
                                         decorationColor:
-                                            AppColors.grayMid)),
+                                            colors.grayMid)),
                               ),
                               SizedBox(width: 2),
                               Icon(Icons.chevron_right_rounded,
-                                  size: 15, color: AppColors.grayMid),
+                                  size: 15, color: colors.grayMid),
                             ],
                           ),
                         ),
@@ -1835,21 +1835,21 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                           MaterialPageRoute(
                               builder: (_) => const CompraProtegidaScreen()),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.verified_user_outlined,
-                                size: 15, color: AppColors.primary),
+                                size: 15, color: colors.primary),
                             SizedBox(width: 5),
                             Text("Compra protegida",
                                 style: TextStyle(
                                     fontSize: 12,
-                                    color: AppColors.primary,
+                                    color: colors.primary,
                                     fontWeight: FontWeight.w600,
                                     decoration: TextDecoration.underline)),
                             SizedBox(width: 2),
                             Icon(Icons.chevron_right_rounded,
-                                size: 15, color: AppColors.primary),
+                                size: 15, color: colors.primary),
                           ],
                         ),
                       ),
@@ -1870,25 +1870,25 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                       margin: const EdgeInsets.only(bottom: 16),
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: AppColors.surface,
+                        color: colors.surface,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                            color: AppColors.divider, width: 0.5),
+                            color: colors.divider, width: 0.5),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
+                          Row(
                             children: [
                               Icon(Icons.info_outline_rounded,
-                                  size: 16, color: AppColors.grayMid),
+                                  size: 16, color: colors.grayMid),
                               SizedBox(width: 6),
                               Text(
                                 "Información adicional",
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
+                                  color: colors.textPrimary,
                                 ),
                               ),
                             ],
@@ -1922,8 +1922,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                       child: ElevatedButton(
                         onPressed: _abrirRegistroModal,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: AppColors.surface,
+                          backgroundColor: colors.primary,
+                          foregroundColor: colors.textOnPrimary,
                           elevation: 0,
                           padding:
                               const EdgeInsets.symmetric(vertical: 14),
@@ -1950,9 +1950,9 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                 icon: const Icon(Icons.chat_rounded, size: 16),
                                 label: const Text("Chat"),
                                 style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.carbon,
-                                  side: const BorderSide(
-                                      color: AppColors.carbon, width: 1),
+                                  foregroundColor: colors.textPrimary,
+                                  side: BorderSide(
+                                      color: colors.textPrimary, width: 1),
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 12),
                                   shape: RoundedRectangleBorder(
@@ -1971,9 +1971,9 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                     Icons.help_outline_rounded, size: 16),
                                 label: const Text("Preguntar"),
                                 style: OutlinedButton.styleFrom(
-                                  foregroundColor: AppColors.carbon,
-                                  side: const BorderSide(
-                                      color: AppColors.carbon, width: 1),
+                                  foregroundColor: colors.textPrimary,
+                                  side: BorderSide(
+                                      color: colors.textPrimary, width: 1),
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 12),
                                   shape: RoundedRectangleBorder(
@@ -1993,8 +1993,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                       Icons.local_offer_rounded, size: 16),
                                   label: const Text("Ofertar"),
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.carbon,
-                                    foregroundColor: AppColors.surface,
+                                    backgroundColor: colors.carbon,
+                                    foregroundColor: colors.textOnPrimary,
                                     elevation: 0,
                                     padding: const EdgeInsets.symmetric(
                                         vertical: 12),
@@ -2042,7 +2042,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                         content: Text(agregado
                                             ? "Agregado al carro"
                                             : "Ya estaba en tu carro"),
-                                        backgroundColor: AppColors.carbon,
+                                        backgroundColor: colors.carbon,
                                         behavior: SnackBarBehavior.floating,
                                         duration:
                                             const Duration(seconds: 2),
@@ -2057,9 +2057,9 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                         ? "En tu carro"
                                         : "Agregar al carro"),
                                     style: OutlinedButton.styleFrom(
-                                      foregroundColor: AppColors.primary,
-                                      side: const BorderSide(
-                                          color: AppColors.primary),
+                                      foregroundColor: colors.primary,
+                                      side: BorderSide(
+                                          color: colors.primary),
                                       padding: const EdgeInsets.symmetric(
                                           vertical: 14),
                                       shape: RoundedRectangleBorder(
@@ -2090,7 +2090,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                         size: 18),
                                 label: const Text("Comprar"),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
+                                  backgroundColor: colors.primary,
                                   foregroundColor: Colors.white,
                                   elevation: 0,
                                   padding: const EdgeInsets.symmetric(
@@ -2134,8 +2134,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                             icon: const Icon(Icons.edit_outlined, size: 18),
                             label: const Text("Editar publicación"),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.carbon,
-                              foregroundColor: AppColors.surface,
+                              backgroundColor: colors.carbon,
+                              foregroundColor: colors.textOnPrimary,
                               elevation: 0,
                               padding:
                                   const EdgeInsets.symmetric(vertical: 14),
@@ -2152,7 +2152,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                               final confirmar =
                                   await showModalBottomSheet<bool>(
                                 context: context,
-                                backgroundColor: AppColors.surface,
+                                backgroundColor: colors.surface,
                                 shape: const RoundedRectangleBorder(
                                   borderRadius: BorderRadius.vertical(
                                       top: Radius.circular(20)),
@@ -2165,27 +2165,27 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                       Container(
                                         width: 40, height: 4,
                                         decoration: BoxDecoration(
-                                          color: AppColors.divider,
+                                          color: colors.divider,
                                           borderRadius: BorderRadius.circular(2),
                                         ),
                                       ),
                                       const SizedBox(height: 20),
-                                      const Icon(Icons.delete_outline,
-                                          size: 44, color: AppColors.primary),
+                                      Icon(Icons.delete_outline,
+                                          size: 44, color: colors.primary),
                                       const SizedBox(height: 12),
-                                      const Text(
+                                      Text(
                                         "¿Eliminar esta publicación?",
                                         textAlign: TextAlign.center,
                                         style: TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w700,
-                                            color: AppColors.textPrimary),
+                                            color: colors.textPrimary),
                                       ),
                                       const SizedBox(height: 6),
-                                      const Text(
+                                      Text(
                                         "Esta acción no se puede deshacer.",
                                         style: TextStyle(
-                                            color: AppColors.grayMid,
+                                            color: colors.grayMid,
                                             fontSize: 13),
                                       ),
                                       const SizedBox(height: 24),
@@ -2196,8 +2196,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                               onPressed: () =>
                                                   Navigator.pop(context, false),
                                               style: OutlinedButton.styleFrom(
-                                                side: const BorderSide(
-                                                    color: AppColors.divider),
+                                                side: BorderSide(
+                                                    color: colors.divider),
                                                 padding:
                                                     const EdgeInsets.symmetric(
                                                         vertical: 14),
@@ -2219,7 +2219,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                                   Navigator.pop(context, true),
                                               style: ElevatedButton.styleFrom(
                                                 backgroundColor:
-                                                    AppColors.primary,
+                                                    colors.primary,
                                                 padding:
                                                     const EdgeInsets.symmetric(
                                                         vertical: 14),
@@ -2254,7 +2254,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                 if (mounted) {
                                   messenger.showSnackBar(SnackBar(
                                     content: Text("Aviso: $e"),
-                                    backgroundColor: AppColors.carbon,
+                                    backgroundColor: colors.carbon,
                                     behavior: SnackBarBehavior.floating,
                                     duration: const Duration(seconds: 2),
                                   ));
@@ -2268,9 +2268,9 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                 size: 18),
                             label: const Text("Eliminar publicación"),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.primary,
-                              side: const BorderSide(
-                                  color: AppColors.primary, width: 1),
+                              foregroundColor: colors.primary,
+                              side: BorderSide(
+                                  color: colors.primary, width: 1),
                               padding:
                                   const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(

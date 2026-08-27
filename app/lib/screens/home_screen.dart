@@ -183,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (userId == null) return;
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => _DireccionSelectorSheet(
@@ -219,7 +219,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: const TextStyle(fontSize: 13),
                 )),
               ]),
-              backgroundColor: AppColors.carbon,
+              backgroundColor: colors.carbon,
               duration: const Duration(seconds: 3),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -261,7 +261,7 @@ class _HomeScreenState extends State<HomeScreen> {
               width: MediaQuery.of(context).size.width * 0.9,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: RegistroFormWidget(
@@ -332,7 +332,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg ?? "Error"),
-        backgroundColor: AppColors.primary,
+        backgroundColor: colors.primary,
       ),
     );
   }
@@ -384,7 +384,7 @@ class _HomeScreenState extends State<HomeScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -400,9 +400,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(15, 10, 15, 10),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         border: Border(
-          bottom: BorderSide(color: AppColors.divider, width: 0.5),
+          bottom: BorderSide(color: colors.divider, width: 0.5),
         ),
       ),
       child: Row(
@@ -439,8 +439,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   width: 36,
                   height: 36,
                   margin: const EdgeInsets.only(right: 4),
-                  decoration: const BoxDecoration(
-                    color: AppColors.background,
+                  decoration: BoxDecoration(
+                    color: colors.background,
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -448,7 +448,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ? Icons.visibility_off_outlined
                         : Icons.visibility_outlined,
                     size: 20,
-                    color: AppColors.grayMid,
+                    color: colors.grayMid,
                   ),
                 ),
               );
@@ -471,16 +471,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       height: 36,
                       decoration: BoxDecoration(
                         color: cart.isNotEmpty
-                            ? AppColors.primary.withOpacity(0.1)
-                            : AppColors.background,
+                            ? colors.primary.withOpacity(0.1)
+                            : colors.background,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         Icons.shopping_bag_outlined,
                         size: 20,
                         color: cart.isNotEmpty
-                            ? AppColors.primary
-                            : AppColors.grayMid,
+                            ? colors.primary
+                            : colors.grayMid,
                       ),
                     ),
                     if (cart.isNotEmpty)
@@ -490,8 +490,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Container(
                           width: 16,
                           height: 16,
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
+                          decoration: BoxDecoration(
+                            color: colors.primary,
                             shape: BoxShape.circle,
                           ),
                           child: Center(
@@ -525,13 +525,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: AppColors.background,
+                  color: colors.background,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.chat_bubble_outline_rounded,
                   size: 20,
-                  color: AppColors.grayMid,
+                  color: colors.grayMid,
                 ),
               ),
             ),
@@ -546,15 +546,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.primary, width: 1),
+                  border: Border.all(color: colors.primary, width: 1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text(
+                child: Text(
                   "Entrar",
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
+                    color: colors.primary,
                   ),
                 ),
               ),
@@ -570,8 +570,8 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Container(
                 width: 36,
                 height: 36,
-                decoration: const BoxDecoration(
-                  color: AppColors.carbon,
+                decoration: BoxDecoration(
+                  color: colors.carbon,
                   shape: BoxShape.circle,
                 ),
                 child: Center(
@@ -610,22 +610,22 @@ class _HomeScreenState extends State<HomeScreen> {
           Icon(
             dir == null ? Icons.add_location_alt_outlined : Icons.location_on_rounded,
             size: 14,
-            color: AppColors.primary,
+            color: colors.primary,
           ),
           const SizedBox(width: 4),
           Expanded(
             child: Text(
               texto,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: AppColors.primary,
+                color: colors.primary,
                 fontWeight: FontWeight.w600,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppColors.primary),
+          Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: colors.primary),
         ],
       ),
     );
@@ -638,8 +638,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.divider, width: 0.5)),
+        color: colors.surface,
+        border: Border(top: BorderSide(color: colors.divider, width: 0.5)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14),
       height: 50,
@@ -657,18 +657,18 @@ class _HomeScreenState extends State<HomeScreen> {
               duration: const Duration(milliseconds: 200),
               width: 30, height: 30,
               decoration: BoxDecoration(
-                color: activo ? AppColors.primary.withValues(alpha: 0.10) : AppColors.background,
+                color: activo ? colors.primary.withValues(alpha: 0.10) : colors.background,
                 shape: BoxShape.circle,
               ),
               child: _cargandoUbicacion
-                  ? const Padding(
+                  ? Padding(
                       padding: EdgeInsets.all(7),
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.grayMid),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: colors.grayMid),
                     )
                   : Icon(
                       sinGps ? Icons.location_off_outlined : Icons.near_me_rounded,
                       size: 15,
-                      color: activo ? AppColors.primary : AppColors.grayMid,
+                      color: activo ? colors.primary : colors.grayMid,
                     ),
             ),
           ),
@@ -680,9 +680,9 @@ class _HomeScreenState extends State<HomeScreen> {
             child: sinGps
                 ? GestureDetector(
                     onTap: () => Geolocator.openAppSettings(),
-                    child: const Text(
+                    child: Text(
                       "GPS no disponible — toca para activar",
-                      style: TextStyle(fontSize: 12, color: AppColors.grayMid),
+                      style: TextStyle(fontSize: 12, color: colors.grayMid),
                     ),
                   )
                 : SliderTheme(
@@ -690,10 +690,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       trackHeight: 3,
                       thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                       overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-                      activeTrackColor: activo ? AppColors.primary : AppColors.grayMid.withValues(alpha: 0.4),
-                      inactiveTrackColor: AppColors.divider,
-                      thumbColor: activo ? AppColors.primary : AppColors.grayMid,
-                      overlayColor: AppColors.primary.withValues(alpha: 0.12),
+                      activeTrackColor: activo ? colors.primary : colors.grayMid.withValues(alpha: 0.4),
+                      inactiveTrackColor: colors.divider,
+                      thumbColor: activo ? colors.primary : colors.grayMid,
+                      overlayColor: colors.primary.withValues(alpha: 0.12),
                     ),
                     child: Slider(
                       value: _radioKm,
@@ -718,7 +718,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  color: activo ? AppColors.primary : AppColors.grayMid,
+                  color: activo ? colors.primary : colors.grayMid,
                 ),
               ),
             ),
@@ -731,9 +731,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildBottomNav() {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         border: Border(
-          top: BorderSide(color: AppColors.divider, width: 0.5),
+          top: BorderSide(color: colors.divider, width: 0.5),
         ),
         boxShadow: [
           BoxShadow(
@@ -781,14 +781,14 @@ class _HomeScreenState extends State<HomeScreen> {
               height: 38,
               decoration: BoxDecoration(
                 color: selected
-                    ? AppColors.primary.withOpacity(0.1)
+                    ? colors.primary.withOpacity(0.1)
                     : Colors.transparent,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
                 size: 20,
-                color: selected ? AppColors.primary : AppColors.grayMid,
+                color: selected ? colors.primary : colors.grayMid,
               ),
             ),
             const SizedBox(height: 1),
@@ -798,7 +798,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontSize: 9,
                 fontWeight:
                     selected ? FontWeight.w600 : FontWeight.w400,
-                color: selected ? AppColors.primary : AppColors.grayMid,
+                color: selected ? colors.primary : colors.grayMid,
               ),
             ),
           ],
@@ -824,12 +824,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   height: 38,
                   decoration: BoxDecoration(
                     color: selected
-                        ? AppColors.primary.withOpacity(0.1)
+                        ? colors.primary.withOpacity(0.1)
                         : Colors.transparent,
                     shape: BoxShape.circle,
                   ),
                   child: Icon(icon, size: 20,
-                      color: selected ? AppColors.primary : AppColors.grayMid),
+                      color: selected ? colors.primary : colors.grayMid),
                 ),
                 if (badge > 0)
                   Positioned(
@@ -859,7 +859,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontSize: 9,
                     fontWeight:
                         selected ? FontWeight.w600 : FontWeight.w400,
-                    color: selected ? AppColors.primary : AppColors.grayMid)),
+                    color: selected ? colors.primary : colors.grayMid)),
           ],
         ),
       ),
@@ -889,12 +889,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       width: 46,
                       height: 46,
                       decoration: BoxDecoration(
-                        color: AppColors.carbon,
+                        color: colors.carbon,
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.surface, width: 3),
+                        border: Border.all(color: colors.surface, width: 3),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.carbon.withOpacity(0.4),
+                            color: colors.carbon.withOpacity(0.4),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -914,7 +914,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
-                        color: selServ ? AppColors.carbon : AppColors.carbon,
+                        color: selServ ? colors.textPrimary : colors.textPrimary,
                       ),
                     ),
                   ),
@@ -938,12 +938,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       width: 50,
                       height: 50,
                       decoration: BoxDecoration(
-                        color: AppColors.primary,
+                        color: colors.primary,
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.surface, width: 3),
+                        border: Border.all(color: colors.surface, width: 3),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primary.withOpacity(0.45),
+                            color: colors.primary.withOpacity(0.45),
                             blurRadius: 14,
                             offset: const Offset(0, 4),
                           ),
@@ -973,12 +973,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   Transform.translate(
                     offset: const Offset(0, -8),
-                    child: const Text(
+                    child: Text(
                       "Vender",
                       style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
+                        color: colors.primary,
                       ),
                     ),
                   ),
@@ -1011,23 +1011,23 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.notifications_off_outlined,
-                  size: 64, color: AppColors.grayMid),
+                  size: 64, color: colors.grayMid),
               const SizedBox(height: 20),
-              const Text(
+              Text(
                 "Inicia sesión para ver\ntus alertas",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _abrirLoginModal,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.textOnPrimary,
+                  backgroundColor: colors.primary,
+                  foregroundColor: colors.textOnPrimary,
                 ),
                 child: const Text("Ingresar"),
               ),
@@ -1043,12 +1043,12 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Accesos rápidos
-          const Text(
+          Text(
             "Mis guardados",
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 12),
@@ -1059,7 +1059,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   icono: Icons.favorite_outline,
                   label: "Favoritos",
                   sublabel: "Productos que guardaste",
-                  color: AppColors.primary,
+                  color: colors.primary,
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -1073,7 +1073,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   icono: Icons.explore_outlined,
                   label: "Encontrar",
                   sublabel: "Productos cerca de ti",
-                  color: AppColors.carbon,
+                  color: colors.textPrimary,
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -1085,12 +1085,12 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 24),
           // Notificaciones
-          const Text(
+          Text(
             "Notificaciones",
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
+              color: colors.textPrimary,
             ),
           ),
           const SizedBox(height: 16),
@@ -1098,20 +1098,20 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               children: [
                 Icon(Icons.notifications_outlined,
-                    size: 56, color: AppColors.grayMid.withOpacity(0.4)),
+                    size: 56, color: colors.grayMid.withOpacity(0.4)),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   "Sin notificaciones",
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
+                    color: colors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
+                Text(
                   "Cuando tengas actividad, aparecerá aquí",
-                  style: TextStyle(fontSize: 13, color: AppColors.grayMid),
+                  style: TextStyle(fontSize: 13, color: colors.grayMid),
                 ),
               ],
             ),
@@ -1133,9 +1133,9 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.divider, width: 0.5),
+          border: Border.all(color: colors.divider, width: 0.5),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1152,17 +1152,17 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 10),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
-                color: AppColors.textPrimary,
+                color: colors.textPrimary,
               ),
             ),
             const SizedBox(height: 2),
             Text(
               sublabel,
-              style: const TextStyle(
-                  fontSize: 11, color: AppColors.grayMid),
+              style: TextStyle(
+                  fontSize: 11, color: colors.grayMid),
             ),
           ],
         ),
@@ -1181,28 +1181,37 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── BUILD ──────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: IndexedStack(
-                index: _tab,
-                children: [
-                  _buildInicio(),
-                  const SizedBox.shrink(), // slot 1 reservado (notif abre como sheet)
-                  const ServiciosScreen(),
-                ],
-              ),
+    // El ícono de ojo del header vive en esta misma pantalla — sin este
+    // ValueListenableBuilder, el resto del home (fondo, cards, textos) no
+    // se redibujaba al tocarlo y quedaba con los colores del modo
+    // anterior hasta la próxima reconstrucción por otro motivo.
+    return ValueListenableBuilder<bool>(
+      valueListenable: ThemeService.isDarkNotifier,
+      builder: (context, _, __) {
+        return Scaffold(
+          backgroundColor: colors.background,
+          body: SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                _buildHeader(),
+                Expanded(
+                  child: IndexedStack(
+                    index: _tab,
+                    children: [
+                      _buildInicio(),
+                      const SizedBox.shrink(), // slot 1 reservado (notif abre como sheet)
+                      const ServiciosScreen(),
+                    ],
+                  ),
+                ),
+                if (_tab == 0) _buildSliderRadio(),
+                _buildBottomNav(),
+              ],
             ),
-            if (_tab == 0) _buildSliderRadio(),
-            _buildBottomNav(),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -1232,24 +1241,24 @@ class _DireccionSelectorSheet extends StatelessWidget {
             width: 40, height: 4,
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-                color: AppColors.divider, borderRadius: BorderRadius.circular(2)),
+                color: colors.divider, borderRadius: BorderRadius.circular(2)),
           ),
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(horizontal: 20),
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text('Mis direcciones',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary)),
+                      color: colors.textPrimary)),
             ),
           ),
           const SizedBox(height: 12),
 
           if (misDirections.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(24),
               child: Text('No tienes direcciones guardadas.',
-                  style: TextStyle(color: AppColors.grayMid, fontSize: 14)),
+                  style: TextStyle(color: colors.grayMid, fontSize: 14)),
             )
           else
             ...misDirections.map((d) {
@@ -1263,8 +1272,8 @@ class _DireccionSelectorSheet extends StatelessWidget {
                   width: 38, height: 38,
                   decoration: BoxDecoration(
                     color: esActual
-                        ? AppColors.primary.withOpacity(0.1)
-                        : AppColors.background,
+                        ? colors.primary.withOpacity(0.1)
+                        : colors.background,
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -1274,24 +1283,24 @@ class _DireccionSelectorSheet extends StatelessWidget {
                             ? Icons.place_outlined
                             : Icons.home_outlined,
                     size: 18,
-                    color: esActual ? AppColors.primary : AppColors.grayMid,
+                    color: esActual ? colors.primary : colors.grayMid,
                   ),
                 ),
                 title: Row(children: [
                   Text(etiqueta,
                       style: TextStyle(
                         fontSize: 14, fontWeight: FontWeight.w600,
-                        color: esActual ? AppColors.primary : AppColors.textPrimary,
+                        color: esActual ? colors.primary : colors.textPrimary,
                       )),
                   if (esPrincipal) ...[
                     const SizedBox(width: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                       decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.08),
+                          color: colors.primary.withOpacity(0.08),
                           borderRadius: BorderRadius.circular(8)),
-                      child: const Text('Principal',
-                          style: TextStyle(fontSize: 10, color: AppColors.primary,
+                      child: Text('Principal',
+                          style: TextStyle(fontSize: 10, color: colors.primary,
                               fontWeight: FontWeight.w600)),
                     ),
                   ],
@@ -1299,11 +1308,11 @@ class _DireccionSelectorSheet extends StatelessWidget {
                 subtitle: Text(
                   [if (direccion.isNotEmpty) direccion, if (comuna.isNotEmpty) comuna]
                       .join(', '),
-                  style: const TextStyle(fontSize: 12, color: AppColors.grayMid),
+                  style: TextStyle(fontSize: 12, color: colors.grayMid),
                   maxLines: 1, overflow: TextOverflow.ellipsis,
                 ),
                 trailing: esActual
-                    ? const Icon(Icons.check_rounded, color: AppColors.primary, size: 20)
+                    ? Icon(Icons.check_rounded, color: colors.primary, size: 20)
                     : null,
                 onTap: () => onSeleccionada(d),
               );
@@ -1313,10 +1322,10 @@ class _DireccionSelectorSheet extends StatelessWidget {
 
           // Opción editar
           ListTile(
-            leading: const Icon(Icons.edit_location_alt_outlined, color: AppColors.carbon),
-            title: const Text('Editar mis direcciones',
+            leading: Icon(Icons.edit_location_alt_outlined, color: colors.textPrimary),
+            title: Text('Editar mis direcciones',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary)),
+                    color: colors.textPrimary)),
             onTap: () => onSeleccionada(null),
           ),
           const SizedBox(height: 8),
@@ -1393,7 +1402,7 @@ class _BannerCarruselState extends State<_BannerCarrusel> {
               width: activo ? 18 : 6,
               height: 6,
               decoration: BoxDecoration(
-                color: activo ? AppColors.primary : AppColors.grayMid.withOpacity(0.4),
+                color: activo ? colors.primary : colors.grayMid.withOpacity(0.4),
                 borderRadius: BorderRadius.circular(3),
               ),
             );
@@ -1419,13 +1428,13 @@ class _BannerImagen extends StatelessWidget {
       child: Container(
         width: double.infinity,
         height: double.infinity,
-        color: AppColors.carbon,
+        color: colors.carbon,
         child: Image.asset(
           asset,
           fit: BoxFit.contain,
           width: double.infinity,
           height: double.infinity,
-          errorBuilder: (_, __, ___) => Container(color: AppColors.carbon),
+          errorBuilder: (_, __, ___) => Container(color: colors.carbon),
         ),
       ),
     );
@@ -1630,37 +1639,37 @@ class _NotificacionesSheetState extends State<_NotificacionesSheet> {
             margin: const EdgeInsets.symmetric(vertical: 10),
             width: 40, height: 4,
             decoration: BoxDecoration(
-              color: AppColors.divider,
+              color: colors.divider,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
             child: Row(
-              children: const [
-                Icon(Icons.notifications_rounded, color: AppColors.primary),
+              children: [
+                Icon(Icons.notifications_rounded, color: colors.primary),
                 SizedBox(width: 8),
                 Text('Notificaciones',
                     style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary)),
+                        color: colors.textPrimary)),
               ],
             ),
           ),
-          Divider(height: 0.5, color: AppColors.divider),
+          Divider(height: 0.5, color: colors.divider),
           Expanded(
             child: _cargando
-                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                ? Center(child: CircularProgressIndicator(color: colors.primary))
                 : _notifs.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Text('Sin notificaciones aún',
-                            style: TextStyle(color: AppColors.grayMid)))
+                            style: TextStyle(color: colors.grayMid)))
                     : ListView.separated(
                         controller: ctrl,
                         itemCount: _notifs.length,
                         separatorBuilder: (_, __) =>
-                            Divider(height: 0.5, color: AppColors.divider),
+                            Divider(height: 0.5, color: colors.divider),
                         itemBuilder: (_, i) {
                           final n = _notifs[i];
                           final leida = n['leido'] == 1 || n['leido'] == true;
@@ -1702,7 +1711,7 @@ class _NotificacionesSheetState extends State<_NotificacionesSheet> {
                               NotificationRouter.abrir(navContext, n);
                             },
                             child: Container(
-                            color: leida ? Colors.transparent : AppColors.primary.withOpacity(0.05),
+                            color: leida ? Colors.transparent : colors.primary.withOpacity(0.05),
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1710,11 +1719,11 @@ class _NotificacionesSheetState extends State<_NotificacionesSheet> {
                                 Container(
                                   width: 40, height: 40,
                                   decoration: BoxDecoration(
-                                    color: AppColors.primary.withOpacity(0.1),
+                                    color: colors.primary.withOpacity(0.1),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(_icono(n['tipo'] ?? ''),
-                                      color: AppColors.primary, size: 20),
+                                      color: colors.primary, size: 20),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
@@ -1724,23 +1733,23 @@ class _NotificacionesSheetState extends State<_NotificacionesSheet> {
                                       Text(n['mensaje'] ?? '',
                                           style: TextStyle(
                                               fontSize: 14,
-                                              color: AppColors.textPrimary,
+                                              color: colors.textPrimary,
                                               fontWeight: leida
                                                   ? FontWeight.w400
                                                   : FontWeight.w600)),
                                       const SizedBox(height: 4),
                                       Text(_formatFecha(n['fecha']),
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                               fontSize: 11,
-                                              color: AppColors.grayMid)),
+                                              color: colors.grayMid)),
                                     ],
                                   ),
                                 ),
                                 if (!leida)
                                   Container(
                                     width: 8, height: 8,
-                                    decoration: const BoxDecoration(
-                                        color: AppColors.primary,
+                                    decoration: BoxDecoration(
+                                        color: colors.primary,
                                         shape: BoxShape.circle),
                                   ),
                               ],
