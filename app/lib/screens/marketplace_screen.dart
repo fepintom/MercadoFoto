@@ -331,61 +331,92 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
       isScrollControlled: true,
       backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => Padding(
-        padding: EdgeInsets.only(left: 20, right: 20, top: 20, bottom: MediaQuery.of(context).viewInsets.bottom + 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(child: Container(width: 40, height: 4,
-              decoration: BoxDecoration(color: AppColors.divider, borderRadius: BorderRadius.circular(2)))),
-            const SizedBox(height: 20),
-            const Text("Filtrar por precio",
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-            const SizedBox(height: 16),
-            Row(children: [
-              Expanded(child: _campoFiltro(ctrl: minCtrl, hint: "Mínimo", prefix: "\$")),
-              const Padding(padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text("—", style: TextStyle(color: AppColors.grayMid, fontSize: 18))),
-              Expanded(child: _campoFiltro(ctrl: maxCtrl, hint: "Máximo", prefix: "\$")),
-            ]),
-            const SizedBox(height: 20),
-            Row(children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    setState(() { _precioMin = null; _precioMax = null; cargarPublicaciones(); });
-                  },
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.divider),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text("Limpiar", style: TextStyle(color: AppColors.textSecondary)),
+      // StatefulBuilder: el botón de "ocultar teclado" necesita poder pedir
+      // un rebuild propio del sheet (sin esto, el ícono no reflejaba bien
+      // el foco al usar setState del builder externo).
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (sheetCtx, setSheetState) => Padding(
+          // El teclado numérico tapaba por completo los campos: al usar
+          // SingleChildScrollView + este padding igual a la altura del
+          // teclado, el contenido queda siempre visible por encima de él.
+          padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 20,
+              bottom: MediaQuery.of(sheetCtx).viewInsets.bottom + 24),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: Container(width: 40, height: 4,
+                  decoration: BoxDecoration(color: AppColors.divider, borderRadius: BorderRadius.circular(2)))),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text("Filtrar por precio",
+                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    // Botón para esconder el teclado y poder ver/tocar
+                    // los botones de abajo (Limpiar / Aplicar).
+                    TextButton.icon(
+                      onPressed: () {
+                        FocusScope.of(sheetCtx).unfocus();
+                        setSheetState(() {});
+                      },
+                      icon: const Icon(Icons.keyboard_hide_outlined, size: 18, color: AppColors.primary),
+                      label: const Text("Ocultar teclado",
+                          style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600)),
+                      style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 0)),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    setState(() {
-                      _precioMin = double.tryParse(minCtrl.text.trim());
-                      _precioMax = double.tryParse(maxCtrl.text.trim());
-                      _aplicarFiltros();
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                const SizedBox(height: 16),
+                Row(children: [
+                  Expanded(child: _campoFiltro(ctrl: minCtrl, hint: "Mínimo", prefix: "\$")),
+                  const Padding(padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Text("—", style: TextStyle(color: AppColors.grayMid, fontSize: 18))),
+                  Expanded(child: _campoFiltro(ctrl: maxCtrl, hint: "Máximo", prefix: "\$")),
+                ]),
+                const SizedBox(height: 20),
+                Row(children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Navigator.pop(sheetCtx);
+                        setState(() { _precioMin = null; _precioMax = null; cargarPublicaciones(); });
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.divider),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text("Limpiar", style: TextStyle(color: AppColors.textSecondary)),
+                    ),
                   ),
-                  child: const Text("Aplicar", style: TextStyle(color: AppColors.textOnPrimary)),
-                ),
-              ),
-            ]),
-          ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(sheetCtx);
+                        setState(() {
+                          _precioMin = double.tryParse(minCtrl.text.trim());
+                          _precioMax = double.tryParse(maxCtrl.text.trim());
+                          _aplicarFiltros();
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text("Aplicar", style: TextStyle(color: AppColors.textOnPrimary)),
+                    ),
+                  ),
+                ]),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -849,7 +880,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
         ? _subcategoriaSeleccionada != null
             ? "$_categoriaSeleccionada · $_subcategoriaSeleccionada"
             : _categoriaSeleccionada!
-        : "Marketplace";
+        : "Okmarket";
 
     return CustomScrollView(
       slivers: [

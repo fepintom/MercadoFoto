@@ -100,10 +100,10 @@ class _MisDireccionesScreenState extends State<MisDireccionesScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: AppColors.carbon),
           onPressed: () => Navigator.pop(context),
-          tooltip: widget.mostrarBotonMarketplace ? 'Volver al marketplace' : 'Volver',
+          tooltip: widget.mostrarBotonMarketplace ? 'Volver a Okmarket' : 'Volver',
         ),
         title: Text(
-          widget.mostrarBotonMarketplace ? 'Volver al marketplace' : 'Mis direcciones',
+          widget.mostrarBotonMarketplace ? 'Volver a Okmarket' : 'Mis direcciones',
           style: const TextStyle(
               color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w600),
         ),

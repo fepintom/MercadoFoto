@@ -49,7 +49,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Necesitamos acceso a la cámara para publicar productos</string>
+	<string>Necesitamos acceso a la cámara para publicar productos y grabar videos en el chat</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Necesitamos acceso al micrófono para grabar el audio de los videos que envías en el chat</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Usa Face ID para ingresar a tu cuenta de forma rápida y segura</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
