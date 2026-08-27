@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
+import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 
 /// Chat con el agente de soporte IA de OkVenta.
@@ -188,8 +189,16 @@ class _SoporteChatScreenState extends State<SoporteChatScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Center(
-              child: Image.asset('assets/images/mensajes.png',
-                  width: 26, height: 26),
+              child: ValueListenableBuilder<bool>(
+                valueListenable: ThemeService.isDarkNotifier,
+                builder: (_, isDark, __) {
+                  return Image.asset(
+                    isDark ? 'assets/images/okventin_chat.png' : 'assets/images/mensajes.png',
+                    width: 26,
+                    height: 26,
+                  );
+                },
+              ),
             ),
           ),
         ],

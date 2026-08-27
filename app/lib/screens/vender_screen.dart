@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
+import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/space_invaders_widget.dart';
 import 'confirmacion_screen.dart';
@@ -136,8 +137,17 @@ class _VenderScreenState extends State<VenderScreen> {
       // Bug fix: evita que el teclado residual comprima la pantalla de carga.
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
-        // +30% igual que el logo del home (36 -> 47)
-        title: Image.asset('assets/images/chekin.png', height: 47),
+        // +30% igual que el logo del home (36 -> 47). Celular en modo
+        // claro, okventin (variante vender) en modo oscuro.
+        title: ValueListenableBuilder<bool>(
+          valueListenable: ThemeService.isDarkNotifier,
+          builder: (_, isDark, __) {
+            return Image.asset(
+              isDark ? 'assets/images/okventin_vender.png' : 'assets/images/chekin.png',
+              height: 47,
+            );
+          },
+        ),
         centerTitle: false,
         backgroundColor: colors.surface,
         elevation: 0,

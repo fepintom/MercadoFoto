@@ -725,8 +725,17 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                         size: 20, color: colors.textPrimary),
                   ),
                   const SizedBox(width: 12),
-                  // +30% igual que en el home (38 -> 49)
-                  Image.asset('assets/images/home.png', height: 49),
+                  // +30% igual que en el home (38 -> 49). Celular en modo
+                  // claro, okventin en modo oscuro (sin fondo cuadrado).
+                  ValueListenableBuilder<bool>(
+                    valueListenable: ThemeService.isDarkNotifier,
+                    builder: (_, isDark, __) {
+                      return Image.asset(
+                        isDark ? 'assets/images/okventin.png' : 'assets/images/home.png',
+                        height: 49,
+                      );
+                    },
+                  ),
                   const Spacer(),
                   _avatar(size: 44),
                 ],

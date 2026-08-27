@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
+import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import 'agregar_servicio_screen.dart';
 import 'delivery_proximamente_screen.dart';
@@ -478,8 +479,17 @@ class _ListaServiciosState extends State<_ListaServicios> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.handyman_outlined,
-                size: 64, color: colors.grayMid.withOpacity(0.4)),
+            ValueListenableBuilder<bool>(
+              valueListenable: ThemeService.isDarkNotifier,
+              builder: (_, isDark, __) {
+                if (isDark) {
+                  return Image.asset('assets/images/okventin_servicios.png',
+                      height: 64);
+                }
+                return Icon(Icons.handyman_outlined,
+                    size: 64, color: colors.grayMid.withOpacity(0.4));
+              },
+            ),
             const SizedBox(height: 16),
             Text(
               sinResultados

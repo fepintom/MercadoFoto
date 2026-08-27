@@ -53,6 +53,14 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   bool _esFavorito = false;
   bool _toggleandoFavorito = false;
   bool _comprando = false;
+  bool _campoSKU = false;
+  bool _campoStock = false;
+  bool _campoCodigo = false;
+  bool _guardandoInfoAdicional = false;
+
+  late TextEditingController _skuController;
+  late TextEditingController _stockController;
+  late TextEditingController _codigoController;
   final _ofertaController = TextEditingController();
 
   // Galería multi-imagen
@@ -74,6 +82,9 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   void initState() {
     super.initState();
     _imgPageController = PageController();
+    _skuController     = TextEditingController(text: widget.producto['sku']?.toString() ?? '');
+    _stockController   = TextEditingController(text: widget.producto['stock']?.toString() ?? '');
+    _codigoController  = TextEditingController(text: widget.producto['codigo_universal']?.toString() ?? '');
     _cargarSesion();
     _cargarReputacionVendedor();
     _cargarRelacionados();
@@ -103,6 +114,9 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   @override
   void dispose() {
     _imgPageController.dispose();
+    _codigoController.dispose();
+    _skuController.dispose();
+    _stockController.dispose();
     _ofertaController.dispose();
     super.dispose();
   }
@@ -899,6 +913,130 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  // ── GUARDAR INFO ADICIONAL ─────────────────────────────────────────────
+  Future<void> _guardarInfoAdicional() async {
+    final pubId = widget.producto['id'] as int?;
+    if (pubId == null) return;
+    setState(() => _guardandoInfoAdicional = true);
+    try {
+      await ApiService.guardarInfoAdicional(
+        pubId,
+        sku: _skuController.text.trim().isEmpty ? null : _skuController.text.trim(),
+        stock: int.tryParse(_stockController.text.trim()),
+        codigoUniversal: _codigoController.text.trim().isEmpty ? null : _codigoController.text.trim(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Text("Información adicional guardada"),
+        backgroundColor: colors.carbon,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text("Error al guardar: $e"),
+        backgroundColor: colors.primary,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } finally {
+      if (mounted) setState(() => _guardandoInfoAdicional = false);
+    }
+  }
+
+  // ── Fila de información adicional (solo lectura) ───────────────────────
+  Widget _filaInfoAdicional(String label, String valor) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 150,
+            child: Text(label,
+                style: TextStyle(
+                    fontSize: 12.5, color: colors.grayMid)),
+          ),
+          Expanded(
+            child: Text(valor,
+                style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── CAMPO EXPANDIBLE ───────────────────────────────────────────────────
+  Widget _campoExpandible({
+    required String titulo,
+    required bool abierto,
+    required VoidCallback toggle,
+    TextEditingController? controller,
+    TextInputType teclado = TextInputType.text,
+  }) {
+    return Column(
+      children: [
+        InkWell(
+          onTap: toggle,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  titulo,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                Icon(
+                  abierto ? Icons.remove_rounded : Icons.add_rounded,
+                  color: colors.grayMid,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (abierto)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: TextField(
+              controller: controller,
+              keyboardType: teclado,
+              style: TextStyle(
+                  fontSize: 14, color: colors.textPrimary),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: colors.background,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(
+                      color: colors.divider, width: 0.5),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(
+                      color: colors.divider, width: 0.5),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(
+                      color: colors.primary, width: 1.5),
+                ),
+              ),
+            ),
+          ),
+        const Divider(height: 1, thickness: 0.5),
+      ],
     );
   }
 
@@ -1910,6 +2048,104 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                         ],
                       ),
                     ),
+
+                  if (esInvitado &&
+                      dimensiones != null &&
+                      dimensiones.toString().isNotEmpty &&
+                      dimensiones.toString() != "No determinado")
+                    GestureDetector(
+                      onTap: _abrirRegistroModal,
+                      child: Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: colors.background,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: colors.divider, width: 0.5),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.lock_outline_rounded,
+                                size: 18, color: colors.grayMid),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                "Regístrate para ver las dimensiones del producto",
+                                style: TextStyle(
+                                    fontSize: 13,
+                                    color: colors.grayMid),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                  // Info adicional — solo visible para el dueño
+                  // (los demás la ven en el bloque de solo lectura de arriba).
+                  if (esDueno) ...[
+                    Text(
+                      "Información adicional",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    _campoExpandible(
+                      titulo: "Código universal (UPC/EAN)",
+                      abierto: _campoCodigo,
+                      controller: _codigoController,
+                      toggle: () =>
+                          setState(() => _campoCodigo = !_campoCodigo),
+                    ),
+                    _campoExpandible(
+                      titulo: "SKU",
+                      abierto: _campoSKU,
+                      controller: _skuController,
+                      toggle: () =>
+                          setState(() => _campoSKU = !_campoSKU),
+                    ),
+                    _campoExpandible(
+                      titulo: "Stock disponible",
+                      abierto: _campoStock,
+                      controller: _stockController,
+                      teclado: TextInputType.number,
+                      toggle: () =>
+                          setState(() => _campoStock = !_campoStock),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _guardandoInfoAdicional ? null : _guardarInfoAdicional,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colors.carbon,
+                          foregroundColor: colors.textOnPrimary,
+                          disabledBackgroundColor: colors.grayMid,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          elevation: 0,
+                        ),
+                        child: _guardandoInfoAdicional
+                            ? SizedBox(
+                                width: 18, height: 18,
+                                child: CircularProgressIndicator(
+                                    color: colors.textOnPrimary, strokeWidth: 2))
+                            : Text("Guardar información adicional",
+                                style: TextStyle(
+                                    color: colors.textOnPrimary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
 
                   const SizedBox(height: 28),
 

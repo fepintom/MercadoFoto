@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
+import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/net_image.dart';
 import 'producto_detalle_screen.dart';
@@ -779,8 +780,16 @@ class _ChatScreenState extends State<ChatScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Center(
-              child: Image.asset('assets/images/mensajes.png',
-                  width: 26, height: 26),
+              child: ValueListenableBuilder<bool>(
+                valueListenable: ThemeService.isDarkNotifier,
+                builder: (_, isDark, __) {
+                  return Image.asset(
+                    isDark ? 'assets/images/okventin_chat.png' : 'assets/images/mensajes.png',
+                    width: 26,
+                    height: 26,
+                  );
+                },
+              ),
             ),
           ),
         ],

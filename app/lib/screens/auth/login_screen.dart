@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../services/auth_service.dart';
 import '../../services/biometric_service.dart';
+import '../../services/theme_service.dart';
 import '../../theme/app_theme.dart';
 import '../home_screen.dart';
 
@@ -211,8 +212,17 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Logo (dinámico según pantalla) — mismo +30% que en el home
-              Image.asset('assets/images/home.png', height: 57),
+              // Logo: celular en modo claro, okventin en modo oscuro (sin
+              // fondo cuadrado) — mismo +30% que en el home.
+              ValueListenableBuilder<bool>(
+                valueListenable: ThemeService.isDarkNotifier,
+                builder: (_, isDark, __) {
+                  return Image.asset(
+                    isDark ? 'assets/images/okventin.png' : 'assets/images/home.png',
+                    height: 57,
+                  );
+                },
+              ),
               const SizedBox(height: 36),
 
               // Headline
