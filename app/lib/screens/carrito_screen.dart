@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/api_service.dart';
 import '../services/cart_service.dart';
+import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../widgets/net_image.dart';
@@ -32,6 +33,20 @@ class CarritoScreen extends StatelessWidget {
                 fontWeight: FontWeight.w700,
                 color: colors.textPrimary)),
         actions: [
+          // Okventin "compra exitosa": solo en modo oscuro, al entrar al carro.
+          ValueListenableBuilder<bool>(
+            valueListenable: ThemeService.isDarkNotifier,
+            builder: (_, isDark, __) {
+              if (!isDark) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: Center(
+                  child: Image.asset('assets/images/okventin_compra.png',
+                      width: 32, height: 32),
+                ),
+              );
+            },
+          ),
           ValueListenableBuilder<List<Map<String, dynamic>>>(
             valueListenable: CartService.cartNotifier,
             builder: (_, cart, __) => cart.isEmpty

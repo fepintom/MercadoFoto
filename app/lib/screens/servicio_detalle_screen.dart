@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
+import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/net_image.dart';
 class ServicioDetalleScreen extends StatefulWidget {
@@ -232,6 +233,24 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                   size: 18, color: colors.textPrimary),
               onPressed: () => Navigator.pop(context),
             ),
+            actions: [
+              // Okventin servicios: solo en modo oscuro
+              ValueListenableBuilder<bool>(
+                valueListenable: ThemeService.isDarkNotifier,
+                builder: (_, isDark, __) {
+                  if (!isDark) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: Center(
+                      child: Image.asset(
+                          'assets/images/okventin_servicios.png',
+                          width: 32,
+                          height: 32),
+                    ),
+                  );
+                },
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               background: fotos.isNotEmpty
                   ? NetImage(
