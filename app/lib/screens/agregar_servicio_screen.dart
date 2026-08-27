@@ -87,7 +87,7 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
     final picker = ImagePicker();
     final opcion = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => SafeArea(
@@ -95,20 +95,20 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_library_outlined,
-                  color: AppColors.primary),
+              leading: Icon(Icons.photo_library_outlined,
+                  color: colors.primary),
               title: const Text('Foto desde galería'),
               onTap: () => Navigator.pop(context, 'foto'),
             ),
             ListTile(
-              leading: const Icon(Icons.videocam_outlined,
-                  color: AppColors.primary),
+              leading: Icon(Icons.videocam_outlined,
+                  color: colors.primary),
               title: const Text('Video desde galería (máx. 15 seg)'),
               onTap: () => Navigator.pop(context, 'video'),
             ),
             ListTile(
-              leading: const Icon(Icons.camera_alt_outlined,
-                  color: AppColors.primary),
+              leading: Icon(Icons.camera_alt_outlined,
+                  color: colors.primary),
               title: const Text('Tomar foto'),
               onTap: () => Navigator.pop(context, 'camara'),
             ),
@@ -254,7 +254,7 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
-      backgroundColor: color ?? AppColors.carbon,
+      backgroundColor: color ?? colors.carbon,
       behavior: SnackBarBehavior.floating,
     ));
   }
@@ -312,7 +312,7 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
               content: Text(certBody['mensaje'] ?? 'Certificado procesado'),
-              backgroundColor: AppColors.primary,
+              backgroundColor: colors.primary,
             ));
           }
         }
@@ -340,23 +340,23 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios,
-              size: 18, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back_ios,
+              size: 18, color: colors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(_tipo == 'busco' ? 'Publicar solicitud' : 'Publicar servicio',
             style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary)),
+                color: colors.textPrimary)),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: AppColors.divider),
+          child: Container(height: 0.5, color: colors.divider),
         ),
       ),
       body: Form(
@@ -400,9 +400,9 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
                                 errorBuilder: (_, __, ___) => Container(
                                   width: 90,
                                   height: 90,
-                                  color: AppColors.background,
-                                  child: const Icon(Icons.videocam,
-                                      color: AppColors.primary, size: 32),
+                                  color: colors.background,
+                                  child: Icon(Icons.videocam,
+                                      color: colors.primary, size: 32),
                                 ),
                               ),
                             ),
@@ -433,22 +433,22 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
                         width: 90,
                         height: 90,
                         decoration: BoxDecoration(
-                          color: AppColors.surface,
+                          color: colors.surface,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                              color: AppColors.primary.withOpacity(0.4),
+                              color: colors.primary.withOpacity(0.4),
                               style: BorderStyle.solid),
                         ),
-                        child: const Column(
+                        child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.add_photo_alternate_outlined,
-                                color: AppColors.primary, size: 28),
+                                color: colors.primary, size: 28),
                             SizedBox(height: 4),
                             Text('Agregar',
                                 style: TextStyle(
                                     fontSize: 11,
-                                    color: AppColors.primary,
+                                    color: colors.primary,
                                     fontWeight: FontWeight.w600)),
                           ],
                         ),
@@ -483,11 +483,11 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
                           horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: sel
-                            ? AppColors.primary.withOpacity(0.12)
-                            : AppColors.surface,
+                            ? colors.primary.withOpacity(0.12)
+                            : colors.surface,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: sel ? AppColors.primary : AppColors.divider,
+                          color: sel ? colors.primary : colors.divider,
                           width: sel ? 1.5 : 1,
                         ),
                       ),
@@ -499,8 +499,8 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
                               ? FontWeight.w700
                               : FontWeight.w500,
                           color: sel
-                              ? AppColors.primary
-                              : AppColors.textSecondary,
+                              ? colors.primary
+                              : colors.textSecondary,
                         ),
                       ),
                     ),
@@ -513,9 +513,9 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
               // ── Color del aviso ───────────────────────────────────────────
               _label('Color del aviso'),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'Así se verá tu tarjeta en el mapa y en la lista',
-                style: TextStyle(fontSize: 12, color: AppColors.grayMid),
+                style: TextStyle(fontSize: 12, color: colors.grayMid),
               ),
               const SizedBox(height: 10),
               Row(
@@ -602,9 +602,9 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
               // ── Teléfono / WhatsApp ───────────────────────────────────────
               _label('Teléfono de contacto'),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'Solo el número sin +56 — se agrega automáticamente',
-                style: TextStyle(fontSize: 11, color: AppColors.grayMid),
+                style: TextStyle(fontSize: 11, color: colors.grayMid),
               ),
               const SizedBox(height: 8),
               _campo(_telefonoCtrl, 'Ej: 912345678  (prefijo 9, 8, 7…)',
@@ -614,9 +614,9 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
 
               _label('WhatsApp (si es diferente)'),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'Solo el número sin +56',
-                style: TextStyle(fontSize: 11, color: AppColors.grayMid),
+                style: TextStyle(fontSize: 11, color: colors.grayMid),
               ),
               const SizedBox(height: 8),
               _campo(_wsCtrl, 'Ej: 987654321',
@@ -627,9 +627,9 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
               // ── Ubicación ─────────────────────────────────────────────────
               _label('Ubicación del servicio'),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'Elige cómo registrar tu área de cobertura en el mapa',
-                style: TextStyle(fontSize: 12, color: AppColors.grayMid),
+                style: TextStyle(fontSize: 12, color: colors.grayMid),
               ),
               const SizedBox(height: 10),
 
@@ -658,7 +658,7 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
 
               // Resultado de ubicación elegida
               if (_cargandoUbicacion)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.only(top: 10),
                   child: Row(
                     children: [
@@ -666,11 +666,11 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: AppColors.primary)),
+                              strokeWidth: 2, color: colors.primary)),
                       SizedBox(width: 8),
                       Text('Obteniendo ubicación...',
                           style: TextStyle(
-                              fontSize: 12, color: AppColors.grayMid)),
+                              fontSize: 12, color: colors.grayMid)),
                     ],
                   ),
                 )
@@ -701,10 +701,10 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
                       // Ajustar radio inline
                       GestureDetector(
                         onTap: _usarMapa,
-                        child: const Text('Ajustar',
+                        child: Text('Ajustar',
                             style: TextStyle(
                                 fontSize: 12,
-                                color: AppColors.primary,
+                                color: colors.primary,
                                 fontWeight: FontWeight.w600,
                                 decoration: TextDecoration.underline)),
                       ),
@@ -726,7 +726,7 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       children: [
                         Icon(Icons.verified,
                             color: Colors.amber, size: 20),
@@ -736,15 +736,15 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
                           style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary),
+                              color: colors.textPrimary),
                         ),
                       ],
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'Sube tu certificado con código QR para obtener la insignia de Profesional Certificado OkVenta.',
                       style: TextStyle(
-                          fontSize: 12, color: AppColors.grayMid),
+                          fontSize: 12, color: colors.grayMid),
                     ),
                     const SizedBox(height: 12),
                     if (_certificado != null)
@@ -758,9 +758,9 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
                               _certificado!.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 12,
-                                  color: AppColors.textPrimary),
+                                  color: colors.textPrimary),
                             ),
                           ),
                           TextButton(
@@ -799,7 +799,7 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
                 child: ElevatedButton(
                   onPressed: _enviando ? null : _publicar,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: colors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -829,10 +829,10 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
   // ── Helpers UI ────────────────────────────────────────────────────────────
 
   Widget _label(String text) => Text(text,
-      style: const TextStyle(
+      style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary));
+          color: colors.textPrimary));
 
   Widget _campo(
     TextEditingController ctrl,
@@ -859,18 +859,18 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
       hintText: hint,
       prefixText: prefix,
       hintStyle:
-          const TextStyle(color: AppColors.grayMid, fontSize: 14),
+          TextStyle(color: colors.grayMid, fontSize: 14),
       filled: true,
-      fillColor: AppColors.surface,
+      fillColor: colors.surface,
       border:
           OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.divider)),
+              borderSide: BorderSide(color: colors.divider)),
       enabledBorder:
           OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.divider)),
+              borderSide: BorderSide(color: colors.divider)),
       focusedBorder:
           OutlineInputBorder(borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.primary)),
+              borderSide: BorderSide(color: colors.primary)),
       contentPadding:
           const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     );
@@ -887,19 +887,19 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
               const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
           decoration: BoxDecoration(
             color: sel
-                ? AppColors.primary.withOpacity(0.1)
-                : AppColors.surface,
+                ? colors.primary.withOpacity(0.1)
+                : colors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
                 color:
-                    sel ? AppColors.primary : AppColors.divider,
+                    sel ? colors.primary : colors.divider,
                 width: sel ? 1.5 : 1),
           ),
           child: Column(
             children: [
               Icon(icono,
                   color:
-                      sel ? AppColors.primary : AppColors.grayMid,
+                      sel ? colors.primary : colors.grayMid,
                   size: 22),
               const SizedBox(height: 4),
               Text(label,
@@ -908,7 +908,7 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color:
-                          sel ? AppColors.primary : AppColors.grayMid)),
+                          sel ? colors.primary : colors.grayMid)),
             ],
           ),
         ),
@@ -928,17 +928,17 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: onTap == null
-                ? AppColors.background
-                : AppColors.surface,
+                ? colors.background
+                : colors.surface,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.divider),
+            border: Border.all(color: colors.divider),
           ),
           child: Column(
             children: [
               Icon(icon,
                   color: onTap == null
-                      ? AppColors.grayMid
-                      : AppColors.primary,
+                      ? colors.grayMid
+                      : colors.primary,
                   size: 22),
               const SizedBox(height: 4),
               Text(label,
@@ -946,8 +946,8 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       color: onTap == null
-                          ? AppColors.grayMid
-                          : AppColors.textPrimary)),
+                          ? colors.grayMid
+                          : colors.textPrimary)),
             ],
           ),
         ),
@@ -963,11 +963,11 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: sel
-              ? AppColors.primary.withOpacity(0.1)
-              : AppColors.surface,
+              ? colors.primary.withOpacity(0.1)
+              : colors.surface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-              color: sel ? AppColors.primary : AppColors.divider,
+              color: sel ? colors.primary : colors.divider,
               width: sel ? 1.5 : 1),
         ),
         child: Text(label,
@@ -975,7 +975,7 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color:
-                    sel ? AppColors.primary : AppColors.grayMid)),
+                    sel ? colors.primary : colors.grayMid)),
       ),
     );
   }

@@ -49,33 +49,33 @@ class _EvaluacionesVendedorScreenState
         0, (acc, g) => acc + (g['evaluaciones'] as List).length);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios,
-              size: 18, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back_ios,
+              size: 18, color: colors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text('Evaluaciones · ${widget.nombreVendedor}',
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary)),
+                color: colors.textPrimary)),
       ),
       body: SafeArea(
         child: _cargando
             ? const Center(child: CircularProgressIndicator())
             : _grupos.isEmpty
-                ? const Center(
+                ? Center(
                     child: Padding(
                       padding: EdgeInsets.all(32),
                       child: Text(
                         'Este vendedor todavía no tiene evaluaciones.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: AppColors.grayMid),
+                        style: TextStyle(color: colors.grayMid),
                       ),
                     ),
                   )
@@ -87,9 +87,9 @@ class _EvaluacionesVendedorScreenState
                         '${totalEvaluaciones == 1 ? "evaluación" : "evaluaciones"} '
                         'en ${_grupos.length} '
                         '${_grupos.length == 1 ? "producto" : "productos"}',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 13,
-                            color: AppColors.grayMid,
+                            color: colors.grayMid,
                             fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 16),
@@ -117,7 +117,7 @@ class _GrupoProducto extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.divider, width: 0.5),
+        border: Border.all(color: colors.divider, width: 0.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -140,10 +140,10 @@ class _GrupoProducto extends StatelessWidget {
                 child: Text(titulo,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary)),
+                        color: colors.textPrimary)),
               ),
             ],
           ),
@@ -182,21 +182,21 @@ class _EvaluacionTile extends StatelessWidget {
                       size: 13,
                       color: i < estrellas
                           ? const Color(0xFFFFB800)
-                          : AppColors.grayMid)),
+                          : colors.grayMid)),
               const SizedBox(width: 6),
               Text(nombre,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary)),
+                      color: colors.textSecondary)),
             ],
           ),
           if (comentario.isNotEmpty) ...[
             const SizedBox(height: 3),
             Text(comentario,
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 13,
-                    color: AppColors.textPrimary,
+                    color: colors.textPrimary,
                     height: 1.4)),
           ],
         ],

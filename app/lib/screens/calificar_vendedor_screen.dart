@@ -61,9 +61,9 @@ class _CalificarVendedorScreenState extends State<CalificarVendedorScreen> {
       );
       if (!mounted) return;
       Navigator.pop(context, true);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('¡Gracias por tu calificación!'),
-        backgroundColor: AppColors.primary,
+        backgroundColor: colors.primary,
         behavior: SnackBarBehavior.floating,
       ));
     } catch (e) {
@@ -78,20 +78,20 @@ class _CalificarVendedorScreenState extends State<CalificarVendedorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, size: 18,
-              color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back_ios, size: 18,
+              color: colors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Calificar vendedor',
+        title: Text('Calificar vendedor',
             style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary)),
+                color: colors.textPrimary)),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -100,16 +100,16 @@ class _CalificarVendedorScreenState extends State<CalificarVendedorScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('¿Cómo estuvo tu compra a ${widget.nombreVendedor}?',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary)),
+                      color: colors.textPrimary)),
               const SizedBox(height: 4),
               Text(widget.tituloProducto,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontSize: 13, color: AppColors.grayMid)),
+                  style: TextStyle(
+                      fontSize: 13, color: colors.grayMid)),
               const SizedBox(height: 24),
 
               Center(
@@ -130,8 +130,8 @@ class _CalificarVendedorScreenState extends State<CalificarVendedorScreen> {
                               : Icons.star_outline_rounded,
                           size: 40,
                           color: idx <= _estrellas
-                              ? AppColors.primary
-                              : AppColors.grayMid,
+                              ? colors.primary
+                              : colors.grayMid,
                         ),
                       ),
                     );
@@ -140,11 +140,11 @@ class _CalificarVendedorScreenState extends State<CalificarVendedorScreen> {
               ),
               const SizedBox(height: 24),
 
-              const Text('Comentario',
+              Text('Comentario',
                   style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary)),
+                      color: colors.textSecondary)),
               const SizedBox(height: 6),
               TextField(
                 controller: _comentarioCtrl,
@@ -155,17 +155,17 @@ class _CalificarVendedorScreenState extends State<CalificarVendedorScreen> {
                   hintText:
                       'Cuéntale a otros compradores cómo te fue con este vendedor',
                   filled: true,
-                  fillColor: AppColors.surface,
+                  fillColor: colors.surface,
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.divider)),
+                      borderSide: BorderSide(color: colors.divider)),
                   enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColors.divider)),
+                      borderSide: BorderSide(color: colors.divider)),
                   focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
-                          color: AppColors.primary, width: 1.5)),
+                      borderSide: BorderSide(
+                          color: colors.primary, width: 1.5)),
                   contentPadding: const EdgeInsets.all(14),
                 ),
               ),
@@ -182,8 +182,8 @@ class _CalificarVendedorScreenState extends State<CalificarVendedorScreen> {
                 child: ElevatedButton(
                   onPressed: _enviando ? null : _enviar,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    disabledBackgroundColor: AppColors.grayMid,
+                    backgroundColor: colors.primary,
+                    disabledBackgroundColor: colors.grayMid,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14)),
@@ -195,9 +195,9 @@ class _CalificarVendedorScreenState extends State<CalificarVendedorScreen> {
                           child: CircularProgressIndicator(
                               color: Colors.white, strokeWidth: 2),
                         )
-                      : const Text('Enviar calificación',
+                      : Text('Enviar calificación',
                           style: TextStyle(
-                              color: AppColors.textOnPrimary,
+                              color: colors.textOnPrimary,
                               fontSize: 16,
                               fontWeight: FontWeight.w600)),
                 ),

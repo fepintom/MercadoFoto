@@ -113,7 +113,7 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
   void _mostrarError(Object e) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.primary),
+      SnackBar(content: Text('Error: $e'), backgroundColor: colors.primary),
     );
   }
 
@@ -191,16 +191,16 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           children: [
             _header(),
             Expanded(
               child: _cargando
-                  ? const Center(
+                  ? Center(
                       child:
-                          CircularProgressIndicator(color: AppColors.primary))
+                          CircularProgressIndicator(color: colors.primary))
                   : _entrega == null
                       ? const Center(child: Text('Entrega no encontrada'))
                       : SingleChildScrollView(
@@ -220,9 +220,9 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         border:
-            Border(bottom: BorderSide(color: AppColors.divider, width: 0.5)),
+            Border(bottom: BorderSide(color: colors.divider, width: 0.5)),
       ),
       child: Row(
         children: [
@@ -236,14 +236,14 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
                 Text(titulo,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary)),
+                        color: colors.textPrimary)),
                 if (monto != null)
                   Text('\$${monto.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.grayMid)),
+                      style: TextStyle(
+                          fontSize: 12, color: colors.grayMid)),
               ],
             ),
           ),
@@ -365,13 +365,13 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(titulo,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary)),
+                color: colors.textPrimary)),
         const SizedBox(height: 4),
         Text(subtitulo,
-            style: const TextStyle(fontSize: 13, color: AppColors.grayMid)),
+            style: TextStyle(fontSize: 13, color: colors.grayMid)),
         const SizedBox(height: 14),
         if (destinoLat != null && destinoLng != null)
           ClipRRect(
@@ -396,8 +396,8 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
                       point: ll.LatLng(destinoLat, destinoLng),
                       width: 40,
                       height: 40,
-                      builder: (_) => const Icon(Icons.location_on_rounded,
-                          color: AppColors.primary, size: 36),
+                      builder: (_) => Icon(Icons.location_on_rounded,
+                          color: colors.primary, size: 36),
                     ),
                     if (_miPos != null)
                       Marker(
@@ -417,12 +417,12 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
             height: 100,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: colors.surface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.divider),
+              border: Border.all(color: colors.divider),
             ),
-            child: const Text('Sin ubicación de referencia',
-                style: TextStyle(color: AppColors.grayMid, fontSize: 12)),
+            child: Text('Sin ubicación de referencia',
+                style: TextStyle(color: colors.grayMid, fontSize: 12)),
           ),
         const SizedBox(height: 18),
         SizedBox(
@@ -460,25 +460,25 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
     return Column(
       children: [
         const SizedBox(height: 20),
-        Icon(icon, size: 56, color: AppColors.primary),
+        Icon(icon, size: 56, color: colors.primary),
         const SizedBox(height: 16),
         Text(titulo,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary)),
+                color: colors.textPrimary)),
         const SizedBox(height: 8),
         Text(subtitulo,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13, color: AppColors.grayMid)),
+            style: TextStyle(fontSize: 13, color: colors.grayMid)),
         const SizedBox(height: 24),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
             onPressed: _enviando ? null : () => onBoton(),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
+              backgroundColor: colors.primary,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 15),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -502,7 +502,7 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
     required IconData icon,
     required String titulo,
     required String subtitulo,
-    Color color = AppColors.primary,
+    Color color = colors.primary,
   }) {
     return Column(
       children: [
@@ -516,9 +516,9 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
         const SizedBox(height: 8),
         Text(subtitulo,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-                fontSize: 13, color: AppColors.grayMid, height: 1.4)),
-        if (color != AppColors.primary) ...[
+            style: TextStyle(
+                fontSize: 13, color: colors.grayMid, height: 1.4)),
+        if (color != colors.primary) ...[
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
@@ -541,14 +541,14 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Confirma que recibiste el producto',
+        Text('Confirma que recibiste el producto',
             style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary)),
+                color: colors.textPrimary)),
         const SizedBox(height: 4),
-        const Text('Saca una foto y marca el estado del producto.',
-            style: TextStyle(fontSize: 13, color: AppColors.grayMid)),
+        Text('Saca una foto y marca el estado del producto.',
+            style: TextStyle(fontSize: 13, color: colors.grayMid)),
         const SizedBox(height: 16),
 
         GestureDetector(
@@ -557,20 +557,20 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
             height: 180,
             width: double.infinity,
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: colors.surface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.divider),
+              border: Border.all(color: colors.divider),
             ),
             child: _fotoRetiro == null
-                ? const Center(
+                ? Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.camera_alt_outlined,
-                            size: 36, color: AppColors.grayMid),
+                            size: 36, color: colors.grayMid),
                         SizedBox(height: 8),
                         Text('Tomar foto del producto',
-                            style: TextStyle(color: AppColors.grayMid)),
+                            style: TextStyle(color: colors.grayMid)),
                       ],
                     ),
                   )
@@ -623,7 +623,7 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
           child: ElevatedButton(
             onPressed: _enviando ? null : _confirmarRecepcion,
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
+              backgroundColor: colors.primary,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 15),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -655,17 +655,17 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
         padding: const EdgeInsets.symmetric(vertical: 12),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: seleccionado ? color.withOpacity(0.1) : AppColors.surface,
+          color: seleccionado ? color.withOpacity(0.1) : colors.surface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-              color: seleccionado ? color : AppColors.divider,
+              color: seleccionado ? color : colors.divider,
               width: seleccionado ? 1.5 : 0.8),
         ),
         child: Text(label,
             style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: seleccionado ? color : AppColors.textSecondary)),
+                color: seleccionado ? color : colors.textSecondary)),
       ),
     );
   }

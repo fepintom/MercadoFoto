@@ -70,7 +70,7 @@ class _BlueExpressSheetState extends State<BlueExpressSheet> {
       minChildSize: 0.5,
       expand: false,
       builder: (_, scrollCtrl) => Container(
-        color: AppColors.surface,
+        color: colors.surface,
         child: Column(
         children: [
           // Handle + header
@@ -134,9 +134,9 @@ class _BlueExpressSheetState extends State<BlueExpressSheet> {
                 // Buscador de comuna
                 Container(
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
+                    color: colors.surface,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.divider),
+                    border: Border.all(color: colors.divider),
                   ),
                   child: Row(
                     children: [
@@ -227,10 +227,10 @@ class _BlueExpressSheetState extends State<BlueExpressSheet> {
                         decoration: BoxDecoration(
                           color: sel
                               ? _azulBE.withOpacity(0.07)
-                              : AppColors.surface,
+                              : colors.surface,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: sel ? _azulBE : AppColors.divider,
+                            color: sel ? _azulBE : colors.divider,
                             width: sel ? 1.5 : 0.5,
                           ),
                         ),
@@ -241,11 +241,11 @@ class _BlueExpressSheetState extends State<BlueExpressSheet> {
                               decoration: BoxDecoration(
                                 color: sel
                                     ? _azulBE.withOpacity(0.15)
-                                    : AppColors.background,
+                                    : colors.background,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Icon(Icons.storefront_outlined,
-                                  color: sel ? _azulBE : AppColors.grayMid,
+                                  color: sel ? _azulBE : colors.grayMid,
                                   size: 20),
                             ),
                             const SizedBox(width: 12),
@@ -259,17 +259,17 @@ class _BlueExpressSheetState extends State<BlueExpressSheet> {
                                           fontWeight: FontWeight.w700,
                                           color: sel
                                               ? _azulBE
-                                              : AppColors.textPrimary)),
+                                              : colors.textPrimary)),
                                   const SizedBox(height: 2),
                                   Text(p['direccion'] as String? ?? '',
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                           fontSize: 11,
-                                          color: AppColors.grayMid)),
+                                          color: colors.grayMid)),
                                   Text(
                                     '${p['comuna'] ?? ''} — ${p['region'] ?? ''}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontSize: 10,
-                                        color: AppColors.grayMid),
+                                        color: colors.grayMid),
                                   ),
                                 ],
                               ),
@@ -326,9 +326,9 @@ class _BlueExpressSheetState extends State<BlueExpressSheet> {
             Container(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 border:
-                    Border(top: BorderSide(color: AppColors.divider, width: 0.5)),
+                    Border(top: BorderSide(color: colors.divider, width: 0.5)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -336,10 +336,10 @@ class _BlueExpressSheetState extends State<BlueExpressSheet> {
                   Text(
                     '📍 ${_seleccionado!['nombre']}',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary),
+                        color: colors.textPrimary),
                   ),
                   const SizedBox(height: 8),
                   ElevatedButton.icon(
@@ -372,12 +372,12 @@ class _BlueExpressSheetState extends State<BlueExpressSheet> {
             Icon(Icons.search_rounded,
                 size: 56, color: _azulBE.withOpacity(0.3)),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Ingresa tu comuna para ver\nlos puntos Blue Express más cercanos',
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontSize: 14,
-                  color: AppColors.grayMid,
+                  color: colors.grayMid,
                   height: 1.5),
             ),
           ],
@@ -388,13 +388,13 @@ class _BlueExpressSheetState extends State<BlueExpressSheet> {
         padding: const EdgeInsets.symmetric(vertical: 24),
         child: Column(
           children: [
-            const Icon(Icons.location_off_outlined,
-                size: 40, color: AppColors.grayMid),
+            Icon(Icons.location_off_outlined,
+                size: 40, color: colors.grayMid),
             const SizedBox(height: 10),
-            const Text(
+            Text(
               'No encontramos puntos en esa comuna.\nPrueba con una ciudad cercana.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: AppColors.grayMid),
+              style: TextStyle(fontSize: 13, color: colors.grayMid),
             ),
           ],
         ),

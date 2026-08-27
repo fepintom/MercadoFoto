@@ -34,11 +34,11 @@ class TipoPublicacionSelector extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Tipo de publicación',
+        Text('Tipo de publicación',
             style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary)),
+                color: colors.textPrimary)),
         const SizedBox(height: 10),
         Row(
           children: [
@@ -63,11 +63,11 @@ class TipoPublicacionSelector extends StatelessWidget {
         ),
         if (_esFull) ...[
           const SizedBox(height: 16),
-          const Text('Datos de inventario',
+          Text('Datos de inventario',
               style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary)),
+                  color: colors.textSecondary)),
           const SizedBox(height: 8),
           _campo(label: 'Código universal', ctrl: codigoCtrl),
           const SizedBox(height: 10),
@@ -97,29 +97,29 @@ class TipoPublicacionSelector extends StatelessWidget {
         // ~20% más grande que los chips de condición del mismo formulario.
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
         decoration: BoxDecoration(
-          color: sel ? AppColors.primary.withOpacity(0.08) : AppColors.surface,
+          color: sel ? colors.primary.withOpacity(0.08) : colors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: sel ? AppColors.primary : AppColors.divider,
+            color: sel ? colors.primary : colors.divider,
             width: sel ? 1.5 : 0.8,
           ),
         ),
         child: Column(
           children: [
             Icon(icono,
-                size: 19, color: sel ? AppColors.primary : AppColors.grayMid),
+                size: 19, color: sel ? colors.primary : colors.grayMid),
             const SizedBox(height: 6),
             Text(titulo,
                 style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
-                    color: sel ? AppColors.primary : AppColors.textPrimary)),
+                    color: sel ? colors.primary : colors.textPrimary)),
             const SizedBox(height: 2),
             Text(subtitulo,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     fontSize: 11.5,
-                    color: sel ? AppColors.primary : AppColors.grayMid)),
+                    color: sel ? colors.primary : colors.grayMid)),
           ],
         ),
       ),
@@ -135,8 +135,8 @@ class TipoPublicacionSelector extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: const TextStyle(
-                fontSize: 12.5, color: AppColors.grayMid)),
+            style: TextStyle(
+                fontSize: 12.5, color: colors.grayMid)),
         const SizedBox(height: 4),
         TextFormField(
           controller: ctrl,
@@ -144,19 +144,19 @@ class TipoPublicacionSelector extends StatelessWidget {
           decoration: InputDecoration(
             isDense: true,
             filled: true,
-            fillColor: AppColors.surface,
+            fillColor: colors.surface,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.divider)),
+                borderSide: BorderSide(color: colors.divider)),
             enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppColors.divider)),
+                borderSide: BorderSide(color: colors.divider)),
             focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide:
-                    const BorderSide(color: AppColors.primary, width: 1.5)),
+                    BorderSide(color: colors.primary, width: 1.5)),
           ),
         ),
       ],

@@ -120,9 +120,9 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('No se pudo abrir el chat. Intenta de nuevo.'),
-            backgroundColor: AppColors.primary,
+            backgroundColor: colors.primary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -168,9 +168,9 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
       if (mounted) {
         setState(() => _enviando = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Error al confirmar. Intenta de nuevo.'),
-            backgroundColor: AppColors.primary,
+            backgroundColor: colors.primary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -181,7 +181,7 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -189,19 +189,19 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
             Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 border: Border(
-                    bottom: BorderSide(color: AppColors.divider, width: 0.5)),
+                    bottom: BorderSide(color: colors.divider, width: 0.5)),
               ),
               child: Row(
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.arrow_back_ios_new_rounded,
-                        size: 20, color: AppColors.carbon),
+                    child: Icon(Icons.arrow_back_ios_new_rounded,
+                        size: 20, color: colors.textPrimary),
                   ),
                   const SizedBox(width: 14),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -209,10 +209,10 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
                             style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary)),
+                                color: colors.textPrimary)),
                         Text('¿Cómo entregarás este producto?',
                             style: TextStyle(
-                                fontSize: 12, color: AppColors.grayMid)),
+                                fontSize: 12, color: colors.grayMid)),
                       ],
                     ),
                   ),
@@ -228,34 +228,34 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: AppColors.surface,
+                      color: colors.surface,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.divider, width: 0.8),
+                      border: Border.all(color: colors.divider, width: 0.8),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           widget.titulo,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary),
+                              color: colors.textPrimary),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 6),
                         Row(
                           children: [
-                            const Icon(Icons.sell_outlined,
-                                size: 13, color: AppColors.grayMid),
+                            Icon(Icons.sell_outlined,
+                                size: 13, color: colors.grayMid),
                             const SizedBox(width: 4),
                             Text(
                               formatPrecio(widget.monto),
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
-                                  color: AppColors.primary),
+                                  color: colors.primary),
                             ),
                           ],
                         ),
@@ -318,28 +318,28 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
-                          AppColors.primary.withOpacity(0.12),
-                          AppColors.primary.withOpacity(0.04),
+                          colors.primary.withOpacity(0.12),
+                          colors.primary.withOpacity(0.04),
                         ],
                       ),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                          color: AppColors.primary.withOpacity(0.35)),
+                          color: colors.primary.withOpacity(0.35)),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.bolt_rounded,
-                            color: AppColors.primary, size: 22),
+                        Icon(Icons.bolt_rounded,
+                            color: colors.primary, size: 22),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Entrega tu venta hoy',
+                              Text('Entrega tu venta hoy',
                                   style: TextStyle(
                                       fontSize: 14.5,
                                       fontWeight: FontWeight.w800,
-                                      color: AppColors.primary)),
+                                      color: colors.primary)),
                               Text(
                                 _distanciaKm != null
                                     ? 'El comprador está a ${_distanciaKm! < 1 ? '${(_distanciaKm! * 1000).round()} metros' : '${_distanciaKm!.toStringAsFixed(1)} km'} de ti'
@@ -347,8 +347,8 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
                                     : (_direccionCompleta != null
                                         ? 'Entrégalo tú mismo, en esta dirección: $_direccionCompleta'
                                         : 'Entrégalo tú mismo y cierra la venta más rápido'),
-                                style: const TextStyle(
-                                    fontSize: 12, color: AppColors.grayMid),
+                                style: TextStyle(
+                                    fontSize: 12, color: colors.grayMid),
                               ),
                             ],
                           ),
@@ -359,12 +359,12 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
 
                   const SizedBox(height: 20),
 
-                  const Text(
+                  Text(
                     'Método de entrega',
                     style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary),
+                        color: colors.textPrimary),
                   ),
                   const SizedBox(height: 12),
 
@@ -372,7 +372,7 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
                   _opcion(
                     activo: _metodo == 'yo',
                     icon: Icons.person_outline_rounded,
-                    color: AppColors.primary,
+                    color: colors.primary,
                     titulo: 'Lo entrego yo',
                     subtitulo: 'Me encargo personalmente del despacho',
                     onTap: () => setState(() {
@@ -401,15 +401,15 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
                       subtitulo: _metodo == 'okventa' && _deliveryId != null
                           ? 'Delivery seleccionado'
                           : 'Usar la red de repartidores OkVenta',
-                      trailing: const Icon(Icons.chevron_right_rounded,
-                          size: 16, color: AppColors.grayMid),
+                      trailing: Icon(Icons.chevron_right_rounded,
+                          size: 16, color: colors.grayMid),
                       onTap: () async {
                         setState(() => _metodo = 'okventa');
                         if (_workers.isNotEmpty) {
                           final elegido =
                               await showModalBottomSheet<Map<String, dynamic>>(
                             context: context,
-                            backgroundColor: AppColors.surface,
+                            backgroundColor: colors.surface,
                             shape: const RoundedRectangleBorder(
                                 borderRadius: BorderRadius.vertical(
                                     top: Radius.circular(20))),
@@ -440,8 +440,8 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
                         _metodo == 'blueexpress' && _blueExpressPunto != null
                             ? _blueExpressPunto!['direccion'] as String? ?? ''
                             : 'Despacho a todo Chile',
-                    trailing: const Icon(Icons.chevron_right_rounded,
-                        size: 16, color: AppColors.grayMid),
+                    trailing: Icon(Icons.chevron_right_rounded,
+                        size: 16, color: colors.grayMid),
                     onTap: () async {
                       setState(() => _metodo = 'blueexpress');
                       final punto =
@@ -466,17 +466,17 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 12),
                       decoration: BoxDecoration(
-                        color: AppColors.surface,
+                        color: colors.surface,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                            color: AppColors.divider, width: 0.8),
+                            color: colors.divider, width: 0.8),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.chat_bubble_outline_rounded,
-                              color: AppColors.grayMid, size: 22),
+                          Icon(Icons.chat_bubble_outline_rounded,
+                              color: colors.grayMid, size: 22),
                           const SizedBox(width: 12),
-                          const Expanded(
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -484,26 +484,26 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
                                     style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w600,
-                                        color: AppColors.textPrimary)),
+                                        color: colors.textPrimary)),
                                 SizedBox(height: 2),
                                 Text('Coordina la entrega directo con el comprador',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                         fontSize: 12,
-                                        color: AppColors.grayMid)),
+                                        color: colors.grayMid)),
                               ],
                             ),
                           ),
                           _abriendoChat
-                              ? const SizedBox(
+                              ? SizedBox(
                                   width: 16,
                                   height: 16,
                                   child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      color: AppColors.grayMid))
-                              : const Icon(Icons.chevron_right_rounded,
-                                  size: 16, color: AppColors.grayMid),
+                                      color: colors.grayMid))
+                              : Icon(Icons.chevron_right_rounded,
+                                  size: 16, color: colors.grayMid),
                         ],
                       ),
                     ),
@@ -516,7 +516,7 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
                     child: ElevatedButton(
                       onPressed: _enviando ? null : _confirmar,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: colors.primary,
                         foregroundColor: Colors.white,
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(vertical: 15),
@@ -558,16 +558,16 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: activo ? color.withOpacity(0.07) : AppColors.surface,
+          color: activo ? color.withOpacity(0.07) : colors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: activo ? color.withOpacity(0.5) : AppColors.divider,
+            color: activo ? color.withOpacity(0.5) : colors.divider,
             width: activo ? 1.5 : 0.8,
           ),
         ),
         child: Row(
           children: [
-            Icon(icon, color: activo ? color : AppColors.grayMid, size: 22),
+            Icon(icon, color: activo ? color : colors.grayMid, size: 22),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -578,13 +578,13 @@ class _SeleccionarEntregaScreenState extends State<SeleccionarEntregaScreen> {
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color:
-                              activo ? color : AppColors.textPrimary)),
+                              activo ? color : colors.textPrimary)),
                   const SizedBox(height: 2),
                   Text(subtitulo,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.grayMid)),
+                      style: TextStyle(
+                          fontSize: 12, color: colors.grayMid)),
                 ],
               ),
             ),
@@ -615,15 +615,15 @@ class _WorkerPickerSheet extends StatelessWidget {
           height: 4,
           margin: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-              color: AppColors.divider, borderRadius: BorderRadius.circular(2)),
+              color: colors.divider, borderRadius: BorderRadius.circular(2)),
         ),
-        const Padding(
+        Padding(
           padding: EdgeInsets.only(bottom: 12),
           child: Text('Seleccionar Delivery OkVenta',
               style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary)),
+                  color: colors.textPrimary)),
         ),
         Flexible(
           child: ListView.separated(
@@ -649,24 +649,24 @@ class _WorkerPickerSheet extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.background,
+                    color: colors.background,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.divider),
+                    border: Border.all(color: colors.divider),
                   ),
                   child: Row(
                     children: [
                       CircleAvatar(
                         radius: 22,
-                        backgroundColor: AppColors.primary.withOpacity(0.1),
+                        backgroundColor: colors.primary.withOpacity(0.1),
                         backgroundImage: fotoUrl.isNotEmpty
                             ? NetworkImage(
                                 '${ApiService.baseUrl}$fotoUrl')
                             : null,
                         child: fotoUrl.isEmpty
                             ? Text(nombre[0].toUpperCase(),
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontWeight: FontWeight.w700,
-                                    color: AppColors.primary))
+                                    color: colors.primary))
                             : null,
                       ),
                       const SizedBox(width: 12),
@@ -675,29 +675,29 @@ class _WorkerPickerSheet extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(nombre,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
-                                    color: AppColors.textPrimary)),
+                                    color: colors.textPrimary)),
                             Row(
                               children: [
                                 Icon(
                                     iconos[vehiculo] ??
                                         Icons.delivery_dining_outlined,
                                     size: 13,
-                                    color: AppColors.grayMid),
+                                    color: colors.grayMid),
                                 const SizedBox(width: 4),
                                 Text('$vehiculo  •  radio $radio km',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontSize: 11,
-                                        color: AppColors.grayMid)),
+                                        color: colors.grayMid)),
                               ],
                             ),
                           ],
                         ),
                       ),
-                      const Icon(Icons.chevron_right,
-                          color: AppColors.grayMid, size: 16),
+                      Icon(Icons.chevron_right,
+                          color: colors.grayMid, size: 16),
                     ],
                   ),
                 ),

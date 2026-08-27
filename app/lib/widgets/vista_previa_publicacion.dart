@@ -45,7 +45,7 @@ class VistaPreviaPublicacion extends StatelessWidget {
     final bool esNuevo = condicion == 'nuevo';
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -53,36 +53,36 @@ class VistaPreviaPublicacion extends StatelessWidget {
             Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 border: Border(
-                    bottom: BorderSide(color: AppColors.divider, width: 0.5)),
+                    bottom: BorderSide(color: colors.divider, width: 0.5)),
               ),
               child: Row(
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.close_rounded,
-                        size: 22, color: AppColors.carbon),
+                    child: Icon(Icons.close_rounded,
+                        size: 22, color: colors.textPrimary),
                   ),
                   const SizedBox(width: 14),
-                  const Expanded(
+                  Expanded(
                     child: Text('Vista previa',
                         style: TextStyle(
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary)),
+                            color: colors.textPrimary)),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.grayMid.withOpacity(0.12),
+                      color: colors.grayMid.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text('Así lo verán los demás',
+                    child: Text('Así lo verán los demás',
                         style: TextStyle(
                             fontSize: 11,
-                            color: AppColors.grayMid,
+                            color: colors.grayMid,
                             fontWeight: FontWeight.w500)),
                   ),
                 ],
@@ -97,9 +97,9 @@ class VistaPreviaPublicacion extends StatelessWidget {
                     aspectRatio: 1,
                     child: (imagenesUrl.isEmpty && imagenes.isEmpty)
                         ? Container(
-                            color: AppColors.surface,
-                            child: const Icon(Icons.image_outlined,
-                                size: 48, color: AppColors.grayMid),
+                            color: colors.surface,
+                            child: Icon(Icons.image_outlined,
+                                size: 48, color: colors.grayMid),
                           )
                         : PageView.builder(
                             itemCount: imagenesUrl.length + imagenes.length,
@@ -158,16 +158,16 @@ class VistaPreviaPublicacion extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withOpacity(0.08),
+                                  color: colors.primary.withOpacity(0.08),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
                                     subcategoria.isNotEmpty
                                         ? '$categoria · $subcategoria'
                                         : categoria,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontSize: 11,
-                                        color: AppColors.primary,
+                                        color: colors.primary,
                                         fontWeight: FontWeight.w500,
                                         shadows: [
                                           Shadow(
@@ -180,24 +180,24 @@ class VistaPreviaPublicacion extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
                         Text(titulo,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary)),
+                                color: colors.textPrimary)),
                         const SizedBox(height: 16),
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 12),
                           decoration: BoxDecoration(
-                            color: AppColors.surface,
+                            color: colors.surface,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                                color: AppColors.divider, width: 0.5),
+                                color: colors.divider, width: 0.5),
                           ),
                           child: Text(formatPrecio(precio),
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 28,
-                                  color: AppColors.primary,
+                                  color: colors.primary,
                                   fontWeight: FontWeight.w800)),
                         ),
                         const SizedBox(height: 20),
@@ -207,9 +207,9 @@ class VistaPreviaPublicacion extends StatelessWidget {
                           descripcion.isEmpty
                               ? 'Sin descripción'
                               : descripcion,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 15,
-                              color: AppColors.textSecondary,
+                              color: colors.textSecondary,
                               height: 1.6),
                         ),
                       ],

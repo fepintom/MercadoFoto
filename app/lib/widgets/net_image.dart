@@ -32,16 +32,16 @@ class NetImage extends StatelessWidget {
       placeholder: (_, __) => Container(
         width: width,
         height: height,
-        color: AppColors.background,
+        color: colors.background,
       ),
       errorWidget: (_, __, ___) =>
           errorWidget ??
           Container(
             width: width,
             height: height,
-            color: AppColors.background,
-            child: const Icon(Icons.image_outlined,
-                color: AppColors.grayMid, size: 28),
+            color: colors.background,
+            child: Icon(Icons.image_outlined,
+                color: colors.grayMid, size: 28),
           ),
     );
 

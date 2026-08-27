@@ -60,10 +60,10 @@ class _MisDireccionesScreenState extends State<MisDireccionesScreen> {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar', style: TextStyle(color: AppColors.grayMid))),
+              child: Text('Cancelar', style: TextStyle(color: colors.grayMid))),
           TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Eliminar', style: TextStyle(color: AppColors.primary))),
+              child: Text('Eliminar', style: TextStyle(color: colors.primary))),
         ],
       ),
     );
@@ -79,7 +79,7 @@ class _MisDireccionesScreenState extends State<MisDireccionesScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => _DireccionFormSheet(
@@ -93,31 +93,31 @@ class _MisDireccionesScreenState extends State<MisDireccionesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: AppColors.carbon),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: colors.textPrimary),
           onPressed: () => Navigator.pop(context),
           tooltip: widget.mostrarBotonMarketplace ? 'Volver a Okmarket' : 'Volver',
         ),
         title: Text(
           widget.mostrarBotonMarketplace ? 'Volver a Okmarket' : 'Mis direcciones',
-          style: const TextStyle(
-              color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w600),
+          style: TextStyle(
+              color: colors.textPrimary, fontSize: 17, fontWeight: FontWeight.w600),
         ),
         centerTitle: !widget.mostrarBotonMarketplace,
         actions: [
           TextButton.icon(
             onPressed: () => _abrirFormulario(),
-            icon: const Icon(Icons.add, size: 18, color: AppColors.primary),
-            label: const Text('Nueva', style: TextStyle(color: AppColors.primary, fontSize: 13)),
+            icon: Icon(Icons.add, size: 18, color: colors.primary),
+            label: Text('Nueva', style: TextStyle(color: colors.primary, fontSize: 13)),
           ),
         ],
       ),
       body: _cargando
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? Center(child: CircularProgressIndicator(color: colors.primary))
           : _direcciones.isEmpty
               ? _buildVacio()
               : _buildLista(),
@@ -132,22 +132,22 @@ class _MisDireccionesScreenState extends State<MisDireccionesScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.location_off_outlined,
-                size: 64, color: AppColors.grayMid.withOpacity(0.4)),
+                size: 64, color: colors.grayMid.withOpacity(0.4)),
             const SizedBox(height: 16),
-            const Text('Sin direcciones guardadas',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            Text('Sin direcciones guardadas',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: colors.textPrimary)),
             const SizedBox(height: 8),
-            const Text('Agrega tu primera dirección para situar\ntus publicaciones en el mapa.',
+            Text('Agrega tu primera dirección para situar\ntus publicaciones en el mapa.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: AppColors.grayMid)),
+                style: TextStyle(fontSize: 14, color: colors.grayMid)),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () => _abrirFormulario(),
               icon: const Icon(Icons.add_location_alt_outlined, size: 18),
               label: const Text('Agregar dirección'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.textOnPrimary,
+                backgroundColor: colors.primary,
+                foregroundColor: colors.textOnPrimary,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
@@ -178,10 +178,10 @@ class _MisDireccionesScreenState extends State<MisDireccionesScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: esPrincipal ? AppColors.primary : AppColors.divider,
+          color: esPrincipal ? colors.primary : colors.divider,
           width: esPrincipal ? 1.5 : 0.5,
         ),
         boxShadow: [
@@ -201,14 +201,14 @@ class _MisDireccionesScreenState extends State<MisDireccionesScreen> {
                 width: 40, height: 40,
                 decoration: BoxDecoration(
                   color: esPrincipal
-                      ? AppColors.primary.withOpacity(0.1)
-                      : AppColors.background,
+                      ? colors.primary.withOpacity(0.1)
+                      : colors.background,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   _iconoPorEtiqueta(etiqueta),
                   size: 20,
-                  color: esPrincipal ? AppColors.primary : AppColors.grayMid,
+                  color: esPrincipal ? colors.primary : colors.grayMid,
                 ),
               ),
               const SizedBox(width: 12),
@@ -220,19 +220,19 @@ class _MisDireccionesScreenState extends State<MisDireccionesScreen> {
                     Row(
                       children: [
                         Text(etiqueta,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 15, fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary)),
+                                color: colors.textPrimary)),
                         if (esPrincipal) ...[
                           const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.1),
+                              color: colors.primary.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: const Text('Principal',
-                                style: TextStyle(fontSize: 11, color: AppColors.primary,
+                            child: Text('Principal',
+                                style: TextStyle(fontSize: 11, color: colors.primary,
                                     fontWeight: FontWeight.w600)),
                           ),
                         ],
@@ -240,21 +240,21 @@ class _MisDireccionesScreenState extends State<MisDireccionesScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(direccion,
-                        style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                        style: TextStyle(fontSize: 13, color: colors.textSecondary),
                         maxLines: 2, overflow: TextOverflow.ellipsis),
                     if (partes.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(partes,
-                          style: const TextStyle(fontSize: 12, color: AppColors.grayMid)),
+                          style: TextStyle(fontSize: 12, color: colors.grayMid)),
                     ],
                     if (!esPrincipal)
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: GestureDetector(
                           onTap: () => _establecerPrincipal(d['id'] as int),
-                          child: const Text('Usar como principal',
+                          child: Text('Usar como principal',
                               style: TextStyle(
-                                  fontSize: 12, color: AppColors.primary,
+                                  fontSize: 12, color: colors.primary,
                                   fontWeight: FontWeight.w600)),
                         ),
                       ),
@@ -263,12 +263,12 @@ class _MisDireccionesScreenState extends State<MisDireccionesScreen> {
               ),
               // Acciones
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, size: 20, color: AppColors.grayMid),
+                icon: Icon(Icons.more_vert, size: 20, color: colors.grayMid),
                 itemBuilder: (_) => [
                   const PopupMenuItem(value: 'editar', child: Text('Editar')),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                       value: 'eliminar',
-                      child: Text('Eliminar', style: TextStyle(color: AppColors.primary))),
+                      child: Text('Eliminar', style: TextStyle(color: colors.primary))),
                 ],
                 onSelected: (v) {
                   if (v == 'editar') _abrirFormulario(direccion: d);
@@ -550,14 +550,14 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            const Icon(Icons.edit_location_alt_outlined,
-                size: 16, color: AppColors.carbon),
+            Icon(Icons.edit_location_alt_outlined,
+                size: 16, color: colors.textPrimary),
             const SizedBox(width: 10),
-            const Text('Agregar manual',
+            Text('Agregar manual',
                 style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.carbon)),
+                    color: colors.textPrimary)),
           ],
         ),
       ),
@@ -575,23 +575,23 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary)),
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
+                color: colors.textSecondary)),
         const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
-            color: AppColors.background,
+            color: colors.background,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.divider),
+            border: Border.all(color: colors.divider),
           ),
           child: TextField(
             controller: ctrl,
             keyboardType: teclado,
             onEditingComplete: onEditingComplete,
-            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 14, color: colors.textPrimary),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: const TextStyle(color: AppColors.grayMid, fontSize: 13),
+              hintStyle: TextStyle(color: colors.grayMid, fontSize: 13),
               border: InputBorder.none,
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -685,7 +685,7 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
         minChildSize: 0.5,
         maxChildSize: 0.95,
         builder: (_, sc) => Container(
-          color: AppColors.surface,
+          color: colors.surface,
           child: Column(
             children: [
               // Handle
@@ -693,14 +693,14 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
                 width: 40, height: 4,
                 margin: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                    color: AppColors.divider, borderRadius: BorderRadius.circular(2)),
+                    color: colors.divider, borderRadius: BorderRadius.circular(2)),
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
                 child: Text(
                   widget.direccion == null ? 'Nueva dirección' : 'Editar dirección',
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700,
+                      color: colors.textPrimary),
                 ),
               ),
               Expanded(
@@ -711,9 +711,9 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Etiqueta
-                      const Text('Etiqueta',
+                      Text('Etiqueta',
                           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary)),
+                              color: colors.textSecondary)),
                       const SizedBox(height: 8),
                       Row(
                         children: [
@@ -726,13 +726,13 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
                                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                 decoration: BoxDecoration(
                                   color: _etiquetaCtrl.text == e
-                                      ? AppColors.carbon
-                                      : AppColors.background,
+                                      ? colors.carbon
+                                      : colors.background,
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
                                     color: _etiquetaCtrl.text == e
-                                        ? AppColors.carbon
-                                        : AppColors.divider,
+                                        ? colors.carbon
+                                        : colors.divider,
                                   ),
                                 ),
                                 child: Text(e,
@@ -741,7 +741,7 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
                                       fontWeight: FontWeight.w600,
                                       color: _etiquetaCtrl.text == e
                                           ? Colors.white
-                                          : AppColors.textPrimary,
+                                          : colors.textPrimary,
                                     )),
                               ),
                             ),
@@ -751,29 +751,29 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
                       const SizedBox(height: 20),
 
                       // Buscar dirección
-                      const Text('Dirección',
+                      Text('Dirección',
                           style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary)),
+                              color: colors.textSecondary)),
                       const SizedBox(height: 8),
                       Container(
                         decoration: BoxDecoration(
-                          color: AppColors.background,
+                          color: colors.background,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppColors.divider),
+                          border: Border.all(color: colors.divider),
                         ),
                         child: TextField(
                           controller: _busquedaCtrl,
                           onChanged: _onCambio,
                           decoration: InputDecoration(
                             hintText: 'Ej: Av. Providencia 1234, Santiago',
-                            hintStyle: const TextStyle(color: AppColors.grayMid, fontSize: 13),
+                            hintStyle: TextStyle(color: colors.grayMid, fontSize: 13),
                             prefixIcon: _buscando
-                                ? const Padding(
+                                ? Padding(
                                     padding: EdgeInsets.all(12),
                                     child: SizedBox(width: 16, height: 16,
                                         child: CircularProgressIndicator(
-                                            strokeWidth: 2, color: AppColors.primary)))
-                                : const Icon(Icons.search, size: 18, color: AppColors.grayMid),
+                                            strokeWidth: 2, color: colors.primary)))
+                                : Icon(Icons.search, size: 18, color: colors.grayMid),
                             suffixIcon: _busquedaCtrl.text.isNotEmpty
                                 ? GestureDetector(
                                     onTap: () => setState(() {
@@ -781,7 +781,7 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
                                       _sugerencias = [];
                                       _seleccionada = null;
                                     }),
-                                    child: const Icon(Icons.close, size: 16, color: AppColors.grayMid))
+                                    child: Icon(Icons.close, size: 16, color: colors.grayMid))
                                 : null,
                             border: InputBorder.none,
                             contentPadding: const EdgeInsets.symmetric(vertical: 12),
@@ -796,22 +796,22 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
-                            color: AppColors.carbon.withOpacity(0.06),
+                            color: colors.carbon.withOpacity(0.06),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.divider),
+                            border: Border.all(color: colors.divider),
                           ),
                           child: Row(
                             children: [
                               _obteniendoGps
-                                  ? const SizedBox(width: 18, height: 18,
+                                  ? SizedBox(width: 18, height: 18,
                                       child: CircularProgressIndicator(
-                                          strokeWidth: 2, color: AppColors.carbon))
-                                  : const Icon(Icons.my_location_rounded,
-                                      size: 18, color: AppColors.carbon),
+                                          strokeWidth: 2, color: colors.textPrimary))
+                                  : Icon(Icons.my_location_rounded,
+                                      size: 18, color: colors.textPrimary),
                               const SizedBox(width: 10),
-                              const Text('Usar mi ubicación actual',
+                              Text('Usar mi ubicación actual',
                                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600,
-                                      color: AppColors.carbon)),
+                                      color: colors.textPrimary)),
                             ],
                           ),
                         ),
@@ -822,9 +822,9 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
                         const SizedBox(height: 12),
                         Container(
                           decoration: BoxDecoration(
-                            color: AppColors.surface,
+                            color: colors.surface,
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.divider),
+                            border: Border.all(color: colors.divider),
                           ),
                           child: Column(
                             children: [
@@ -835,7 +835,7 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
                                 return Column(
                                   children: [
                                     if (i > 0)
-                                      Divider(height: 0.5, color: AppColors.divider),
+                                      Divider(height: 0.5, color: colors.divider),
                                     InkWell(
                                       onTap: () => setState(() {
                                         _seleccionada = s;
@@ -847,14 +847,14 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
                                             horizontal: 16, vertical: 12),
                                         child: Row(
                                           children: [
-                                            const Icon(Icons.location_on_outlined,
-                                                size: 16, color: AppColors.grayMid),
+                                            Icon(Icons.location_on_outlined,
+                                                size: 16, color: colors.grayMid),
                                             const SizedBox(width: 10),
                                             Expanded(
                                               child: Text(nombre,
-                                                  style: const TextStyle(
+                                                  style: TextStyle(
                                                       fontSize: 13,
-                                                      color: AppColors.textPrimary),
+                                                      color: colors.textPrimary),
                                                   maxLines: 2,
                                                   overflow: TextOverflow.ellipsis),
                                             ),
@@ -866,7 +866,7 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
                                 );
                               }),
                               // Opción agregar manual al final de la lista
-                              Divider(height: 0.5, color: AppColors.divider),
+                              Divider(height: 0.5, color: colors.divider),
                               _botonAgregarManual(),
                             ],
                           ),
@@ -879,21 +879,21 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
                         const SizedBox(height: 12),
                         Container(
                           decoration: BoxDecoration(
-                            color: AppColors.surface,
+                            color: colors.surface,
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.divider),
+                            border: Border.all(color: colors.divider),
                           ),
                           child: Column(children: [
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                               child: Row(children: [
-                                const Icon(Icons.search_off_rounded, size: 15, color: AppColors.grayMid),
+                                Icon(Icons.search_off_rounded, size: 15, color: colors.grayMid),
                                 const SizedBox(width: 8),
-                                const Text('No se encontraron resultados',
-                                    style: TextStyle(fontSize: 13, color: AppColors.grayMid)),
+                                Text('No se encontraron resultados',
+                                    style: TextStyle(fontSize: 13, color: colors.grayMid)),
                               ]),
                             ),
-                            Divider(height: 0.5, color: AppColors.divider),
+                            Divider(height: 0.5, color: colors.divider),
                             _botonAgregarManual(),
                           ]),
                         ),
@@ -946,13 +946,13 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                             decoration: BoxDecoration(
                               color: _latManual != null
-                                  ? AppColors.primary.withOpacity(0.06)
-                                  : AppColors.carbon.withOpacity(0.06),
+                                  ? colors.primary.withOpacity(0.06)
+                                  : colors.carbon.withOpacity(0.06),
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
                                 color: _latManual != null
-                                    ? AppColors.primary.withOpacity(0.4)
-                                    : AppColors.divider,
+                                    ? colors.primary.withOpacity(0.4)
+                                    : colors.divider,
                               ),
                             ),
                             child: Row(
@@ -963,8 +963,8 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
                                       : Icons.add_location_alt_outlined,
                                   size: 20,
                                   color: _latManual != null
-                                      ? AppColors.primary
-                                      : AppColors.carbon,
+                                      ? colors.primary
+                                      : colors.textPrimary,
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
@@ -976,16 +976,16 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
                                       color: _latManual != null
-                                          ? AppColors.primary
-                                          : AppColors.carbon,
+                                          ? colors.primary
+                                          : colors.textPrimary,
                                     ),
                                   ),
                                 ),
                                 Icon(Icons.chevron_right_rounded,
                                     size: 18,
                                     color: _latManual != null
-                                        ? AppColors.primary
-                                        : AppColors.grayMid),
+                                        ? colors.primary
+                                        : colors.grayMid),
                               ],
                             ),
                           ),
@@ -993,8 +993,8 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
                         const SizedBox(height: 8),
                         GestureDetector(
                           onTap: () => setState(() => _modoManual = false),
-                          child: const Text('← Volver a búsqueda',
-                              style: TextStyle(fontSize: 13, color: AppColors.grayMid)),
+                          child: Text('← Volver a búsqueda',
+                              style: TextStyle(fontSize: 13, color: colors.grayMid)),
                         ),
                       ],
 
@@ -1004,21 +1004,21 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.06),
+                            color: colors.primary.withOpacity(0.06),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                            border: Border.all(color: colors.primary.withOpacity(0.3)),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.check_circle_outline_rounded,
-                                  size: 18, color: AppColors.primary),
+                              Icon(Icons.check_circle_outline_rounded,
+                                  size: 18, color: colors.primary),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
                                   _seleccionada!['display_name']?.toString() ??
                                       _busquedaCtrl.text,
-                                  style: const TextStyle(fontSize: 13,
-                                      color: AppColors.textPrimary),
+                                  style: TextStyle(fontSize: 13,
+                                      color: colors.textPrimary),
                                   maxLines: 3,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -1036,8 +1036,8 @@ class _DireccionFormSheetState extends State<_DireccionFormSheet> {
                         child: ElevatedButton(
                           onPressed: _guardando ? null : _guardar,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: AppColors.textOnPrimary,
+                            backgroundColor: colors.primary,
+                            foregroundColor: colors.textOnPrimary,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12)),
@@ -1097,21 +1097,21 @@ class _MapaPinPickerScreenState extends State<_MapaPinPickerScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         elevation: 0,
-        iconTheme: const IconThemeData(color: AppColors.carbon),
-        title: const Text('Sitúa tu dirección',
+        iconTheme: IconThemeData(color: colors.textPrimary),
+        title: Text('Sitúa tu dirección',
             style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary)),
+                color: colors.textPrimary)),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: AppColors.divider),
+          child: Container(height: 0.5, color: colors.divider),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, _pin),
-            child: const Text('Confirmar',
-                style: TextStyle(color: AppColors.primary,
+            child: Text('Confirmar',
+                style: TextStyle(color: colors.primary,
                     fontSize: 15, fontWeight: FontWeight.w700)),
           ),
         ],
@@ -1138,10 +1138,10 @@ class _MapaPinPickerScreenState extends State<_MapaPinPickerScreen> {
                     width: 40,
                     height: 50,
                     anchorPos: AnchorPos.align(AnchorAlign.top),
-                    builder: (_) => const Icon(
+                    builder: (_) => Icon(
                       Icons.location_on_rounded,
                       size: 40,
-                      color: AppColors.primary,
+                      color: colors.primary,
                     ),
                   ),
                 ],
@@ -1164,13 +1164,13 @@ class _MapaPinPickerScreenState extends State<_MapaPinPickerScreen> {
                       blurRadius: 8, offset: const Offset(0, 2)),
                 ],
               ),
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.touch_app_rounded, size: 15, color: AppColors.grayMid),
+                  Icon(Icons.touch_app_rounded, size: 15, color: colors.grayMid),
                   SizedBox(width: 6),
                   Text('Toca el mapa para mover el pin',
-                      style: TextStyle(fontSize: 13, color: AppColors.grayMid)),
+                      style: TextStyle(fontSize: 13, color: colors.grayMid)),
                 ],
               ),
             ),
@@ -1193,12 +1193,12 @@ class _MapaPinPickerScreenState extends State<_MapaPinPickerScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.location_on_rounded,
-                      size: 16, color: AppColors.primary),
+                  Icon(Icons.location_on_rounded,
+                      size: 16, color: colors.primary),
                   const SizedBox(width: 8),
                   Text(
                     '${_pin.latitude.toStringAsFixed(5)}, ${_pin.longitude.toStringAsFixed(5)}',
-                    style: const TextStyle(fontSize: 13, color: AppColors.textPrimary,
+                    style: TextStyle(fontSize: 13, color: colors.textPrimary,
                         fontWeight: FontWeight.w500),
                   ),
                 ],

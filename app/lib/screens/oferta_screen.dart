@@ -117,7 +117,7 @@ class _OfertaScreenState extends State<OfertaScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -130,11 +130,11 @@ class _OfertaScreenState extends State<OfertaScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Contraofertar',
+            Text('Contraofertar',
                 style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary)),
+                    color: colors.textPrimary)),
             const SizedBox(height: 16),
             TextField(
               controller: _contraCtrl,
@@ -166,7 +166,7 @@ class _OfertaScreenState extends State<OfertaScreen> {
                   _responder('contraofertar', montoContra: monto);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: colors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
@@ -185,23 +185,23 @@ class _OfertaScreenState extends State<OfertaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios,
-              size: 18, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back_ios,
+              size: 18, color: colors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Oferta recibida',
+        title: Text('Oferta recibida',
             style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary)),
+                color: colors.textPrimary)),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: AppColors.divider),
+          child: Container(height: 0.5, color: colors.divider),
         ),
       ),
       body: SingleChildScrollView(
@@ -213,9 +213,9 @@ class _OfertaScreenState extends State<OfertaScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.divider),
+                border: Border.all(color: colors.divider),
               ),
               child: Row(
                 children: [
@@ -226,9 +226,9 @@ class _OfertaScreenState extends State<OfertaScreen> {
                       width: 64, height: 64, fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Container(
                         width: 64, height: 64,
-                        color: AppColors.background,
-                        child: const Icon(Icons.image,
-                            color: AppColors.grayMid),
+                        color: colors.background,
+                        child: Icon(Icons.image,
+                            color: colors.grayMid),
                       ),
                     ),
                   ),
@@ -236,10 +236,10 @@ class _OfertaScreenState extends State<OfertaScreen> {
                   Expanded(
                     child: Text(
                       _titulo,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary),
+                          color: colors.textPrimary),
                     ),
                   ),
                 ],
@@ -253,23 +253,23 @@ class _OfertaScreenState extends State<OfertaScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.08),
+                color: colors.primary.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                    color: AppColors.primary.withOpacity(0.3)),
+                    color: colors.primary.withOpacity(0.3)),
               ),
               child: Column(
                 children: [
-                  const Text('Oferta recibida',
+                  Text('Oferta recibida',
                       style: TextStyle(
-                          fontSize: 13, color: AppColors.grayMid)),
+                          fontSize: 13, color: colors.grayMid)),
                   const SizedBox(height: 8),
                   Text(
                     '\$${widget.monto.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]}.')}',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 36,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.primary),
+                        color: colors.primary),
                   ),
                 ],
               ),
@@ -278,29 +278,29 @@ class _OfertaScreenState extends State<OfertaScreen> {
             const SizedBox(height: 24),
 
             // Mensaje opcional
-            const Text('Agregar mensaje (opcional)',
+            Text('Agregar mensaje (opcional)',
                 style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary)),
+                    color: colors.textPrimary)),
             const SizedBox(height: 8),
             TextField(
               controller: _mensajeCtrl,
               maxLines: 3,
               decoration: InputDecoration(
                 hintText: 'Ej: ¡Trato! Podemos coordinar la entrega...',
-                hintStyle: const TextStyle(
-                    color: AppColors.grayMid, fontSize: 14),
+                hintStyle: TextStyle(
+                    color: colors.grayMid, fontSize: 14),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide:
-                        BorderSide(color: AppColors.divider)),
+                        BorderSide(color: colors.divider)),
                 enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide:
-                        BorderSide(color: AppColors.divider)),
+                        BorderSide(color: colors.divider)),
                 filled: true,
-                fillColor: AppColors.surface,
+                fillColor: colors.surface,
               ),
             ),
 
@@ -308,9 +308,9 @@ class _OfertaScreenState extends State<OfertaScreen> {
 
             // Botones
             if (_enviando)
-              const Center(
+              Center(
                   child: CircularProgressIndicator(
-                      color: AppColors.primary))
+                      color: colors.primary))
             else
               Column(
                 children: [
@@ -347,9 +347,9 @@ class _OfertaScreenState extends State<OfertaScreen> {
                               fontSize: 16,
                               fontWeight: FontWeight.w600)),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                        side: const BorderSide(
-                            color: AppColors.primary, width: 1.5),
+                        foregroundColor: colors.primary,
+                        side: BorderSide(
+                            color: colors.primary, width: 1.5),
                         padding:
                             const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(

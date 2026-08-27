@@ -162,7 +162,7 @@ class _EntregaVendedorScreenState extends State<EntregaVendedorScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error al reportar entrega: $e'),
-            backgroundColor: AppColors.primary,
+            backgroundColor: colors.primary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -178,7 +178,7 @@ class _EntregaVendedorScreenState extends State<EntregaVendedorScreen> {
     final reportada = _estadoOrden == 'entrega_reportada';
     final enCamino = _estadoOrden == 'en_camino';
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -186,32 +186,32 @@ class _EntregaVendedorScreenState extends State<EntregaVendedorScreen> {
             Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 border: Border(
-                    bottom: BorderSide(color: AppColors.divider, width: 0.5)),
+                    bottom: BorderSide(color: colors.divider, width: 0.5)),
               ),
               child: Row(
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.arrow_back_ios_new_rounded,
-                        size: 20, color: AppColors.carbon),
+                    child: Icon(Icons.arrow_back_ios_new_rounded,
+                        size: 20, color: colors.textPrimary),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Entrega en curso',
+                        Text('Entrega en curso',
                             style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary)),
+                                color: colors.textPrimary)),
                         Text(widget.titulo,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontSize: 12, color: AppColors.grayMid)),
+                            style: TextStyle(
+                                fontSize: 12, color: colors.grayMid)),
                       ],
                     ),
                   ),
@@ -230,14 +230,14 @@ class _EntregaVendedorScreenState extends State<EntregaVendedorScreen> {
                     ? Colors.green.withOpacity(0.08)
                     : _permisoDenegado
                         ? Colors.orange.withOpacity(0.08)
-                        : AppColors.primary.withOpacity(0.06),
+                        : colors.primary.withOpacity(0.06),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: entregado
                       ? Colors.green.withOpacity(0.4)
                       : _permisoDenegado
                           ? Colors.orange.withOpacity(0.4)
-                          : AppColors.primary.withOpacity(0.3),
+                          : colors.primary.withOpacity(0.3),
                 ),
               ),
               child: Row(
@@ -255,7 +255,7 @@ class _EntregaVendedorScreenState extends State<EntregaVendedorScreen> {
                         ? Colors.green
                         : _permisoDenegado
                             ? Colors.orange
-                            : AppColors.primary,
+                            : colors.primary,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -276,7 +276,7 @@ class _EntregaVendedorScreenState extends State<EntregaVendedorScreen> {
                             ? Colors.green
                             : _permisoDenegado
                                 ? Colors.orange.shade800
-                                : AppColors.primary,
+                                : colors.primary,
                       ),
                     ),
                   ),
@@ -299,19 +299,19 @@ class _EntregaVendedorScreenState extends State<EntregaVendedorScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: colors.surface,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.divider, width: 0.8),
+                  border: Border.all(color: colors.divider, width: 0.8),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.location_on_rounded,
-                        size: 15, color: AppColors.primary),
+                    Icon(Icons.location_on_rounded,
+                        size: 15, color: colors.primary),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text('Entregar en: $_destinoDireccion',
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.textPrimary)),
+                          style: TextStyle(
+                              fontSize: 12, color: colors.textPrimary)),
                     ),
                   ],
                 ),
@@ -345,9 +345,9 @@ class _EntregaVendedorScreenState extends State<EntregaVendedorScreen> {
                             point: _destino!,
                             width: 40,
                             height: 40,
-                            builder: (_) => const Icon(
+                            builder: (_) => Icon(
                                 Icons.location_on_rounded,
-                                color: AppColors.primary,
+                                color: colors.primary,
                                 size: 36),
                           ),
                         if (_miPos != null)
@@ -420,7 +420,7 @@ class _EntregaVendedorScreenState extends State<EntregaVendedorScreen> {
                         ? 'Reportaste la entrega. Si el comprador no responde en 48h, la venta se confirma automáticamente.'
                         : 'Al llegar, toma una foto del paquete entregado para reportar la entrega.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, color: AppColors.grayMid),
+                style: TextStyle(fontSize: 12, color: colors.grayMid),
               ),
             ),
           ],

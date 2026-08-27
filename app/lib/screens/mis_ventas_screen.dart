@@ -65,14 +65,14 @@ class _MisVentasScreenState extends State<MisVentasScreen> {
 
   Color _estadoColor(String estado) {
     switch (estado) {
-      case 'pendiente_pago':    return AppColors.grayMid;
+      case 'pendiente_pago':    return colors.grayMid;
       case 'pago_confirmado':   return Colors.blue;
       case 'en_camino':         return Colors.orange;
       case 'entrega_reportada': return Colors.deepOrange;
       case 'entregado':         return Colors.green;
       case 'en_disputa':        return Colors.red;
       case 'reembolsado':       return Colors.purple;
-      default:                  return AppColors.grayMid;
+      default:                  return colors.grayMid;
     }
   }
 
@@ -109,7 +109,7 @@ class _MisVentasScreenState extends State<MisVentasScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -117,19 +117,19 @@ class _MisVentasScreenState extends State<MisVentasScreen> {
             Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 border: Border(
-                    bottom: BorderSide(color: AppColors.divider, width: 0.5)),
+                    bottom: BorderSide(color: colors.divider, width: 0.5)),
               ),
               child: Row(
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.arrow_back_ios_new_rounded,
-                        size: 20, color: AppColors.carbon),
+                    child: Icon(Icons.arrow_back_ios_new_rounded,
+                        size: 20, color: colors.textPrimary),
                   ),
                   const SizedBox(width: 14),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -137,17 +137,17 @@ class _MisVentasScreenState extends State<MisVentasScreen> {
                             style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary)),
+                                color: colors.textPrimary)),
                         Text('Historial de lo que has vendido',
                             style: TextStyle(
-                                fontSize: 12, color: AppColors.grayMid)),
+                                fontSize: 12, color: colors.grayMid)),
                       ],
                     ),
                   ),
                   GestureDetector(
                     onTap: _cargar,
-                    child: const Icon(Icons.refresh_rounded,
-                        color: AppColors.grayMid, size: 22),
+                    child: Icon(Icons.refresh_rounded,
+                        color: colors.grayMid, size: 22),
                   ),
                 ],
               ),
@@ -156,13 +156,13 @@ class _MisVentasScreenState extends State<MisVentasScreen> {
             // ── Lista ─────────────────────────────────────────────────────
             Expanded(
               child: _cargando
-                  ? const Center(
-                      child: CircularProgressIndicator(color: AppColors.primary))
+                  ? Center(
+                      child: CircularProgressIndicator(color: colors.primary))
                   : _ventas.isEmpty
                       ? _buildVacio()
                       : RefreshIndicator(
                           onRefresh: _cargar,
-                          color: AppColors.primary,
+                          color: colors.primary,
                           child: ListView.builder(
                             padding: const EdgeInsets.all(12),
                             itemCount: _ventas.length + 1,
@@ -222,12 +222,12 @@ class _MisVentasScreenState extends State<MisVentasScreen> {
         decoration: BoxDecoration(
           color: reportada
               ? Colors.deepOrange.withOpacity(0.08)
-              : AppColors.primary.withOpacity(0.07),
+              : colors.primary.withOpacity(0.07),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: reportada
                 ? Colors.deepOrange.withOpacity(0.45)
-                : AppColors.primary.withOpacity(0.35),
+                : colors.primary.withOpacity(0.35),
             width: 1.2,
           ),
         ),
@@ -238,7 +238,7 @@ class _MisVentasScreenState extends State<MisVentasScreen> {
                   ? Icons.hourglass_top_rounded
                   : Icons.local_shipping_rounded,
               size: 20,
-              color: reportada ? Colors.deepOrange : AppColors.primary,
+              color: reportada ? Colors.deepOrange : colors.primary,
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -256,20 +256,20 @@ class _MisVentasScreenState extends State<MisVentasScreen> {
                       fontWeight: FontWeight.w700,
                       color: reportada
                           ? Colors.deepOrange.shade700
-                          : AppColors.primary,
+                          : colors.primary,
                     ),
                   ),
                   if (activas.length > 1)
                     Text(
                       '+${activas.length - 1} entrega(s) más activa(s)',
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.grayMid),
+                      style: TextStyle(
+                          fontSize: 11, color: colors.grayMid),
                     ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded,
-                size: 20, color: AppColors.grayMid),
+            Icon(Icons.chevron_right_rounded,
+                size: 20, color: colors.grayMid),
           ],
         ),
       ),
@@ -283,18 +283,18 @@ class _MisVentasScreenState extends State<MisVentasScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.storefront_outlined,
-                  size: 64, color: AppColors.grayMid.withOpacity(0.3)),
+                  size: 64, color: colors.grayMid.withOpacity(0.3)),
               const SizedBox(height: 16),
-              const Text('Sin ventas aún',
+              Text('Sin ventas aún',
                   style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary)),
+                      color: colors.textPrimary)),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Cuando alguien compre uno de tus\nproductos aparecerá aquí.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: AppColors.grayMid),
+                style: TextStyle(fontSize: 13, color: colors.grayMid),
               ),
             ],
           ),
@@ -434,7 +434,7 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
   void _mostrarError(Object e) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.primary),
+      SnackBar(content: Text('Error: $e'), backgroundColor: colors.primary),
     );
   }
 
@@ -521,7 +521,7 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
 
     final label = _estadoOkLabel[estado] ?? estado;
     return _accionOkdelivery(
-      color: AppColors.grayMid,
+      color: colors.grayMid,
       icon: Icons.delivery_dining_outlined,
       mensaje: label,
       boton: null,
@@ -616,12 +616,12 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: necesitaEntrega
-                ? AppColors.primary.withOpacity(0.5)
-                : AppColors.divider,
+                ? colors.primary.withOpacity(0.5)
+                : colors.divider,
             width: necesitaEntrega ? 1.5 : 0.8,
           ),
           boxShadow: [
@@ -674,10 +674,10 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
                           children: [
                             Expanded(
                               child: Text(titulo,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w700,
-                                      color: AppColors.textPrimary),
+                                      color: colors.textPrimary),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis),
                             ),
@@ -711,28 +711,28 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
                         // ── Info ─────────────────────────────────────
                         Row(
                           children: [
-                            const Icon(Icons.person_outline_rounded,
-                                size: 13, color: AppColors.grayMid),
+                            Icon(Icons.person_outline_rounded,
+                                size: 13, color: colors.grayMid),
                             const SizedBox(width: 4),
                             Text(comprador,
-                                style: const TextStyle(
-                                    fontSize: 12, color: AppColors.grayMid)),
+                                style: TextStyle(
+                                    fontSize: 12, color: colors.grayMid)),
                             const SizedBox(width: 10),
-                            const Icon(Icons.calendar_today_outlined,
-                                size: 12, color: AppColors.grayMid),
+                            Icon(Icons.calendar_today_outlined,
+                                size: 12, color: colors.grayMid),
                             const SizedBox(width: 4),
                             Text(fecha,
-                                style: const TextStyle(
-                                    fontSize: 12, color: AppColors.grayMid)),
+                                style: TextStyle(
+                                    fontSize: 12, color: colors.grayMid)),
                           ],
                         ),
                         const SizedBox(height: 4),
                         Text(
                           formatPrecio(monto),
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.primary),
+                              color: colors.primary),
                         ),
                       ],
                     ),
@@ -749,12 +749,12 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
                       horizontal: 10, vertical: 7),
                   decoration: BoxDecoration(
                     color: necesitaEntrega
-                        ? AppColors.primary.withOpacity(0.05)
-                        : AppColors.background,
+                        ? colors.primary.withOpacity(0.05)
+                        : colors.background,
                     borderRadius: BorderRadius.circular(8),
                     border: necesitaEntrega
                         ? Border.all(
-                            color: AppColors.primary.withOpacity(0.3))
+                            color: colors.primary.withOpacity(0.3))
                         : null,
                   ),
                   child: Row(
@@ -765,8 +765,8 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
                             : Icons.check_circle_outline_rounded,
                         size: 14,
                         color: necesitaEntrega
-                            ? AppColors.primary
-                            : AppColors.grayMid,
+                            ? colors.primary
+                            : colors.grayMid,
                       ),
                       const SizedBox(width: 6),
                       Expanded(
@@ -777,8 +777,8 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
                           style: TextStyle(
                             fontSize: 12,
                             color: necesitaEntrega
-                                ? AppColors.primary
-                                : AppColors.grayMid,
+                                ? colors.primary
+                                : colors.grayMid,
                             fontWeight: necesitaEntrega
                                 ? FontWeight.w600
                                 : FontWeight.w400,
@@ -807,7 +807,7 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 5),
                             decoration: BoxDecoration(
-                              color: AppColors.primary,
+                              color: colors.primary,
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Text('Elegir',
@@ -843,9 +843,9 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
                       icon: const Icon(Icons.local_shipping_rounded, size: 16),
                       label: const Text('Comenzar entrega'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primary,
+                        foregroundColor: colors.primary,
                         side: BorderSide(
-                            color: AppColors.primary.withOpacity(0.5)),
+                            color: colors.primary.withOpacity(0.5)),
                         padding: const EdgeInsets.symmetric(vertical: 9),
                         textStyle: const TextStyle(
                             fontSize: 12, fontWeight: FontWeight.w600),
@@ -867,10 +867,10 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
         width: 62,
         height: 62,
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: colors.background,
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Icon(Icons.image_outlined,
-            size: 28, color: AppColors.grayMid),
+        child: Icon(Icons.image_outlined,
+            size: 28, color: colors.grayMid),
       );
 }

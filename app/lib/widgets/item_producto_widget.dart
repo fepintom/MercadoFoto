@@ -26,7 +26,7 @@ class ItemProductoWidget extends StatelessWidget {
   Color _colorEstado(String estado) {
     switch (estado) {
       case "vendido":
-        return AppColors.primary;
+        return colors.primary;
       case "reservado":
         return const Color(0xFFE07B00);
       default:
@@ -65,9 +65,9 @@ class ItemProductoWidget extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.divider, width: 0.5),
+        border: Border.all(color: colors.divider, width: 0.5),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -93,19 +93,19 @@ class ItemProductoWidget extends StatelessWidget {
                     titulo,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
-                      color: AppColors.textPrimary,
+                      color: colors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     "\$$precio",
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
+                      color: colors.primary,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -117,29 +117,29 @@ class ItemProductoWidget extends StatelessWidget {
             // Acciones
             PopupMenuButton<String>(
               onSelected: onAction,
-              icon: const Icon(Icons.more_vert_rounded,
-                  color: AppColors.grayMid),
+              icon: Icon(Icons.more_vert_rounded,
+                  color: colors.grayMid),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
               itemBuilder: (_) => [
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: "vendido",
                   child: Row(
                     children: [
                       Icon(Icons.check_circle_outline,
-                          size: 18, color: AppColors.grayMid),
+                          size: 18, color: colors.grayMid),
                       SizedBox(width: 8),
                       Text("Marcar vendido"),
                     ],
                   ),
                 ),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: "activar",
                   child: Row(
                     children: [
                       Icon(Icons.refresh_rounded,
-                          size: 18, color: AppColors.grayMid),
+                          size: 18, color: colors.grayMid),
                       SizedBox(width: 8),
                       Text("Reactivar"),
                     ],

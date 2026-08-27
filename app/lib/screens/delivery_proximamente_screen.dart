@@ -13,16 +13,16 @@ class DeliveryProximamenteScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         elevation: 0,
-        iconTheme: const IconThemeData(color: AppColors.carbon),
-        title: const Text('OkVenta Delivery',
+        iconTheme: IconThemeData(color: colors.textPrimary),
+        title: Text('OkVenta Delivery',
             style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary)),
+                color: colors.textPrimary)),
       ),
       body: SafeArea(
         child: Center(
@@ -33,21 +33,21 @@ class DeliveryProximamenteScreen extends StatelessWidget {
               children: [
                 const OkDeliveryStamp(size: 220),
                 const SizedBox(height: 32),
-                const Text(
+                Text(
                   'Próximamente',
                   style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary),
+                      color: colors.textPrimary),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'Reclutaremos al mejor equipo de delivery de cada región '
                   'y te entregaremos tus productos en 24 horas.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                       fontSize: 14.5,
-                      color: AppColors.grayMid,
+                      color: colors.grayMid,
                       height: 1.5),
                 ),
                 const SizedBox(height: 28),
@@ -56,9 +56,9 @@ class DeliveryProximamenteScreen extends StatelessWidget {
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(context),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primary,
+                      foregroundColor: colors.primary,
                       side: BorderSide(
-                          color: AppColors.primary.withOpacity(0.5)),
+                          color: colors.primary.withOpacity(0.5)),
                       padding: const EdgeInsets.symmetric(vertical: 13),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10)),

@@ -12,20 +12,20 @@ class CompraProtegidaScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, size: 18,
-              color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back_ios, size: 18,
+              color: colors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Compra protegida',
+        title: Text('Compra protegida',
             style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary)),
+                color: colors.textPrimary)),
       ),
       body: SafeArea(
         child: ListView(
@@ -34,22 +34,22 @@ class CompraProtegidaScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.06),
+                color: colors.primary.withOpacity(0.06),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.verified_user_rounded,
-                      color: AppColors.primary, size: 26),
+                  Icon(Icons.verified_user_rounded,
+                      color: colors.primary, size: 26),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'Tus compras en OkVenta están respaldadas por los '
                       'derechos que te da la ley del consumidor en Chile '
                       '(Ley N° 19.496) y las normas de SERNAC.',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 13.5,
-                          color: AppColors.textPrimary,
+                          color: colors.textPrimary,
                           height: 1.4,
                           fontWeight: FontWeight.w500),
                     ),
@@ -124,16 +124,16 @@ class CompraProtegidaScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.divider, width: 0.5),
+                border: Border.all(color: colors.divider, width: 0.5),
               ),
-              child: const Text(
+              child: Text(
                 'Este resumen es informativo y no reemplaza el texto legal. '
                 'Puedes revisar el detalle completo y hacer una consulta o '
                 'reclamo formal en sernac.cl.',
                 style: TextStyle(
-                    fontSize: 12, color: AppColors.grayMid, height: 1.4),
+                    fontSize: 12, color: colors.grayMid, height: 1.4),
               ),
             ),
             const SizedBox(height: 20),
@@ -156,10 +156,10 @@ class CompraProtegidaScreen extends StatelessWidget {
           Container(
             width: 34, height: 34,
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.08),
+              color: colors.primary.withOpacity(0.08),
               shape: BoxShape.circle,
             ),
-            child: Icon(icono, size: 17, color: AppColors.primary),
+            child: Icon(icono, size: 17, color: colors.primary),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -167,15 +167,15 @@ class CompraProtegidaScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(titulo,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary)),
+                        color: colors.textPrimary)),
                 const SizedBox(height: 4),
                 Text(cuerpo,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.textSecondary,
+                        color: colors.textSecondary,
                         height: 1.5)),
               ],
             ),

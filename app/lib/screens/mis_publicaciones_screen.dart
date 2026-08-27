@@ -135,7 +135,7 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
 
     final confirmar = await showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -149,7 +149,7 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
               Container(
                 width: 40, height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.divider,
+                  color: colors.divider,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -165,20 +165,20 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
                     color: Color(0xFF2E7D32), size: 30),
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 '¿Confirmar vendido?',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: colors.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 '"${producto['titulo']}" migrará a tu lista de Vendidos.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 14, color: AppColors.grayMid, height: 1.4),
+                style: TextStyle(
+                    fontSize: 14, color: colors.grayMid, height: 1.4),
               ),
               const SizedBox(height: 20),
               // Checkbox no volver a mostrar
@@ -191,13 +191,13 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
                       value: noVolverMostrar,
                       onChanged: (v) =>
                           setModalState(() => noVolverMostrar = v ?? false),
-                      activeColor: AppColors.primary,
+                      activeColor: colors.primary,
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                    const Text(
+                    Text(
                       'No volver a mostrar',
                       style: TextStyle(
-                          fontSize: 13, color: AppColors.grayMid),
+                          fontSize: 13, color: colors.grayMid),
                     ),
                   ],
                 ),
@@ -210,13 +210,13 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(ctx, false),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.divider),
+                        side: BorderSide(color: colors.divider),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text('Cancelar',
-                          style: TextStyle(color: AppColors.textSecondary)),
+                      child: Text('Cancelar',
+                          style: TextStyle(color: colors.textSecondary)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -255,7 +255,7 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
   Future<void> _eliminar(Map<String, dynamic> producto) async {
     final confirmar = await showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -267,26 +267,26 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
             Container(
               width: 40, height: 4,
               decoration: BoxDecoration(
-                color: AppColors.divider,
+                color: colors.divider,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(height: 20),
-            const Icon(Icons.delete_outline, size: 44, color: AppColors.primary),
+            Icon(Icons.delete_outline, size: 44, color: colors.primary),
             const SizedBox(height: 12),
             Text(
               '¿Eliminar "${producto['titulo']}"?',
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary),
+                  color: colors.textPrimary),
             ),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               "Esta acción no se puede deshacer.",
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.grayMid, fontSize: 13),
+              style: TextStyle(color: colors.grayMid, fontSize: 13),
             ),
             const SizedBox(height: 24),
             Row(
@@ -295,13 +295,13 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
                   child: OutlinedButton(
                     onPressed: () => Navigator.pop(context, false),
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.divider),
+                      side: BorderSide(color: colors.divider),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text("Cancelar",
-                        style: TextStyle(color: AppColors.textSecondary)),
+                    child: Text("Cancelar",
+                        style: TextStyle(color: colors.textSecondary)),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -309,13 +309,13 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context, true),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: colors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text("Eliminar",
-                        style: TextStyle(color: AppColors.textOnPrimary)),
+                    child: Text("Eliminar",
+                        style: TextStyle(color: colors.textOnPrimary)),
                   ),
                 ),
               ],
@@ -336,9 +336,9 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
       await cargarPublicaciones();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text("Publicación eliminada"),
-          backgroundColor: AppColors.primary,
+          backgroundColor: colors.primary,
         ),
       );
     } catch (e) {
@@ -380,10 +380,10 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primary : AppColors.background,
+          color: selected ? colors.primary : colors.background,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: selected ? AppColors.primary : AppColors.divider,
+            color: selected ? colors.primary : colors.divider,
             width: 0.5,
           ),
         ),
@@ -393,7 +393,7 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
             style: TextStyle(
               fontWeight: FontWeight.w600,
               fontSize: 14,
-              color: selected ? Colors.white : AppColors.textSecondary,
+              color: selected ? Colors.white : colors.textSecondary,
             ),
           ),
         ),
@@ -410,7 +410,7 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
         _botonAccion(
           icono: Icons.edit_outlined,
           label: "Editar",
-          color: AppColors.carbon,
+          color: colors.textPrimary,
           onTap: () => _editar(producto),
         ),
         const SizedBox(width: 8),
@@ -426,7 +426,7 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
           _botonAccion(
             icono: Icons.refresh,
             label: "Activar",
-            color: AppColors.primary,
+            color: colors.primary,
             onTap: () => cambiarEstado(producto['id'] as int, 'disponible'),
           ),
         const SizedBox(width: 8),
@@ -434,7 +434,7 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
         _botonAccion(
           icono: Icons.delete_outline,
           label: "Eliminar",
-          color: AppColors.primary,
+          color: colors.primary,
           onTap: () => _eliminar(producto),
         ),
       ],
@@ -474,7 +474,7 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -483,9 +483,9 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
               padding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 border: Border(
-                  bottom: BorderSide(color: AppColors.divider, width: 0.5),
+                  bottom: BorderSide(color: colors.divider, width: 0.5),
                 ),
               ),
               child: Row(
@@ -503,17 +503,17 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
                         );
                       }
                     },
-                    child: const Icon(Icons.arrow_back_ios_new_rounded,
-                        size: 20, color: AppColors.carbon),
+                    child: Icon(Icons.arrow_back_ios_new_rounded,
+                        size: 20, color: colors.textPrimary),
                   ),
                   const SizedBox(width: 14),
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       "Mis publicaciones",
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: colors.textPrimary,
                       ),
                     ),
                   ),
@@ -534,10 +534,10 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
                 controller: _searchCtrl,
                 decoration: InputDecoration(
                   hintText: 'Buscar en mis publicaciones...',
-                  hintStyle: const TextStyle(
-                      fontSize: 13, color: AppColors.grayMid),
-                  prefixIcon: const Icon(Icons.search_rounded,
-                      size: 20, color: AppColors.grayMid),
+                  hintStyle: TextStyle(
+                      fontSize: 13, color: colors.grayMid),
+                  prefixIcon: Icon(Icons.search_rounded,
+                      size: 20, color: colors.grayMid),
                   suffixIcon: _busqueda.isNotEmpty
                       ? GestureDetector(
                           onTap: () {
@@ -547,27 +547,27 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
                               aplicarFiltro();
                             });
                           },
-                          child: const Icon(Icons.close_rounded,
-                              size: 18, color: AppColors.grayMid),
+                          child: Icon(Icons.close_rounded,
+                              size: 18, color: colors.grayMid),
                         )
                       : null,
                   filled: true,
-                  fillColor: AppColors.background,
+                  fillColor: colors.background,
                   contentPadding: const EdgeInsets.symmetric(vertical: 10),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                     borderSide: BorderSide(
-                        color: AppColors.divider, width: 0.5),
+                        color: colors.divider, width: 0.5),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                     borderSide: BorderSide(
-                        color: AppColors.divider, width: 0.5),
+                        color: colors.divider, width: 0.5),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                     borderSide: BorderSide(
-                        color: AppColors.primary, width: 1),
+                        color: colors.primary, width: 1),
                   ),
                 ),
               ),
@@ -596,13 +596,13 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
                               horizontal: 14, vertical: 7),
                           decoration: BoxDecoration(
                             color: _categoriaFiltro == null
-                                ? AppColors.primary
-                                : AppColors.surface,
+                                ? colors.primary
+                                : colors.surface,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                               color: _categoriaFiltro == null
-                                  ? AppColors.primary
-                                  : AppColors.divider,
+                                  ? colors.primary
+                                  : colors.divider,
                               width: 0.5,
                             ),
                           ),
@@ -613,7 +613,7 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
                               fontWeight: FontWeight.w600,
                               color: _categoriaFiltro == null
                                   ? Colors.white
-                                  : AppColors.textSecondary,
+                                  : colors.textSecondary,
                             ),
                           ),
                         ),
@@ -635,13 +635,13 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
                                 horizontal: 14, vertical: 7),
                             decoration: BoxDecoration(
                               color: selected
-                                  ? AppColors.primary
-                                  : AppColors.surface,
+                                  ? colors.primary
+                                  : colors.surface,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
                                 color: selected
-                                    ? AppColors.primary
-                                    : AppColors.divider,
+                                    ? colors.primary
+                                    : colors.divider,
                                 width: 0.5,
                               ),
                             ),
@@ -652,7 +652,7 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
                                 fontWeight: FontWeight.w600,
                                 color: selected
                                     ? Colors.white
-                                    : AppColors.textSecondary,
+                                    : colors.textSecondary,
                               ),
                             ),
                           ),
@@ -669,23 +669,23 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
             // Lista
             Expanded(
               child: loading
-                  ? const Center(
+                  ? Center(
                       child: CircularProgressIndicator(
-                          color: AppColors.primary))
+                          color: colors.primary))
                   : publicacionesFiltradas.isEmpty
                       ? Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(Icons.inbox_outlined,
-                                  size: 56, color: AppColors.grayMid),
+                                  size: 56, color: colors.grayMid),
                               const SizedBox(height: 12),
                               Text(
                                 filtro == "activo"
                                     ? "No tienes publicaciones activas"
                                     : "No tienes publicaciones vendidas",
-                                style: const TextStyle(
-                                  color: AppColors.grayMid,
+                                style: TextStyle(
+                                  color: colors.grayMid,
                                   fontSize: 15,
                                 ),
                               ),
@@ -693,7 +693,7 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
                           ),
                         )
                       : RefreshIndicator(
-                          color: AppColors.primary,
+                          color: colors.primary,
                           onRefresh: cargarPublicaciones,
                           child: ListView.builder(
                             itemCount: publicacionesFiltradas.length,

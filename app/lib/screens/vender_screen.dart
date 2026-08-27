@@ -120,7 +120,7 @@ class _VenderScreenState extends State<VenderScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: AppColors.primary,
+        backgroundColor: colors.primary,
         behavior: SnackBarBehavior.floating,
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -132,15 +132,15 @@ class _VenderScreenState extends State<VenderScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       // Bug fix: evita que el teclado residual comprima la pantalla de carga.
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: Image.asset('assets/images/chekin.png', height: 36),
         centerTitle: false,
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         elevation: 0,
-        iconTheme: const IconThemeData(color: AppColors.carbon),
+        iconTheme: IconThemeData(color: colors.textPrimary),
         // Botón volver: en modo automático vuelve al selector de métodos;
         // en el selector (pantalla inicial de "vender") vuelve al home —
         // antes no había flecha aquí y no se podía salir de "vender" sin
@@ -148,8 +148,8 @@ class _VenderScreenState extends State<VenderScreen> {
         leading: _loading
             ? null
             : IconButton(
-                icon: const Icon(Icons.arrow_back_ios_rounded,
-                    color: AppColors.carbon, size: 20),
+                icon: Icon(Icons.arrow_back_ios_rounded,
+                    color: colors.textPrimary, size: 20),
                 onPressed: () {
                   if (_estado == 'automatica') {
                     setState(() => _estado = 'selector');
@@ -161,7 +161,7 @@ class _VenderScreenState extends State<VenderScreen> {
         automaticallyImplyLeading: false,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(color: AppColors.divider, height: 0.5),
+          child: Container(color: colors.divider, height: 0.5),
         ),
       ),
       body: _loading
@@ -178,7 +178,7 @@ class _VenderScreenState extends State<VenderScreen> {
       children: [
         // Header de carga
         Container(
-          color: AppColors.surface,
+          color: colors.surface,
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
           child: Column(
             children: [
@@ -188,13 +188,13 @@ class _VenderScreenState extends State<VenderScreen> {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
+                      color: colors.primary.withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Padding(
+                    child: Padding(
                       padding: EdgeInsets.all(8),
                       child: CircularProgressIndicator(
-                        color: AppColors.primary,
+                        color: colors.primary,
                         strokeWidth: 2.5,
                       ),
                     ),
@@ -206,18 +206,18 @@ class _VenderScreenState extends State<VenderScreen> {
                       children: [
                         Text(
                           _loadingMsg,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
+                            color: colors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 2),
-                        const Text(
+                        Text(
                           "Esto puede tardar unos segundos · ¡Juega mientras!",
                           style: TextStyle(
                             fontSize: 11,
-                            color: AppColors.grayMid,
+                            color: colors.grayMid,
                           ),
                         ),
                       ],
@@ -235,20 +235,20 @@ class _VenderScreenState extends State<VenderScreen> {
 
         // Badge IA
         Container(
-          color: AppColors.surface,
+          color: colors.surface,
           padding:
               const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.auto_awesome_rounded,
-                  size: 13, color: AppColors.primary),
+                  size: 13, color: colors.primary),
               const SizedBox(width: 6),
-              const Text(
+              Text(
                 "Impulsado por IA — GPT-4o Vision",
                 style: TextStyle(
                   fontSize: 12,
-                  color: AppColors.primary,
+                  color: colors.primary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -268,21 +268,21 @@ class _VenderScreenState extends State<VenderScreen> {
         children: [
           const SizedBox(height: 12),
 
-          const Text(
+          Text(
             "¿Cómo quieres\npublicar?",
             style: TextStyle(
               fontSize: 30,
               fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
+              color: colors.textPrimary,
               height: 1.2,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             "Elige el método que más te acomode.",
             style: TextStyle(
               fontSize: 15,
-              color: AppColors.grayMid,
+              color: colors.grayMid,
               height: 1.5,
             ),
           ),
@@ -296,14 +296,14 @@ class _VenderScreenState extends State<VenderScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppColors.carbon,
+                color: colors.carbon,
                 borderRadius: BorderRadius.circular(20),
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    AppColors.carbon,
-                    AppColors.carbon.withOpacity(0.88),
+                    colors.carbon,
+                    colors.carbon.withOpacity(0.88),
                   ],
                 ),
               ),
@@ -316,20 +316,20 @@ class _VenderScreenState extends State<VenderScreen> {
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.2),
+                          color: colors.primary.withOpacity(0.2),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.auto_awesome_rounded,
-                            color: AppColors.primary, size: 24),
+                        child: Icon(Icons.auto_awesome_rounded,
+                            color: colors.primary, size: 24),
                       ),
                       const SizedBox(width: 14),
-                      const Column(
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             "VENTA AUTOMÁTICA",
                             style: TextStyle(
-                              color: AppColors.primary,
+                              color: colors.primary,
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 1.2,
@@ -339,7 +339,7 @@ class _VenderScreenState extends State<VenderScreen> {
                           Text(
                             "Saca una foto",
                             style: TextStyle(
-                              color: AppColors.surface,
+                              color: colors.surface,
                               fontSize: 20,
                               fontWeight: FontWeight.w800,
                             ),
@@ -352,7 +352,7 @@ class _VenderScreenState extends State<VenderScreen> {
                   Text(
                     "La IA analiza tu imagen y genera automáticamente el título, descripción y categoría. ¡Listo en segundos!",
                     style: TextStyle(
-                      color: AppColors.surface.withOpacity(0.75),
+                      color: colors.surface.withOpacity(0.75),
                       fontSize: 14,
                       height: 1.5,
                     ),
@@ -386,9 +386,9 @@ class _VenderScreenState extends State<VenderScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.divider, width: 0.5),
+                border: Border.all(color: colors.divider, width: 0.5),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -399,20 +399,20 @@ class _VenderScreenState extends State<VenderScreen> {
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: AppColors.background,
+                          color: colors.background,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.edit_rounded,
-                            color: AppColors.carbon, size: 22),
+                        child: Icon(Icons.edit_rounded,
+                            color: colors.textPrimary, size: 22),
                       ),
                       const SizedBox(width: 14),
-                      const Column(
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             "VENTA MANUAL",
                             style: TextStyle(
-                              color: AppColors.grayMid,
+                              color: colors.grayMid,
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 1.2,
@@ -422,7 +422,7 @@ class _VenderScreenState extends State<VenderScreen> {
                           Text(
                             "Control total",
                             style: TextStyle(
-                              color: AppColors.textPrimary,
+                              color: colors.textPrimary,
                               fontSize: 20,
                               fontWeight: FontWeight.w800,
                             ),
@@ -432,10 +432,10 @@ class _VenderScreenState extends State<VenderScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     "Ingresa tú mismo el título, descripción, precio y categoría. Ideal si ya sabes exactamente qué quieres publicar.",
                     style: TextStyle(
-                      color: AppColors.textSecondary,
+                      color: colors.textSecondary,
                       fontSize: 14,
                       height: 1.5,
                     ),
@@ -462,9 +462,9 @@ class _VenderScreenState extends State<VenderScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.divider, width: 0.5),
+                border: Border.all(color: colors.divider, width: 0.5),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -475,20 +475,20 @@ class _VenderScreenState extends State<VenderScreen> {
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.08),
+                          color: colors.primary.withOpacity(0.08),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.table_rows_rounded,
-                            color: AppColors.primary, size: 22),
+                        child: Icon(Icons.table_rows_rounded,
+                            color: colors.primary, size: 22),
                       ),
                       const SizedBox(width: 14),
-                      const Column(
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             "CARGA MASIVA",
                             style: TextStyle(
-                              color: AppColors.primary,
+                              color: colors.primary,
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 1.2,
@@ -498,7 +498,7 @@ class _VenderScreenState extends State<VenderScreen> {
                           Text(
                             "Múltiples productos",
                             style: TextStyle(
-                              color: AppColors.textPrimary,
+                              color: colors.textPrimary,
                               fontSize: 20,
                               fontWeight: FontWeight.w800,
                             ),
@@ -508,10 +508,10 @@ class _VenderScreenState extends State<VenderScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     "Carga productos simultáneamente llenando la planilla de carga masiva.",
                     style: TextStyle(
-                      color: AppColors.textSecondary,
+                      color: colors.textSecondary,
                       fontSize: 14,
                       height: 1.5,
                     ),
@@ -535,22 +535,22 @@ class _VenderScreenState extends State<VenderScreen> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.05),
+              color: colors.primary.withOpacity(0.05),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                  color: AppColors.primary.withOpacity(0.15), width: 0.5),
+                  color: colors.primary.withOpacity(0.15), width: 0.5),
             ),
             child: Row(
               children: [
                 Icon(Icons.lightbulb_outline_rounded,
-                    size: 16, color: AppColors.primary),
+                    size: 16, color: colors.primary),
                 const SizedBox(width: 8),
-                const Expanded(
+                Expanded(
                   child: Text(
                     "Para mejores resultados en Automática: buena iluminación, fondo liso y producto centrado.",
                     style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.primary,
+                      color: colors.primary,
                       height: 1.4,
                     ),
                   ),
@@ -574,7 +574,7 @@ class _VenderScreenState extends State<VenderScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -595,7 +595,7 @@ class _VenderScreenState extends State<VenderScreen> {
                 child: Container(
                   width: 40, height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.divider,
+                    color: colors.divider,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -608,14 +608,14 @@ class _VenderScreenState extends State<VenderScreen> {
                   Container(
                     width: 44, height: 44,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.08),
+                      color: colors.primary.withOpacity(0.08),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.table_rows_rounded,
-                        color: AppColors.primary, size: 22),
+                    child: Icon(Icons.table_rows_rounded,
+                        color: colors.primary, size: 22),
                   ),
                   const SizedBox(width: 12),
-                  const Column(
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
@@ -623,14 +623,14 @@ class _VenderScreenState extends State<VenderScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
+                          color: colors.textPrimary,
                         ),
                       ),
                       Text(
                         "Te enviamos la planilla por correo",
                         style: TextStyle(
                           fontSize: 13,
-                          color: AppColors.grayMid,
+                          color: colors.grayMid,
                         ),
                       ),
                     ],
@@ -643,23 +643,23 @@ class _VenderScreenState extends State<VenderScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.05),
+                  color: colors.primary.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                      color: AppColors.primary.withOpacity(0.15), width: 0.5),
+                      color: colors.primary.withOpacity(0.15), width: 0.5),
                 ),
-                child: const Row(
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(Icons.info_outline_rounded,
-                        size: 15, color: AppColors.primary),
+                        size: 15, color: colors.primary),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         "Recibirás un Excel con las instrucciones. Llénalo y reenvíalo con las fotos adjuntas. Tus productos se publican automáticamente.",
                         style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.primary,
+                            color: colors.primary,
                             height: 1.4),
                       ),
                     ),
@@ -673,30 +673,30 @@ class _VenderScreenState extends State<VenderScreen> {
                 controller: emailCtrl,
                 keyboardType: TextInputType.emailAddress,
                 autofocus: emailGuardado.isEmpty,
-                style: const TextStyle(
-                    fontSize: 15, color: AppColors.textPrimary),
+                style: TextStyle(
+                    fontSize: 15, color: colors.textPrimary),
                 decoration: InputDecoration(
                   labelText: "Correo electrónico",
                   labelStyle:
-                      const TextStyle(color: AppColors.grayMid, fontSize: 14),
-                  prefixIcon: const Icon(Icons.mail_outline_rounded,
-                      color: AppColors.grayMid, size: 20),
+                      TextStyle(color: colors.grayMid, fontSize: 14),
+                  prefixIcon: Icon(Icons.mail_outline_rounded,
+                      color: colors.grayMid, size: 20),
                   filled: true,
-                  fillColor: AppColors.background,
+                  fillColor: colors.background,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide:
-                        const BorderSide(color: AppColors.divider, width: 0.5),
+                        BorderSide(color: colors.divider, width: 0.5),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide:
-                        const BorderSide(color: AppColors.divider, width: 0.5),
+                        BorderSide(color: colors.divider, width: 0.5),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                        color: AppColors.primary, width: 1.5),
+                    borderSide: BorderSide(
+                        color: colors.primary, width: 1.5),
                   ),
                 ),
               ),
@@ -727,7 +727,7 @@ class _VenderScreenState extends State<VenderScreen> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text("✓ Planilla enviada a $email"),
-                                  backgroundColor: AppColors.carbon,
+                                  backgroundColor: colors.carbon,
                                   behavior: SnackBarBehavior.floating,
                                   shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(10)),
@@ -740,7 +740,7 @@ class _VenderScreenState extends State<VenderScreen> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text("Error: $e"),
-                                  backgroundColor: AppColors.primary,
+                                  backgroundColor: colors.primary,
                                   behavior: SnackBarBehavior.floating,
                                 ),
                               );
@@ -748,10 +748,10 @@ class _VenderScreenState extends State<VenderScreen> {
                           }
                         },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: colors.primary,
                     foregroundColor: Colors.white,
                     disabledBackgroundColor:
-                        AppColors.primary.withOpacity(0.6),
+                        colors.primary.withOpacity(0.6),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -782,18 +782,18 @@ class _VenderScreenState extends State<VenderScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: AppColors.surface.withOpacity(0.12),
+        color: colors.surface.withOpacity(0.12),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: AppColors.surface, size: 12),
+          Icon(icon, color: colors.surface, size: 12),
           const SizedBox(width: 5),
           Text(
             label,
             style: TextStyle(
-              color: AppColors.surface.withOpacity(0.9),
+              color: colors.surface.withOpacity(0.9),
               fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
@@ -807,18 +807,18 @@ class _VenderScreenState extends State<VenderScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: colors.background,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: AppColors.grayMid, size: 12),
+          Icon(icon, color: colors.grayMid, size: 12),
           const SizedBox(width: 5),
           Text(
             label,
-            style: const TextStyle(
-              color: AppColors.grayMid,
+            style: TextStyle(
+              color: colors.grayMid,
               fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
@@ -837,21 +837,21 @@ class _VenderScreenState extends State<VenderScreen> {
         children: [
           const SizedBox(height: 12),
 
-          const Text(
+          Text(
             "Saca o elige\ntu foto",
             style: TextStyle(
               fontSize: 30,
               fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
+              color: colors.textPrimary,
               height: 1.2,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             "La IA genera el título, descripción y categoría automáticamente.",
             style: TextStyle(
               fontSize: 15,
-              color: AppColors.grayMid,
+              color: colors.grayMid,
               height: 1.5,
             ),
           ),
@@ -865,14 +865,14 @@ class _VenderScreenState extends State<VenderScreen> {
               width: double.infinity,
               height: 180,
               decoration: BoxDecoration(
-                color: AppColors.carbon,
+                color: colors.carbon,
                 borderRadius: BorderRadius.circular(20),
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    AppColors.carbon,
-                    AppColors.carbon.withOpacity(0.85),
+                    colors.carbon,
+                    colors.carbon.withOpacity(0.85),
                   ],
                 ),
               ),
@@ -883,17 +883,17 @@ class _VenderScreenState extends State<VenderScreen> {
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: AppColors.surface.withOpacity(0.15),
+                      color: colors.surface.withOpacity(0.15),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.camera_alt_rounded,
-                        color: AppColors.surface, size: 28),
+                    child: Icon(Icons.camera_alt_rounded,
+                        color: colors.surface, size: 28),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     "Abrir cámara",
                     style: TextStyle(
-                      color: AppColors.surface,
+                      color: colors.surface,
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                     ),
@@ -902,7 +902,7 @@ class _VenderScreenState extends State<VenderScreen> {
                   Text(
                     "Toca para tomar una foto",
                     style: TextStyle(
-                      color: AppColors.surface.withOpacity(0.6),
+                      color: colors.surface.withOpacity(0.6),
                       fontSize: 13,
                     ),
                   ),
@@ -920,10 +920,10 @@ class _VenderScreenState extends State<VenderScreen> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 18),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(16),
                 border:
-                    Border.all(color: AppColors.divider, width: 0.5),
+                    Border.all(color: colors.divider, width: 0.5),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -932,14 +932,14 @@ class _VenderScreenState extends State<VenderScreen> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: AppColors.background,
+                      color: colors.background,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.photo_library_outlined,
-                        color: AppColors.carbon, size: 22),
+                    child: Icon(Icons.photo_library_outlined,
+                        color: colors.textPrimary, size: 22),
                   ),
                   const SizedBox(width: 14),
-                  const Column(
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
@@ -947,22 +947,22 @@ class _VenderScreenState extends State<VenderScreen> {
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
+                          color: colors.textPrimary,
                         ),
                       ),
                       SizedBox(height: 2),
                       Text(
                         "Selecciona una imagen existente",
                         style: TextStyle(
-                            fontSize: 12, color: AppColors.grayMid),
+                            fontSize: 12, color: colors.grayMid),
                       ),
                     ],
                   ),
                   const Spacer(),
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(right: 16),
                     child: Icon(Icons.arrow_forward_ios_rounded,
-                        size: 14, color: AppColors.grayMid),
+                        size: 14, color: colors.grayMid),
                   ),
                 ],
               ),
@@ -975,10 +975,10 @@ class _VenderScreenState extends State<VenderScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.05),
+              color: colors.primary.withOpacity(0.05),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                  color: AppColors.primary.withOpacity(0.2), width: 0.5),
+                  color: colors.primary.withOpacity(0.2), width: 0.5),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -986,14 +986,14 @@ class _VenderScreenState extends State<VenderScreen> {
                 Row(
                   children: [
                     Icon(Icons.lightbulb_outline_rounded,
-                        size: 16, color: AppColors.primary),
+                        size: 16, color: colors.primary),
                     const SizedBox(width: 6),
-                    const Text(
+                    Text(
                       "Consejos para mejores resultados",
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
+                        color: colors.primary,
                       ),
                     ),
                   ],
@@ -1013,16 +1013,16 @@ class _VenderScreenState extends State<VenderScreen> {
                           width: 4,
                           height: 4,
                           margin: const EdgeInsets.only(right: 8),
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
+                          decoration: BoxDecoration(
+                            color: colors.primary,
                             shape: BoxShape.circle,
                           ),
                         ),
                         Text(
                           tip,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
-                            color: AppColors.textSecondary,
+                            color: colors.textSecondary,
                           ),
                         ),
                       ],

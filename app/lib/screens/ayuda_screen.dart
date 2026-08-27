@@ -186,7 +186,7 @@ class _AyudaScreenState extends State<AyudaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       body: SafeArea(
         child: Stack(
           children: [
@@ -206,20 +206,20 @@ class _AyudaScreenState extends State<AyudaScreen> {
             Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: colors.surface,
                 border: Border(
-                  bottom: BorderSide(color: AppColors.divider, width: 0.5),
+                  bottom: BorderSide(color: colors.divider, width: 0.5),
                 ),
               ),
               child: Row(
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.arrow_back_ios_new_rounded,
-                        size: 20, color: AppColors.carbon),
+                    child: Icon(Icons.arrow_back_ios_new_rounded,
+                        size: 20, color: colors.textPrimary),
                   ),
                   const SizedBox(width: 14),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -227,10 +227,10 @@ class _AyudaScreenState extends State<AyudaScreen> {
                             style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary)),
+                                color: colors.textPrimary)),
                         Text('¿En qué te podemos ayudar?',
                             style: TextStyle(
-                                fontSize: 12, color: AppColors.grayMid)),
+                                fontSize: 12, color: colors.grayMid)),
                       ],
                     ),
                   ),
@@ -240,11 +240,11 @@ class _AyudaScreenState extends State<AyudaScreen> {
                     child: Container(
                       width: 40, height: 40,
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.08),
+                        color: colors.primary.withOpacity(0.08),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.support_agent_rounded,
-                          color: AppColors.primary, size: 22),
+                      child: Icon(Icons.support_agent_rounded,
+                          color: colors.primary, size: 22),
                     ),
                   ),
                 ],
@@ -259,11 +259,11 @@ class _AyudaScreenState extends State<AyudaScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // ── Selector de motivo ─────────────────────────────────
-                    const Text('¿Qué tipo de ayuda necesitas?',
+                    Text('¿Qué tipo de ayuda necesitas?',
                         style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary)),
+                            color: colors.textPrimary)),
                     const SizedBox(height: 12),
 
                     // Grid 2x2
@@ -297,11 +297,11 @@ class _AyudaScreenState extends State<AyudaScreen> {
                     // ── Consultas anteriores ───────────────────────────────
                     if (_tickets.isNotEmpty) ...[
                       const SizedBox(height: 28),
-                      const Text('Mis consultas anteriores',
+                      Text('Mis consultas anteriores',
                           style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary)),
+                              color: colors.textPrimary)),
                       const SizedBox(height: 10),
                       ..._tickets.map((t) => _TarjetaTicket(
                             ticket: t,
@@ -351,13 +351,13 @@ class _AyudaScreenState extends State<AyudaScreen> {
         child: Column(
           children: [
             Icon(Icons.touch_app_rounded,
-                size: 52, color: AppColors.grayMid.withOpacity(0.3)),
+                size: 52, color: colors.grayMid.withOpacity(0.3)),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Selecciona el motivo\npara continuar',
               textAlign: TextAlign.center,
               style: TextStyle(
-                  fontSize: 14, color: AppColors.grayMid, height: 1.5),
+                  fontSize: 14, color: colors.grayMid, height: 1.5),
             ),
           ],
         ),
@@ -380,18 +380,18 @@ class _AyudaScreenState extends State<AyudaScreen> {
               Container(
                 width: 34, height: 34,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: colors.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(tipo.icono, size: 18, color: AppColors.primary),
+                child: Icon(tipo.icono, size: 18, color: colors.primary),
               ),
               const SizedBox(width: 10),
               Text(
                 'Ayuda con ${tipo.label.toLowerCase()}',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary),
+                    color: colors.textPrimary),
               ),
             ],
           ),
@@ -444,7 +444,7 @@ class _AyudaScreenState extends State<AyudaScreen> {
                     fontSize: 15, fontWeight: FontWeight.w700),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
+                backgroundColor: colors.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 15),
                 shape: RoundedRectangleBorder(
@@ -461,10 +461,10 @@ class _AyudaScreenState extends State<AyudaScreen> {
   // ── Helpers de UI ──────────────────────────────────────────────────────────
   Widget _labelCampo(String texto) => Text(
         texto,
-        style: const TextStyle(
+        style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary),
+            color: colors.textSecondary),
       );
 
   Widget _campoTexto({
@@ -478,38 +478,38 @@ class _AyudaScreenState extends State<AyudaScreen> {
       controller: controller,
       maxLines: maxLines,
       validator: validator,
-      style: const TextStyle(
-          fontSize: 14, color: AppColors.textPrimary),
+      style: TextStyle(
+          fontSize: 14, color: colors.textPrimary),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(
-            fontSize: 13, color: AppColors.grayMid),
+        hintStyle: TextStyle(
+            fontSize: 13, color: colors.grayMid),
         prefixIcon: maxLines == 1
-            ? Icon(icon, size: 18, color: AppColors.grayMid)
+            ? Icon(icon, size: 18, color: colors.grayMid)
             : Padding(
                 padding: const EdgeInsets.only(left: 14, top: 14),
-                child: Icon(icon, size: 18, color: AppColors.grayMid),
+                child: Icon(icon, size: 18, color: colors.grayMid),
               ),
         prefixIconConstraints: maxLines > 1
             ? const BoxConstraints(minWidth: 44)
             : null,
         alignLabelWithHint: true,
         filled: true,
-        fillColor: AppColors.surface,
+        fillColor: colors.surface,
         contentPadding: EdgeInsets.symmetric(
             horizontal: 16, vertical: maxLines > 1 ? 14 : 0),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.divider, width: 0.8),
+          borderSide: BorderSide(color: colors.divider, width: 0.8),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.divider, width: 0.8),
+          borderSide: BorderSide(color: colors.divider, width: 0.8),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide:
-              const BorderSide(color: AppColors.primary, width: 1.5),
+              BorderSide(color: colors.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -546,7 +546,7 @@ class _NubeBurbuja extends StatelessWidget {
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                  color: AppColors.primary.withOpacity(0.2), width: 1),
+                  color: colors.primary.withOpacity(0.2), width: 1),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.12),
@@ -559,21 +559,21 @@ class _NubeBurbuja extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (cargando)
-                  const SizedBox(
+                  SizedBox(
                     width: 14, height: 14,
                     child: CircularProgressIndicator(
-                        strokeWidth: 1.8, color: AppColors.primary),
+                        strokeWidth: 1.8, color: colors.primary),
                   )
                 else
-                  const Icon(Icons.chat_bubble_outline_rounded,
-                      size: 16, color: AppColors.primary),
+                  Icon(Icons.chat_bubble_outline_rounded,
+                      size: 16, color: colors.primary),
                 const SizedBox(width: 7),
                 Text(
                   cargando ? 'Iniciando…' : 'Chatea con nosotros',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+                    color: colors.textPrimary,
                   ),
                 ),
               ],
@@ -603,7 +603,7 @@ class _ColaBurbuja extends CustomPainter {
 
     // Borde de la cola
     final border = Paint()
-      ..color = AppColors.primary.withOpacity(0.2)
+      ..color = colors.primary.withOpacity(0.2)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
     canvas.drawPath(path, border);
@@ -635,11 +635,11 @@ class _TarjetaTipo extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: seleccionado
-              ? AppColors.primary.withOpacity(0.08)
-              : AppColors.surface,
+              ? colors.primary.withOpacity(0.08)
+              : colors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: seleccionado ? AppColors.primary : AppColors.divider,
+            color: seleccionado ? colors.primary : colors.divider,
             width: seleccionado ? 1.5 : 0.8,
           ),
         ),
@@ -649,14 +649,14 @@ class _TarjetaTipo extends StatelessWidget {
               width: 32, height: 32,
               decoration: BoxDecoration(
                 color: seleccionado
-                    ? AppColors.primary.withOpacity(0.12)
-                    : AppColors.background,
+                    ? colors.primary.withOpacity(0.12)
+                    : colors.background,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(tipo.icono,
                   size: 17,
                   color:
-                      seleccionado ? AppColors.primary : AppColors.grayMid),
+                      seleccionado ? colors.primary : colors.grayMid),
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -668,14 +668,14 @@ class _TarjetaTipo extends StatelessWidget {
                       ? FontWeight.w700
                       : FontWeight.w500,
                   color: seleccionado
-                      ? AppColors.primary
-                      : AppColors.textPrimary,
+                      ? colors.primary
+                      : colors.textPrimary,
                 ),
               ),
             ),
             if (seleccionado)
-              const Icon(Icons.check_circle_rounded,
-                  size: 16, color: AppColors.primary),
+              Icon(Icons.check_circle_rounded,
+                  size: 16, color: colors.primary),
           ],
         ),
       ),
@@ -701,7 +701,7 @@ class _TarjetaTicket extends StatelessWidget {
     switch (estado) {
       case 'en_proceso': return Colors.orange;
       case 'resuelto':   return Colors.green;
-      default:           return AppColors.primary;
+      default:           return colors.primary;
     }
   }
 
@@ -727,10 +727,10 @@ class _TarjetaTicket extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: respuestas > 0 ? color.withOpacity(0.4) : AppColors.divider,
+            color: respuestas > 0 ? color.withOpacity(0.4) : colors.divider,
             width: respuestas > 0 ? 1.5 : 0.8,
           ),
         ),
@@ -743,10 +743,10 @@ class _TarjetaTicket extends StatelessWidget {
                   Row(
                     children: [
                       Text(_tipoLabels[tipo] ?? tipo,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary)),
+                              color: colors.textPrimary)),
                       const Spacer(),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -767,20 +767,20 @@ class _TarjetaTicket extends StatelessWidget {
                   Text(detalle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.grayMid)),
+                      style: TextStyle(
+                          fontSize: 12, color: colors.grayMid)),
                   if (respuestas > 0) ...[
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        const Icon(Icons.reply_rounded,
-                            size: 13, color: AppColors.primary),
+                        Icon(Icons.reply_rounded,
+                            size: 13, color: colors.primary),
                         const SizedBox(width: 4),
                         Text(
                           '$respuestas respuesta${respuestas > 1 ? 's' : ''} de soporte',
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 11,
-                              color: AppColors.primary,
+                              color: colors.primary,
                               fontWeight: FontWeight.w600)),
                       ],
                     ),
@@ -789,8 +789,8 @@ class _TarjetaTicket extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 10),
-            const Icon(Icons.arrow_forward_ios_rounded,
-                size: 13, color: AppColors.grayMid),
+            Icon(Icons.arrow_forward_ios_rounded,
+                size: 13, color: colors.grayMid),
           ],
         ),
       ),

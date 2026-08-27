@@ -17,20 +17,20 @@ class CarritoScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              size: 18, color: AppColors.carbon),
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              size: 18, color: colors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Mi carro',
+        title: Text('Mi carro',
             style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary)),
+                color: colors.textPrimary)),
         actions: [
           ValueListenableBuilder<List<Map<String, dynamic>>>(
             valueListenable: CartService.cartNotifier,
@@ -38,8 +38,8 @@ class CarritoScreen extends StatelessWidget {
                 ? const SizedBox.shrink()
                 : TextButton(
                     onPressed: () => CartService.clear(),
-                    child: const Text('Vaciar',
-                        style: TextStyle(color: AppColors.primary)),
+                    child: Text('Vaciar',
+                        style: TextStyle(color: colors.primary)),
                   ),
           ),
         ],
@@ -49,27 +49,27 @@ class CarritoScreen extends StatelessWidget {
           valueListenable: CartService.cartNotifier,
           builder: (context, items, __) {
             if (items.isEmpty) {
-              return const Center(
+              return Center(
                 child: Padding(
                   padding: EdgeInsets.all(32),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.shopping_bag_outlined,
-                          size: 48, color: AppColors.grayMid),
+                          size: 48, color: colors.grayMid),
                       SizedBox(height: 12),
                       Text('Tu carro está vacío',
                           style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary)),
+                              color: colors.textPrimary)),
                       SizedBox(height: 4),
                       Text(
                         'Agrega productos desde su publicación con\n'
                         '"Agregar al carro".',
                         textAlign: TextAlign.center,
                         style:
-                            TextStyle(fontSize: 13, color: AppColors.grayMid),
+                            TextStyle(fontSize: 13, color: colors.grayMid),
                       ),
                     ],
                   ),
@@ -94,28 +94,28 @@ class CarritoScreen extends StatelessWidget {
                 ),
                 Container(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                  decoration: const BoxDecoration(
-                    color: AppColors.surface,
+                  decoration: BoxDecoration(
+                    color: colors.surface,
                     border: Border(
-                        top: BorderSide(color: AppColors.divider, width: 0.5)),
+                        top: BorderSide(color: colors.divider, width: 0.5)),
                   ),
                   child: Row(
                     children: [
-                      const Text('Total',
+                      Text('Total',
                           style: TextStyle(
-                              fontSize: 14, color: AppColors.textSecondary)),
+                              fontSize: 14, color: colors.textSecondary)),
                       const SizedBox(width: 8),
                       Text(formatPrecio(total),
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.primary)),
+                              color: colors.primary)),
                       const Spacer(),
                       Text(
                           '${items.length} '
                           '${items.length == 1 ? "producto" : "productos"}',
-                          style: const TextStyle(
-                              fontSize: 12, color: AppColors.grayMid)),
+                          style: TextStyle(
+                              fontSize: 12, color: colors.grayMid)),
                     ],
                   ),
                 ),
@@ -146,7 +146,7 @@ class _ItemCarrito extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.divider, width: 0.5),
+        border: Border.all(color: colors.divider, width: 0.5),
       ),
       child: Row(
         children: [
@@ -158,9 +158,9 @@ class _ItemCarrito extends StatelessWidget {
                 : Container(
                     width: 60,
                     height: 60,
-                    color: AppColors.background,
-                    child: const Icon(Icons.image_outlined,
-                        color: AppColors.grayMid),
+                    color: colors.background,
+                    child: Icon(Icons.image_outlined,
+                        color: colors.grayMid),
                   ),
           ),
           const SizedBox(width: 12),
@@ -171,17 +171,17 @@ class _ItemCarrito extends StatelessWidget {
                 Text(titulo,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary)),
+                        color: colors.textPrimary)),
                 const SizedBox(height: 4),
                 if (precio != null)
                   Text(formatPrecio((precio as num).toDouble()),
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.primary)),
+                          color: colors.primary)),
               ],
             ),
           ),
@@ -190,8 +190,8 @@ class _ItemCarrito extends StatelessWidget {
             children: [
               IconButton(
                 onPressed: onQuitar,
-                icon: const Icon(Icons.delete_outline_rounded,
-                    size: 20, color: AppColors.grayMid),
+                icon: Icon(Icons.delete_outline_rounded,
+                    size: 20, color: colors.grayMid),
                 visualDensity: VisualDensity.compact,
               ),
               TextButton(
@@ -211,11 +211,11 @@ class _ItemCarrito extends StatelessWidget {
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Text('Comprar',
+                child: Text('Comprar',
                     style: TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.primary)),
+                        color: colors.primary)),
               ),
             ],
           ),

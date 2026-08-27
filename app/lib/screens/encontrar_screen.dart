@@ -213,7 +213,7 @@ class _EncontrarScreenState extends State<EncontrarScreen>
     double radioTmp = _radioKm;
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => StatefulBuilder(
@@ -227,29 +227,29 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                 child: Container(
                   width: 40, height: 4,
                   decoration: BoxDecoration(
-                      color: AppColors.divider,
+                      color: colors.divider,
                       borderRadius: BorderRadius.circular(2)),
                 ),
               ),
               const SizedBox(height: 20),
-              const Text("Radio de búsqueda",
+              Text("Radio de búsqueda",
                   style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary)),
+                      color: colors.textPrimary)),
               const SizedBox(height: 4),
               Text("${radioTmp.toStringAsFixed(0)} km",
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.primary)),
+                      color: colors.primary)),
               Slider(
                 value: radioTmp,
                 min: 1,
                 max: 50,
                 divisions: 49,
-                activeColor: AppColors.primary,
-                inactiveColor: AppColors.divider,
+                activeColor: colors.primary,
+                inactiveColor: colors.divider,
                 onChanged: (v) => set(() => radioTmp = v),
               ),
               const SizedBox(height: 12),
@@ -262,14 +262,14 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                     _obtenerUbicacionYProductos();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: colors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text("Buscar en este radio",
+                  child: Text("Buscar en este radio",
                       style: TextStyle(
-                          color: AppColors.textOnPrimary,
+                          color: colors.textOnPrimary,
                           fontWeight: FontWeight.w600)),
                 ),
               ),
@@ -304,16 +304,16 @@ class _EncontrarScreenState extends State<EncontrarScreen>
           AnimatedContainer(
             duration: const Duration(milliseconds: 180),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: colors.surface,
               borderRadius: BorderRadius.circular(sel ? 10 : 8),
               border: Border.all(
-                color: sel ? AppColors.primary : Colors.white,
+                color: sel ? colors.primary : Colors.white,
                 width: sel ? 2.5 : 2,
               ),
               boxShadow: [
                 BoxShadow(
                   color: sel
-                      ? AppColors.primary.withOpacity(0.35)
+                      ? colors.primary.withOpacity(0.35)
                       : Colors.black.withOpacity(0.25),
                   blurRadius: sel ? 10 : 5,
                   offset: const Offset(0, 2),
@@ -330,9 +330,9 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                 errorBuilder: (_, __, ___) => Container(
                   width: sel ? 36 : 28,
                   height: sel ? 36 : 28,
-                  color: AppColors.background,
-                  child: const Icon(Icons.image_outlined,
-                      color: AppColors.grayMid, size: 14),
+                  color: colors.background,
+                  child: Icon(Icons.image_outlined,
+                      color: colors.grayMid, size: 14),
                 ),
               ),
             ),
@@ -345,7 +345,7 @@ class _EncontrarScreenState extends State<EncontrarScreen>
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
               constraints: const BoxConstraints(maxWidth: 64),
               decoration: BoxDecoration(
-                color: sel ? AppColors.primary : AppColors.carbon,
+                color: sel ? colors.primary : colors.carbon,
                 borderRadius: BorderRadius.circular(4),
                 boxShadow: [
                   BoxShadow(
@@ -374,7 +374,7 @@ class _EncontrarScreenState extends State<EncontrarScreen>
           CustomPaint(
             size: const Size(12, 6),
             painter: _PuntaPainter(
-                sel ? AppColors.primary : AppColors.carbon),
+                sel ? colors.primary : colors.carbon),
           ),
         ],
       ),
@@ -401,7 +401,7 @@ class _EncontrarScreenState extends State<EncontrarScreen>
           margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: colors.surface,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -432,8 +432,8 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                         width: 80,
                         height: 80,
                         color: Colors.white,
-                        child: const Icon(Icons.image_outlined,
-                            color: AppColors.grayMid),
+                        child: Icon(Icons.image_outlined,
+                            color: colors.grayMid),
                       ),
                     ),
                   ),
@@ -454,26 +454,26 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withOpacity(0.08),
+                              color: colors.primary.withOpacity(0.08),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(categoria,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 10,
-                                    color: AppColors.primary,
+                                    color: colors.primary,
                                     fontWeight: FontWeight.w500)),
                           ),
                         const Spacer(),
                         if (distancia.isNotEmpty)
                           Row(
                             children: [
-                              const Icon(Icons.place_outlined,
-                                  size: 11, color: AppColors.grayMid),
+                              Icon(Icons.place_outlined,
+                                  size: 11, color: colors.grayMid),
                               const SizedBox(width: 2),
                               Text(distancia,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontSize: 11,
-                                      color: AppColors.grayMid)),
+                                      color: colors.grayMid)),
                             ],
                           ),
                       ],
@@ -482,19 +482,19 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                     Text(titulo,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontWeight: FontWeight.w600,
                             fontSize: 14,
-                            color: AppColors.textPrimary)),
+                            color: colors.textPrimary)),
                     const SizedBox(height: 5),
                     Row(
                       children: [
                         if (precio != null)
                           Text(
                             formatPrecio(precio),
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 16,
-                                color: AppColors.primary,
+                                color: colors.primary,
                                 fontWeight: FontWeight.w700),
                           ),
                         const Spacer(),
@@ -502,15 +502,15 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                         if (p['lat'] != null)
                           GestureDetector(
                             onTap: () => _abrirEnMapa(p),
-                            child: const Row(
+                            child: Row(
                               children: [
                                 Icon(Icons.open_in_new_rounded,
-                                    size: 13, color: AppColors.grayMid),
+                                    size: 13, color: colors.grayMid),
                                 SizedBox(width: 3),
                                 Text("Maps",
                                     style: TextStyle(
                                         fontSize: 11,
-                                        color: AppColors.grayMid)),
+                                        color: colors.grayMid)),
                               ],
                             ),
                           ),
@@ -530,7 +530,7 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                 child: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppColors.primary,
+                    color: colors.primary,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.arrow_forward_rounded,
@@ -567,54 +567,54 @@ class _EncontrarScreenState extends State<EncontrarScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios,
-              size: 18, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back_ios,
+              size: 18, color: colors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text("Encontrar",
+            Text("Encontrar",
                 style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary)),
+                    color: colors.textPrimary)),
             if (!_loading && !_errorPermisos)
               Text(
                 "Radio: ${_radioKm.toStringAsFixed(0)} km · ${_productosCercanos.length} productos",
-                style: const TextStyle(fontSize: 11, color: AppColors.grayMid),
+                style: TextStyle(fontSize: 11, color: colors.grayMid),
               ),
           ],
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.tune, color: AppColors.textPrimary),
+            icon: Icon(Icons.tune, color: colors.textPrimary),
             onPressed: _mostrarFiltroRadio,
           ),
           IconButton(
-            icon: const Icon(Icons.my_location, color: AppColors.primary),
+            icon: Icon(Icons.my_location, color: colors.primary),
             onPressed: _obtenerUbicacionYProductos,
           ),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: AppColors.divider),
+          child: Container(height: 0.5, color: colors.divider),
         ),
       ),
       body: _loading
-          ? const Center(
+          ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(color: AppColors.primary),
+                  CircularProgressIndicator(color: colors.primary),
                   SizedBox(height: 16),
                   Text("Obteniendo tu ubicación…",
-                      style: TextStyle(color: AppColors.grayMid)),
+                      style: TextStyle(color: colors.grayMid)),
                 ],
               ),
             )
@@ -746,7 +746,7 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                 padding: const EdgeInsets.symmetric(
                     horizontal: 14, vertical: 7),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: colors.surface,
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
@@ -758,15 +758,15 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.location_on_rounded,
-                        size: 14, color: AppColors.primary),
+                    Icon(Icons.location_on_rounded,
+                        size: 14, color: colors.primary),
                     const SizedBox(width: 5),
                     Text(
                       "${_productosCercanos.length} producto${_productosCercanos.length == 1 ? '' : 's'} a ${_radioKm.toStringAsFixed(0)} km",
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary),
+                          color: colors.textPrimary),
                     ),
                   ],
                 ),
@@ -785,7 +785,7 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                 padding: const EdgeInsets.symmetric(
                     horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: colors.surface,
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
@@ -796,21 +796,21 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.search_off_rounded,
-                        size: 14, color: AppColors.grayMid),
+                    Icon(Icons.search_off_rounded,
+                        size: 14, color: colors.grayMid),
                     const SizedBox(width: 6),
                     Text(
                       "Sin productos en ${_radioKm.toStringAsFixed(0)} km",
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.grayMid),
+                      style: TextStyle(
+                          fontSize: 12, color: colors.grayMid),
                     ),
                     const SizedBox(width: 8),
                     GestureDetector(
                       onTap: _mostrarFiltroRadio,
-                      child: const Text("Ampliar",
+                      child: Text("Ampliar",
                           style: TextStyle(
                               fontSize: 12,
-                              color: AppColors.primary,
+                              color: colors.primary,
                               fontWeight: FontWeight.w600)),
                     ),
                   ],
@@ -839,20 +839,20 @@ class _EncontrarScreenState extends State<EncontrarScreen>
             child: TextField(
               controller: _searchCtrl,
               onChanged: (v) => setState(() => _query = v.trim()),
-              style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+              style: TextStyle(fontSize: 14, color: colors.textPrimary),
               decoration: InputDecoration(
                 hintText: 'Buscar producto en el mapa…',
-                hintStyle: const TextStyle(fontSize: 13, color: AppColors.grayMid),
-                prefixIcon: const Icon(Icons.search_rounded,
-                    size: 18, color: AppColors.grayMid),
+                hintStyle: TextStyle(fontSize: 13, color: colors.grayMid),
+                prefixIcon: Icon(Icons.search_rounded,
+                    size: 18, color: colors.grayMid),
                 suffixIcon: _query.isNotEmpty
                     ? GestureDetector(
                         onTap: () {
                           _searchCtrl.clear();
                           setState(() => _query = '');
                         },
-                        child: const Icon(Icons.close_rounded,
-                            size: 16, color: AppColors.grayMid),
+                        child: Icon(Icons.close_rounded,
+                            size: 16, color: colors.grayMid),
                       )
                     : null,
                 border: InputBorder.none,
@@ -904,7 +904,7 @@ class _EncontrarScreenState extends State<EncontrarScreen>
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: colors.surface,
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
@@ -913,7 +913,7 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                 offset: const Offset(0, 2))
           ],
         ),
-        child: Icon(icon, size: 20, color: AppColors.carbon),
+        child: Icon(icon, size: 20, color: colors.textPrimary),
       ),
     );
   }
@@ -925,7 +925,7 @@ class _EncontrarScreenState extends State<EncontrarScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (_) => Padding(
@@ -940,16 +940,16 @@ class _EncontrarScreenState extends State<EncontrarScreen>
               child: Container(
                 width: 40, height: 4,
                 decoration: BoxDecoration(
-                    color: AppColors.divider,
+                    color: colors.divider,
                     borderRadius: BorderRadius.circular(2)),
               ),
             ),
             const SizedBox(height: 20),
-            const Text('Filtrar por precio',
+            Text('Filtrar por precio',
                 style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary)),
+                    color: colors.textPrimary)),
             const SizedBox(height: 16),
             Row(children: [
               Expanded(
@@ -958,25 +958,25 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
                     hintText: 'Mínimo', prefixText: '\$',
-                    hintStyle: const TextStyle(color: AppColors.grayMid, fontSize: 14),
-                    filled: true, fillColor: AppColors.background,
+                    hintStyle: TextStyle(color: colors.grayMid, fontSize: 14),
+                    filled: true, fillColor: colors.background,
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: AppColors.divider)),
+                        borderSide: BorderSide(color: colors.divider)),
                     enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: AppColors.divider)),
+                        borderSide: BorderSide(color: colors.divider)),
                     focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: AppColors.primary)),
+                        borderSide: BorderSide(color: colors.primary)),
                     contentPadding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   ),
                 ),
               ),
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text('—', style: TextStyle(color: AppColors.grayMid, fontSize: 18)),
+                child: Text('—', style: TextStyle(color: colors.grayMid, fontSize: 18)),
               ),
               Expanded(
                 child: TextField(
@@ -984,17 +984,17 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
                     hintText: 'Máximo', prefixText: '\$',
-                    hintStyle: const TextStyle(color: AppColors.grayMid, fontSize: 14),
-                    filled: true, fillColor: AppColors.background,
+                    hintStyle: TextStyle(color: colors.grayMid, fontSize: 14),
+                    filled: true, fillColor: colors.background,
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: AppColors.divider)),
+                        borderSide: BorderSide(color: colors.divider)),
                     enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: AppColors.divider)),
+                        borderSide: BorderSide(color: colors.divider)),
                     focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: const BorderSide(color: AppColors.primary)),
+                        borderSide: BorderSide(color: colors.primary)),
                     contentPadding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   ),
@@ -1010,11 +1010,11 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                     setState(() { _precioMin = null; _precioMax = null; });
                   },
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.divider),
+                    side: BorderSide(color: colors.divider),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text('Limpiar', style: TextStyle(color: AppColors.textSecondary)),
+                  child: Text('Limpiar', style: TextStyle(color: colors.textSecondary)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1028,7 +1028,7 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                     });
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: colors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -1083,7 +1083,7 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-                  color: AppColors.carbon,
+                  color: colors.carbon,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -1122,15 +1122,15 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                     color: _tieneFiltroPrecio
-                        ? AppColors.primary.withOpacity(0.1)
+                        ? colors.primary.withOpacity(0.1)
                         : null,
                     child: Column(
                       children: [
                         Icon(Icons.attach_money_rounded,
                             size: 16,
                             color: _tieneFiltroPrecio
-                                ? AppColors.primary
-                                : AppColors.grayMid),
+                                ? colors.primary
+                                : colors.grayMid),
                         const SizedBox(height: 2),
                         Text('Precio',
                             style: TextStyle(
@@ -1139,15 +1139,15 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                                   ? FontWeight.w700
                                   : FontWeight.w500,
                               color: _tieneFiltroPrecio
-                                  ? AppColors.primary
-                                  : AppColors.grayMid,
+                                  ? colors.primary
+                                  : colors.grayMid,
                             )),
                       ],
                     ),
                   ),
                 ),
               if (_panelFiltroAbierto)
-                Container(height: 0.5, color: AppColors.divider),
+                Container(height: 0.5, color: colors.divider),
 
               // Categorías (solo cuando abierto)
               if (_panelFiltroAbierto && cats.isNotEmpty)
@@ -1158,7 +1158,7 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                         // "Todas"
                         _fCat(null, Icons.apps_rounded, 'Todas',
                             _categoriasSeleccionadas.isEmpty),
-                        Container(height: 0.5, color: AppColors.divider),
+                        Container(height: 0.5, color: colors.divider),
                         ...cats.map((cat) {
                           final sel = _categoriasSeleccionadas.contains(cat);
                           final icono = _iconoCategoria(cat);
@@ -1175,15 +1175,15 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 6),
                               color: sel
-                                  ? AppColors.primary.withOpacity(0.1)
+                                  ? colors.primary.withOpacity(0.1)
                                   : null,
                               child: Column(
                                 children: [
                                   Icon(icono,
                                       size: 16,
                                       color: sel
-                                          ? AppColors.primary
-                                          : AppColors.grayMid),
+                                          ? colors.primary
+                                          : colors.grayMid),
                                   const SizedBox(height: 2),
                                   Text(
                                     cat.length > 8
@@ -1195,8 +1195,8 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                                           ? FontWeight.w700
                                           : FontWeight.w500,
                                       color: sel
-                                          ? AppColors.primary
-                                          : AppColors.grayMid,
+                                          ? colors.primary
+                                          : colors.grayMid,
                                     ),
                                   ),
                                 ],
@@ -1221,18 +1221,18 @@ class _EncontrarScreenState extends State<EncontrarScreen>
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        color: sel ? AppColors.primary.withOpacity(0.1) : null,
+        color: sel ? colors.primary.withOpacity(0.1) : null,
         child: Column(
           children: [
             Icon(icon,
                 size: 16,
-                color: sel ? AppColors.primary : AppColors.grayMid),
+                color: sel ? colors.primary : colors.grayMid),
             const SizedBox(height: 2),
             Text(label,
                 style: TextStyle(
                     fontSize: 9,
                     fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                    color: sel ? AppColors.primary : AppColors.grayMid)),
+                    color: sel ? colors.primary : colors.grayMid)),
           ],
         ),
       ),
@@ -1267,20 +1267,20 @@ class _EncontrarScreenState extends State<EncontrarScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.location_off,
-                size: 64, color: AppColors.grayMid.withOpacity(0.4)),
+                size: 64, color: colors.grayMid.withOpacity(0.4)),
             const SizedBox(height: 20),
-            const Text("Necesitamos tu ubicación",
+            Text("Necesitamos tu ubicación",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary)),
+                    color: colors.textPrimary)),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               "Para mostrarte productos cerca de ti, necesitamos acceder a tu ubicación.",
               textAlign: TextAlign.center,
               style: TextStyle(
-                  color: AppColors.grayMid, fontSize: 14, height: 1.5),
+                  color: colors.grayMid, fontSize: 14, height: 1.5),
             ),
             const SizedBox(height: 28),
             SizedBox(
@@ -1289,22 +1289,22 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                 onPressed: () async =>
                     await Geolocator.openAppSettings(),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: colors.primary,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text("Abrir configuración",
+                child: Text("Abrir configuración",
                     style: TextStyle(
-                        color: AppColors.textOnPrimary,
+                        color: colors.textOnPrimary,
                         fontWeight: FontWeight.w600)),
               ),
             ),
             const SizedBox(height: 12),
             TextButton(
               onPressed: _obtenerUbicacionYProductos,
-              child: const Text("Reintentar",
-                  style: TextStyle(color: AppColors.primary)),
+              child: Text("Reintentar",
+                  style: TextStyle(color: colors.primary)),
             ),
           ],
         ),

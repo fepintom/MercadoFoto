@@ -78,14 +78,14 @@ class _MensajesScreenState extends State<MensajesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: colors.surface,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Mensajes',
           style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: colors.textPrimary,
           ),
         ),
         actions: [
@@ -97,12 +97,12 @@ class _MensajesScreenState extends State<MensajesScreen> {
             ),
           ),
         ],
-        backgroundColor: AppColors.surface,
+        backgroundColor: colors.surface,
         elevation: 0,
-        iconTheme: const IconThemeData(color: AppColors.carbon),
+        iconTheme: IconThemeData(color: colors.textPrimary),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(0.5),
-          child: Container(color: AppColors.divider, height: 0.5),
+          child: Container(color: colors.divider, height: 0.5),
         ),
       ),
       body: _buildBody(),
@@ -111,17 +111,17 @@ class _MensajesScreenState extends State<MensajesScreen> {
 
   Widget _buildBody() {
     if (_userId == null) {
-      return const Center(
+      return Center(
         child: Text(
           'Inicia sesión para ver tus mensajes',
-          style: TextStyle(color: AppColors.grayMid),
+          style: TextStyle(color: colors.grayMid),
         ),
       );
     }
 
     if (_cargando) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.primary),
+      return Center(
+        child: CircularProgressIndicator(color: colors.primary),
       );
     }
 
@@ -131,21 +131,21 @@ class _MensajesScreenState extends State<MensajesScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.chat_bubble_outline,
-                size: 64, color: AppColors.grayMid.withOpacity(0.4)),
+                size: 64, color: colors.grayMid.withOpacity(0.4)),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Sin conversaciones aún',
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: colors.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Cuando alguien te escriba o\nle escribas a un vendedor, aparecerá aquí.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.grayMid, fontSize: 14),
+              style: TextStyle(color: colors.grayMid, fontSize: 14),
             ),
           ],
         ),
@@ -153,12 +153,12 @@ class _MensajesScreenState extends State<MensajesScreen> {
     }
 
     return RefreshIndicator(
-      color: AppColors.primary,
+      color: colors.primary,
       onRefresh: _cargar,
       child: ListView.separated(
         itemCount: _conversaciones.length,
         separatorBuilder: (_, __) =>
-            Divider(height: 0.5, color: AppColors.divider),
+            Divider(height: 0.5, color: colors.divider),
         itemBuilder: (_, i) => _buildItem(_conversaciones[i]),
       ),
     );
@@ -210,10 +210,10 @@ class _MensajesScreenState extends State<MensajesScreen> {
                       Expanded(
                         child: Text(
                           otroNombre,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
+                            color: colors.textPrimary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -221,9 +221,9 @@ class _MensajesScreenState extends State<MensajesScreen> {
                       ),
                       Text(
                         fecha,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
-                          color: AppColors.grayMid,
+                          color: colors.grayMid,
                         ),
                       ),
                     ],
@@ -231,9 +231,9 @@ class _MensajesScreenState extends State<MensajesScreen> {
                   const SizedBox(height: 2),
                   Text(
                     titulo,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.primary,
+                      color: colors.primary,
                       fontWeight: FontWeight.w500,
                     ),
                     maxLines: 1,
@@ -242,9 +242,9 @@ class _MensajesScreenState extends State<MensajesScreen> {
                   const SizedBox(height: 2),
                   Text(
                     ultimoMensaje,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      color: AppColors.grayMid,
+                      color: colors.grayMid,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -277,11 +277,11 @@ class _MensajesScreenState extends State<MensajesScreen> {
     }
     return CircleAvatar(
       radius: 26,
-      backgroundColor: AppColors.primary.withOpacity(0.15),
+      backgroundColor: colors.primary.withOpacity(0.15),
       child: Text(
         initial,
-        style: const TextStyle(
-          color: AppColors.primary,
+        style: TextStyle(
+          color: colors.primary,
           fontWeight: FontWeight.w600,
           fontSize: 18,
         ),

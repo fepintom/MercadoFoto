@@ -93,19 +93,19 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: colors.background,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              size: 20, color: AppColors.carbon),
+          icon: Icon(Icons.arrow_back_ios_new_rounded,
+              size: 20, color: colors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Perfil del vendedor',
           style: TextStyle(
-            color: AppColors.textPrimary,
+            color: colors.textPrimary,
             fontSize: 17,
             fontWeight: FontWeight.w600,
           ),
@@ -113,8 +113,8 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
         centerTitle: true,
       ),
       body: _cargando
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary))
+          ? Center(
+              child: CircularProgressIndicator(color: colors.primary))
           : _error != null
               ? _buildError()
               : _buildContenido(),
@@ -130,13 +130,13 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.wifi_off_rounded,
-                size: 56, color: AppColors.grayMid.withOpacity(0.6)),
+                size: 56, color: colors.grayMid.withOpacity(0.6)),
             const SizedBox(height: 16),
             Text(
               _error!,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 16,
-                  color: AppColors.grayMid,
+                  color: colors.grayMid,
                   fontWeight: FontWeight.w500),
               textAlign: TextAlign.center,
             ),
@@ -145,7 +145,7 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
               onPressed: _cargar,
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('Reintentar'),
-              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+              style: TextButton.styleFrom(foregroundColor: colors.primary),
             ),
           ],
         ),
@@ -168,10 +168,10 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
                 Container(
                   width: 80,
                   height: 80,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
-                      colors: [AppColors.primary, Color(0xFF00C9A7)],
+                      colors: [colors.primary, Color(0xFF00C9A7)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -192,10 +192,10 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
                 // Nombre
                 Text(
                   _nombre,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: colors.textPrimary,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -203,9 +203,9 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
                 const SizedBox(height: 4),
 
                 // Subtítulo de privacidad
-                const Text(
+                Text(
                   'Solo se muestran sus publicaciones activas',
-                  style: TextStyle(fontSize: 12, color: AppColors.grayMid),
+                  style: TextStyle(fontSize: 12, color: colors.grayMid),
                   textAlign: TextAlign.center,
                 ),
 
@@ -216,15 +216,15 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.08),
+                    color: colors.primary.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     '${_publicaciones.length} '
                     '${_publicaciones.length == 1 ? 'publicación' : 'publicaciones'}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      color: AppColors.primary,
+                      color: colors.primary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -275,13 +275,13 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
       child: Column(
         children: [
           Icon(Icons.inventory_2_outlined,
-              size: 56, color: AppColors.grayMid.withOpacity(0.5)),
+              size: 56, color: colors.grayMid.withOpacity(0.5)),
           const SizedBox(height: 16),
           Text(
             '$_nombre no tiene publicaciones activas',
-            style: const TextStyle(
+            style: TextStyle(
                 fontSize: 15,
-                color: AppColors.grayMid,
+                color: colors.grayMid,
                 fontWeight: FontWeight.w500),
             textAlign: TextAlign.center,
           ),
@@ -352,10 +352,10 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
                     titulo,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+                      color: colors.textPrimary,
                       height: 1.3,
                     ),
                   ),
@@ -363,10 +363,10 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
                     const SizedBox(height: 4),
                     Text(
                       _formatPrecio(precio),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.primary,
+                        color: colors.primary,
                       ),
                     ),
                   ],
@@ -381,10 +381,10 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
 
   Widget _imagenPlaceholder() {
     return Container(
-      color: AppColors.surface,
-      child: const Center(
+      color: colors.surface,
+      child: Center(
         child: Icon(Icons.image_outlined,
-            size: 36, color: AppColors.grayMid),
+            size: 36, color: colors.grayMid),
       ),
     );
   }
