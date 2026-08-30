@@ -398,7 +398,11 @@ class _VenderScreenState extends State<VenderScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: colors.surface,
+                // colors.carbon en vez de colors.surface: en modo oscuro
+                // surface (1C1C1E) es casi idéntico al fondo negro y la
+                // tarjeta se pierde; carbon (2C2C2E) da separación clara,
+                // igual que ya usa la tarjeta de "Venta automática".
+                color: colors.carbon,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: colors.divider, width: 0.5),
               ),
@@ -474,7 +478,11 @@ class _VenderScreenState extends State<VenderScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: colors.surface,
+                // colors.carbon en vez de colors.surface: en modo oscuro
+                // surface (1C1C1E) es casi idéntico al fondo negro y la
+                // tarjeta se pierde; carbon (2C2C2E) da separación clara,
+                // igual que ya usa la tarjeta de "Venta automática".
+                color: colors.carbon,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: colors.divider, width: 0.5),
               ),
