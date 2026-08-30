@@ -67,7 +67,7 @@ class _MisVentasScreenState extends State<MisVentasScreen> {
     switch (estado) {
       case 'pendiente_pago':    return colors.grayMid;
       case 'pago_confirmado':   return Colors.blue;
-      case 'en_camino':         return Colors.orange;
+      case 'en_camino':         return colors.warning;
       case 'entrega_reportada': return Colors.deepOrange;
       case 'entregado':         return Colors.green;
       case 'en_disputa':        return Colors.red;
@@ -481,7 +481,7 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
     if (estado == 'observaciones_reportadas') {
       final obs = entrega['observaciones_retiro'] as String? ?? '';
       return _accionOkdelivery(
-        color: Colors.orange,
+        color: colors.warning,
         icon: Icons.warning_amber_rounded,
         mensaje: 'El repartidor reportó: "$obs". Repáralo o se cancela la venta.',
         boton: Row(

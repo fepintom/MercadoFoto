@@ -167,7 +167,7 @@ class ReputacionCard extends StatelessWidget {
                   if (p('excelente') > 0)
                     Expanded(
                         flex: (p('excelente') * 10).round().clamp(1, 1000),
-                        child: Container(color: const Color(0xFF34C759))),
+                        child: Container(color: colors.success)),
                 ],
               ),
             ),

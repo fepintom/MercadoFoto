@@ -17,6 +17,13 @@ class AppColors {
   static const Color textPrimary = Color(0xFF2C2C2E); // Texto principal
   static const Color textSecondary = Color(0xFF6B6B6E); // Texto secundario
   static const Color textOnPrimary = Color(0xFFFFFFFF); // Texto sobre rojo
+  // Estados. Antes estaban hardcodeados dentro de cada pantalla (#34C759,
+  // #FF9500), lo que impedía que la regla de contraste los alcanzara: en
+  // fondo rojo el verde de "Nuevo" o "Puedes recibirlo hoy" quedaba ilegible
+  // y ningún cambio de paleta podía corregirlo. Ahora son tokens y se
+  // ajustan solos junto al resto.
+  static const Color success = Color(0xFF34C759); // "Nuevo", "Recíbelo hoy"
+  static const Color warning = Color(0xFFFF9500); // "Usado", avisos
 }
 
 // ── Paleta oscura ────────────────────────────────────────────────────────
@@ -41,6 +48,9 @@ class AppColorsDark {
   static const Color textPrimary = Color(0xFFF2F2F2);
   static const Color textSecondary = Color(0xFF9A9A9E);
   static const Color textOnPrimary = Color(0xFFFFFFFF);
+  // Un poco más vivos que en claro, para que resalten sobre el negro.
+  static const Color success = Color(0xFF32D74B);
+  static const Color warning = Color(0xFFFFA00A);
 }
 
 // ── Paleta dinámica ──────────────────────────────────────────────────────
@@ -59,6 +69,8 @@ class AppPalette {
   final Color textPrimary;
   final Color textSecondary;
   final Color textOnPrimary;
+  final Color success;
+  final Color warning;
 
   const AppPalette({
     required this.primary,
@@ -71,6 +83,8 @@ class AppPalette {
     required this.textPrimary,
     required this.textSecondary,
     required this.textOnPrimary,
+    required this.success,
+    required this.warning,
   });
 
   static const AppPalette light = AppPalette(
@@ -84,6 +98,8 @@ class AppPalette {
     textPrimary: AppColors.textPrimary,
     textSecondary: AppColors.textSecondary,
     textOnPrimary: AppColors.textOnPrimary,
+    success: AppColors.success,
+    warning: AppColors.warning,
   );
 
   static const AppPalette dark = AppPalette(
@@ -97,43 +113,155 @@ class AppPalette {
     textPrimary: AppColorsDark.textPrimary,
     textSecondary: AppColorsDark.textSecondary,
     textOnPrimary: AppColorsDark.textOnPrimary,
+    success: AppColorsDark.success,
+    warning: AppColorsDark.warning,
   );
 
   static AppPalette of(bool isDark) => isDark ? dark : light;
 
-  /// Devuelve esta paleta con un tono rojo (el rojo de la marca OkVenta,
-  /// [AppColors.primary]) mezclado en el fondo, según [intensity] (0.0 =
-  /// sin tono, 1.0 = tono máximo). Se usa en modo claro para el slider
-  /// "Color de fondo": a más intensidad, más cubre el rojo toda la app,
-  /// igual que el modo oscuro cubre todo de negro.
+  // ── Regla de contraste ──────────────────────────────────────────────────
+  //
+  // Tanto el modo claro como el oscuro cumplen sin querer una invariante:
+  // el fondo y las tarjetas están del MISMO lado de la escala de luz, y el
+  // texto está del lado opuesto. Por eso un único `textPrimary` alcanza
+  // para toda la app (se lee igual de bien sobre el fondo que sobre una
+  // tarjeta). El tinte rojo rompía esa invariante — dejaba el fondo oscuro
+  // pero las tarjetas blancas y el texto oscuro — y por eso se perdía la
+  // información en ~43 pantallas.
+  //
+  // Estas constantes y helpers convierten esa invariante en una regla
+  // explícita: dado cualquier fondo, la paleta ajusta sola sus colores de
+  // texto hasta alcanzar contraste AA, y si el fondo se vuelve oscuro
+  // invierte la familia completa (tarjetas y texto) en vez de dejar una
+  // mezcla ilegible.
+
+  /// Contraste mínimo WCAG AA para texto normal.
+  static const double kContrasteAA = 4.5;
+
+  /// Tope del slider: rosa de marca.
   ///
-  /// IMPORTANTE: `surface` (tarjetas, chips, la barra inferior, el precio
-  /// destacado, etc.) se deja SIN teñir a propósito. Mucho contenido de la
-  /// app dibuja texto/íconos en `colors.primary` (el mismo rojo) sobre un
-  /// fondo `colors.surface` — si `surface` también se tiñe de rojo, ese
-  /// texto rojo queda casi invisible sobre una tarjeta rojiza (por ejemplo
-  /// el precio en el detalle de producto, o los botones "Servicios"/
-  /// "Vender" de la barra inferior, que se camuflan contra la barra). Al
-  /// mantener `surface` blanco, esas tarjetas siguen contrastando contra el
-  /// fondo rojo exactamente igual que hoy contrastan contra el gris.
+  /// El slider NO llega al rojo pleno a propósito. Con el texto oscuro de
+  /// la app (#2C2C2E) existe una banda de luminancia entre 0.183 y 0.289 en
+  /// la que NINGÚN color de texto —ni negro ni blanco— alcanza 4.5:1. El
+  /// slider anterior barría esa banda entre 0.7 y 0.9, que es justo donde
+  /// se perdía la información. Ahora el recorrido termina en este rosa
+  /// (L≈0.47 ⇒ 6.9:1 con el texto principal), muy por encima de la zona
+  /// muerta, y el rojo pleno vive en un modo aparte ([rojo]) en vez de al
+  /// final del mismo control. Así el slider nunca da un salto.
+  static const Color _rosaMax = Color(0xFFE8A6A8);
+
+  /// Familia oscura ("Modo Rojo"). El fondo es el rojo profundo y las
+  /// tarjetas un rojo más claro, igual que en modo oscuro el fondo es negro
+  /// y las tarjetas gris carbón.
+  static const Color _rojoFondo = Color(0xFFA81C1C);
+  static const Color _rojoCard = Color(0xFFC62B2B);
+
+  static double _contraste(Color a, Color b) {
+    final la = a.computeLuminance();
+    final lb = b.computeLuminance();
+    final hi = la > lb ? la : lb;
+    final lo = la > lb ? lb : la;
+    return (hi + 0.05) / (lo + 0.05);
+  }
+
+  /// Acerca [fg] hacia [hacia] (negro o blanco) lo mínimo necesario para
+  /// que alcance [objetivo] de contraste contra [fondo]. Si ya lo cumple lo
+  /// devuelve intacto, así en el modo normal (sin tinte) ningún color se
+  /// mueve ni un ápice.
+  static Color _asegurar(
+    Color fg,
+    Color fondo, {
+    required Color hacia,
+    double objetivo = kContrasteAA,
+  }) {
+    if (_contraste(fg, fondo) >= objetivo) return fg;
+    for (int paso = 1; paso <= 20; paso++) {
+      final c = Color.lerp(fg, hacia, paso / 20)!;
+      if (_contraste(c, fondo) >= objetivo) return c;
+    }
+    return hacia;
+  }
+
+  /// ¿Esta paleta quedó con fondo oscuro? Sirve para elegir el
+  /// [Brightness] correcto del ThemeData y para que las pantallas que lo
+  /// necesiten puedan preguntar sin tener que conocer el valor del slider.
+  bool get esFondoOscuro => background.computeLuminance() < 0.25;
+
+  /// Devuelve esta paleta con el rosa de marca mezclado en el fondo según
+  /// [intensity] (0.0 = sin tono, 1.0 = [_rosaMax]), manteniendo SIEMPRE la
+  /// legibilidad.
+  ///
+  /// El fondo va del gris de sistema al rosa; las tarjetas siguen blancas y
+  /// el texto oscuro. A medida que el rosa se satura, los textos y el rojo
+  /// de acento se OSCURECEN lo justo para conservar 4.5:1 contra el fondo.
+  /// Oscurecerlos nunca perjudica: sobre una tarjeta blanca contrastan
+  /// todavía más, así que un mismo color de texto sigue sirviendo en las dos
+  /// superficies.
+  ///
+  /// La comprobación se hace contra el fondo real, no contra valores fijos:
+  /// si mañana se cambia el color del tinte, la regla sigue valiendo sin
+  /// tocar ninguna pantalla.
   AppPalette withRedTint(double intensity) {
     final i = intensity.clamp(0.0, 1.0);
     if (i <= 0) return this;
+
+    final bg = Color.lerp(background, _rosaMax, i)!;
+    Color ajustar(Color c, [double objetivo = kContrasteAA]) =>
+        _asegurar(c, bg, hacia: Colors.black, objetivo: objetivo);
+
     return AppPalette(
-      primary: primary,
-      primaryDark: primaryDark,
+      primary: ajustar(primary),
+      primaryDark: ajustar(primaryDark),
       carbon: carbon,
-      grayMid: grayMid,
-      // Fondo: se mezcla fuerte hacia el rojo de marca (cubre toda la app).
-      background: Color.lerp(background, AppColors.primary, i)!,
-      // Superficie: se deja intacta (ver nota arriba).
+      grayMid: ajustar(grayMid),
+      background: bg,
+      // Las tarjetas se quedan blancas: siguen contrastando contra el rosa
+      // igual que hoy contrastan contra el gris.
       surface: surface,
-      // Separadores: se dejan intactos por la misma razón — sobre todo
-      // aparecen como bordes de tarjetas blancas.
-      divider: divider,
-      textPrimary: textPrimary,
-      textSecondary: textSecondary,
+      divider: Color.lerp(divider, _rosaMax, i)!,
+      textPrimary: ajustar(textPrimary),
+      textSecondary: ajustar(textSecondary),
       textOnPrimary: textOnPrimary,
+      success: ajustar(success),
+      warning: ajustar(warning),
+    );
+  }
+
+  /// Paleta del "Modo Rojo": la app cubierta de rojo, con la paleta
+  /// invertida igual que hace el modo oscuro con el negro — fondo rojo
+  /// profundo, tarjetas en un rojo más claro, texto blanco.
+  ///
+  /// El acento pasa de rojo a blanco a propósito: sobre un fondo rojo el
+  /// rojo ya no distingue nada (el precio se camuflaría contra su propia
+  /// tarjeta). Los textos se ACLARAN hasta cumplir 4.5:1 contra la
+  /// superficie más clara de las dos, que es el peor caso — así el mismo
+  /// color sirve sobre el fondo y sobre las tarjetas.
+  static final AppPalette rojo = _construirRojo();
+
+  static AppPalette _construirRojo() {
+    const bg = _rojoFondo;
+    const card = _rojoCard;
+    final peorCaso =
+        card.computeLuminance() > bg.computeLuminance() ? card : bg;
+    Color ajustar(Color c, [double objetivo = kContrasteAA]) =>
+        _asegurar(c, peorCaso, hacia: Colors.white, objetivo: objetivo);
+
+    return AppPalette(
+      primary: Colors.white,
+      primaryDark: const Color(0xFFFFD9D9),
+      // `carbon` se usa como relleno oscuro (snackbars, scrims, chips) con
+      // texto blanco encima, así que se mantiene oscuro, en rojo profundo.
+      carbon: const Color(0xFF7A1414),
+      grayMid: ajustar(const Color(0xFFF3C2C2), 4.0),
+      background: bg,
+      surface: card,
+      divider: Colors.white.withOpacity(0.28),
+      textPrimary: ajustar(const Color(0xFFF2F2F2)),
+      textSecondary: ajustar(const Color(0xFFFFE1E1)),
+      // Texto sobre botones de acento (que ahora son blancos) = rojo profundo.
+      textOnPrimary: bg,
+      success: ajustar(const Color(0xFF7BE89C)),
+      warning: ajustar(const Color(0xFFFFC46B)),
     );
   }
 }
@@ -146,6 +274,9 @@ class AppPalette {
 /// en cada llamada.
 AppPalette get colors {
   if (ThemeService.isDarkMode) return AppPalette.dark;
+  // El Modo Rojo cubre toda la app, igual que el oscuro: manda por sobre el
+  // slider de fondo (que solo maneja los rosados del modo diurno).
+  if (ThemeService.isRedMode) return AppPalette.rojo;
   return AppPalette.light.withRedTint(ThemeService.bgTint);
 }
 
@@ -160,7 +291,31 @@ class AppTheme {
   static ThemeData lightThemeWithTint(double tint) {
     final p = AppPalette.light.withRedTint(tint);
     return _build(
-      brightness: Brightness.light,
+      // En "Modo Rojo" el fondo es oscuro, así que el ThemeData tiene que
+      // declararse oscuro para que los widgets de Material que se pintan
+      // solos (ripples, íconos por defecto, la barra de estado) elijan sus
+      // variantes claras en vez de las oscuras.
+      brightness: p.esFondoOscuro ? Brightness.dark : Brightness.light,
+      primary: p.primary,
+      secondary: p.carbon,
+      surface: p.surface,
+      background: p.background,
+      divider: p.divider,
+      textPrimary: p.textPrimary,
+      textSecondary: p.textSecondary,
+      textOnPrimary: p.textOnPrimary,
+      grayMid: p.grayMid,
+    );
+  }
+
+  /// Tema del "Modo Rojo" — ver [AppPalette.rojo].
+  static ThemeData get redTheme {
+    final p = AppPalette.rojo;
+    return _build(
+      // Fondo oscuro ⇒ brightness oscuro, para que los widgets de Material
+      // que se pintan solos (ripples, íconos por defecto, barra de estado)
+      // elijan sus variantes claras.
+      brightness: Brightness.dark,
       primary: p.primary,
       secondary: p.carbon,
       surface: p.surface,

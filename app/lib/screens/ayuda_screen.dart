@@ -699,7 +699,7 @@ class _TarjetaTicket extends StatelessWidget {
 
   Color _estadoColor(String estado) {
     switch (estado) {
-      case 'en_proceso': return Colors.orange;
+      case 'en_proceso': return colors.warning;
       case 'resuelto':   return Colors.green;
       default:           return colors.primary;
     }

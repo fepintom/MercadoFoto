@@ -180,9 +180,9 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
       builder: (_) => AlertDialog(
         backgroundColor: colors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.science_rounded, color: Colors.orange),
+            Icon(Icons.science_rounded, color: colors.warning),
             SizedBox(width: 8),
             Expanded(child: Text('Pago simulado (modo prueba)')),
           ],
@@ -307,7 +307,7 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                                   decoration: BoxDecoration(
                                     color: tipo == 'ofrezco'
                                         ? colors.primary.withOpacity(0.1)
-                                        : Colors.orange.withOpacity(0.1),
+                                        : colors.warning.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
@@ -317,7 +317,7 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                                         fontWeight: FontWeight.w600,
                                         color: tipo == 'ofrezco'
                                             ? colors.primary
-                                            : Colors.orange),
+                                            : colors.warning),
                                   ),
                                 ),
                                 if (verificado) ...[

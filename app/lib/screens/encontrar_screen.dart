@@ -669,9 +669,9 @@ class _EncontrarScreenState extends State<EncontrarScreen>
               ),
               radius: 2000,           // 2 km en metros
               useRadiusInMeter: true,
-              color: const Color(0xFF34C759).withOpacity(0),   // relleno: animado
+              color: colors.success.withOpacity(0),   // relleno: animado
               borderStrokeWidth: 2.5,
-              borderColor: const Color(0xFF34C759).withOpacity(0), // borde: animado
+              borderColor: colors.success.withOpacity(0), // borde: animado
             ))
         .toList();
 
@@ -696,10 +696,10 @@ class _EncontrarScreenState extends State<EncontrarScreen>
                       ),
                       radius: 2000,
                       useRadiusInMeter: true,
-                      color: const Color(0xFF34C759).withOpacity(relleno),
+                      color: colors.success.withOpacity(relleno),
                       borderStrokeWidth: 2.0,
                       borderColor:
-                          const Color(0xFF34C759).withOpacity(borde),
+                          colors.success.withOpacity(borde),
                     ))
                 .toList();
 

@@ -369,7 +369,8 @@ class _ListaServiciosState extends State<_ListaServicios> {
                       color: colors.textPrimary)),
               const SizedBox(height: 4),
               Text(
-                'Controla la intensidad del rojo de fondo en modo claro',
+                'Tiñe el fondo de rosa en modo diurno. Para el rojo completo, usa\n'
+                '"Modo rojo" en Mi cuenta.',
                 style: TextStyle(fontSize: 12, color: colors.grayMid),
               ),
               ValueListenableBuilder<double>(
@@ -651,7 +652,7 @@ class _TarjetaServicio extends StatelessWidget {
     final fotos     = servicio['fotos'] as List? ?? [];
     final verificado = servicio['certificado_verificado'] as bool? ?? false;
     final comunas   = servicio['comunas'] as String? ?? '';
-    final tipoColor = tipo == 'ofrezco' ? colors.primary : Colors.orange;
+    final tipoColor = tipo == 'ofrezco' ? colors.primary : colors.warning;
     final prefix    = tipo == 'ofrezco' ? 'Ofrezco' : 'Busco';
 
     return Container(
@@ -917,7 +918,7 @@ class _TarjetaServicioCompacta extends StatelessWidget {
     final modalidad = servicio['modalidad'] as String? ?? 'servicio';
     final valor     = (servicio['valor'] as num?)?.toDouble() ?? 0;
     final fotos     = servicio['fotos'] as List? ?? [];
-    final tipoColor = tipo == 'ofrezco' ? colors.primary : Colors.orange;
+    final tipoColor = tipo == 'ofrezco' ? colors.primary : colors.warning;
     final prefix    = tipo == 'ofrezco' ? 'Ofrezco' : 'Busco';
 
     return GestureDetector(
@@ -1235,10 +1236,10 @@ class _DeliveryTabState extends State<_DeliveryTab> {
                         ),
                         style: OutlinedButton.styleFrom(
                           foregroundColor:
-                              activo ? Colors.orange : Colors.green,
+                              activo ? colors.warning : Colors.green,
                           side: BorderSide(
                               color: activo
-                                  ? Colors.orange
+                                  ? colors.warning
                                   : Colors.green),
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           shape: RoundedRectangleBorder(
@@ -1704,7 +1705,7 @@ class _MapaServiciosState extends State<_MapaServicios> {
                 _fBtn('ofrezco', Icons.handyman_outlined, 'Ofrezco',
                     _filtroTipo == 'ofrezco', colors.primary),
                 _fBtn('busco', Icons.search_rounded, 'Busco',
-                    _filtroTipo == 'busco', Colors.orange),
+                    _filtroTipo == 'busco', colors.warning),
 
                 Container(height: 0.5, color: colors.divider),
 
