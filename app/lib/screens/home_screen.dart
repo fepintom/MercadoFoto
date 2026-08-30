@@ -877,10 +877,24 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
                       ),
-                      child: Icon(
-                        Icons.handyman_rounded,
-                        color: Colors.white,
-                        size: selServ ? 22 : 20,
+                      // Modo oscuro: okventin_servicios en vez del ícono.
+                      child: ValueListenableBuilder<bool>(
+                        valueListenable: ThemeService.isDarkNotifier,
+                        builder: (_, isDark, __) {
+                          if (isDark) {
+                            return Padding(
+                              padding: const EdgeInsets.all(4),
+                              child: Image.asset(
+                                  'assets/images/okventin_servicios.png',
+                                  fit: BoxFit.contain),
+                            );
+                          }
+                          return Icon(
+                            Icons.handyman_rounded,
+                            color: Colors.white,
+                            size: selServ ? 22 : 20,
+                          );
+                        },
                       ),
                     ),
                   ),
