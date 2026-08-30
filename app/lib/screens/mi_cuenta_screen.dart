@@ -129,22 +129,49 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
 
   Widget _avatar({double size = 44}) {
     final inicial = nombreMostrado.isNotEmpty ? nombreMostrado[0].toUpperCase() : "U";
+    // _fotoUrl viene del backend como ruta relativa (/uploads/...), hay que
+    // anteponer el baseUrl igual que en perfil_info_screen.dart — si no, la
+    // imagen nunca carga y queda el círculo negro vacío (sin inicial).
     final tienefoto = _fotoUrl.isNotEmpty;
+    final fotoCompleta = tienefoto
+        ? (_fotoUrl.startsWith('http')
+            ? _fotoUrl
+            : '${ApiService.baseUrl}$_fotoUrl')
+        : '';
     return CircleAvatar(
       radius: size / 2,
       backgroundColor: colors.carbon,
-      backgroundImage: tienefoto ? NetworkImage(_fotoUrl) : null,
-      onBackgroundImageError: tienefoto ? (_, __) {} : null,
-      child: tienefoto
-          ? null
-          : Text(
-              inicial,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: size * 0.4,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+      child: ClipOval(
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: tienefoto
+              ? Image.network(
+                  fotoCompleta,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Center(
+                    child: Text(
+                      inicial,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: size * 0.4,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                )
+              : Center(
+                  child: Text(
+                    inicial,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: size * 0.4,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+        ),
+      ),
     );
   }
 
@@ -732,7 +759,8 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                     builder: (_, isDark, __) {
                       return Image.asset(
                         isDark ? 'assets/images/okventin.png' : 'assets/images/home.png',
-                        height: 49,
+                        // Modo oscuro: mismo tamaño agrandado que en el home (57).
+                        height: isDark ? 57 : 49,
                       );
                     },
                   ),

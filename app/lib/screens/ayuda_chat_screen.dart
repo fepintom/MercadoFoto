@@ -235,10 +235,11 @@ class _AyudaChatScreenState extends State<AyudaChatScreen> {
                   ValueListenableBuilder<bool>(
                     valueListenable: ThemeService.isDarkNotifier,
                     builder: (_, isDark, __) {
+                      // Modo oscuro: mismo tamaño agrandado que en el home (57).
                       return Image.asset(
                         isDark ? 'assets/images/okventin_chat.png' : 'assets/images/mensajes.png',
-                        width: 26,
-                        height: 26,
+                        width: isDark ? 57 : 26,
+                        height: isDark ? 57 : 26,
                       );
                     },
                   ),

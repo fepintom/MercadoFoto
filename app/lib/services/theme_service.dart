@@ -11,21 +11,31 @@ class ThemeService {
   ThemeService._();
 
   static const String _prefsKey = 'ok_venta_dark_mode';
+  static const String _tintPrefsKey = 'ok_venta_bg_tint';
 
   /// true = modo oscuro, false = modo claro. Empieza en claro por defecto
   /// hasta que [init] cargue el valor guardado.
   static final ValueNotifier<bool> isDarkNotifier = ValueNotifier<bool>(false);
 
+  /// Intensidad (0.0 a 1.0) del tono rojo de fondo en modo claro. 0 = fondo
+  /// normal de la app. Solo tiene efecto en modo claro (en modo oscuro el
+  /// fondo sigue siendo negro).
+  static final ValueNotifier<double> bgTintNotifier =
+      ValueNotifier<double>(0.0);
+
   static bool get isDarkMode => isDarkNotifier.value;
 
-  /// Carga la preferencia guardada. Se llama una vez al iniciar la app.
+  static double get bgTint => bgTintNotifier.value;
+
+  /// Carga las preferencias guardadas. Se llama una vez al iniciar la app.
   static Future<void> init() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       isDarkNotifier.value = prefs.getBool(_prefsKey) ?? false;
+      bgTintNotifier.value = prefs.getDouble(_tintPrefsKey) ?? 0.0;
     } catch (_) {
       // Si falla la carga (primer uso, error de plataforma, etc.) se
-      // mantiene el modo claro por defecto.
+      // mantiene el modo claro y sin tono por defecto.
     }
   }
 
@@ -41,6 +51,20 @@ class ThemeService {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_prefsKey, isDarkNotifier.value);
+    } catch (_) {
+      // Best-effort: si no se puede persistir, igual queda aplicado en
+      // esta sesión.
+    }
+  }
+
+  /// Fija la intensidad del tono rojo de fondo (modo claro) y la guarda.
+  /// Usado por el slider "Color de fondo" en el control de tamaño de las
+  /// publicaciones.
+  static Future<void> setBgTint(double value) async {
+    bgTintNotifier.value = value.clamp(0.0, 1.0);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(_tintPrefsKey, bgTintNotifier.value);
     } catch (_) {
       // Best-effort: si no se puede persistir, igual queda aplicado en
       // esta sesión.

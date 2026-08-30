@@ -32,24 +32,30 @@ class MercadoFotoApp extends StatelessWidget {
   Widget build(BuildContext context) {
     // ValueListenableBuilder reconstruye el MaterialApp cuando cambia el
     // modo claro/oscuro (ThemeService.toggle(), llamado desde el ícono de
-    // ojo en el header del home).
+    // ojo en el header del home) o la intensidad del color de fondo (slider
+    // "Color de fondo" en el control de tamaño de las publicaciones).
     return ValueListenableBuilder<bool>(
       valueListenable: ThemeService.isDarkNotifier,
       builder: (context, isDark, __) {
-        return MaterialApp(
-          debugShowCheckedModeBanner: false,
-          navigatorKey: rootNavigatorKey,
-          title: 'OK Venta',
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
-          home: const _AuthGate(),
-          // Toca cualquier zona fuera del teclado → baja el teclado en toda la app
-          builder: (context, child) => GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-            child: child!,
-          ),
+        return ValueListenableBuilder<double>(
+          valueListenable: ThemeService.bgTintNotifier,
+          builder: (context, bgTint, __) {
+            return MaterialApp(
+              debugShowCheckedModeBanner: false,
+              navigatorKey: rootNavigatorKey,
+              title: 'OK Venta',
+              theme: AppTheme.lightThemeWithTint(bgTint),
+              darkTheme: AppTheme.darkTheme,
+              themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+              home: const _AuthGate(),
+              // Toca cualquier zona fuera del teclado → baja el teclado en toda la app
+              builder: (context, child) => GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+                child: child!,
+              ),
+            );
+          },
         );
       },
     );

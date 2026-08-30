@@ -112,8 +112,8 @@ class _MisServiciosScreenState extends State<MisServiciosScreen>
                               padding: const EdgeInsets.only(right: 10),
                               child: Image.asset(
                                   'assets/images/okventin_servicios.png',
-                                  width: 32,
-                                  height: 32),
+                                  width: 57,
+                                  height: 57),
                             );
                           },
                         ),
@@ -233,7 +233,7 @@ class _ListaServicios extends StatelessWidget {
               builder: (_, isDark, __) {
                 if (isDark) {
                   return Image.asset('assets/images/okventin_servicios.png',
-                      height: 64);
+                      height: 57);
                 }
                 return Icon(
                   tipo == 'ofrezco'

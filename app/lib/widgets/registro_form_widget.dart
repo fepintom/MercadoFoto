@@ -157,7 +157,8 @@ class _RegistroFormWidgetState extends State<RegistroFormWidget> {
               builder: (_, isDark, __) {
                 return Image.asset(
                   isDark ? 'assets/images/okventin.png' : 'assets/images/home.png',
-                  height: 39,
+                  // Modo oscuro: mismo tamaño agrandado que en el home (57).
+                  height: isDark ? 57 : 39,
                 );
               },
             ),

@@ -100,6 +100,31 @@ class AppPalette {
   );
 
   static AppPalette of(bool isDark) => isDark ? dark : light;
+
+  /// Devuelve esta paleta con un tono rojo (el rojo de la marca OkVenta,
+  /// [AppColors.primary]) mezclado en el fondo y las superficies, según
+  /// [intensity] (0.0 = sin tono, 1.0 = tono máximo). Se usa en modo claro
+  /// para el slider "Color de fondo": a más intensidad, más cubre el rojo
+  /// toda la app, igual que el modo oscuro cubre todo de negro.
+  AppPalette withRedTint(double intensity) {
+    final i = intensity.clamp(0.0, 1.0);
+    if (i <= 0) return this;
+    return AppPalette(
+      primary: primary,
+      primaryDark: primaryDark,
+      carbon: carbon,
+      grayMid: grayMid,
+      // Fondo: se mezcla fuerte hacia el rojo de marca (cubre toda la app).
+      background: Color.lerp(background, AppColors.primary, i)!,
+      // Superficie (tarjetas/inputs): mezcla más suave para que sigan
+      // destacando sobre el fondo, igual que blanco destaca sobre gris.
+      surface: Color.lerp(surface, AppColors.primary, i * 0.35)!,
+      divider: Color.lerp(divider, AppColors.primaryDark, i * 0.4)!,
+      textPrimary: textPrimary,
+      textSecondary: textSecondary,
+      textOnPrimary: textOnPrimary,
+    );
+  }
 }
 
 /// Paleta activa según el modo actual. Se usa en las pantallas ya migradas
@@ -108,23 +133,34 @@ class AppPalette {
 /// sobre `ThemeService.isDarkNotifier` en el build() de cada pantalla es lo
 /// que dispara el redibujado; este getter solo entrega el valor correcto
 /// en cada llamada.
-AppPalette get colors => AppPalette.of(ThemeService.isDarkMode);
+AppPalette get colors {
+  if (ThemeService.isDarkMode) return AppPalette.dark;
+  return AppPalette.light.withRedTint(ThemeService.bgTint);
+}
 
 class AppTheme {
   static ThemeData get theme => lightTheme;
 
-  static ThemeData get lightTheme => _build(
-        brightness: Brightness.light,
-        primary: AppColors.primary,
-        secondary: AppColors.carbon,
-        surface: AppColors.surface,
-        background: AppColors.background,
-        divider: AppColors.divider,
-        textPrimary: AppColors.textPrimary,
-        textSecondary: AppColors.textSecondary,
-        textOnPrimary: AppColors.textOnPrimary,
-        grayMid: AppColors.grayMid,
-      );
+  static ThemeData get lightTheme => lightThemeWithTint(0.0);
+
+  /// Tema claro con el fondo/superficies mezclados hacia el rojo de marca
+  /// según [tint] (0.0 a 1.0) — ver [AppPalette.withRedTint]. Usado por el
+  /// slider "Color de fondo".
+  static ThemeData lightThemeWithTint(double tint) {
+    final p = AppPalette.light.withRedTint(tint);
+    return _build(
+      brightness: Brightness.light,
+      primary: p.primary,
+      secondary: p.carbon,
+      surface: p.surface,
+      background: p.background,
+      divider: p.divider,
+      textPrimary: p.textPrimary,
+      textSecondary: p.textSecondary,
+      textOnPrimary: p.textOnPrimary,
+      grayMid: p.grayMid,
+    );
+  }
 
   static ThemeData get darkTheme => _build(
         brightness: Brightness.dark,
