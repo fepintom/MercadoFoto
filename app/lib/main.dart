@@ -12,6 +12,7 @@ import 'services/navigation_service.dart';
 import 'services/push_service.dart';
 import 'services/session_service.dart';
 import 'services/theme_service.dart';
+import 'services/vista_servicios_service.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -20,6 +21,7 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   await ThemeService.init();
+  await VistaServicios.init();
   runApp(const MercadoFotoApp());
   // Deep links okventa:// (QRs de la etiqueta de envío)
   DeepLinkService.init();
@@ -32,39 +34,28 @@ class MercadoFotoApp extends StatelessWidget {
   Widget build(BuildContext context) {
     // Los ValueListenableBuilder reconstruyen el MaterialApp cuando cambia
     // el modo claro/oscuro (ThemeService.toggle(), llamado desde el ícono de
-    // ojo en el header del home), el Modo Rojo (selector "MODO" en Mi
-    // cuenta) o la intensidad del color de fondo (slider "Color de fondo"
-    // en el control de tamaño de las publicaciones).
+    // ojo en el header del home) o la intensidad del gris de fondo (slider
+    // "Color de fondo" en el control de tamaño de las publicaciones).
     return ValueListenableBuilder<bool>(
       valueListenable: ThemeService.isDarkNotifier,
       builder: (context, isDark, __) {
-        return ValueListenableBuilder<bool>(
-          valueListenable: ThemeService.redModeNotifier,
-          builder: (context, isRed, __) {
-            return ValueListenableBuilder<double>(
-              valueListenable: ThemeService.bgTintNotifier,
-              builder: (context, bgTint, __) {
-                // El Modo Rojo se aplica por el canal "oscuro" del
-                // MaterialApp: es una paleta de fondo oscuro, igual que el
-                // modo nocturno, y así no compite con el tema claro.
-                final oscuroActivo = isDark || isRed;
-                return MaterialApp(
-                  debugShowCheckedModeBanner: false,
-                  navigatorKey: rootNavigatorKey,
-                  title: 'OK Venta',
-                  theme: AppTheme.lightThemeWithTint(bgTint),
-                  darkTheme: isRed ? AppTheme.redTheme : AppTheme.darkTheme,
-                  themeMode:
-                      oscuroActivo ? ThemeMode.dark : ThemeMode.light,
-                  home: const _AuthGate(),
-                  // Toca cualquier zona fuera del teclado → baja el teclado en toda la app
-                  builder: (context, child) => GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-                    child: child!,
-                  ),
-                );
-              },
+        return ValueListenableBuilder<double>(
+          valueListenable: ThemeService.bgTintNotifier,
+          builder: (context, bgTint, __) {
+            return MaterialApp(
+              debugShowCheckedModeBanner: false,
+              navigatorKey: rootNavigatorKey,
+              title: 'OK Venta',
+              theme: AppTheme.lightThemeWithTint(bgTint),
+              darkTheme: AppTheme.darkTheme,
+              themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+              home: const _AuthGate(),
+              // Toca cualquier zona fuera del teclado → baja el teclado en toda la app
+              builder: (context, child) => GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+                child: child!,
+              ),
             );
           },
         );

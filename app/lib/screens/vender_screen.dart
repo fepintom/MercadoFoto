@@ -351,7 +351,7 @@ class _VenderScreenState extends State<VenderScreen> {
                           Text(
                             "Saca una foto",
                             style: TextStyle(
-                              color: colors.surface,
+                              color: AppColors.onCarbon,
                               fontSize: 20,
                               fontWeight: FontWeight.w800,
                             ),
@@ -364,7 +364,7 @@ class _VenderScreenState extends State<VenderScreen> {
                   Text(
                     "La IA analiza tu imagen y genera automáticamente el título, descripción y categoría. ¡Listo en segundos!",
                     style: TextStyle(
-                      color: colors.surface.withOpacity(0.75),
+                      color: AppColors.onCarbon.withOpacity(0.75),
                       fontSize: 14,
                       height: 1.5,
                     ),
@@ -415,11 +415,11 @@ class _VenderScreenState extends State<VenderScreen> {
                         width: 48,
                         height: 48,
                         decoration: BoxDecoration(
-                          color: colors.background,
+                          color: AppColors.onCarbon.withOpacity(0.10),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(Icons.edit_rounded,
-                            color: colors.textPrimary, size: 22),
+                            color: AppColors.onCarbon, size: 22),
                       ),
                       const SizedBox(width: 14),
                       Column(
@@ -428,7 +428,7 @@ class _VenderScreenState extends State<VenderScreen> {
                           Text(
                             "VENTA MANUAL",
                             style: TextStyle(
-                              color: colors.grayMid,
+                              color: AppColors.onCarbonSecondary,
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
                               letterSpacing: 1.2,
@@ -438,7 +438,7 @@ class _VenderScreenState extends State<VenderScreen> {
                           Text(
                             "Control total",
                             style: TextStyle(
-                              color: colors.textPrimary,
+                              color: AppColors.onCarbon,
                               fontSize: 20,
                               fontWeight: FontWeight.w800,
                             ),
@@ -451,7 +451,7 @@ class _VenderScreenState extends State<VenderScreen> {
                   Text(
                     "Ingresa tú mismo el título, descripción, precio y categoría. Ideal si ya sabes exactamente qué quieres publicar.",
                     style: TextStyle(
-                      color: colors.textSecondary,
+                      color: AppColors.onCarbonSecondary,
                       fontSize: 14,
                       height: 1.5,
                     ),
@@ -518,7 +518,7 @@ class _VenderScreenState extends State<VenderScreen> {
                           Text(
                             "Múltiples productos",
                             style: TextStyle(
-                              color: colors.textPrimary,
+                              color: AppColors.onCarbon,
                               fontSize: 20,
                               fontWeight: FontWeight.w800,
                             ),
@@ -531,7 +531,7 @@ class _VenderScreenState extends State<VenderScreen> {
                   Text(
                     "Carga productos simultáneamente llenando la planilla de carga masiva.",
                     style: TextStyle(
-                      color: colors.textSecondary,
+                      color: AppColors.onCarbonSecondary,
                       fontSize: 14,
                       height: 1.5,
                     ),
@@ -802,18 +802,18 @@ class _VenderScreenState extends State<VenderScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: colors.surface.withOpacity(0.12),
+        color: AppColors.onCarbon.withOpacity(0.12),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: colors.surface, size: 12),
+          Icon(icon, color: AppColors.onCarbon, size: 12),
           const SizedBox(width: 5),
           Text(
             label,
             style: TextStyle(
-              color: colors.surface.withOpacity(0.9),
+              color: AppColors.onCarbon.withOpacity(0.9),
               fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
@@ -827,18 +827,18 @@ class _VenderScreenState extends State<VenderScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: colors.background,
+        color: AppColors.onCarbon.withOpacity(0.10),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: colors.grayMid, size: 12),
+          Icon(icon, color: AppColors.onCarbonSecondary, size: 12),
           const SizedBox(width: 5),
           Text(
             label,
             style: TextStyle(
-              color: colors.grayMid,
+              color: AppColors.onCarbonSecondary,
               fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
@@ -903,17 +903,17 @@ class _VenderScreenState extends State<VenderScreen> {
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: colors.surface.withOpacity(0.15),
+                      color: AppColors.onCarbon.withOpacity(0.15),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(Icons.camera_alt_rounded,
-                        color: colors.surface, size: 28),
+                        color: AppColors.onCarbon, size: 28),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     "Abrir cámara",
                     style: TextStyle(
-                      color: colors.surface,
+                      color: AppColors.onCarbon,
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                     ),
@@ -922,7 +922,7 @@ class _VenderScreenState extends State<VenderScreen> {
                   Text(
                     "Toca para tomar una foto",
                     style: TextStyle(
-                      color: colors.surface.withOpacity(0.6),
+                      color: AppColors.onCarbon.withOpacity(0.6),
                       fontSize: 13,
                     ),
                   ),

@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../services/theme_service.dart';
+import '../services/vista_servicios_service.dart';
 import '../theme/app_theme.dart';
 import 'agregar_servicio_screen.dart';
 import 'delivery_proximamente_screen.dart';
@@ -269,18 +269,9 @@ class _ListaServiciosState extends State<_ListaServicios> {
   final _searchCtrl = TextEditingController();
   String _query = '';
 
-  // ── Tamaño (columnas, persistido y compartido entre Ofrezco/Busco) ───────
-  // 1 columna = tarjeta horizontal ancha (diseño actual, sin cambios).
-  // 2-3 columnas = tarjeta compacta vertical (como el marketplace).
-  int _columnas = ColumnasServicios.valor;
-
-  @override
-  void initState() {
-    super.initState();
-    ColumnasServicios.cargar().then((v) {
-      if (mounted) setState(() => _columnas = v);
-    });
-  }
+  // La vista (lista/miniaturas) y el tamaño de la grilla viven en
+  // VistaServicios, no en el State: son preferencias globales y persistidas,
+  // así que al cambiarlas en "Ofrezco" la pestaña "Busco" se redibuja sola.
 
   @override
   void dispose() {
@@ -328,75 +319,173 @@ class _ListaServiciosState extends State<_ListaServicios> {
                 ),
               ),
               const SizedBox(height: 20),
-              Text('Tamaño de las publicaciones',
+              Text('Cómo ver las publicaciones',
                   style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
                       color: colors.textPrimary)),
               const SizedBox(height: 4),
-              Text('Achica para ver más servicios, agranda para verlos más grandes',
+              Text('Se aplica a todas las vistas de servicios',
                   style: TextStyle(fontSize: 12, color: colors.grayMid)),
-              Row(
-                children: [
-                  Icon(Icons.grid_view_rounded,
-                      size: 16, color: colors.grayMid),
-                  Expanded(
-                    child: Slider(
-                      value: _columnas.toDouble(),
-                      min: 1,
-                      max: 3,
-                      divisions: 2,
-                      activeColor: colors.primary,
-                      onChanged: (v) {
-                        final nuevo = v.round();
-                        setSheetState(() => _columnas = nuevo);
-                        setState(() => _columnas = nuevo);
-                        ColumnasServicios.guardar(nuevo);
-                      },
+              const SizedBox(height: 12),
+              ValueListenableBuilder<bool>(
+                valueListenable: VistaServicios.comoListaNotifier,
+                builder: (_, comoLista, __) => Row(
+                  children: [
+                    Expanded(
+                      child: _opcionVista(
+                        icono: Icons.view_agenda_outlined,
+                        titulo: 'Como lista',
+                        seleccionado: comoLista,
+                        onTap: () => VistaServicios.setComoLista(true),
+                      ),
                     ),
-                  ),
-                  Icon(Icons.crop_square_rounded,
-                      size: 22, color: colors.grayMid),
-                ],
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _opcionVista(
+                        icono: Icons.grid_view_rounded,
+                        titulo: 'Como miniaturas',
+                        seleccionado: !comoLista,
+                        onTap: () => VistaServicios.setComoLista(false),
+                      ),
+                    ),
+                  ],
+                ),
               ),
 
-              // ── Color de fondo (solo modo claro) ────────────────────────
-              const SizedBox(height: 12),
-              Text('Color de fondo',
-                  style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: colors.textPrimary)),
-              const SizedBox(height: 4),
-              Text(
-                'Tiñe el fondo de rosa en modo diurno. Para el rojo completo, usa\n'
-                '"Modo rojo" en Mi cuenta.',
-                style: TextStyle(fontSize: 12, color: colors.grayMid),
-              ),
-              ValueListenableBuilder<double>(
-                valueListenable: ThemeService.bgTintNotifier,
-                builder: (_, tint, __) {
-                  return Row(
+              // ── Tamaño: solo tiene sentido en la vista de miniaturas ─────
+              ValueListenableBuilder<bool>(
+                valueListenable: VistaServicios.comoListaNotifier,
+                builder: (_, comoLista, __) {
+                  if (comoLista) return const SizedBox.shrink();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.format_color_reset_rounded,
-                          size: 16, color: colors.grayMid),
-                      Expanded(
-                        child: Slider(
-                          value: tint,
-                          min: 0,
-                          max: 1,
-                          activeColor: AppColors.primary,
-                          onChanged: (v) => ThemeService.setBgTint(v),
+                      const SizedBox(height: 16),
+                      Text('Tamaño de las miniaturas',
+                          style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: colors.textPrimary)),
+                      const SizedBox(height: 4),
+                      Text('Achica para ver más servicios por pantalla',
+                          style:
+                              TextStyle(fontSize: 12, color: colors.grayMid)),
+                      ValueListenableBuilder<int>(
+                        valueListenable: VistaServicios.columnasNotifier,
+                        builder: (_, columnas, __) => Row(
+                          children: [
+                            Icon(Icons.grid_view_rounded,
+                                size: 16, color: colors.grayMid),
+                            Expanded(
+                              child: Slider(
+                                value: columnas.toDouble(),
+                                min: 2,
+                                max: 3,
+                                divisions: 1,
+                                activeColor: colors.primary,
+                                onChanged: (v) =>
+                                    VistaServicios.setColumnas(v.round()),
+                              ),
+                            ),
+                            Icon(Icons.crop_square_rounded,
+                                size: 22, color: colors.grayMid),
+                          ],
                         ),
                       ),
-                      Icon(Icons.format_color_fill_rounded,
-                          size: 22, color: AppColors.primary),
+                    ],
+                  );
+                },
+              ),
+
+              // ── Color de fondo: solo en modo diurno ──────────────────────
+              // En nocturno el fondo es negro y el control no haría nada.
+              ValueListenableBuilder<bool>(
+                valueListenable: ThemeService.isDarkNotifier,
+                builder: (_, isDark, __) {
+                  if (isDark) return const SizedBox.shrink();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 16),
+                      Text('Color de fondo',
+                          style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: colors.textPrimary)),
+                      const SizedBox(height: 4),
+                      Text('Oscurece el gris del fondo de la app',
+                          style:
+                              TextStyle(fontSize: 12, color: colors.grayMid)),
+                      ValueListenableBuilder<double>(
+                        valueListenable: ThemeService.bgTintNotifier,
+                        builder: (_, tint, __) => Row(
+                          children: [
+                            Icon(Icons.format_color_reset_rounded,
+                                size: 16, color: colors.grayMid),
+                            Expanded(
+                              child: Slider(
+                                value: tint,
+                                min: 0,
+                                max: 1,
+                                activeColor: colors.primary,
+                                onChanged: (v) => ThemeService.setBgTint(v),
+                              ),
+                            ),
+                            Icon(Icons.format_color_fill_rounded,
+                                size: 22, color: colors.primary),
+                          ],
+                        ),
+                      ),
                     ],
                   );
                 },
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Una de las dos opciones de vista ("Como lista" / "Como miniaturas").
+  Widget _opcionVista({
+    required IconData icono,
+    required String titulo,
+    required bool seleccionado,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+        decoration: BoxDecoration(
+          color: seleccionado
+              ? colors.primary.withOpacity(0.08)
+              : colors.background,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: seleccionado ? colors.primary : colors.divider,
+            width: seleccionado ? 1.5 : 0.5,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icono,
+                size: 22,
+                color: seleccionado ? colors.primary : colors.grayMid),
+            const SizedBox(height: 6),
+            Text(
+              titulo,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+                color: seleccionado ? colors.primary : colors.textPrimary,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -580,54 +669,47 @@ class _ListaServiciosState extends State<_ListaServicios> {
   Widget _buildLista(List<Map<String, dynamic>> servicios) {
     if (servicios.isEmpty) return _buildVacio();
 
-    if (_columnas == 1) {
-      return RefreshIndicator(
-        onRefresh: widget.onRefresh,
-        color: colors.primary,
-        child: ListView.separated(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, _kPaddingInferiorFab),
-          itemCount: servicios.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 10),
-          itemBuilder: (_, i) => _TarjetaServicio(servicio: servicios[i]),
-        ),
-      );
-    }
+    // Escucha las dos preferencias globales, así el cambio hecho desde el
+    // panel se refleja al instante en esta pestaña y en la otra.
+    return ValueListenableBuilder<bool>(
+      valueListenable: VistaServicios.comoListaNotifier,
+      builder: (_, comoLista, __) {
+        if (comoLista) {
+          return RefreshIndicator(
+            onRefresh: widget.onRefresh,
+            color: colors.primary,
+            child: ListView.separated(
+              padding:
+                  const EdgeInsets.fromLTRB(12, 12, 12, _kPaddingInferiorFab),
+              itemCount: servicios.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (_, i) => _TarjetaServicio(servicio: servicios[i]),
+            ),
+          );
+        }
 
-    return RefreshIndicator(
-      onRefresh: widget.onRefresh,
-      color: colors.primary,
-      child: GridView.builder(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, _kPaddingInferiorFab),
-        itemCount: servicios.length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: _columnas,
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          childAspectRatio: 0.72,
-        ),
-        itemBuilder: (_, i) =>
-            _TarjetaServicioCompacta(servicio: servicios[i]),
-      ),
+        return ValueListenableBuilder<int>(
+          valueListenable: VistaServicios.columnasNotifier,
+          builder: (_, columnas, __) => RefreshIndicator(
+            onRefresh: widget.onRefresh,
+            color: colors.primary,
+            child: GridView.builder(
+              padding:
+                  const EdgeInsets.fromLTRB(12, 12, 12, _kPaddingInferiorFab),
+              itemCount: servicios.length,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columnas,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 0.72,
+              ),
+              itemBuilder: (_, i) =>
+                  _TarjetaServicioCompacta(servicio: servicios[i]),
+            ),
+          ),
+        );
+      },
     );
-  }
-}
-
-// ── Preferencia de columnas (persistida) ─────────────────────────────────────
-
-class ColumnasServicios {
-  static const _kPref = 'srv_columnas';
-  static int valor = 1;
-
-  static Future<int> cargar() async {
-    final prefs = await SharedPreferences.getInstance();
-    valor = prefs.getInt(_kPref) ?? 1;
-    return valor;
-  }
-
-  static Future<void> guardar(int v) async {
-    valor = v;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_kPref, v);
   }
 }
 
