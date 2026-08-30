@@ -150,9 +150,19 @@ jobs:
           mkdir -p ~/.appstoreconnect/private_keys
           echo "$APP_STORE_CONNECT_PRIVATE_KEY" \
             > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
+          # El nombre del .ipa lo decide el PRODUCT_NAME de Xcode (no el nombre
+          # del paquete Flutter), así que en vez de asumirlo tomamos el único
+          # archivo .ipa que haya generado el paso anterior.
+          IPA_FILE=$(find app/build/ios/ipa -maxdepth 1 -name "*.ipa" | head -n 1)
+          if [ -z "$IPA_FILE" ]; then
+            echo "No se encontró ningún .ipa en app/build/ios/ipa"
+            ls -la app/build/ios/ipa || true
+            exit 1
+          fi
+          echo "Subiendo: $IPA_FILE"
           xcrun altool --upload-app \
             --type ios \
-            --file app/build/ios/ipa/okventa_app.ipa \
+            --file "$IPA_FILE" \
             --apiKey "$APP_STORE_CONNECT_KEY_ID" \
             --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
             --apple-id "$APP_APPLE_ID" \
