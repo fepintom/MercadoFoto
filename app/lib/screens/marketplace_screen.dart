@@ -8,6 +8,7 @@ import '../utils/format_utils.dart';
 
 import '../services/api_service.dart';
 import '../services/cart_service.dart';
+import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import 'carrito_screen.dart';
 import 'producto_detalle_screen.dart';
@@ -153,6 +154,41 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                   Icon(Icons.crop_square_rounded,
                       size: 22, color: colors.grayMid),
                 ],
+              ),
+
+              // ── Color de fondo (solo modo claro) ────────────────────────
+              const SizedBox(height: 12),
+              Text('Color de fondo',
+                  style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary)),
+              const SizedBox(height: 4),
+              Text(
+                'Controla la intensidad del rojo de fondo en modo claro',
+                style: TextStyle(fontSize: 12, color: colors.grayMid),
+              ),
+              ValueListenableBuilder<double>(
+                valueListenable: ThemeService.bgTintNotifier,
+                builder: (_, tint, __) {
+                  return Row(
+                    children: [
+                      Icon(Icons.format_color_reset_rounded,
+                          size: 16, color: colors.grayMid),
+                      Expanded(
+                        child: Slider(
+                          value: tint,
+                          min: 0,
+                          max: 1,
+                          activeColor: AppColors.primary,
+                          onChanged: (v) => ThemeService.setBgTint(v),
+                        ),
+                      ),
+                      Icon(Icons.format_color_fill_rounded,
+                          size: 22, color: AppColors.primary),
+                    ],
+                  );
+                },
               ),
             ],
           ),

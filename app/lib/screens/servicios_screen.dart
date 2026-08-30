@@ -123,13 +123,31 @@ class _ServiciosScreenState extends State<ServiciosScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Servicios',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: colors.textPrimary,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Servicios',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                    ),
+                    // Okventin servicios: solo en modo oscuro, mismo tamaño
+                    // agrandado que en el home (57).
+                    ValueListenableBuilder<bool>(
+                      valueListenable: ThemeService.isDarkNotifier,
+                      builder: (_, isDark, __) {
+                        if (!isDark) return const SizedBox.shrink();
+                        return Image.asset(
+                            'assets/images/okventin_servicios.png',
+                            width: 57,
+                            height: 57);
+                      },
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -484,7 +502,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
               builder: (_, isDark, __) {
                 if (isDark) {
                   return Image.asset('assets/images/okventin_servicios.png',
-                      height: 64);
+                      height: 57);
                 }
                 return Icon(Icons.handyman_outlined,
                     size: 64, color: colors.grayMid.withOpacity(0.4));

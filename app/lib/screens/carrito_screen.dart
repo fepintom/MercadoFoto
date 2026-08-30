@@ -42,7 +42,7 @@ class CarritoScreen extends StatelessWidget {
                 padding: const EdgeInsets.only(right: 4),
                 child: Center(
                   child: Image.asset('assets/images/okventin_compra.png',
-                      width: 32, height: 32),
+                      width: 57, height: 57),
                 ),
               );
             },

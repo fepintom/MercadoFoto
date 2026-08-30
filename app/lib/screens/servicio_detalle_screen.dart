@@ -244,8 +244,8 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                     child: Center(
                       child: Image.asset(
                           'assets/images/okventin_servicios.png',
-                          width: 32,
-                          height: 32),
+                          width: 57,
+                          height: 57),
                     ),
                   );
                 },

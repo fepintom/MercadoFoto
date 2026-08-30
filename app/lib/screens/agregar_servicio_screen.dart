@@ -365,7 +365,7 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
                 padding: const EdgeInsets.only(right: 12),
                 child: Center(
                   child: Image.asset('assets/images/okventin_servicios.png',
-                      width: 32, height: 32),
+                      width: 57, height: 57),
                 ),
               );
             },

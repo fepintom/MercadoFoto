@@ -144,7 +144,8 @@ class _VenderScreenState extends State<VenderScreen> {
           builder: (_, isDark, __) {
             return Image.asset(
               isDark ? 'assets/images/okventin_vender.png' : 'assets/images/chekin.png',
-              height: 47,
+              // Modo oscuro: mismo tamaño agrandado que en el home (57).
+              height: isDark ? 57 : 47,
             );
           },
         ),

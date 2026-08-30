@@ -96,10 +96,11 @@ class _MensajesScreenState extends State<MensajesScreen> {
               child: ValueListenableBuilder<bool>(
                 valueListenable: ThemeService.isDarkNotifier,
                 builder: (_, isDark, __) {
+                  // Modo oscuro: mismo tamaño agrandado que en el home (57).
                   return Image.asset(
                     isDark ? 'assets/images/okventin_chat.png' : 'assets/images/mensajes.png',
-                    width: 28,
-                    height: 28,
+                    width: isDark ? 57 : 28,
+                    height: isDark ? 57 : 28,
                   );
                 },
               ),
@@ -278,10 +279,37 @@ class _MensajesScreenState extends State<MensajesScreen> {
 
   Widget _avatar(String fotoUrl, String nombre) {
     final initial = nombre.isNotEmpty ? nombre[0].toUpperCase() : '?';
-    if (fotoUrl.isNotEmpty && fotoUrl.startsWith('http')) {
+    // fotoUrl puede venir como ruta relativa (/uploads/...) del backend —
+    // hay que anteponer baseUrl si no es ya una URL completa.
+    final fotoCompleta = fotoUrl.isNotEmpty
+        ? (fotoUrl.startsWith('http')
+            ? fotoUrl
+            : '${ApiService.baseUrl}$fotoUrl')
+        : '';
+    if (fotoCompleta.isNotEmpty) {
       return CircleAvatar(
         radius: 26,
-        backgroundImage: NetworkImage(fotoUrl),
+        backgroundColor: colors.primary.withOpacity(0.15),
+        child: ClipOval(
+          child: SizedBox(
+            width: 52,
+            height: 52,
+            child: Image.network(
+              fotoCompleta,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Center(
+                child: Text(
+                  initial,
+                  style: TextStyle(
+                    color: colors.primary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 18,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       );
     }
     return CircleAvatar(
