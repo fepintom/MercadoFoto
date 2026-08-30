@@ -345,7 +345,7 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
           icon: Icons.report_rounded,
           titulo: 'El comprador reportó un problema',
           subtitulo: 'OkVenta está revisando el caso.',
-          color: Colors.orange,
+          color: colors.warning,
         );
 
       default:
@@ -603,7 +603,7 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
               child: _chipEstado(
                 label: 'Con observaciones',
                 seleccionado: _estadoProductoRetiro == 'con_observaciones',
-                color: Colors.orange,
+                color: colors.warning,
                 onTap: () => setState(
                     () => _estadoProductoRetiro = 'con_observaciones'),
               ),

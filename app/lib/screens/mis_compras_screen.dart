@@ -92,7 +92,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
   Color _estadoColor(String estado) {
     switch (estado) {
       case 'pendiente_pago':
-        return Colors.orange;
+        return colors.warning;
       case 'pago_confirmado':
       case 'en_camino':
         return colors.primary;
@@ -312,9 +312,9 @@ class _MisComprasScreenState extends State<MisComprasScreen>
       await ApiService.disputarOrden(ordenId);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('⚠️ Disputa abierta. Te contactaremos pronto.'),
-          backgroundColor: Colors.orange,
+          backgroundColor: colors.warning,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -462,9 +462,9 @@ class _MisComprasScreenState extends State<MisComprasScreen>
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('⚠️ Problema reportado. OkVenta mediará el caso.'),
-          backgroundColor: Colors.orange,
+          backgroundColor: colors.warning,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -1193,9 +1193,9 @@ class _OkdeliveryCompradorPanelState
       await _cargar();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('⚠️ Reclamo enviado. Nuestro equipo lo revisará.'),
-            backgroundColor: Colors.orange,
+            backgroundColor: colors.warning,
             behavior: SnackBarBehavior.floating,
           ),
         );

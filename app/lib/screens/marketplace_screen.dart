@@ -165,7 +165,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       color: colors.textPrimary)),
               const SizedBox(height: 4),
               Text(
-                'Controla la intensidad del rojo de fondo en modo claro',
+                'Tiñe el fondo de rosa en modo diurno. Para el rojo completo, usa\n'
+                '"Modo rojo" en Mi cuenta.',
                 style: TextStyle(fontSize: 12, color: colors.grayMid),
               ),
               ValueListenableBuilder<double>(
@@ -681,7 +682,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: (esNuevo ? const Color(0xFF34C759) : Colors.orange)
+                          color: (esNuevo ? colors.success : colors.warning)
                               .withValues(alpha: 0.10),
                           borderRadius: BorderRadius.circular(4),
                         ),
@@ -690,8 +691,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                                 fontSize: 10,
                                 fontWeight: FontWeight.w500,
                                 color: esNuevo
-                                    ? const Color(0xFF34C759)
-                                    : Colors.orange,
+                                    ? colors.success
+                                    : colors.warning,
                                 shadows: const [
                                   Shadow(
                                       color: Colors.black26,

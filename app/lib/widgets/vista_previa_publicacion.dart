@@ -134,8 +134,8 @@ class VistaPreviaPublicacion extends StatelessWidget {
                                   horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
                                 color: (esNuevo
-                                        ? const Color(0xFF34C759)
-                                        : Colors.orange)
+                                        ? colors.success
+                                        : colors.warning)
                                     .withOpacity(0.12),
                                 borderRadius: BorderRadius.circular(6),
                               ),
@@ -144,8 +144,8 @@ class VistaPreviaPublicacion extends StatelessWidget {
                                       fontSize: 11,
                                       fontWeight: FontWeight.w600,
                                       color: esNuevo
-                                          ? const Color(0xFF34C759)
-                                          : Colors.orange,
+                                          ? colors.success
+                                          : colors.warning,
                                       shadows: const [
                                         Shadow(
                                             color: Colors.black26,

@@ -710,9 +710,9 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
       builder: (_) => AlertDialog(
         backgroundColor: colors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.science_rounded, color: Colors.orange),
+            Icon(Icons.science_rounded, color: colors.warning),
             SizedBox(width: 8),
             Expanded(child: Text('Compra simulada (modo prueba)')),
           ],
@@ -1120,10 +1120,10 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 4),
             child: Icon(Icons.check_circle_rounded,
-                size: 14, color: Color(0xFF34C759)),
+                size: 14, color: colors.success),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -1622,8 +1622,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                               horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: condicion == 'nuevo'
-                                ? const Color(0xFF34C759).withOpacity(0.12)
-                                : Colors.orange.withOpacity(0.12),
+                                ? colors.success.withOpacity(0.12)
+                                : colors.warning.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Row(
@@ -1635,8 +1635,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                     : Icons.recycling_rounded,
                                 size: 11,
                                 color: condicion == 'nuevo'
-                                    ? const Color(0xFF34C759)
-                                    : Colors.orange,
+                                    ? colors.success
+                                    : colors.warning,
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -1645,8 +1645,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                   color: condicion == 'nuevo'
-                                      ? const Color(0xFF34C759)
-                                      : Colors.orange,
+                                      ? colors.success
+                                      : colors.warning,
                                   shadows: const [
                                     Shadow(
                                         color: Colors.black26,
@@ -1880,14 +1880,14 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.bolt_rounded,
-                            size: 15, color: Color(0xFF34C759)),
+                        Icon(Icons.bolt_rounded,
+                            size: 15, color: colors.success),
                         const SizedBox(width: 5),
                         Text(_mensajeEntrega!,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF34C759))),
+                                color: colors.success)),
                       ],
                     ),
                   ],

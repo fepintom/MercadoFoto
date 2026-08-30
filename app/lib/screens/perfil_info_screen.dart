@@ -403,8 +403,8 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
                   Container(
                     width: 22, height: 22,
                     margin: const EdgeInsets.only(right: 8),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF34C759), shape: BoxShape.circle,
+                    decoration: BoxDecoration(
+                      color: colors.success, shape: BoxShape.circle,
                     ),
                     child: const Icon(Icons.check_rounded,
                         size: 13, color: Colors.white),

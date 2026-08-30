@@ -883,9 +883,9 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
   Widget _buildPrecioInteractivo() {
     final tieneSugerencia = _precioMin > 0 && _precioMax > 0;
     final colorConfianza  = _confianza == "alta"
-        ? const Color(0xFF34C759)
+        ? colors.success
         : _confianza == "media"
-            ? const Color(0xFFFF9500)
+            ? colors.warning
             : const Color(0xFFFF3B30);
     final labelConfianza  = _confianza == "alta"
         ? "Alta confianza"

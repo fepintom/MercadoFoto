@@ -50,7 +50,7 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
     'Salud', 'Profesional', 'Asesorías', 'Computación', 'Otros',
   ];
   static const _kColores = [
-    Color(0xFF007AFF), Color(0xFF34C759), Color(0xFFFF9500),
+    Color(0xFF007AFF), colors.success, colors.warning,
     Color(0xFFFF3B30), Color(0xFFAF52DE), Color(0xFF5AC8FA),
     Color(0xFFFFCC00), Color(0xFFFF2D55), Color(0xFF00C7BE),
     Color(0xFF636366),

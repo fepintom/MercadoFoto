@@ -146,14 +146,14 @@ class _SeguimientoEntregaScreenState extends State<SeguimientoEntregaScreen> {
                 color: entregado
                     ? Colors.green.withOpacity(0.08)
                     : sinSenal
-                        ? Colors.orange.withOpacity(0.08)
+                        ? colors.warning.withOpacity(0.08)
                         : colors.primary.withOpacity(0.06),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: entregado
                       ? Colors.green.withOpacity(0.4)
                       : sinSenal
-                          ? Colors.orange.withOpacity(0.4)
+                          ? colors.warning.withOpacity(0.4)
                           : colors.primary.withOpacity(0.3),
                 ),
               ),
@@ -169,7 +169,7 @@ class _SeguimientoEntregaScreenState extends State<SeguimientoEntregaScreen> {
                     color: entregado
                         ? Colors.green
                         : sinSenal
-                            ? Colors.orange
+                            ? colors.warning
                             : colors.primary,
                   ),
                   const SizedBox(width: 8),
@@ -187,7 +187,7 @@ class _SeguimientoEntregaScreenState extends State<SeguimientoEntregaScreen> {
                         color: entregado
                             ? Colors.green
                             : sinSenal
-                                ? Colors.orange.shade800
+                                ? colors.warning
                                 : colors.primary,
                       ),
                     ),
