@@ -484,10 +484,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
       ),
       builder: (_) => ValueListenableBuilder<bool>(
         valueListenable: ThemeService.isDarkNotifier,
-        builder: (context, isDark, __) =>
-            ValueListenableBuilder<bool>(
-          valueListenable: ThemeService.redModeNotifier,
-          builder: (context, isRed, ___) => Padding(
+        builder: (context, isDark, __) => Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -516,18 +513,8 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
               _opcionModo(
                 icono: Icons.wb_sunny_outlined,
                 titulo: 'Modo diurno',
-                seleccionado: !isDark && !isRed,
-                onTap: () {
-                  ThemeService.setRedMode(false);
-                  ThemeService.setDarkMode(false);
-                },
-              ),
-              const SizedBox(height: 10),
-              _opcionModo(
-                icono: Icons.local_fire_department_outlined,
-                titulo: 'Modo rojo',
-                seleccionado: isRed,
-                onTap: () => ThemeService.setRedMode(true),
+                seleccionado: !isDark,
+                onTap: () => ThemeService.setDarkMode(false),
               ),
               const SizedBox(height: 10),
               _opcionModo(
@@ -537,7 +524,6 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                 onTap: () => ThemeService.setDarkMode(true),
               ),
             ],
-          ),
           ),
         ),
       ),

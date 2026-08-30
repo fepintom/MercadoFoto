@@ -165,8 +165,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       color: colors.textPrimary)),
               const SizedBox(height: 4),
               Text(
-                'Tiñe el fondo de rosa en modo diurno. Para el rojo completo, usa\n'
-                '"Modo rojo" en Mi cuenta.',
+                'Oscurece el gris del fondo. Solo aplica al modo diurno.',
                 style: TextStyle(fontSize: 12, color: colors.grayMid),
               ),
               ValueListenableBuilder<double>(

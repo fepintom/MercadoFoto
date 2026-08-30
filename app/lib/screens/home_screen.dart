@@ -877,24 +877,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
                       ),
-                      // Modo oscuro: okventin_servicios en vez del ícono.
-                      child: ValueListenableBuilder<bool>(
-                        valueListenable: ThemeService.isDarkNotifier,
-                        builder: (_, isDark, __) {
-                          if (isDark) {
-                            return Padding(
-                              padding: const EdgeInsets.all(4),
-                              child: Image.asset(
-                                  'assets/images/okventin_servicios.png',
-                                  fit: BoxFit.contain),
-                            );
-                          }
-                          return Icon(
-                            Icons.handyman_rounded,
-                            color: Colors.white,
-                            size: selServ ? 22 : 20,
-                          );
-                        },
+                      // Siempre el ícono de llave y martillo, igual que el
+                      // resto de la barra: el círculo es pequeño y el
+                      // mascotín no se distinguía a ese tamaño.
+                      child: Icon(
+                        Icons.handyman_rounded,
+                        color: Colors.white,
+                        size: selServ ? 22 : 20,
                       ),
                     ),
                   ),
