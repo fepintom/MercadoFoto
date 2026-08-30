@@ -9,7 +9,9 @@ import 'package:latlong2/latlong.dart' as ll;
 import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
+import 'analizar_paquete_screen.dart';
 import 'calificar_vendedor_screen.dart';
+import 'grabar_verificacion_paquete_screen.dart';
 import 'seguimiento_entrega_screen.dart';
 import 'soporte_chat_screen.dart';
 
@@ -1123,17 +1125,36 @@ class _OkdeliveryCompradorPanelState
   }
 
   Future<void> _confirmarRecepcion() async {
-    final video = await _picker.pickVideo(
-      source: ImageSource.camera,
-      maxDuration: const Duration(minutes: 5),
+    // Verificación antifraude: primero se graba el unboxing con la rejilla
+    // (mismo encuadre que usó el vendedor al embalar) y se ofrece analizarlo
+    // con IA antes de confirmar la recepción y liberar los fondos.
+    final tituloOrden = 'Orden #${widget.ordenId}';
+    final grabado = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GrabarVerificacionPaqueteScreen(
+          ordenId: widget.ordenId,
+          tituloProducto: tituloOrden,
+          esUnboxing: true,
+        ),
+      ),
     );
+    if (grabado == true && mounted) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AnalizarPaqueteScreen(
+            ordenId: widget.ordenId,
+            tituloProducto: tituloOrden,
+          ),
+        ),
+      );
+    }
+
     if (_enviando) return;
     setState(() => _enviando = true);
     try {
-      await ApiService.confirmarRecepcionComprador(
-        widget.ordenId,
-        video: video != null ? File(video.path) : null,
-      );
+      await ApiService.confirmarRecepcionComprador(widget.ordenId);
       await _cargar();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

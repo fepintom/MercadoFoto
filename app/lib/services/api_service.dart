@@ -957,6 +957,62 @@ class ApiService {
     }
   }
 
+  // ── Verificación antifraude de embalaje (sellos + fotogramas clave) ─────────
+  // Solo se suben fotogramas clave (imágenes extraídas del video), nunca el
+  // video completo — se borran del servidor al confirmarse la entrega.
+
+  static Future<List<Map<String, dynamic>>> obtenerSellosSeguridad(
+      int ordenId) async {
+    final res =
+        await http.get(Uri.parse('$baseUrl/ordenes/$ordenId/sellos'));
+    if (res.statusCode != 200) {
+      throw Exception('No se pudieron obtener los sellos de seguridad');
+    }
+    final data = jsonDecode(res.body);
+    return List<Map<String, dynamic>>.from(data['sellos'] ?? []);
+  }
+
+  static Future<void> subirFotogramasEmbalaje(
+      int ordenId, List<File> fotogramas) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/ordenes/$ordenId/boxing-frames'),
+    );
+    for (final f in fotogramas) {
+      request.files.add(await http.MultipartFile.fromPath('frames', f.path));
+    }
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode != 200) {
+      throw Exception('Error al subir el video de embalaje: ${response.body}');
+    }
+  }
+
+  static Future<void> subirFotogramasUnboxing(
+      int ordenId, List<File> fotogramas) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/ordenes/$ordenId/unboxing-frames'),
+    );
+    for (final f in fotogramas) {
+      request.files.add(await http.MultipartFile.fromPath('frames', f.path));
+    }
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode != 200) {
+      throw Exception('Error al subir el video de unboxing: ${response.body}');
+    }
+  }
+
+  static Future<Map<String, dynamic>> analizarEmpaque(int ordenId) async {
+    final res = await http
+        .post(Uri.parse('$baseUrl/ordenes/$ordenId/analizar-empaque'));
+    if (res.statusCode != 200) {
+      throw Exception('Error al analizar el paquete: ${res.body}');
+    }
+    return jsonDecode(res.body);
+  }
+
   // ── Mis Direcciones ────────────────────────────────────────────────────────
 
   static Future<List<Map<String, dynamic>>> obtenerDirecciones(int userId) async {

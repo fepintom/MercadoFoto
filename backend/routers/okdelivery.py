@@ -51,6 +51,7 @@ from database.publicaciones import obtener_publicacion_por_id
 from database.users import obtener_ubicacion_usuario, obtener_fcm_token
 from database.notifications import crear_notificacion
 from database.bitacora import registrar_evento
+from routers.verificacion_paquete import eliminar_verificacion_paquete
 
 router = APIRouter()
 
@@ -449,6 +450,8 @@ async def confirmar_recepcion_comprador(orden_id: int, video: Optional[UploadFil
                      actor_id=orden.get("comprador_id"),
                      detalle=f"okdelivery video={video_url}")
     _liberar_fondos(orden)
+    # Compra cerrada: se borran los fotogramas de embalaje/unboxing (antifraude).
+    eliminar_verificacion_paquete(orden_id)
     return {"ok": True, "estado": "cerrado_ok"}
 
 

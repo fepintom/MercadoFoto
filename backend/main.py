@@ -237,6 +237,15 @@ from database.ayuda import (
 from database.entregas import init_entregas_db, obtener_entrega as obtener_entrega_okdelivery
 from routers.okdelivery import router as okdelivery_router, crear_y_notificar_entrega
 
+from database.verificacion_paquete import (
+    init_verificacion_paquete_db,
+    obtener_o_crear_sellos as obtener_o_crear_sellos_verificacion,
+)
+from routers.verificacion_paquete import (
+    router as verificacion_paquete_router,
+    eliminar_verificacion_paquete,
+)
+
 # --------------------------------------------------
 # CATEGORIZACIÓN AUTOMÁTICA (keyword-based, sin dependencias externas)
 # --------------------------------------------------
@@ -398,6 +407,7 @@ init_tracking_db()
 init_evidencias_db()
 init_bitacora_db()
 init_agent_logs_db()
+init_verificacion_paquete_db()
 
 # --------------------------------------------------
 # CORS
@@ -417,6 +427,7 @@ def version():
 
 # Flujo OkDelivery (retiro, tracking, entrega, evidencia y auto-cierre)
 app.include_router(okdelivery_router)
+app.include_router(verificacion_paquete_router)
 
 # --------------------------------------------------
 # MODELOS
@@ -2567,6 +2578,8 @@ async def confirmar_recepcion_con_foto(
     registrar_evento(orden_id, "recepcion_confirmada",
                      actor_id=user_id,
                      detalle=f"foto={foto_path} capturado_en={capturado_en}")
+    # Compra cerrada: se borran los fotogramas de embalaje/unboxing (antifraude).
+    eliminar_verificacion_paquete(orden_id)
 
     fcm_tok = obtener_fcm_token(orden["vendedor_id"])
     if fcm_tok:
@@ -2674,6 +2687,9 @@ def obtener_etiqueta(orden_id: int):
         p for p in [ubic.get("direccion"), ubic.get("comuna"), ubic.get("ciudad")] if p)
     comprador = obtener_usuario_por_id(orden["comprador_id"]) or {}
 
+    # Sellos de seguridad antifraude (se crean una sola vez por orden).
+    sellos = obtener_o_crear_sellos_verificacion(orden_id)
+
     return {
         "orden_id": orden_id,
         "titulo": orden["titulo"],
@@ -2686,6 +2702,8 @@ def obtener_etiqueta(orden_id: int):
         # Payloads para generar los QR client-side (qr_flutter)
         "qr_ruta": f"okventa://orden/{orden_id}/mapa",
         "qr_confirmar": f"okventa://orden/{orden_id}/confirmar-entrega?token={token}",
+        # 4 sellos de seguridad antifraude, con código único por orden
+        "sellos": sellos,
     }
 
 
@@ -2711,6 +2729,8 @@ def confirmar_entrega_qr(orden_id: int, body: dict):
     confirmar_entrega(orden_id)
     registrar_evento(orden_id, "recepcion_confirmada",
                      actor_id=user_id, detalle="vía QR de etiqueta")
+    # Compra cerrada: se borran los fotogramas de embalaje/unboxing (antifraude).
+    eliminar_verificacion_paquete(orden_id)
 
     fcm_tok = obtener_fcm_token(orden["vendedor_id"])
     if fcm_tok:
