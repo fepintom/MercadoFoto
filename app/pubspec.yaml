@@ -1,5 +1,5 @@
-name: mercadofoto_app
-description: "Marketplace con IA para publicación de productos desde imágenes"
+name: okventa_app
+description: "Okventa: marketplace con IA para publicación de productos desde imágenes"
 publish_to: 'none'
 
 version: 1.0.0+11

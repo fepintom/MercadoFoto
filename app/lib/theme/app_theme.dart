@@ -102,10 +102,20 @@ class AppPalette {
   static AppPalette of(bool isDark) => isDark ? dark : light;
 
   /// Devuelve esta paleta con un tono rojo (el rojo de la marca OkVenta,
-  /// [AppColors.primary]) mezclado en el fondo y las superficies, según
-  /// [intensity] (0.0 = sin tono, 1.0 = tono máximo). Se usa en modo claro
-  /// para el slider "Color de fondo": a más intensidad, más cubre el rojo
-  /// toda la app, igual que el modo oscuro cubre todo de negro.
+  /// [AppColors.primary]) mezclado en el fondo, según [intensity] (0.0 =
+  /// sin tono, 1.0 = tono máximo). Se usa en modo claro para el slider
+  /// "Color de fondo": a más intensidad, más cubre el rojo toda la app,
+  /// igual que el modo oscuro cubre todo de negro.
+  ///
+  /// IMPORTANTE: `surface` (tarjetas, chips, la barra inferior, el precio
+  /// destacado, etc.) se deja SIN teñir a propósito. Mucho contenido de la
+  /// app dibuja texto/íconos en `colors.primary` (el mismo rojo) sobre un
+  /// fondo `colors.surface` — si `surface` también se tiñe de rojo, ese
+  /// texto rojo queda casi invisible sobre una tarjeta rojiza (por ejemplo
+  /// el precio en el detalle de producto, o los botones "Servicios"/
+  /// "Vender" de la barra inferior, que se camuflan contra la barra). Al
+  /// mantener `surface` blanco, esas tarjetas siguen contrastando contra el
+  /// fondo rojo exactamente igual que hoy contrastan contra el gris.
   AppPalette withRedTint(double intensity) {
     final i = intensity.clamp(0.0, 1.0);
     if (i <= 0) return this;
@@ -116,10 +126,11 @@ class AppPalette {
       grayMid: grayMid,
       // Fondo: se mezcla fuerte hacia el rojo de marca (cubre toda la app).
       background: Color.lerp(background, AppColors.primary, i)!,
-      // Superficie (tarjetas/inputs): mezcla más suave para que sigan
-      // destacando sobre el fondo, igual que blanco destaca sobre gris.
-      surface: Color.lerp(surface, AppColors.primary, i * 0.35)!,
-      divider: Color.lerp(divider, AppColors.primaryDark, i * 0.4)!,
+      // Superficie: se deja intacta (ver nota arriba).
+      surface: surface,
+      // Separadores: se dejan intactos por la misma razón — sobre todo
+      // aparecen como bordes de tarjetas blancas.
+      divider: divider,
       textPrimary: textPrimary,
       textSecondary: textSecondary,
       textOnPrimary: textOnPrimary,
