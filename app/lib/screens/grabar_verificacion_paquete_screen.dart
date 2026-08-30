@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:video_thumbnail/video_thumbnail.dart';
+import 'package:video_thumbnail/video_thumbnail.dart' as vt;
 
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
@@ -180,9 +180,9 @@ class _GrabarVerificacionPaqueteScreenState
       final fraccion = (i + 1) / (_cantidadFotogramas + 1);
       final timeMs = (duracionMs * fraccion).round();
       try {
-        final bytes = await VideoThumbnail.thumbnailData(
+        final bytes = await vt.VideoThumbnail.thumbnailData(
           video: videoPath,
-          imageFormat: ImageFormat.JPEG,
+          imageFormat: vt.ImageFormat.JPEG,
           maxWidth: 900,
           quality: 75,
           timeMs: timeMs,
