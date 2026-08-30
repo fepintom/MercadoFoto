@@ -152,7 +152,7 @@ jobs:
             > ~/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_KEY_ID}.p8
           xcrun altool --upload-app \
             --type ios \
-            --file app/build/ios/ipa/mercadofoto_app.ipa \
+            --file app/build/ios/ipa/okventa_app.ipa \
             --apiKey "$APP_STORE_CONNECT_KEY_ID" \
             --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID" \
             --apple-id "$APP_APPLE_ID" \
