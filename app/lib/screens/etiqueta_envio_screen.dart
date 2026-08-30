@@ -13,6 +13,7 @@ import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../widgets/net_image.dart';
 import 'entrega_vendedor_screen.dart';
+import 'grabar_verificacion_paquete_screen.dart';
 
 /// Etiqueta de envío con doble QR (flujo "Lo entrego yo").
 ///
@@ -38,6 +39,7 @@ class _EtiquetaEnvioScreenState extends State<EtiquetaEnvioScreen> {
   Map<String, dynamic>? _etiqueta;
   bool _cargando = true;
   bool _exportando = false;
+  bool _embalajeRegistrado = false;
   final _labelKey = GlobalKey();
 
   @override
@@ -226,6 +228,57 @@ class _EtiquetaEnvioScreenState extends State<EtiquetaEnvioScreen> {
                               const SizedBox(height: 20),
                               SizedBox(
                                 width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: _exportando
+                                      ? null
+                                      : () async {
+                                          final ok = await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  GrabarVerificacionPaqueteScreen(
+                                                ordenId: widget.ordenId,
+                                                tituloProducto: widget.titulo,
+                                                esUnboxing: false,
+                                              ),
+                                            ),
+                                          );
+                                          if (ok == true && mounted) {
+                                            setState(
+                                                () => _embalajeRegistrado = true);
+                                            ScaffoldMessenger.of(context)
+                                                .showSnackBar(const SnackBar(
+                                              content: Text(
+                                                  'Video de embalaje registrado'),
+                                            ));
+                                          }
+                                        },
+                                  icon: Icon(
+                                      _embalajeRegistrado
+                                          ? Icons.check_circle
+                                          : Icons.videocam_rounded,
+                                      size: 18),
+                                  label: Text(_embalajeRegistrado
+                                      ? 'Embalaje verificado'
+                                      : 'Grabar embalaje y sellos'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: colors.primary,
+                                    side: BorderSide(
+                                        color: colors.primary.withOpacity(0.5)),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 14),
+                                    textStyle: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(10)),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                width: double.infinity,
                                 child: ElevatedButton.icon(
                                   onPressed: () {
                                     Navigator.pushReplacement(
@@ -401,8 +454,86 @@ class _EtiquetaEnvioScreenState extends State<EtiquetaEnvioScreen> {
                   'CONFIRMAR ENTREGA', 'Escanear al recibir'),
             ],
           ),
+
+          const SizedBox(height: 16),
+          const Divider(height: 1, color: Colors.black26),
+          const SizedBox(height: 14),
+          _sellosSeguridadSection(),
         ],
       ),
+    );
+  }
+
+  /// Los 4 sellos de seguridad antifraude, con código único por orden, más
+  /// las instrucciones de uso — se imprimen directamente en la etiqueta.
+  Widget _sellosSeguridadSection() {
+    final sellos =
+        List<Map<String, dynamic>>.from(_etiqueta?['sellos'] ?? const []);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('SELLOS DE SEGURIDAD',
+            style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: Colors.black54,
+                letterSpacing: 1)),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(4, (i) {
+            final numero = i + 1;
+            final codigo = sellos.length > i
+                ? (sellos[i]['codigo'] as String? ?? '')
+                : '';
+            return Column(
+              children: [
+                Image.asset(
+                  'assets/images/sellos/sello_seguridad_$numero.png',
+                  width: 64,
+                  height: 64,
+                ),
+                const SizedBox(height: 4),
+                Text(codigo,
+                    style: const TextStyle(
+                        fontSize: 8, color: Colors.black54)),
+              ],
+            );
+          }),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.04),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'INSTRUCCIONES',
+                style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black45,
+                    letterSpacing: 1),
+              ),
+              SizedBox(height: 4),
+              Text(
+                'Pega un sello en cada cierre de la caja (los 4 lados que se '
+                'abren). Antes de sellar, graba en la app un video mostrando '
+                'el embalaje y los sellos puestos — el comprador verá un '
+                'video similar al recibir, para verificar que el paquete no '
+                'fue alterado.',
+                style: TextStyle(fontSize: 10.5, color: Colors.black87, height: 1.35),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
