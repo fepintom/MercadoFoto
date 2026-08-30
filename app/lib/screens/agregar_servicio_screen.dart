@@ -49,8 +49,12 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
     'Construcción', 'Transporte', 'Electrodomésticos', 'Servicio',
     'Salud', 'Profesional', 'Asesorías', 'Computación', 'Otros',
   ];
+  // Paleta decorativa para distinguir una categoría de otra. Son colores
+  // arbitrarios de identificación, NO los colores semánticos de estado
+  // (colors.success / colors.warning), así que van literales y la lista
+  // puede seguir siendo const.
   static const _kColores = [
-    Color(0xFF007AFF), colors.success, colors.warning,
+    Color(0xFF007AFF), Color(0xFF34C759), Color(0xFFFF9500),
     Color(0xFFFF3B30), Color(0xFFAF52DE), Color(0xFF5AC8FA),
     Color(0xFFFFCC00), Color(0xFFFF2D55), Color(0xFF00C7BE),
     Color(0xFF636366),
