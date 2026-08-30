@@ -148,6 +148,9 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
           child: tienefoto
               ? Image.network(
                   fotoCompleta,
+                  // Fuerza una carga nueva si cambia la URL (evita quedarse
+                  // con un estado de error en caché de una carga anterior).
+                  key: ValueKey(fotoCompleta),
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Center(
                     child: Text(

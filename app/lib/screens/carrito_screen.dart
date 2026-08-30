@@ -41,8 +41,9 @@ class CarritoScreen extends StatelessWidget {
               return Padding(
                 padding: const EdgeInsets.only(right: 4),
                 child: Center(
+                  // Tamaño base del home (57) +40% = 80.
                   child: Image.asset('assets/images/okventin_compra.png',
-                      width: 57, height: 57),
+                      width: 80, height: 80),
                 ),
               );
             },

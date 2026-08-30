@@ -96,11 +96,11 @@ class _MensajesScreenState extends State<MensajesScreen> {
               child: ValueListenableBuilder<bool>(
                 valueListenable: ThemeService.isDarkNotifier,
                 builder: (_, isDark, __) {
-                  // Modo oscuro: mismo tamaño agrandado que en el home (57).
+                  // Modo oscuro: tamaño base del home (57) +40% = 80.
                   return Image.asset(
                     isDark ? 'assets/images/okventin_chat.png' : 'assets/images/mensajes.png',
-                    width: isDark ? 57 : 28,
-                    height: isDark ? 57 : 28,
+                    width: isDark ? 80 : 28,
+                    height: isDark ? 80 : 28,
                   );
                 },
               ),
