@@ -249,6 +249,17 @@ from routers.verificacion_paquete import (
 from database.catalogos import init_catalogos_db
 from routers.catalogos import router as catalogos_router
 
+from database.cotizaciones import init_cotizaciones_db
+from routers.cotizaciones import router as cotizaciones_router
+from database.ordenes import (
+    liberar_inicial as ordenes_liberar_inicial,
+    liberar_retencion as ordenes_liberar_retencion,
+    marcar_garantia_reclamada as ordenes_marcar_garantia,
+    ordenes_con_retencion_vencida,
+    PORCENTAJE_LIBERACION_INICIAL,
+    DIAS_RETENCION_GARANTIA,
+)
+
 # --------------------------------------------------
 # CATEGORIZACIÓN AUTOMÁTICA (keyword-based, sin dependencias externas)
 # --------------------------------------------------
@@ -412,6 +423,7 @@ init_bitacora_db()
 init_agent_logs_db()
 init_verificacion_paquete_db()
 init_catalogos_db()
+init_cotizaciones_db()
 
 # --------------------------------------------------
 # CORS
@@ -433,6 +445,7 @@ def version():
 app.include_router(okdelivery_router)
 app.include_router(verificacion_paquete_router)
 app.include_router(catalogos_router)
+app.include_router(cotizaciones_router)
 
 # --------------------------------------------------
 # MODELOS
@@ -1207,7 +1220,59 @@ def ver_conversaciones(user_id: int):
 
 @app.get("/chat/{publicacion_id}")
 def ver_chat(publicacion_id: int):
-    return obtener_chat(publicacion_id)
+    return obtener_chat(publicacion_id=publicacion_id)
+
+
+# ── Chat de servicios ───────────────────────────────────────────────────────
+# El chat nació atado a una publicación; un servicio no lo es, así que tiene
+# sus propias rutas y los mensajes se guardan con servicio_id en vez de
+# publicacion_id. El resto (notificaciones, adjuntos) es el mismo.
+
+@app.get("/chat/servicio/{servicio_id}")
+def ver_chat_servicio(servicio_id: int):
+    return obtener_chat(servicio_id=servicio_id)
+
+
+@app.post("/chat/servicio/enviar")
+def enviar_mensaje_servicio(body: dict):
+    servicio_id = body.get("servicio_id")
+    remitente_id = body.get("remitente_id")
+    mensaje = (body.get("mensaje") or "").strip()
+    if not servicio_id or not remitente_id or not mensaje:
+        raise HTTPException(status_code=400, detail="Faltan datos del mensaje")
+
+    servicio = obtener_servicio_por_id(servicio_id)
+    if not servicio:
+        raise HTTPException(status_code=404, detail="Servicio no encontrado")
+
+    guardar_mensaje(publicacion_id=None, servicio_id=servicio_id,
+                    remitente_id=remitente_id, mensaje=mensaje)
+
+    # El destinatario es el otro lado del hilo: si escribe el proveedor, va
+    # al último cliente que participó; si escribe un cliente, al proveedor.
+    proveedor_id = servicio.get("user_id")
+    if remitente_id == proveedor_id:
+        otros = [m["remitente"] for m in obtener_chat(servicio_id=servicio_id)
+                 if m["remitente"] != proveedor_id]
+        destinatario = otros[-1] if otros else None
+    else:
+        destinatario = proveedor_id
+
+    if destinatario:
+        titulo_srv = servicio.get("titulo") or "un servicio"
+        try:
+            tok = obtener_fcm_token(destinatario)
+            if tok:
+                enviar_push(tok, "💬 Nuevo mensaje",
+                            f"Sobre '{titulo_srv}': {mensaje[:80]}",
+                            {"tipo": "chat_servicio",
+                             "servicio_id": str(servicio_id)})
+        except Exception:
+            pass
+        crear_notificacion(destinatario, "chat",
+                           f"💬 Nuevo mensaje sobre '{titulo_srv}'")
+
+    return {"ok": True}
 
 
 @app.post("/chat/{publicacion_id}/imagen")
@@ -2239,6 +2304,50 @@ def _procesar_pago_aprobado(orden: dict, payment_id: str):
     registrar_evento(orden_id, "pago_confirmado",
                      actor_id=orden["comprador_id"],
                      detalle=f"payment_id={payment_id}")
+
+    # ── Servicios: Seguro Garantía OkVenta ────────────────────────────────
+    # Un servicio no tiene envío que coordinar, así que no se le pide al
+    # proveedor elegir método de entrega (eso es propio de un producto).
+    # En su lugar arranca la garantía: se le abona el 80% ahora y el 20%
+    # queda retenido 30 días.
+    if orden.get("tipo") == "servicio":
+        monto = float(orden.get("monto") or 0)
+        comision = float(orden.get("comision_okventa") or 0)
+        neto = round(monto - comision, 2)
+        liberado, retenido = ordenes_liberar_inicial(orden_id, neto)
+        registrar_evento(
+            orden_id, "fondos_liberados_parcial",
+            detalle=f"{int(PORCENTAJE_LIBERACION_INICIAL * 100)}% liberado="
+                    f"{liberado} retenido={retenido}")
+
+        fcm_prov = obtener_fcm_token(orden["vendedor_id"])
+        if fcm_prov:
+            try:
+                enviar_push(
+                    fcm_prov,
+                    "💳 Servicio pagado",
+                    f"Se te abonaron ${liberado:,.0f} por '{orden['titulo']}'. "
+                    f"El {int((1 - PORCENTAJE_LIBERACION_INICIAL) * 100)}% "
+                    f"restante se libera en {DIAS_RETENCION_GARANTIA} días.",
+                    {"tipo": "servicio_pagado", "orden_id": str(orden_id)},
+                )
+            except Exception:
+                pass
+        crear_notificacion(
+            orden["vendedor_id"], "servicio_pagado",
+            f"💳 Pago confirmado por '{orden['titulo']}'. Se abonaron "
+            f"${liberado:,.0f}; ${retenido:,.0f} quedan en garantía por "
+            f"{DIAS_RETENCION_GARANTIA} días.",
+            orden_id=orden_id,
+        )
+        crear_notificacion(
+            orden["comprador_id"], "servicio_pagado",
+            f"✅ Contrataste '{orden['titulo']}'. Tienes "
+            f"{DIAS_RETENCION_GARANTIA} días de garantía OkVenta.",
+            orden_id=orden_id,
+        )
+        return
+
     # Obtener ubicación del comprador para informar al vendedor
     comprador = obtener_usuario_por_id(orden["comprador_id"])
     ubicacion_str = ""
@@ -2939,6 +3048,75 @@ def admin_expirar_pendientes(token: str = "", horas: int = 24):
                          detalle=f"expirada: pendiente_pago >{horas}h sin completar")
         expiradas.append(orden["id"])
     return {"total": len(expiradas), "ordenes": expiradas}
+
+
+@app.post("/admin/ordenes/liberar_retenidos")
+def admin_liberar_retenidos(token: str = "", dias: int = DIAS_RETENCION_GARANTIA):
+    """Seguro Garantía: libera el 20% retenido de los servicios cuyo plazo ya
+    venció y que no tienen un reclamo de garantía abierto.
+
+    Lo llama el worker (scripts/run_delivery_worker.py) por HTTP, igual que
+    el resto de los jobs: nunca se abre el SQLite desde otro proceso."""
+    SECRET = os.environ.get("ADMIN_TOKEN", "okventa-admin-2026")
+    if token != SECRET:
+        raise HTTPException(status_code=403, detail="Token inválido")
+
+    liberadas = []
+    for orden in ordenes_con_retencion_vencida(dias):
+        monto = ordenes_liberar_retencion(orden["id"])
+        if monto <= 0:
+            continue
+        liberadas.append({"orden_id": orden["id"], "monto": monto})
+        registrar_evento(orden["id"], "fondos_liberados_total",
+                         detalle=f"retencion liberada={monto} tras {dias} dias")
+        try:
+            tok = obtener_fcm_token(orden["vendedor_id"])
+            if tok:
+                enviar_push(
+                    tok, "🎉 Garantía cumplida",
+                    f"Se liberaron los ${monto:,.0f} retenidos de "
+                    f"'{orden['titulo']}'.",
+                    {"tipo": "fondos_liberados", "orden_id": str(orden["id"])})
+        except Exception:
+            pass
+        crear_notificacion(
+            orden["vendedor_id"], "fondos_liberados",
+            f"🎉 Se liberaron los ${monto:,.0f} retenidos de "
+            f"'{orden['titulo']}'. Coordina con OkVenta la transferencia.",
+            orden_id=orden["id"])
+
+    return {"total": len(liberadas), "ordenes": liberadas}
+
+
+@app.post("/servicios/ordenes/{orden_id}/reclamar-garantia")
+def reclamar_garantia_servicio(orden_id: int, user_id: int = Form(...),
+                               motivo: str = Form(...)):
+    """El cliente abre un reclamo dentro de los 30 días: congela el 20%
+    retenido hasta que OkVenta resuelva."""
+    orden = obtener_orden(orden_id)
+    if not orden:
+        raise HTTPException(status_code=404, detail="Orden no encontrada")
+    if orden["comprador_id"] != user_id:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    if float(orden.get("monto_retenido") or 0) <= 0:
+        raise HTTPException(
+            status_code=409,
+            detail="Esta orden ya no tiene monto en garantía")
+
+    ordenes_marcar_garantia(orden_id)
+    abrir_disputa(orden_id)
+    registrar_evento(orden_id, "garantia_reclamada", actor_id=user_id,
+                     detalle=motivo[:300])
+    crear_notificacion(
+        1, "disputa",
+        f"⚠️ Reclamo de garantía en la orden #{orden_id}: {motivo[:120]}",
+        orden_id=orden_id)
+    crear_notificacion(
+        orden["vendedor_id"], "disputa",
+        f"⚠️ El cliente reclamó garantía por '{orden['titulo']}'. "
+        f"El monto retenido queda congelado hasta resolver.",
+        orden_id=orden_id)
+    return {"ok": True, "estado": "en_disputa"}
 
 
 @app.post("/admin/ordenes/auto_confirmar")

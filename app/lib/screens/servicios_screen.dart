@@ -498,9 +498,11 @@ class _ListaServiciosState extends State<_ListaServicios> {
       children: [
         // ── Buscador + control de tamaño ────────────────────────────────────
         Container(
-          // Gris, igual que el resto de la app: resalta contra el blanco de
-          // arriba en vez de camuflarse.
-          color: colors.background,
+          // Blanco, igual que el encabezado de arriba: antes esta franja era
+          // gris y el resultado era blanco → gris → blanco → gris en cuatro
+          // bandas seguidas. Ahora todo el encabezado es un solo bloque
+          // blanco y el único corte contra el gris es el Divider de abajo.
+          color: colors.surface,
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
           child: Row(
             children: [
@@ -508,15 +510,9 @@ class _ListaServiciosState extends State<_ListaServicios> {
                 child: Container(
                   height: 38,
                   decoration: BoxDecoration(
-                    color: colors.surface,
+                    color: colors.background,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: colors.divider),
-                    boxShadow: [
-                      BoxShadow(
-                          color: Colors.black.withOpacity(0.06),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1)),
-                    ],
                   ),
                   child: TextField(
                     controller: _searchCtrl,
@@ -567,7 +563,9 @@ class _ListaServiciosState extends State<_ListaServicios> {
           height: 40,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+            // 4 a la derecha + los 8 de margen de la última pastilla = los
+            // mismos 12 que hay a la izquierda.
+            padding: const EdgeInsets.fromLTRB(12, 0, 4, 6),
             itemCount: _kCategorias.length,
             itemBuilder: (_, i) {
               final cat = _kCategorias[i];
@@ -737,16 +735,16 @@ class _TarjetaServicio extends StatelessWidget {
     final tipoColor = tipo == 'ofrezco' ? colors.primary : colors.warning;
     final prefix    = tipo == 'ofrezco' ? 'Ofrezco' : 'Busco';
 
+    // El borde tiene que ser UNIFORME: Flutter ignora el borderRadius cuando
+    // los lados difieren y pinta esquinas rectas, que es lo que hacía que la
+    // franja roja se saliera de la tarjeta y chocara con la esquina redondeada
+    // de la foto. La franja va como hijo recortado por el clipBehavior.
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border(
-          left:   BorderSide(color: tipoColor, width: 4),
-          top:    BorderSide(color: colors.divider, width: 0.5),
-          right:  BorderSide(color: colors.divider, width: 0.5),
-          bottom: BorderSide(color: colors.divider, width: 0.5),
-        ),
+        border: Border.all(color: colors.divider, width: 0.5),
         boxShadow: [
           BoxShadow(
               color: Colors.black.withOpacity(0.04),
@@ -754,18 +752,24 @@ class _TarjetaServicio extends StatelessWidget {
               offset: const Offset(0, 2))
         ],
       ),
-      child: Row(
-        children: [
-          // Imagen del servicio o avatar del usuario
-          ClipRRect(
-            borderRadius: const BorderRadius.horizontal(left: Radius.circular(14)),
-            child: fotos.isNotEmpty
-                ? _media(fotos.first as String, imgW, imgH)
-                : _avatar(fotoUrl, nombre, imgW, imgH),
-          ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Franja de color según el tipo (ofrezco / busco).
+            Container(width: 4, color: tipoColor),
 
-          // Info
-          Expanded(
+            // Imagen del servicio o avatar del usuario. Va centrada: con
+            // `stretch` la fila le impondría la altura completa de la tarjeta
+            // y la deformaría.
+            Center(
+              child: fotos.isNotEmpty
+                  ? _media(fotos.first as String, imgW, imgH)
+                  : _avatar(fotoUrl, nombre, imgW, imgH),
+            ),
+
+            // Info
+            Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
               child: Column(
@@ -925,8 +929,9 @@ class _TarjetaServicio extends StatelessWidget {
                 ],
               ),
             ),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }

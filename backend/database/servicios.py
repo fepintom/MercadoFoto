@@ -46,7 +46,7 @@ def init_servicios_db():
         id              INTEGER PRIMARY KEY AUTOINCREMENT,
         servicio_id     INTEGER NOT NULL,
         contactante_id  INTEGER,
-        tipo_contacto   TEXT DEFAULT 'whatsapp',  -- 'whatsapp' | 'llamada'
+        tipo_contacto   TEXT DEFAULT 'whatsapp',  -- 'chat' | 'llamada' | 'whatsapp' (histórico)
         nombre          TEXT,
         created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )

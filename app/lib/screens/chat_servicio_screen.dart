@@ -1,0 +1,642 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../services/api_service.dart';
+import '../services/session_service.dart';
+import '../theme/app_theme.dart';
+import '../utils/format_utils.dart';
+
+/// Chat de un servicio.
+///
+/// Va aparte del chat de productos a propósito: aquel está construido
+/// entero alrededor de una publicación (cabecera del producto, ofertas,
+/// contraofertas, fotos y videos). Un servicio necesita otra cosa —
+/// mensajes y cotizaciones— y mezclarlos habría obligado a llenar de
+/// condicionales una pantalla que hoy funciona.
+///
+/// Quien presta el servicio puede enviar una cotización: se genera un PDF
+/// con el formato estándar de OkVenta y llega al chat como una tarjeta con
+/// aceptar / rechazar. Al aceptar se cobra y arranca el Seguro Garantía.
+class ChatServicioScreen extends StatefulWidget {
+  final int servicioId;
+  final int proveedorId;
+  final String tituloServicio;
+  final String nombreProveedor;
+
+  const ChatServicioScreen({
+    super.key,
+    required this.servicioId,
+    required this.proveedorId,
+    required this.tituloServicio,
+    this.nombreProveedor = '',
+  });
+
+  @override
+  State<ChatServicioScreen> createState() => _ChatServicioScreenState();
+}
+
+class _ChatServicioScreenState extends State<ChatServicioScreen> {
+  final _ctrl = TextEditingController();
+  final _scroll = ScrollController();
+  List<dynamic> _mensajes = [];
+  final Map<int, Map<String, dynamic>> _cotizaciones = {};
+  int? _userId;
+  bool _cargando = true;
+  bool _enviando = false;
+  Timer? _poll;
+
+  bool get _soyProveedor => _userId != null && _userId == widget.proveedorId;
+
+  @override
+  void initState() {
+    super.initState();
+    _inicializar();
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    _ctrl.dispose();
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  Future<void> _inicializar() async {
+    _userId = await SessionService.obtenerUser();
+    await _cargar();
+    if (mounted) setState(() => _cargando = false);
+    _poll = Timer.periodic(const Duration(seconds: 5), (_) => _cargar());
+  }
+
+  Future<void> _cargar() async {
+    try {
+      final msgs = await ApiService.obtenerChatServicio(widget.servicioId);
+      // Las cotizaciones se piden una sola vez cada una y se cachean: el
+      // chat se refresca cada 5 s y no vale re-consultarlas en cada vuelta.
+      for (final m in msgs) {
+        final cid = m['cotizacion_id'];
+        if (cid is int && !_cotizaciones.containsKey(cid)) {
+          final c = await ApiService.obtenerCotizacion(cid);
+          if (c != null) _cotizaciones[cid] = c;
+        }
+      }
+      if (!mounted) return;
+      final crecio = msgs.length != _mensajes.length;
+      setState(() => _mensajes = msgs);
+      if (crecio) _alFinal();
+    } catch (_) {
+      // Silencioso: es un refresco periódico.
+    }
+  }
+
+  void _alFinal() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scroll.hasClients) {
+        _scroll.animateTo(_scroll.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut);
+      }
+    });
+  }
+
+  void _aviso(String texto, {bool error = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(texto),
+      backgroundColor: error ? colors.primary : colors.carbon,
+      behavior: SnackBarBehavior.floating,
+    ));
+  }
+
+  Future<void> _enviar() async {
+    final texto = _ctrl.text.trim();
+    if (texto.isEmpty || _userId == null || _enviando) return;
+    setState(() => _enviando = true);
+    try {
+      await ApiService.enviarMensajeServicio(
+        servicioId: widget.servicioId,
+        remitenteId: _userId!,
+        mensaje: texto,
+      );
+      _ctrl.clear();
+      await _cargar();
+      _alFinal();
+    } catch (e) {
+      _aviso('$e'.replaceFirst('Exception: ', ''), error: true);
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
+  }
+
+  // ── Cotización ────────────────────────────────────────────────────────────
+
+  Future<void> _abrirFormularioCotizacion() async {
+    // El cliente es la otra persona del hilo. Si todavía no ha escrito
+    // nadie más, no hay a quién cotizarle.
+    final clienteId = _mensajes
+        .map((m) => m['remitente'])
+        .whereType<int>()
+        .where((r) => r != widget.proveedorId)
+        .fold<int?>(null, (_, r) => r);
+    if (clienteId == null) {
+      _aviso('Espera a que el cliente te escriba para poder cotizarle.');
+      return;
+    }
+
+    final empresaCtrl = TextEditingController(text: widget.tituloServicio);
+    final servicioCtrl = TextEditingController();
+    final montoCtrl = TextEditingController();
+    final detalleCtrl = TextEditingController();
+
+    final enviar = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 28),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                      color: colors.divider,
+                      borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text('Enviar cotización',
+                  style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary)),
+              const SizedBox(height: 4),
+              Text('Se envía como PDF al chat, con el formato de OkVenta.',
+                  style: TextStyle(fontSize: 12, color: colors.grayMid)),
+              const SizedBox(height: 16),
+              _campo('Nombre de empresa', empresaCtrl),
+              const SizedBox(height: 12),
+              _campo('Servicio cotizado', servicioCtrl),
+              const SizedBox(height: 12),
+              _campo('Monto del servicio', montoCtrl,
+                  teclado: TextInputType.number),
+              const SizedBox(height: 12),
+              _campo('Detalle', detalleCtrl, lineas: 4),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Enviar cotización'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (enviar != true || _userId == null) return;
+
+    final monto = double.tryParse(
+        montoCtrl.text.replaceAll(RegExp(r'[^\d]'), ''));
+    if (servicioCtrl.text.trim().isEmpty || monto == null || monto <= 0) {
+      _aviso('Falta el servicio o el monto.', error: true);
+      return;
+    }
+
+    try {
+      await ApiService.enviarCotizacion(
+        servicioId: widget.servicioId,
+        proveedorId: widget.proveedorId,
+        clienteId: clienteId,
+        servicioCotizado: servicioCtrl.text.trim(),
+        monto: monto,
+        detalle: detalleCtrl.text.trim(),
+        empresa: empresaCtrl.text.trim(),
+      );
+      await _cargar();
+      _alFinal();
+      _aviso('Cotización enviada');
+    } catch (e) {
+      _aviso('$e'.replaceFirst('Exception: ', ''), error: true);
+    }
+  }
+
+  Widget _campo(String label, TextEditingController c,
+      {TextInputType teclado = TextInputType.text, int lineas = 1}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 12.5, color: colors.grayMid)),
+        const SizedBox(height: 6),
+        TextField(
+          controller: c,
+          keyboardType: teclado,
+          maxLines: lineas,
+          style: TextStyle(fontSize: 14, color: colors.textPrimary),
+          decoration: InputDecoration(
+            isDense: true,
+            filled: true,
+            fillColor: colors.background,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: colors.divider, width: 0.5),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: colors.divider, width: 0.5),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: colors.primary, width: 1.5),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _responderCotizacion(int cotizacionId, bool aceptar) async {
+    if (_userId == null) return;
+    try {
+      if (!aceptar) {
+        await ApiService.rechazarCotizacion(cotizacionId, _userId!);
+        _cotizaciones.remove(cotizacionId);
+        await _cargar();
+        _aviso('Cotización rechazada');
+        return;
+      }
+
+      final r = await ApiService.aceptarCotizacion(cotizacionId, _userId!);
+      _cotizaciones.remove(cotizacionId);
+      await _cargar();
+
+      if (r['test_mode'] == true) {
+        if (!mounted) return;
+        await showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            backgroundColor: colors.surface,
+            title: Text('Servicio contratado',
+                style: TextStyle(color: colors.textPrimary)),
+            content: Text(
+              '${r['mensaje'] ?? 'Pago simulado.'}\n\n'
+              'Se abonó el 80% al proveedor. El 20% restante queda en el '
+              'Seguro Garantía OkVenta por 30 días.',
+              style: TextStyle(color: colors.textSecondary),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Entendido')),
+            ],
+          ),
+        );
+      } else {
+        final url = r['init_point'] as String?;
+        if (url != null && url.isNotEmpty) {
+          await launchUrl(Uri.parse(url),
+              mode: LaunchMode.externalApplication);
+        }
+      }
+    } catch (e) {
+      _aviso('$e'.replaceFirst('Exception: ', ''), error: true);
+    }
+  }
+
+  // ── UI ────────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: colors.background,
+      appBar: AppBar(
+        backgroundColor: colors.surface,
+        foregroundColor: colors.textPrimary,
+        elevation: 0,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.tituloServicio,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 15)),
+            if (widget.nombreProveedor.isNotEmpty)
+              Text(widget.nombreProveedor,
+                  style: TextStyle(fontSize: 11.5, color: colors.grayMid)),
+          ],
+        ),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: _cargando
+                ? Center(
+                    child: CircularProgressIndicator(color: colors.primary))
+                : _mensajes.isEmpty
+                    ? _vacio()
+                    : ListView.builder(
+                        controller: _scroll,
+                        padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+                        itemCount: _mensajes.length,
+                        itemBuilder: (_, i) => _burbuja(_mensajes[i]),
+                      ),
+          ),
+          _barraEnvio(),
+        ],
+      ),
+    );
+  }
+
+  Widget _vacio() => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.chat_bubble_outline_rounded,
+                size: 42, color: colors.grayMid),
+            const SizedBox(height: 12),
+            Text(
+              _soyProveedor
+                  ? 'Cuando alguien te escriba, podrás cotizarle desde aquí.'
+                  : 'Escríbele para pedir una cotización.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: colors.grayMid),
+            ),
+          ]),
+        ),
+      );
+
+  Widget _burbuja(dynamic m) {
+    final esMio = m['remitente'] == _userId;
+    if (m['tipo'] == 'cotizacion' && m['cotizacion_id'] is int) {
+      return _tarjetaCotizacion(m['cotizacion_id'] as int, esMio);
+    }
+
+    return Align(
+      alignment: esMio ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.75),
+        decoration: BoxDecoration(
+          color: esMio ? colors.primary : colors.surface,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(16),
+            topRight: const Radius.circular(16),
+            bottomLeft: Radius.circular(esMio ? 16 : 4),
+            bottomRight: Radius.circular(esMio ? 4 : 16),
+          ),
+          border: esMio
+              ? null
+              : Border.all(color: colors.divider, width: 0.5),
+        ),
+        child: Text(
+          m['mensaje']?.toString() ?? '',
+          style: TextStyle(
+              fontSize: 14,
+              color: esMio ? Colors.white : colors.textPrimary),
+        ),
+      ),
+    );
+  }
+
+  Widget _tarjetaCotizacion(int cotizacionId, bool esMia) {
+    final c = _cotizaciones[cotizacionId];
+    if (c == null) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Center(
+          child: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+                strokeWidth: 2, color: colors.primary),
+          ),
+        ),
+      );
+    }
+
+    final estado = c['estado'] as String? ?? 'enviada';
+    final pendiente = estado == 'enviada';
+    final puedeResponder = pendiente && !esMia;
+    final pdf = c['pdf_url'] as String?;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+            color: pendiente ? colors.primary.withOpacity(0.45) : colors.divider,
+            width: pendiente ? 1.2 : 0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.description_outlined, size: 18, color: colors.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text('Cotización de servicio',
+                  style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary)),
+            ),
+            if (!pendiente)
+              Text(estado == 'aceptada' ? 'Aceptada' : 'Rechazada',
+                  style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: estado == 'aceptada'
+                          ? colors.success
+                          : colors.grayMid)),
+          ]),
+          const SizedBox(height: 10),
+          Text(c['servicio_cotizado']?.toString() ?? '',
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary)),
+          const SizedBox(height: 2),
+          Text(formatPrecio(c['monto']),
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: colors.primary)),
+          if ((c['detalle']?.toString() ?? '').isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(c['detalle'].toString(),
+                style: TextStyle(
+                    fontSize: 12.5, color: colors.textSecondary, height: 1.4)),
+          ],
+          if (pdf != null && pdf.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () => launchUrl(Uri.parse('${ApiService.baseUrl}$pdf'),
+                  mode: LaunchMode.externalApplication),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.picture_as_pdf_rounded,
+                    size: 16, color: colors.primary),
+                const SizedBox(width: 6),
+                Text('Ver cotización en PDF',
+                    style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: colors.primary,
+                        decoration: TextDecoration.underline,
+                        decorationColor: colors.primary)),
+              ]),
+            ),
+          ],
+          if (puedeResponder) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: colors.background,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'Te han enviado una cotización del servicio que deseas '
+                'contratar. Al aceptar se realiza el pago: se abona el 80% al '
+                'proveedor y el 20% queda en el Seguro Garantía OkVenta '
+                'por 30 días.',
+                style: TextStyle(
+                    fontSize: 12, color: colors.textSecondary, height: 1.4),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => _responderCotizacion(cotizacionId, false),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: colors.grayMid,
+                    side: BorderSide(color: colors.divider),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Rechazar'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => _responderCotizacion(cotizacionId, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Aceptar y pagar'),
+                ),
+              ),
+            ]),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _barraEnvio() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        border: Border(top: BorderSide(color: colors.divider, width: 0.5)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(children: [
+          if (_soyProveedor)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: GestureDetector(
+                onTap: _abrirFormularioCotizacion,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: colors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.request_quote_outlined,
+                      size: 20, color: colors.primary),
+                ),
+              ),
+            ),
+          Expanded(
+            child: TextField(
+              controller: _ctrl,
+              textCapitalization: TextCapitalization.sentences,
+              style: TextStyle(fontSize: 14, color: colors.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Escribe un mensaje...',
+                hintStyle: TextStyle(color: colors.grayMid, fontSize: 14),
+                isDense: true,
+                filled: true,
+                fillColor: colors.background,
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  borderSide: BorderSide(color: colors.divider, width: 0.5),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  borderSide: BorderSide(color: colors.divider, width: 0.5),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  borderSide: BorderSide(color: colors.primary, width: 1.2),
+                ),
+              ),
+              onSubmitted: (_) => _enviar(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: _enviando ? null : _enviar,
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: colors.primary,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.send_rounded,
+                  size: 18, color: Colors.white),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+}
