@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
+import 'catalogo_screen.dart' show VitrinaCatalogo;
 import 'producto_detalle_screen.dart';
 import '../widgets/net_image.dart';
 import '../widgets/reputacion_vendedor.dart';
@@ -26,6 +27,8 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
   String _nombre = '';
   List<dynamic> _publicaciones = [];
   Map<String, dynamic>? _reputacion;
+  /// Catálogo de tienda del vendedor, si subió uno y ya está procesado.
+  Map<String, dynamic>? _catalogo;
   String? _error;
 
   @override
@@ -40,6 +43,11 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
       _cargando = true;
       _error = null;
     });
+    // El catálogo es opcional: si falla, el perfil se muestra igual.
+    ApiService.obtenerCatalogoPublico(widget.userId).then((c) {
+      if (mounted && c['existe'] == true) setState(() => _catalogo = c);
+    }).catchError((_) {});
+
     try {
       final url = Uri.parse(
           '${ApiService.baseUrl}/usuarios/${widget.userId}/perfil_publico');
@@ -241,6 +249,18 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
         if (_reputacion != null)
           SliverToBoxAdapter(child: ReputacionCard(reputacion: _reputacion!)),
         const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+        // ── Tienda del vendedor ─────────────────────────────────────────────
+        // Un pedazo de su catálogo, con los colores de su propia marca.
+        if (_catalogo != null) ...[
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: VitrinaCatalogo(catalogo: _catalogo!),
+            ),
+          ),
+          const SliverToBoxAdapter(child: SizedBox(height: 20)),
+        ],
 
         // ── Grid de publicaciones ────────────────────────────────────────────
         _publicaciones.isEmpty

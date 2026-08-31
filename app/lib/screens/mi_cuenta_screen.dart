@@ -11,6 +11,7 @@ import 'ayuda_chat_screen.dart';
 import 'ayuda_screen.dart';
 import 'favoritos_screen.dart';
 import 'mis_compras_screen.dart';
+import 'catalogo_screen.dart';
 import 'mis_publicaciones_screen.dart';
 import 'mis_servicios_screen.dart';
 import 'mis_ventas_screen.dart';
@@ -501,7 +502,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              Text('MODO',
+              Text('Modo',
                   style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
@@ -925,6 +926,13 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                           const EdgeInsets.symmetric(horizontal: 16),
                       child: Column(
                         children: [
+                          _itemMenu(Icons.storefront_rounded, "Catálogo", () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const CatalogoScreen()),
+                            );
+                          }),
                           _itemMenu(Icons.store_outlined, "Mis publicaciones",
                               () {
                             Navigator.push(
@@ -978,7 +986,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                               Icons.support_agent_rounded, "Obtener ayuda",
                               _mostrarChatSoporte),
                           _itemMenu(
-                              Icons.dark_mode_outlined, "MODO", _abrirSelectorModo),
+                              Icons.dark_mode_outlined, "Modo", _abrirSelectorModo),
                           _itemFaceId(),
                         ],
                       ),

@@ -186,6 +186,40 @@ class AppPalette {
     return hacia;
   }
 
+  /// Color de texto legible sobre un fondo ARBITRARIO — el caso de los
+  /// catálogos de tienda, donde el color lo pone el vendedor y puede ser
+  /// cualquiera, incluido uno que deje el texto ilegible.
+  ///
+  /// Elige blanco o el gris carbón según cuál contraste mejor, y luego lo
+  /// empuja hasta cumplir AA. Es la misma regla que usa la app para su
+  /// propio fondo, aplicada a un color que no controlamos.
+  static Color textoLegibleSobre(Color fondo) {
+    final claro = _contraste(Colors.white, fondo);
+    final oscuro = _contraste(AppColors.carbon, fondo);
+    return claro >= oscuro
+        ? _asegurar(Colors.white, fondo, hacia: Colors.white)
+        : _asegurar(AppColors.carbon, fondo, hacia: Colors.black);
+  }
+
+  /// Ajusta [fg] lo mínimo necesario para que se lea sobre [fondo],
+  /// conservando su tono. Sirve para mantener el color de acento de una
+  /// tienda aunque su combinación con el fondo sea mala.
+  static Color ajustarSobre(Color fg, Color fondo) {
+    final hacia =
+        fondo.computeLuminance() > 0.45 ? Colors.black : Colors.white;
+    return _asegurar(fg, fondo, hacia: hacia);
+  }
+
+  /// Parsea un color '#RRGGBB' recibido del backend. Devuelve null si viene
+  /// vacío o mal formado, para que la vista pueda caer a su color normal.
+  static Color? desdeHex(String? hex) {
+    if (hex == null) return null;
+    final h = hex.trim().replaceAll('#', '');
+    if (h.length != 6) return null;
+    final v = int.tryParse(h, radix: 16);
+    return v == null ? null : Color(0xFF000000 | v);
+  }
+
   /// Devuelve esta paleta con el fondo oscurecido hacia el gris medio según
   /// [intensity] (0.0 = fondo normal, 1.0 = [_grisMax]), manteniendo SIEMPRE
   /// la legibilidad.

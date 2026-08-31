@@ -13,6 +13,11 @@ rembg[cpu]==2.0.75
 pillow>=12.1.0,<13.0.0
 numpy>=1.24.0
 
+# ── Catálogos de tienda (PDF y páginas web) ──────────────
+PyMuPDF==1.24.14        # renderiza las páginas del PDF a imagen
+beautifulsoup4==4.12.3  # ya lo usaba scraper/mercadolibre.py sin declararlo
+lxml==5.3.0
+
 # ── HTTP / Datos / Email ─────────────────────────────────
 requests==2.32.5
 openpyxl==3.1.5
