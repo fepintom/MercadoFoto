@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime
 from config import PUBLICACIONES_DB as DB
 
 
@@ -36,6 +37,17 @@ def init_ordenes_db():
         ("entrega_reportada_en", "TIMESTAMP"),
         ("recordatorio_enviado", "INTEGER DEFAULT 0"),
         ("token_confirmacion",   "TEXT"),
+        # ── Seguro Garantía OkVenta (servicios) ──────────────────────────
+        # Al aprobarse el pago de un servicio no se libera todo de una: se
+        # abona el 80% al proveedor y se retiene el 20% durante 30 días. Si
+        # el cliente no reclama garantía en ese plazo, un job libera el
+        # resto (ver /admin/ordenes/liberar_retenidos).
+        ("monto_liberado",       "REAL DEFAULT 0"),
+        ("monto_retenido",       "REAL DEFAULT 0"),
+        ("liberado_parcial_en",  "TIMESTAMP"),
+        ("liberado_total_en",    "TIMESTAMP"),
+        ("garantia_reclamada",   "INTEGER DEFAULT 0"),
+        ("cotizacion_id",        "INTEGER"),
     ]
     for col, definition in migrations:
         if col not in cols:
@@ -284,6 +296,13 @@ def _ensure_ordenes_cols(cursor):
         ("entrega_reportada_en", "TIMESTAMP"),
         ("recordatorio_enviado", "INTEGER DEFAULT 0"),
         ("token_confirmacion",   "TEXT"),
+        # Mantener en paralelo con la lista de migrations de init_ordenes_db.
+        ("monto_liberado",       "REAL DEFAULT 0"),
+        ("monto_retenido",       "REAL DEFAULT 0"),
+        ("liberado_parcial_en",  "TIMESTAMP"),
+        ("liberado_total_en",    "TIMESTAMP"),
+        ("garantia_reclamada",   "INTEGER DEFAULT 0"),
+        ("cotizacion_id",        "INTEGER"),
     ]:
         if col not in existing:
             cursor.execute(f"ALTER TABLE ordenes ADD COLUMN {col} {defn}")
@@ -296,3 +315,63 @@ def _to_dict(cursor, row):
         return None
     cols = [d[0] for d in cursor.description]
     return dict(zip(cols, row))
+
+
+# ── Seguro Garantía OkVenta ─────────────────────────────────────────────────
+# Reparte el pago de un servicio en dos tramos: 80% al proveedor apenas se
+# aprueba el pago, y el 20% restante a los 30 días si el cliente no reclamó
+# garantía. Igual que el resto del sistema de fondos, esto es contabilidad
+# interna: marca cuánto corresponde pagar y cuándo, la transferencia al
+# proveedor se coordina fuera (no existe payout automático de MercadoPago
+# por vendedor todavía).
+
+PORCENTAJE_LIBERACION_INICIAL = 0.80
+DIAS_RETENCION_GARANTIA = 30
+
+
+def liberar_inicial(orden_id: int, monto_neto: float):
+    """Abona el 80% y retiene el 20%. Devuelve (liberado, retenido)."""
+    liberado = round(monto_neto * PORCENTAJE_LIBERACION_INICIAL, 2)
+    retenido = round(monto_neto - liberado, 2)
+    _update(orden_id,
+            monto_liberado=liberado,
+            monto_retenido=retenido,
+            liberado_parcial_en=datetime.now().isoformat(timespec="seconds"))
+    return liberado, retenido
+
+
+def liberar_retencion(orden_id: int):
+    """Libera el 20% retenido (lo suma a monto_liberado y deja retenido en 0)."""
+    orden = obtener_orden(orden_id)
+    if not orden:
+        return 0.0
+    retenido = float(orden.get("monto_retenido") or 0)
+    if retenido <= 0:
+        return 0.0
+    _update(orden_id,
+            monto_liberado=round(float(orden.get("monto_liberado") or 0) + retenido, 2),
+            monto_retenido=0,
+            liberado_total_en=datetime.now().isoformat(timespec="seconds"))
+    return retenido
+
+
+def marcar_garantia_reclamada(orden_id: int):
+    """Congela la retención: el 20% no se libera hasta resolver el reclamo."""
+    _update(orden_id, garantia_reclamada=1)
+
+
+def ordenes_con_retencion_vencida(dias: int = DIAS_RETENCION_GARANTIA):
+    """Órdenes cuyo 20% ya cumplió el plazo y no tienen garantía reclamada."""
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("""
+        SELECT * FROM ordenes
+        WHERE monto_retenido > 0
+          AND COALESCE(garantia_reclamada, 0) = 0
+          AND liberado_parcial_en IS NOT NULL
+          AND datetime(liberado_parcial_en, '+' || ? || ' days') <= datetime('now')
+    """, (int(dias),))
+    cols = [d[0] for d in c.description]
+    filas = [dict(zip(cols, r)) for r in c.fetchall()]
+    conn.close()
+    return filas

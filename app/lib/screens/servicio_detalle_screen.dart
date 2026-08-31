@@ -7,6 +7,7 @@ import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
+import 'chat_servicio_screen.dart';
 import '../widgets/net_image.dart';
 class ServicioDetalleScreen extends StatefulWidget {
   final Map<String, dynamic> servicio;
@@ -70,24 +71,119 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
     return num;
   }
 
-  Future<void> _abrirWhatsApp() async {
-    final num = _limpiarTelefono(
-        (_srv['whatsapp'] ?? _srv['telefono'] ?? '').toString());
-    if (num.isEmpty) return;
-    _registrarContacto('whatsapp');
-    final uri = Uri.parse('https://wa.me/56$num');
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo abrir WhatsApp')));
-      }
-    }
+  /// Abre el chat del servicio. Es la vía de contacto principal: deja la
+  /// conversación dentro de la app, permite cotizar y no expone datos
+  /// personales de ninguna de las dos partes.
+  void _contactar() {
+    _registrarContacto('chat');
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatServicioScreen(
+          servicioId: _srv['id'] as int,
+          proveedorId: _srv['user_id'] as int,
+          tituloServicio: (_srv['titulo'] ?? 'Servicio').toString(),
+          nombreProveedor: (_srv['nombre'] ?? '').toString(),
+        ),
+      ),
+    );
   }
 
+  /// Llama al proveedor SIN mostrar su número.
+  ///
+  /// La app nunca lo escribe en pantalla: la hoja solo dice a qué servicio
+  /// se está llamando. Aun así hay un límite honesto — cuando el marcador
+  /// del teléfono toma el control, el sistema operativo muestra el número
+  /// que se está marcando, y eso no lo controla la app. Para que quede
+  /// oculto de punta a punta hace falta un número intermediario (un proxy
+  /// tipo Twilio), que es una integración aparte; el aviso al pie lo deja
+  /// claro en vez de prometer algo que no se cumple.
   Future<void> _llamar() async {
     final num = _limpiarTelefono(
         (_srv['telefono'] ?? _srv['whatsapp'] ?? '').toString());
     if (num.isEmpty) return;
+
+    final confirmar = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: colors.divider,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: colors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.call, color: colors.primary, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Contactando a servicio de:',
+                        style:
+                            TextStyle(fontSize: 12.5, color: colors.grayMid)),
+                    const SizedBox(height: 2),
+                    Text((_srv['titulo'] ?? 'Servicio').toString(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: colors.textPrimary)),
+                  ],
+                ),
+              ),
+            ]),
+            const SizedBox(height: 16),
+            Text(
+              'Por tu privacidad y la del proveedor, OkVenta no muestra el '
+              'número. Tu teléfono sí lo marcará para conectar la llamada.',
+              style: TextStyle(
+                  fontSize: 12, color: colors.grayMid, height: 1.4),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => Navigator.pop(ctx, true),
+                icon: const Icon(Icons.call, size: 18),
+                label: const Text('Llamar ahora'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.carbon,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmar != true) return;
     _registrarContacto('llamada');
     final uri = Uri.parse('tel:+56$num');
     if (!await launchUrl(uri)) {
@@ -217,7 +313,7 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
     final numVal     = _srv['num_valoraciones'] as int? ?? 0;
     final tipo       = _srv['tipo'] as String? ?? 'ofrezco';
     final tieneTelefono =
-        ((_srv['telefono'] ?? _srv['whatsapp'] ?? '') as String).isNotEmpty;
+        (_srv['telefono'] ?? _srv['whatsapp'] ?? '').toString().isNotEmpty;
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -458,24 +554,27 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                           color: colors.textPrimary)),
                   const SizedBox(height: 12),
 
-                  if (tieneTelefono)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _abrirWhatsApp,
-                            icon: const Icon(Icons.chat, size: 18),
-                            label: const Text('WhatsApp'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF25D366),
-                              foregroundColor: Colors.white,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                            ),
+                  // Contactar abre el chat: ahí se conversa y se cotiza,
+                  // sin exponer el teléfono de ninguna de las dos partes.
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: _contactar,
+                          icon: const Icon(Icons.chat_bubble_outline_rounded,
+                              size: 18),
+                          label: const Text('Contactar'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colors.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                         ),
+                      ),
+                      if (tieneTelefono) ...[
                         const SizedBox(width: 12),
                         Expanded(
                           child: ElevatedButton.icon(
@@ -485,6 +584,7 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: colors.carbon,
                               foregroundColor: Colors.white,
+                              elevation: 0,
                               padding:
                                   const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
@@ -493,27 +593,8 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                           ),
                         ),
                       ],
-                    )
-                  else
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: colors.background,
-                        borderRadius: BorderRadius.circular(10),
-                        border:
-                            Border.all(color: colors.divider, width: 0.5),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.info_outline,
-                              size: 16, color: colors.grayMid),
-                          SizedBox(width: 8),
-                          Text('El usuario no tiene teléfono registrado',
-                              style: TextStyle(
-                                  fontSize: 12, color: colors.grayMid)),
-                        ],
-                      ),
-                    ),
+                    ],
+                  ),
 
                   const SizedBox(height: 16),
 

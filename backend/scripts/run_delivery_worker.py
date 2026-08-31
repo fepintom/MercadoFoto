@@ -90,6 +90,13 @@ def revisar_confirmaciones(api_url: str, admin_token: str,
     _llamar_admin(api_url, admin_token,
                   "/admin/ordenes/expirar_pendientes",
                   {"horas": 24}, "pendiente_pago expiradas")
+    # Seguro Garantía de servicios: libera el 20% retenido a los 30 días si
+    # el cliente no reclamó. Se consulta seguido, pero solo devuelve algo
+    # cuando alguna orden cumple el plazo.
+    _llamar_admin(api_url, admin_token,
+                  "/admin/ordenes/liberar_retenidos",
+                  {"dias": int(os.environ.get("DIAS_GARANTIA", "30"))},
+                  "retenciones liberadas")
 
 
 def revisar_videos_chat(api_url: str, admin_token: str):

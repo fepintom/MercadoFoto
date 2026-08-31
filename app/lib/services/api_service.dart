@@ -1013,6 +1013,94 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
+  // ── Chat de servicios ──────────────────────────────────────────────────────
+  // El chat nació atado a una publicación; un servicio no lo es, así que
+  // tiene sus propias rutas en el backend.
+
+  static Future<List<dynamic>> obtenerChatServicio(int servicioId) async {
+    final res = await http.get(Uri.parse('$baseUrl/chat/servicio/$servicioId'));
+    if (res.statusCode != 200) return [];
+    return jsonDecode(utf8.decode(res.bodyBytes)) as List<dynamic>;
+  }
+
+  static Future<void> enviarMensajeServicio({
+    required int servicioId,
+    required int remitenteId,
+    required String mensaje,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/chat/servicio/enviar'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'servicio_id': servicioId,
+        'remitente_id': remitenteId,
+        'mensaje': mensaje,
+      }),
+    );
+    if (res.statusCode != 200) {
+      throw Exception(_detalle(res.body) ?? 'No se pudo enviar el mensaje');
+    }
+  }
+
+  // ── Cotizaciones de servicios ──────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>> enviarCotizacion({
+    required int servicioId,
+    required int proveedorId,
+    required int clienteId,
+    required String servicioCotizado,
+    required double monto,
+    String detalle = '',
+    String empresa = '',
+  }) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/cotizaciones'),
+      body: {
+        'servicio_id': servicioId.toString(),
+        'proveedor_id': proveedorId.toString(),
+        'cliente_id': clienteId.toString(),
+        'servicio_cotizado': servicioCotizado,
+        'monto': monto.toString(),
+        'detalle': detalle,
+        'empresa': empresa,
+      },
+    );
+    if (res.statusCode != 200) {
+      throw Exception(_detalle(res.body) ?? 'No se pudo enviar la cotización');
+    }
+    return jsonDecode(utf8.decode(res.bodyBytes));
+  }
+
+  static Future<Map<String, dynamic>?> obtenerCotizacion(int id) async {
+    final res = await http.get(Uri.parse('$baseUrl/cotizaciones/$id'));
+    if (res.statusCode != 200) return null;
+    return jsonDecode(utf8.decode(res.bodyBytes));
+  }
+
+  /// Acepta la cotización: crea la orden y arranca el cobro. La respuesta
+  /// trae `test_mode` (pago simulado) o `init_point` (checkout real).
+  static Future<Map<String, dynamic>> aceptarCotizacion(
+      int id, int userId, {String email = ''}) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/cotizaciones/$id/aceptar'),
+      body: {'user_id': userId.toString(), 'comprador_email': email},
+    );
+    if (res.statusCode != 200) {
+      throw Exception(_detalle(res.body) ?? 'No se pudo aceptar la cotización');
+    }
+    return jsonDecode(utf8.decode(res.bodyBytes));
+  }
+
+  static Future<void> rechazarCotizacion(int id, int userId) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/cotizaciones/$id/rechazar'),
+      body: {'user_id': userId.toString()},
+    );
+    if (res.statusCode != 200) {
+      throw Exception(_detalle(res.body) ?? 'No se pudo rechazar');
+    }
+  }
+
   // ── Catálogo de tienda ─────────────────────────────────────────────────────
   // El vendedor sube un PDF o enlaza su página; el backend la procesa en
   // segundo plano y la app consulta el avance con obtenerMiCatalogo.

@@ -32,13 +32,38 @@ def init_chat_db():
         except Exception:
             pass
 
+    # Migración: el chat nació atado a una publicación. Ahora también sirve
+    # para servicios, así que un mensaje pertenece a UNA de las dos cosas:
+    # publicacion_id o servicio_id (la otra queda en NULL).
+    #
+    # `tipo` reemplaza al truco de detectar mensajes especiales por el emoji
+    # con el que empiezan ('💰 Oferta:'). Los valores son:
+    #   texto | imagen | video | cotizacion
+    # `cotizacion_id` apunta a la fila de `cotizaciones` cuando tipo =
+    # 'cotizacion', para poder pintar la tarjeta con aceptar/rechazar.
+    for col in ["servicio_id INTEGER",
+                "tipo TEXT DEFAULT 'texto'",
+                "cotizacion_id INTEGER"]:
+        try:
+            cursor.execute(f"ALTER TABLE chat ADD COLUMN {col}")
+        except Exception:
+            pass
+
     conn.commit()
     conn.close()
 
 
 
 def guardar_mensaje(publicacion_id, remitente_id, mensaje, imagen_url=None,
-                    video_url=None, video_expira_en=None):
+                    video_url=None, video_expira_en=None,
+                    servicio_id=None, tipo=None, cotizacion_id=None):
+    """Guarda un mensaje. Va atado a una publicación O a un servicio.
+
+    Devuelve el id del mensaje creado."""
+    if tipo is None:
+        tipo = ("video" if video_url else
+                "imagen" if imagen_url else
+                "cotizacion" if cotizacion_id else "texto")
 
     conn = sqlite3.connect(DB)
     cursor = conn.cursor()
@@ -46,24 +71,32 @@ def guardar_mensaje(publicacion_id, remitente_id, mensaje, imagen_url=None,
     cursor.execute("""
         INSERT INTO chat (
             publicacion_id,
+            servicio_id,
             remitente_id,
             mensaje,
             imagen_url,
             video_url,
-            video_expira_en
+            video_expira_en,
+            tipo,
+            cotizacion_id
         )
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         publicacion_id,
+        servicio_id,
         remitente_id,
         mensaje,
         imagen_url,
         video_url,
         video_expira_en,
+        tipo,
+        cotizacion_id,
     ))
 
+    mensaje_id = cursor.lastrowid
     conn.commit()
     conn.close()
+    return mensaje_id
 
 
 
@@ -115,34 +148,40 @@ def obtener_conversaciones(user_id: int):
     return result
 
 
-def obtener_chat(publicacion_id):
+def obtener_chat(publicacion_id=None, servicio_id=None):
+    """Mensajes de un hilo. Se pasa publicacion_id O servicio_id."""
+    if publicacion_id is None and servicio_id is None:
+        return []
 
     conn = sqlite3.connect(DB)
     cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT remitente_id, mensaje, created_at, imagen_url, video_url
+    if servicio_id is not None:
+        where, param = "servicio_id = ?", servicio_id
+    else:
+        where, param = "publicacion_id = ?", publicacion_id
+
+    cursor.execute(f"""
+        SELECT id, remitente_id, mensaje, created_at, imagen_url, video_url,
+               COALESCE(tipo, 'texto'), cotizacion_id
         FROM chat
-        WHERE publicacion_id = ?
+        WHERE {where}
         ORDER BY id ASC
-    """, (publicacion_id,))
+    """, (param,))
 
     rows = cursor.fetchall()
     conn.close()
 
-    mensajes = []
-
-    for r in rows:
-
-        mensajes.append({
-            "remitente": r[0],
-            "mensaje": r[1],
-            "fecha": r[2],
-            "imagen_url": r[3],
-            "video_url": r[4],
-        })
-
-    return mensajes
+    return [{
+        "id": r[0],
+        "remitente": r[1],
+        "mensaje": r[2],
+        "fecha": r[3],
+        "imagen_url": r[4],
+        "video_url": r[5],
+        "tipo": r[6],
+        "cotizacion_id": r[7],
+    } for r in rows]
 
 
 def limpiar_videos_expirados():
