@@ -53,9 +53,6 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   bool _esFavorito = false;
   bool _toggleandoFavorito = false;
   bool _comprando = false;
-  bool _campoSKU = false;
-  bool _campoStock = false;
-  bool _campoCodigo = false;
   bool _guardandoInfoAdicional = false;
 
   late TextEditingController _skuController;
@@ -929,6 +926,13 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
         codigoUniversal: _codigoController.text.trim().isEmpty ? null : _codigoController.text.trim(),
       );
       if (!mounted) return;
+      // Refleja lo guardado en el mapa local para que la ficha de arriba se
+      // actualice sin tener que recargar la pantalla.
+      setState(() {
+        widget.producto['sku'] = _skuController.text.trim();
+        widget.producto['codigo_universal'] = _codigoController.text.trim();
+        widget.producto['stock'] = int.tryParse(_stockController.text.trim());
+      });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: const Text("Información adicional guardada"),
         backgroundColor: colors.carbon,
@@ -947,99 +951,150 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   }
 
   // ── Fila de información adicional (solo lectura) ───────────────────────
-  Widget _filaInfoAdicional(String label, String valor) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 150,
-            child: Text(label,
-                style: TextStyle(
-                    fontSize: 12.5, color: colors.grayMid)),
-          ),
-          Expanded(
-            child: Text(valor,
-                style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                    color: colors.textPrimary)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── CAMPO EXPANDIBLE ───────────────────────────────────────────────────
-  Widget _campoExpandible({
-    required String titulo,
-    required bool abierto,
-    required VoidCallback toggle,
-    TextEditingController? controller,
-    TextInputType teclado = TextInputType.text,
-  }) {
+  // Etiqueta a la izquierda, valor a la derecha, separadas por una línea
+  // fina salvo en la última: la misma lista limpia que usa el resto de la app.
+  Widget _filaInfoAdicional(String label, String valor, {bool ultima = false}) {
     return Column(
       children: [
-        InkWell(
-          onTap: toggle,
-          borderRadius: BorderRadius.circular(8),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  titulo,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: colors.textPrimary,
-                  ),
-                ),
-                Icon(
-                  abierto ? Icons.remove_rounded : Icons.add_rounded,
-                  color: colors.grayMid,
-                  size: 20,
-                ),
-              ],
-            ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 9),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 4,
+                child: Text(label,
+                    style: TextStyle(fontSize: 13, color: colors.grayMid)),
+              ),
+              Expanded(
+                flex: 5,
+                child: Text(valor,
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: colors.textPrimary)),
+              ),
+            ],
           ),
         ),
-        if (abierto)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: TextField(
-              controller: controller,
-              keyboardType: teclado,
-              style: TextStyle(
-                  fontSize: 14, color: colors.textPrimary),
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: colors.background,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(
-                      color: colors.divider, width: 0.5),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(
-                      color: colors.divider, width: 0.5),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(
-                      color: colors.primary, width: 1.5),
-                ),
-              ),
-            ),
-          ),
-        const Divider(height: 1, thickness: 0.5),
+        if (!ultima)
+          Divider(height: 1, thickness: 0.5, color: colors.divider),
       ],
     );
   }
 
+  /// Hoja inferior para que el dueño edite la información adicional.
+  /// Reemplaza a las filas desplegables con "+", que no seguían el patrón
+  /// de ninguna otra pantalla de la app.
+  void _abrirEditorInfoAdicional() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: colors.divider,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text('Información adicional',
+                style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: colors.textPrimary)),
+            const SizedBox(height: 4),
+            Text('Déjalo en blanco si no aplica; los campos vacíos no se muestran.',
+                style: TextStyle(fontSize: 12, color: colors.grayMid)),
+            const SizedBox(height: 16),
+            _campoInfo('Código universal (UPC/EAN)', _codigoController),
+            const SizedBox(height: 12),
+            _campoInfo('SKU', _skuController),
+            const SizedBox(height: 12),
+            _campoInfo('Stock disponible', _stockController,
+                teclado: TextInputType.number),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _guardandoInfoAdicional
+                    ? null
+                    : () async {
+                        await _guardarInfoAdicional();
+                        if (ctx.mounted) Navigator.pop(ctx);
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.carbon,
+                  foregroundColor: colors.textOnPrimary,
+                  disabledBackgroundColor: colors.grayMid,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                child: Text('Guardar',
+                    style: TextStyle(
+                        color: colors.textOnPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _campoInfo(String label, TextEditingController controller,
+      {TextInputType teclado = TextInputType.text}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: TextStyle(fontSize: 12.5, color: colors.grayMid)),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          keyboardType: teclado,
+          style: TextStyle(fontSize: 14, color: colors.textPrimary),
+          decoration: InputDecoration(
+            isDense: true,
+            filled: true,
+            fillColor: colors.background,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: colors.divider, width: 0.5),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: colors.divider, width: 0.5),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: colors.primary, width: 1.5),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── CAMPO EXPANDIBLE ───────────────────────────────────────────────────
   // ── "Devolución gratis" — resumen corto con link a la política completa ──
   void _mostrarDevolucionGratis() {
     showModalBottomSheet(
@@ -1974,19 +2029,36 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                   // Información adicional — siempre de solo lectura aquí.
                   // El dueño la edita desde "Editar publicación" (un solo
                   // lugar para editar, en vez de duplicar la edición aquí).
-                  if ((((widget.producto['sku']?.toString() ?? '').isNotEmpty) ||
-                          widget.producto['stock'] != null ||
-                          ((widget.producto['codigo_universal']?.toString() ?? '')
-                              .isNotEmpty)))
-                    Container(
+                  // ── Información adicional ────────────────────────────
+                  // Un solo bloque para todos. Los campos sin dato no se
+                  // muestran, y si no hay ninguno la ficha entera desaparece
+                  // (al dueño le queda solo la opción de agregarlos).
+                  Builder(builder: (_) {
+                    final codigo =
+                        (widget.producto['codigo_universal']?.toString() ?? '')
+                            .trim();
+                    final sku =
+                        (widget.producto['sku']?.toString() ?? '').trim();
+                    final stock = widget.producto['stock'];
+
+                    final filas = <List<String>>[
+                      if (codigo.isNotEmpty) ['Código universal', codigo],
+                      if (sku.isNotEmpty) ['SKU', sku],
+                      if (stock != null) ['Stock disponible', stock.toString()],
+                    ];
+
+                    // Sin datos y sin permiso de edición: no se muestra nada.
+                    if (filas.isEmpty && !esDueno) return const SizedBox.shrink();
+
+                    return Container(
                       width: double.infinity,
                       margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(14),
+                      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                       decoration: BoxDecoration(
                         color: colors.surface,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: colors.divider, width: 0.5),
+                        border:
+                            Border.all(color: colors.divider, width: 0.5),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1995,34 +2067,54 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                             children: [
                               Icon(Icons.info_outline_rounded,
                                   size: 16, color: colors.grayMid),
-                              SizedBox(width: 6),
-                              Text(
-                                "Información adicional",
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: colors.textPrimary,
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  "Información adicional",
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: colors.textPrimary,
+                                  ),
                                 ),
                               ),
+                              if (esDueno)
+                                GestureDetector(
+                                  onTap: _abrirEditorInfoAdicional,
+                                  child: Padding(
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 2),
+                                    child: Text(
+                                      filas.isEmpty ? "Agregar" : "Editar",
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: colors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                             ],
                           ),
-                          const SizedBox(height: 10),
-                          if ((widget.producto['codigo_universal']
-                                      ?.toString() ??
-                                  '')
-                              .isNotEmpty)
-                            _filaInfoAdicional("Código universal",
-                                widget.producto['codigo_universal'].toString()),
-                          if ((widget.producto['sku']?.toString() ?? '')
-                              .isNotEmpty)
-                            _filaInfoAdicional(
-                                "SKU", widget.producto['sku'].toString()),
-                          if (widget.producto['stock'] != null)
-                            _filaInfoAdicional("Stock disponible",
-                                widget.producto['stock'].toString()),
+                          if (filas.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Text(
+                                "Agrega SKU, stock o código universal.",
+                                style: TextStyle(
+                                    fontSize: 12.5, color: colors.grayMid),
+                              ),
+                            )
+                          else ...[
+                            const SizedBox(height: 4),
+                            for (int i = 0; i < filas.length; i++)
+                              _filaInfoAdicional(filas[i][0], filas[i][1],
+                                  ultima: i == filas.length - 1),
+                          ],
                         ],
                       ),
-                    ),
+                    );
+                  }),
 
                   if (esInvitado &&
                       dimensiones != null &&
@@ -2057,70 +2149,6 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                         ),
                       ),
                     ),
-
-                  // Info adicional — solo visible para el dueño
-                  // (los demás la ven en el bloque de solo lectura de arriba).
-                  if (esDueno) ...[
-                    Text(
-                      "Información adicional",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: colors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    _campoExpandible(
-                      titulo: "Código universal (UPC/EAN)",
-                      abierto: _campoCodigo,
-                      controller: _codigoController,
-                      toggle: () =>
-                          setState(() => _campoCodigo = !_campoCodigo),
-                    ),
-                    _campoExpandible(
-                      titulo: "SKU",
-                      abierto: _campoSKU,
-                      controller: _skuController,
-                      toggle: () =>
-                          setState(() => _campoSKU = !_campoSKU),
-                    ),
-                    _campoExpandible(
-                      titulo: "Stock disponible",
-                      abierto: _campoStock,
-                      controller: _stockController,
-                      teclado: TextInputType.number,
-                      toggle: () =>
-                          setState(() => _campoStock = !_campoStock),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _guardandoInfoAdicional ? null : _guardarInfoAdicional,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: colors.carbon,
-                          foregroundColor: colors.textOnPrimary,
-                          disabledBackgroundColor: colors.grayMid,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          elevation: 0,
-                        ),
-                        child: _guardandoInfoAdicional
-                            ? SizedBox(
-                                width: 18, height: 18,
-                                child: CircularProgressIndicator(
-                                    color: colors.textOnPrimary, strokeWidth: 2))
-                            : Text("Guardar información adicional",
-                                style: TextStyle(
-                                    color: colors.textOnPrimary,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600)),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
 
                   const SizedBox(height: 28),
 

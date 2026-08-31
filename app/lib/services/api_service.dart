@@ -1013,6 +1013,82 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
+  // ── Catálogo de tienda ─────────────────────────────────────────────────────
+  // El vendedor sube un PDF o enlaza su página; el backend la procesa en
+  // segundo plano y la app consulta el avance con obtenerMiCatalogo.
+
+  static Future<Map<String, dynamic>> subirCatalogoPdf(
+      int userId, File pdf) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/catalogo/pdf'),
+    );
+    request.fields['user_id'] = userId.toString();
+    request.files.add(await http.MultipartFile.fromPath('archivo', pdf.path));
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode != 200) {
+      throw Exception(_detalle(response.body) ?? 'No se pudo subir el catálogo');
+    }
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  }
+
+  static Future<Map<String, dynamic>> enlazarCatalogoWeb(
+      int userId, String url) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/catalogo/web'),
+      body: {'user_id': userId.toString(), 'url': url},
+    );
+    if (response.statusCode != 200) {
+      throw Exception(_detalle(response.body) ?? 'No se pudo enlazar la página');
+    }
+    return jsonDecode(utf8.decode(response.bodyBytes));
+  }
+
+  /// Vista del dueño: incluye los productos ocultos y el estado del proceso.
+  static Future<Map<String, dynamic>> obtenerMiCatalogo(int userId) async {
+    final res = await http.get(Uri.parse('$baseUrl/catalogo/$userId'));
+    if (res.statusCode != 200) return {'existe': false};
+    return jsonDecode(utf8.decode(res.bodyBytes));
+  }
+
+  /// Vista pública: solo si el catálogo terminó de procesarse.
+  static Future<Map<String, dynamic>> obtenerCatalogoPublico(int userId) async {
+    final res =
+        await http.get(Uri.parse('$baseUrl/usuarios/$userId/catalogo'));
+    if (res.statusCode != 200) return {'existe': false};
+    return jsonDecode(utf8.decode(res.bodyBytes));
+  }
+
+  static Future<void> cambiarVisibilidadCatalogo(
+      int productoId, int userId, bool visible) async {
+    final res = await http.patch(
+      Uri.parse('$baseUrl/catalogo/producto/$productoId/visibilidad'),
+      body: {'user_id': userId.toString(), 'visible': visible.toString()},
+    );
+    if (res.statusCode != 200) {
+      throw Exception('No se pudo actualizar el producto');
+    }
+  }
+
+  static Future<void> eliminarCatalogo(int userId) async {
+    final res = await http.delete(
+      Uri.parse('$baseUrl/catalogo/$userId?solicitante_id=$userId'),
+    );
+    if (res.statusCode != 200) {
+      throw Exception('No se pudo eliminar el catálogo');
+    }
+  }
+
+  /// Extrae el campo `detail` que usa FastAPI para los errores legibles.
+  static String? _detalle(String body) {
+    try {
+      final d = jsonDecode(body);
+      if (d is Map && d['detail'] is String) return d['detail'] as String;
+    } catch (_) {}
+    return null;
+  }
+
   // ── Mis Direcciones ────────────────────────────────────────────────────────
 
   static Future<List<Map<String, dynamic>>> obtenerDirecciones(int userId) async {

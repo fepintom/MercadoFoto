@@ -246,6 +246,9 @@ from routers.verificacion_paquete import (
     eliminar_verificacion_paquete,
 )
 
+from database.catalogos import init_catalogos_db
+from routers.catalogos import router as catalogos_router
+
 # --------------------------------------------------
 # CATEGORIZACIÓN AUTOMÁTICA (keyword-based, sin dependencias externas)
 # --------------------------------------------------
@@ -408,6 +411,7 @@ init_evidencias_db()
 init_bitacora_db()
 init_agent_logs_db()
 init_verificacion_paquete_db()
+init_catalogos_db()
 
 # --------------------------------------------------
 # CORS
@@ -428,6 +432,7 @@ def version():
 # Flujo OkDelivery (retiro, tracking, entrega, evidencia y auto-cierre)
 app.include_router(okdelivery_router)
 app.include_router(verificacion_paquete_router)
+app.include_router(catalogos_router)
 
 # --------------------------------------------------
 # MODELOS
