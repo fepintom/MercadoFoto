@@ -41,7 +41,12 @@ def init_chat_db():
     #   texto | imagen | video | cotizacion
     # `cotizacion_id` apunta a la fila de `cotizaciones` cuando tipo =
     # 'cotizacion', para poder pintar la tarjeta con aceptar/rechazar.
+    # `cliente_id` identifica CON QUIÉN conversa el proveedor. Sin esto todos
+    # los clientes de un mismo servicio caían en un solo hilo compartido: se
+    # veían los mensajes entre ellos y el proveedor no podía cotizarle a una
+    # persona en concreto.
     for col in ["servicio_id INTEGER",
+                "cliente_id INTEGER",
                 "tipo TEXT DEFAULT 'texto'",
                 "cotizacion_id INTEGER"]:
         try:
@@ -56,7 +61,8 @@ def init_chat_db():
 
 def guardar_mensaje(publicacion_id, remitente_id, mensaje, imagen_url=None,
                     video_url=None, video_expira_en=None,
-                    servicio_id=None, tipo=None, cotizacion_id=None):
+                    servicio_id=None, cliente_id=None, tipo=None,
+                    cotizacion_id=None):
     """Guarda un mensaje. Va atado a una publicación O a un servicio.
 
     Devuelve el id del mensaje creado."""
@@ -72,6 +78,7 @@ def guardar_mensaje(publicacion_id, remitente_id, mensaje, imagen_url=None,
         INSERT INTO chat (
             publicacion_id,
             servicio_id,
+            cliente_id,
             remitente_id,
             mensaje,
             imagen_url,
@@ -80,10 +87,11 @@ def guardar_mensaje(publicacion_id, remitente_id, mensaje, imagen_url=None,
             tipo,
             cotizacion_id
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         publicacion_id,
         servicio_id,
+        cliente_id,
         remitente_id,
         mensaje,
         imagen_url,
@@ -148,8 +156,13 @@ def obtener_conversaciones(user_id: int):
     return result
 
 
-def obtener_chat(publicacion_id=None, servicio_id=None):
-    """Mensajes de un hilo. Se pasa publicacion_id O servicio_id."""
+def obtener_chat(publicacion_id=None, servicio_id=None, cliente_id=None):
+    """Mensajes de un hilo.
+
+    Producto: se pasa publicacion_id.
+    Servicio: se pasan servicio_id Y cliente_id — el hilo es el par, para que
+    cada cliente tenga su propia conversación con el proveedor.
+    """
     if publicacion_id is None and servicio_id is None:
         return []
 
@@ -157,9 +170,13 @@ def obtener_chat(publicacion_id=None, servicio_id=None):
     cursor = conn.cursor()
 
     if servicio_id is not None:
-        where, param = "servicio_id = ?", servicio_id
+        if cliente_id is not None:
+            where, params = "servicio_id = ? AND cliente_id = ?", (servicio_id, cliente_id)
+        else:
+            # Sin cliente: se devuelve el servicio completo (uso interno).
+            where, params = "servicio_id = ?", (servicio_id,)
     else:
-        where, param = "publicacion_id = ?", publicacion_id
+        where, params = "publicacion_id = ?", (publicacion_id,)
 
     cursor.execute(f"""
         SELECT id, remitente_id, mensaje, created_at, imagen_url, video_url,
@@ -167,7 +184,7 @@ def obtener_chat(publicacion_id=None, servicio_id=None):
         FROM chat
         WHERE {where}
         ORDER BY id ASC
-    """, (param,))
+    """, params)
 
     rows = cursor.fetchall()
     conn.close()
@@ -212,3 +229,66 @@ def limpiar_videos_expirados():
     conn.commit()
     conn.close()
     return urls
+
+def obtener_conversaciones_servicio(user_id: int):
+    """Hilos de servicios en los que participa el usuario, sea como
+    proveedor o como cliente. Un hilo = (servicio_id, cliente_id).
+
+    Devuelve las mismas claves que obtener_conversaciones para que la
+    bandeja pueda mostrar ambos tipos en una sola lista, más `servicio_id`
+    y `tipo_hilo` para saber qué pantalla abrir.
+    """
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("""
+        SELECT s.id, s.titulo, s.fotos, s.user_id,
+               COALESCE(up.nombre, 'Proveedor'),
+               up.foto_url,
+               ch.cliente_id,
+               COALESCE(uc.nombre, 'Cliente'),
+               uc.foto_url,
+               MAX(ch.created_at),
+               (SELECT mensaje FROM chat
+                 WHERE servicio_id = ch.servicio_id
+                   AND cliente_id = ch.cliente_id
+                 ORDER BY id DESC LIMIT 1)
+        FROM chat ch
+        JOIN servicios s ON ch.servicio_id = s.id
+        LEFT JOIN users up ON s.user_id = up.id
+        LEFT JOIN users uc ON ch.cliente_id = uc.id
+        WHERE ch.servicio_id IS NOT NULL
+          AND ch.cliente_id IS NOT NULL
+          AND (s.user_id = ? OR ch.cliente_id = ?)
+        GROUP BY ch.servicio_id, ch.cliente_id
+        ORDER BY MAX(ch.created_at) DESC
+    """, (user_id, user_id))
+    filas = c.fetchall()
+    conn.close()
+
+    resultado = []
+    for r in filas:
+        # `fotos` es un JSON de rutas; la bandeja solo necesita la primera.
+        imagen = None
+        try:
+            import json as _json
+            lista = _json.loads(r[2] or "[]")
+            if lista:
+                imagen = lista[0]
+        except Exception:
+            imagen = None
+        resultado.append({
+            "tipo_hilo":        "servicio",
+            "servicio_id":      r[0],
+            "publicacion_id":   None,
+            "titulo":           r[1],
+            "imagen_url":       imagen,
+            "vendedor_id":      r[3],
+            "nombre_vendedor":  r[4],
+            "foto_vendedor":    r[5],
+            "comprador_id":     r[6],
+            "nombre_comprador": r[7],
+            "foto_comprador":   r[8],
+            "ultimo_at":        r[9],
+            "ultimo_mensaje":   r[10],
+        })
+    return resultado

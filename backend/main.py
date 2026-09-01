@@ -88,6 +88,7 @@ from database.chat import (
     guardar_mensaje,
     obtener_chat,
     obtener_conversaciones,
+    obtener_conversaciones_servicio,
     limpiar_videos_expirados,
 )
 
@@ -1216,7 +1217,16 @@ def enviar_mensaje(data: Mensaje):
 
 @app.get("/chat/conversaciones/{user_id}")
 def ver_conversaciones(user_id: int):
-    return obtener_conversaciones(user_id)
+    """Bandeja única: hilos de productos y de servicios juntos, del más
+    reciente al más antiguo. Cada fila trae `tipo_hilo` para que la app
+    sepa qué pantalla abrir."""
+    productos = obtener_conversaciones(user_id)
+    for p in productos:
+        p.setdefault("tipo_hilo", "producto")
+        p.setdefault("servicio_id", None)
+    hilos = productos + obtener_conversaciones_servicio(user_id)
+    hilos.sort(key=lambda h: (h.get("ultimo_at") or ""), reverse=True)
+    return hilos
 
 @app.get("/chat/{publicacion_id}")
 def ver_chat(publicacion_id: int):
@@ -1229,16 +1239,34 @@ def ver_chat(publicacion_id: int):
 # publicacion_id. El resto (notificaciones, adjuntos) es el mismo.
 
 @app.get("/chat/servicio/{servicio_id}")
-def ver_chat_servicio(servicio_id: int):
-    return obtener_chat(servicio_id=servicio_id)
+def ver_chat_servicio(servicio_id: int, cliente_id: int):
+    """Un hilo de servicio es el par (servicio, cliente): cada cliente tiene
+    su propia conversación con el proveedor."""
+    return obtener_chat(servicio_id=servicio_id, cliente_id=cliente_id)
+
+
+@app.get("/servicios/{servicio_id}/conversaciones")
+def conversaciones_de_un_servicio(servicio_id: int, owner_id: int):
+    """Clientes que le han escrito a este servicio. Es la bandeja del
+    proveedor: desde acá entra al chat de cada uno para poder cotizarle."""
+    servicio = obtener_servicio_por_id(servicio_id)
+    if not servicio:
+        raise HTTPException(status_code=404, detail="Servicio no encontrado")
+    if servicio.get("user_id") != owner_id:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    hilos = [h for h in obtener_conversaciones_servicio(owner_id)
+             if h["servicio_id"] == servicio_id]
+    return {"conversaciones": hilos}
 
 
 @app.post("/chat/servicio/enviar")
 def enviar_mensaje_servicio(body: dict):
     servicio_id = body.get("servicio_id")
     remitente_id = body.get("remitente_id")
+    cliente_id = body.get("cliente_id")
     mensaje = (body.get("mensaje") or "").strip()
-    if not servicio_id or not remitente_id or not mensaje:
+    if not servicio_id or not remitente_id or not cliente_id or not mensaje:
         raise HTTPException(status_code=400, detail="Faltan datos del mensaje")
 
     servicio = obtener_servicio_por_id(servicio_id)
@@ -1246,33 +1274,40 @@ def enviar_mensaje_servicio(body: dict):
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
 
     guardar_mensaje(publicacion_id=None, servicio_id=servicio_id,
-                    remitente_id=remitente_id, mensaje=mensaje)
+                    cliente_id=cliente_id, remitente_id=remitente_id,
+                    mensaje=mensaje)
 
-    # El destinatario es el otro lado del hilo: si escribe el proveedor, va
-    # al último cliente que participó; si escribe un cliente, al proveedor.
+    # El destinatario sale del par, no de adivinar quién escribió último.
     proveedor_id = servicio.get("user_id")
-    if remitente_id == proveedor_id:
-        otros = [m["remitente"] for m in obtener_chat(servicio_id=servicio_id)
-                 if m["remitente"] != proveedor_id]
-        destinatario = otros[-1] if otros else None
-    else:
-        destinatario = proveedor_id
+    destinatario = cliente_id if remitente_id == proveedor_id else proveedor_id
 
-    if destinatario:
+    if destinatario and destinatario != remitente_id:
         titulo_srv = servicio.get("titulo") or "un servicio"
-        try:
-            tok = obtener_fcm_token(destinatario)
-            if tok:
-                enviar_push(tok, "💬 Nuevo mensaje",
-                            f"Sobre '{titulo_srv}': {mensaje[:80]}",
-                            {"tipo": "chat_servicio",
-                             "servicio_id": str(servicio_id)})
-        except Exception:
-            pass
-        crear_notificacion(destinatario, "chat",
-                           f"💬 Nuevo mensaje sobre '{titulo_srv}'")
+        _avisar_chat_servicio(destinatario, servicio_id, cliente_id,
+                              f"💬 Nuevo mensaje sobre '{titulo_srv}'",
+                              f"Sobre '{titulo_srv}': {mensaje[:80]}")
 
     return {"ok": True}
+
+
+def _avisar_chat_servicio(destinatario: int, servicio_id: int, cliente_id: int,
+                          texto: str, cuerpo_push: str = ""):
+    """Push + campanita apuntando al chat del servicio.
+
+    Manda servicio_id y cliente_id en los dos canales: sin el par, tocar la
+    notificación no puede abrir el hilo correcto (era justo lo que fallaba).
+    """
+    try:
+        tok = obtener_fcm_token(destinatario)
+        if tok:
+            enviar_push(tok, "💬 OkVenta", cuerpo_push or texto,
+                        {"tipo": "chat_servicio",
+                         "servicio_id": str(servicio_id),
+                         "cliente_id": str(cliente_id)})
+    except Exception:
+        pass
+    crear_notificacion(destinatario, "chat_servicio", texto,
+                       servicio_id=servicio_id, cliente_id=cliente_id)
 
 
 @app.post("/chat/{publicacion_id}/imagen")
@@ -2329,22 +2364,29 @@ def _procesar_pago_aprobado(orden: dict, payment_id: str):
                     f"Se te abonaron ${liberado:,.0f} por '{orden['titulo']}'. "
                     f"El {int((1 - PORCENTAJE_LIBERACION_INICIAL) * 100)}% "
                     f"restante se libera en {DIAS_RETENCION_GARANTIA} días.",
-                    {"tipo": "servicio_pagado", "orden_id": str(orden_id)},
+                    {"tipo": "servicio_pagado",
+                     "orden_id": str(orden_id),
+                     "servicio_id": str(orden.get("servicio_id") or ""),
+                     "cliente_id": str(orden["comprador_id"])},
                 )
             except Exception:
                 pass
+        # Las dos notificaciones apuntan al chat del servicio: es donde se
+        # coordina la entrega, que es lo que uno espera al tocarlas.
+        srv_id = orden.get("servicio_id")
+        cli_id = orden["comprador_id"]
         crear_notificacion(
             orden["vendedor_id"], "servicio_pagado",
             f"💳 Pago confirmado por '{orden['titulo']}'. Se abonaron "
             f"${liberado:,.0f}; ${retenido:,.0f} quedan en garantía por "
             f"{DIAS_RETENCION_GARANTIA} días.",
-            orden_id=orden_id,
+            orden_id=orden_id, servicio_id=srv_id, cliente_id=cli_id,
         )
         crear_notificacion(
             orden["comprador_id"], "servicio_pagado",
             f"✅ Contrataste '{orden['titulo']}'. Tienes "
             f"{DIAS_RETENCION_GARANTIA} días de garantía OkVenta.",
-            orden_id=orden_id,
+            orden_id=orden_id, servicio_id=srv_id, cliente_id=cli_id,
         )
         return
 

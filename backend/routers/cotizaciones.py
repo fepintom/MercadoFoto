@@ -36,6 +36,19 @@ router = APIRouter()
 MONTO_MAXIMO = 50_000_000
 
 
+def _avisar(destinatario: int, servicio_id: int, cliente_id: int, texto: str):
+    """Push + campanita apuntando al chat del servicio.
+
+    Antes las cotizaciones no notificaban nada: el único aviso era que la
+    otra persona tuviera el chat abierto justo en ese momento.
+    """
+    try:
+        from main import _avisar_chat_servicio  # circular a nivel de módulo
+        _avisar_chat_servicio(destinatario, servicio_id, cliente_id, texto)
+    except Exception as e:
+        print(f"WARN aviso de cotización: {e}")
+
+
 def _nombre(user_id: int) -> str:
     u = obtener_usuario_por_id(user_id) or {}
     return (u.get("nombre") or "").strip()
@@ -88,11 +101,14 @@ def enviar_cotizacion(
     guardar_mensaje(
         publicacion_id=None,
         servicio_id=servicio_id,
+        cliente_id=cliente_id,
         remitente_id=proveedor_id,
         mensaje=f"Cotización: {servicio_cotizado}",
         tipo="cotizacion",
         cotizacion_id=cotizacion_id,
     )
+    _avisar(cliente_id, servicio_id, cliente_id,
+            f"📄 Te enviaron una cotización de '{servicio_cotizado}'")
     return {"ok": True, "cotizacion": cotizacion}
 
 
@@ -117,10 +133,13 @@ def rechazar(cotizacion_id: int, user_id: int = Form(...)):
     guardar_mensaje(
         publicacion_id=None,
         servicio_id=c["servicio_id"],
+        cliente_id=c["cliente_id"],
         remitente_id=user_id,
         mensaje="Cotización rechazada",
         tipo="texto",
     )
+    _avisar(c["proveedor_id"], c["servicio_id"], c["cliente_id"],
+            f"❌ Rechazaron tu cotización de '{c['servicio_cotizado']}'")
     return {"ok": True, "estado": "rechazada"}
 
 
@@ -166,10 +185,14 @@ def aceptar(cotizacion_id: int, user_id: int = Form(...),
     guardar_mensaje(
         publicacion_id=None,
         servicio_id=c["servicio_id"],
+        cliente_id=c["cliente_id"],
         remitente_id=user_id,
         mensaje="Cotización aceptada",
         tipo="texto",
     )
+    _avisar(c["proveedor_id"], c["servicio_id"], c["cliente_id"],
+            f"✅ Aceptaron tu cotización de '{c['servicio_cotizado']}'. "
+            f"Coordina la entrega por el chat.")
 
     orden = obtener_orden(orden_id)
 

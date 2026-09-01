@@ -11,6 +11,7 @@ import '../screens/mis_ventas_screen.dart';
 import '../screens/okdelivery_pendientes_screen.dart';
 import '../screens/okdelivery_activo_screen.dart';
 import '../screens/producto_detalle_screen.dart';
+import '../screens/chat_servicio_screen.dart';
 
 /// Punto único que decide a qué pantalla navegar según el "tipo" de una
 /// notificación — sin importar si viene de un push (FCM, tocada con la app
@@ -36,6 +37,14 @@ class NotificationRouter {
 
     try {
       switch (tipo) {
+        // ── Servicios: mensaje, cotización o pago → al chat del servicio,
+        // que es donde se coordina todo. Necesita el par servicio+cliente.
+        case 'chat_servicio':
+        case 'cotizacion':
+        case 'servicio_pagado':
+          await _irAChatServicio(ctx, data);
+          return;
+
         // ── Chat / preguntas / ofertas: todo vive en el hilo de chat de la publicación ──
         case 'pregunta':
         case 'chat':
@@ -112,6 +121,32 @@ class NotificationRouter {
 
   static void _push(BuildContext ctx, Widget screen) {
     Navigator.of(ctx).push(MaterialPageRoute(builder: (_) => screen));
+  }
+
+  /// Abre el chat de un servicio. Trae el servicio del backend para saber
+  /// quién es el proveedor y cómo se llama; si falta el par servicio+cliente
+  /// no hay hilo que abrir y no se hace nada.
+  static Future<void> _irAChatServicio(
+      BuildContext ctx, Map<String, dynamic> data) async {
+    final servicioId = _int(data['servicio_id']);
+    final clienteId = _int(data['cliente_id']);
+    if (servicioId == null || clienteId == null) return;
+
+    final srv = await ApiService.obtenerServicioPorId(servicioId);
+    if (srv == null || !ctx.mounted) return;
+
+    Navigator.push(
+      ctx,
+      MaterialPageRoute(
+        builder: (_) => ChatServicioScreen(
+          servicioId: servicioId,
+          proveedorId: (srv['user_id'] as num).toInt(),
+          clienteId: clienteId,
+          tituloServicio: (srv['titulo'] ?? 'Servicio').toString(),
+          nombreProveedor: (srv['nombre'] ?? '').toString(),
+        ),
+      ),
+    );
   }
 
   static Future<void> _irAChat(BuildContext ctx, Map<String, dynamic> data) async {
