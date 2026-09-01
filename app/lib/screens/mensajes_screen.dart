@@ -6,6 +6,7 @@ import '../services/session_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import 'chat_screen.dart';
+import 'chat_servicio_screen.dart';
 import '../widgets/net_image.dart';
 class MensajesScreen extends StatefulWidget {
   const MensajesScreen({super.key});
@@ -189,18 +190,31 @@ class _MensajesScreenState extends State<MensajesScreen> {
     final fecha = _formatFecha(conv['ultimo_at']);
     final imagenProducto = conv['imagen_url'] ?? '';
 
+    // La bandeja ahora mezcla hilos de productos y de servicios; cada uno
+    // abre su propia pantalla de chat.
+    final esServicio = conv['tipo_hilo'] == 'servicio';
+
     return InkWell(
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => ChatScreen(
-            publicacionId: conv['publicacion_id'],
-            tituloProducto: titulo,
-            imagenUrl: imagenProducto,
-            vendedorId: conv['vendedor_id'],
-            nombreVendedor: conv['nombre_vendedor'] ?? '',
-            nombreComprador: conv['nombre_comprador'] ?? '',
-          ),
+          builder: (_) => esServicio
+              ? ChatServicioScreen(
+                  servicioId: conv['servicio_id'] as int,
+                  proveedorId: conv['vendedor_id'] as int,
+                  clienteId: conv['comprador_id'] as int,
+                  tituloServicio: titulo,
+                  nombreProveedor: conv['nombre_vendedor'] ?? '',
+                  nombreCliente: conv['nombre_comprador'] ?? '',
+                )
+              : ChatScreen(
+                  publicacionId: conv['publicacion_id'],
+                  tituloProducto: titulo,
+                  imagenUrl: imagenProducto,
+                  vendedorId: conv['vendedor_id'],
+                  nombreVendedor: conv['nombre_vendedor'] ?? '',
+                  nombreComprador: conv['nombre_comprador'] ?? '',
+                ),
         ),
       ),
       child: Padding(

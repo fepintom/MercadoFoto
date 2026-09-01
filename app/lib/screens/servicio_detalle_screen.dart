@@ -75,6 +75,13 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
   /// conversación dentro de la app, permite cotizar y no expone datos
   /// personales de ninguna de las dos partes.
   void _contactar() {
+    if (_miUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Debes iniciar sesión para contactar')),
+      );
+      return;
+    }
     _registrarContacto('chat');
     Navigator.push(
       context,
@@ -82,6 +89,8 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
         builder: (_) => ChatServicioScreen(
           servicioId: _srv['id'] as int,
           proveedorId: _srv['user_id'] as int,
+          // Quien contacta es el cliente del hilo.
+          clienteId: _miUserId!,
           tituloServicio: (_srv['titulo'] ?? 'Servicio').toString(),
           nombreProveedor: (_srv['nombre'] ?? '').toString(),
         ),

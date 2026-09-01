@@ -1017,14 +1017,19 @@ class ApiService {
   // El chat nació atado a una publicación; un servicio no lo es, así que
   // tiene sus propias rutas en el backend.
 
-  static Future<List<dynamic>> obtenerChatServicio(int servicioId) async {
-    final res = await http.get(Uri.parse('$baseUrl/chat/servicio/$servicioId'));
+  /// Un hilo de servicio es el par (servicio, cliente): cada cliente tiene
+  /// su propia conversación con el proveedor.
+  static Future<List<dynamic>> obtenerChatServicio(
+      int servicioId, int clienteId) async {
+    final res = await http.get(Uri.parse(
+        '$baseUrl/chat/servicio/$servicioId?cliente_id=$clienteId'));
     if (res.statusCode != 200) return [];
     return jsonDecode(utf8.decode(res.bodyBytes)) as List<dynamic>;
   }
 
   static Future<void> enviarMensajeServicio({
     required int servicioId,
+    required int clienteId,
     required int remitenteId,
     required String mensaje,
   }) async {
@@ -1033,6 +1038,7 @@ class ApiService {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'servicio_id': servicioId,
+        'cliente_id': clienteId,
         'remitente_id': remitenteId,
         'mensaje': mensaje,
       }),
@@ -1040,6 +1046,23 @@ class ApiService {
     if (res.statusCode != 200) {
       throw Exception(_detalle(res.body) ?? 'No se pudo enviar el mensaje');
     }
+  }
+
+  static Future<Map<String, dynamic>?> obtenerServicioPorId(int id) async {
+    final res = await http.get(Uri.parse('$baseUrl/servicios/$id'));
+    if (res.statusCode != 200) return null;
+    return jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+  }
+
+  /// Clientes que le escribieron a un servicio. Es la bandeja del proveedor:
+  /// desde aquí entra al chat de cada uno para poder cotizarle.
+  static Future<List<dynamic>> obtenerConversacionesServicio(
+      int servicioId, int ownerId) async {
+    final res = await http.get(Uri.parse(
+        '$baseUrl/servicios/$servicioId/conversaciones?owner_id=$ownerId'));
+    if (res.statusCode != 200) return [];
+    final data = jsonDecode(utf8.decode(res.bodyBytes));
+    return (data['conversaciones'] ?? []) as List<dynamic>;
   }
 
   // ── Cotizaciones de servicios ──────────────────────────────────────────────

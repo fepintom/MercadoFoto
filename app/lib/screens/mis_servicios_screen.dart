@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
+import 'chat_servicio_screen.dart';
 import 'servicio_detalle_screen.dart';
 import 'agregar_servicio_screen.dart';
 import 'home_screen.dart';
@@ -510,12 +511,31 @@ class _TarjetaServicioState extends State<_TarjetaServicio> {
                     final esWpp = c['tipo_contacto'] == 'whatsapp';
                     return GestureDetector(
                       onTap: () async {
-                        // Navegar al detalle del servicio
+                        // Abre la conversación con ESTE contacto. Antes esto
+                        // reabría el mismo servicio que el proveedor ya está
+                        // mirando, así que no llevaba a ninguna parte y no
+                        // había forma de cotizarle a nadie.
+                        final contactanteId = c['contactante_id'];
+                        if (contactanteId is! int) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text(
+                                    'Este contacto no tiene una cuenta asociada')),
+                          );
+                          return;
+                        }
                         await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) =>
-                                ServicioDetalleScreen(servicio: s),
+                            builder: (_) => ChatServicioScreen(
+                              servicioId: s['id'] as int,
+                              proveedorId: s['user_id'] as int,
+                              clienteId: contactanteId,
+                              tituloServicio:
+                                  (s['titulo'] ?? 'Servicio').toString(),
+                              nombreCliente:
+                                  (c['nombre_contactante'] ?? '').toString(),
+                            ),
                           ),
                         );
                       },

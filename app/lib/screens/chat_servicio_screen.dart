@@ -22,15 +22,22 @@ import '../utils/format_utils.dart';
 class ChatServicioScreen extends StatefulWidget {
   final int servicioId;
   final int proveedorId;
+  /// Con quién conversa el proveedor. El hilo es el par (servicio, cliente):
+  /// cada cliente tiene su propia conversación, y así el proveedor puede
+  /// cotizarle a una persona en concreto.
+  final int clienteId;
   final String tituloServicio;
   final String nombreProveedor;
+  final String nombreCliente;
 
   const ChatServicioScreen({
     super.key,
     required this.servicioId,
     required this.proveedorId,
+    required this.clienteId,
     required this.tituloServicio,
     this.nombreProveedor = '',
+    this.nombreCliente = '',
   });
 
   @override
@@ -72,7 +79,8 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
 
   Future<void> _cargar() async {
     try {
-      final msgs = await ApiService.obtenerChatServicio(widget.servicioId);
+      final msgs = await ApiService.obtenerChatServicio(
+          widget.servicioId, widget.clienteId);
       // Las cotizaciones se piden una sola vez cada una y se cachean: el
       // chat se refresca cada 5 s y no vale re-consultarlas en cada vuelta.
       for (final m in msgs) {
@@ -117,6 +125,7 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
     try {
       await ApiService.enviarMensajeServicio(
         servicioId: widget.servicioId,
+        clienteId: widget.clienteId,
         remitenteId: _userId!,
         mensaje: texto,
       );
@@ -133,17 +142,10 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
   // ── Cotización ────────────────────────────────────────────────────────────
 
   Future<void> _abrirFormularioCotizacion() async {
-    // El cliente es la otra persona del hilo. Si todavía no ha escrito
-    // nadie más, no hay a quién cotizarle.
-    final clienteId = _mensajes
-        .map((m) => m['remitente'])
-        .whereType<int>()
-        .where((r) => r != widget.proveedorId)
-        .fold<int?>(null, (_, r) => r);
-    if (clienteId == null) {
-      _aviso('Espera a que el cliente te escriba para poder cotizarle.');
-      return;
-    }
+    // El cliente viene dado por el hilo, no hay que deducirlo de quién
+    // escribió último: el proveedor cotiza siempre a la persona con la que
+    // está conversando.
+    final clienteId = widget.clienteId;
 
     final empresaCtrl = TextEditingController(text: widget.tituloServicio);
     final servicioCtrl = TextEditingController();
@@ -341,9 +343,15 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 15)),
-            if (widget.nombreProveedor.isNotEmpty)
-              Text(widget.nombreProveedor,
-                  style: TextStyle(fontSize: 11.5, color: colors.grayMid)),
+            Builder(builder: (_) {
+              // Cada lado ve el nombre del otro.
+              final otro = _soyProveedor
+                  ? widget.nombreCliente
+                  : widget.nombreProveedor;
+              if (otro.isEmpty) return const SizedBox.shrink();
+              return Text(otro,
+                  style: TextStyle(fontSize: 11.5, color: colors.grayMid));
+            }),
           ],
         ),
       ),
