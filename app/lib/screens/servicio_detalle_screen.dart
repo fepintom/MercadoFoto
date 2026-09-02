@@ -24,7 +24,6 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
   int? _miUserId;
   int _miRating = 0;
   bool _enviandoRating = false;
-  bool _pagando = false;
 
   @override
   void initState() {
@@ -212,101 +211,7 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
     ).catchError((_) {});  // silencioso, no interrumpir UX
   }
 
-  Future<void> _pagarServicio() async {
-    if (_miUserId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Debes iniciar sesión para contratar el servicio')),
-      );
-      return;
-    }
-    if (_pagando) return;
-
-    final servicioId = _srv['id'] as int? ?? 0;
-    final vendedorId = _srv['user_id'] as int? ?? 0;
-    final titulo = _srv['titulo'] as String? ?? 'Servicio';
-    final monto = (_srv['valor'] as num?)?.toDouble() ?? 0;
-
-    if (monto <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Este servicio no tiene un precio definido'),
-            backgroundColor: colors.carbon),
-      );
-      return;
-    }
-
-    setState(() => _pagando = true);
-    try {
-      final data = await ApiService.crearPreferencia(
-        compradorId: _miUserId!,
-        vendedorId: vendedorId,
-        tipo: 'servicio',
-        titulo: titulo,
-        monto: monto,
-        servicioId: servicioId,
-      );
-
-      // ── Modo prueba: el pago ya quedó simulado como aprobado en el backend.
-      if (data['test_mode'] == true) {
-        if (!mounted) return;
-        await _mostrarConfirmacionTestMode();
-        return;
-      }
-
-      final initPoint = data['init_point'] as String? ??
-          data['sandbox_init_point'] as String? ??
-          '';
-
-      if (initPoint.isEmpty) throw Exception('No se obtuvo el link de pago');
-
-      final uri = Uri.parse(initPoint);
-      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-        throw Exception('No se pudo abrir el navegador');
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al iniciar el pago: $e'),
-          backgroundColor: colors.primary,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _pagando = false);
-    }
-  }
-
   // ── Confirmación visual de pago simulado (modo prueba) ───────────────────
-  Future<void> _mostrarConfirmacionTestMode() {
-    return showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: colors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(Icons.science_rounded, color: colors.warning),
-            SizedBox(width: 8),
-            Expanded(child: Text('Pago simulado (modo prueba)')),
-          ],
-        ),
-        content: const Text(
-          'No se realizó ningún cobro real. El prestador del servicio ya fue '
-          'notificado como si el pago hubiera sido aprobado, para que pruebes '
-          'el flujo completo.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Entendido'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final nombre     = '${_srv['nombre'] ?? ''} ${_srv['apellido'] ?? ''}'.trim();
@@ -607,33 +512,9 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
 
                   const SizedBox(height: 16),
 
-                  // ── Pagar servicio con MercadoPago ──────────────────────
-                  if (tipo == 'ofrezco' && valor > 0)
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _pagando ? null : _pagarServicio,
-                        icon: _pagando
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white),
-                              )
-                            : const Icon(Icons.credit_card, size: 20),
-                        label: Text(
-                            _pagando ? 'Procesando...' : 'Contratar y pagar',
-                            style: const TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.w700)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF009EE3),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
-                        ),
-                      ),
-                    ),
+                  // El botón "Contratar y pagar" se movió al chat del
+                  // servicio: primero se contacta, luego se cotiza y recién
+                  // ahí se contrata. Acá aparecía antes de hablar con nadie.
 
                   const SizedBox(height: 32),
                 ],

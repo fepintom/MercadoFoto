@@ -209,11 +209,31 @@ class _ServiciosScreenState extends State<ServiciosScreen>
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: FloatingActionButton(
-        onPressed: _irAAgregar,
-        backgroundColor: colors.primary,
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.add, size: 26),
+      // Con etiqueta: un "+" a secas no dice qué publica. En la pestaña Mapa
+      // se oculta porque ahí abajo va el buscador y se superponen.
+      floatingActionButton: AnimatedBuilder(
+        animation: _tabController,
+        builder: (_, __) {
+          if (_tabController.index == 2) return const SizedBox.shrink();
+          final esBusco = _tabController.index == 1;
+          return FloatingActionButton.extended(
+            onPressed: _irAAgregar,
+            backgroundColor: colors.primary,
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.add, size: 22),
+            label: Text(
+              _tabController.index == 3
+                  ? 'Registrarme'
+                  : esBusco
+                      ? 'Buscar servicio'
+                      : 'Publicar servicio',
+              style: const TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16)),
+          );
+        },
       ),
     );
   }
@@ -1400,6 +1420,10 @@ class _DeliveryTabState extends State<_DeliveryTab> {
 
 final _kSantiago = LatLng(-33.4489, -70.6693);
 
+/// Tope del radio de cobertura. Al llegar aquí el filtro se apaga: es el
+/// equivalente a "todo el país".
+const double _kRadioMaxKm = 500;
+
 class _MapaServicios extends StatefulWidget {
   final List<Map<String, dynamic>> servicios;
   final int? miUserId;
@@ -1424,6 +1448,16 @@ class _MapaServiciosState extends State<_MapaServicios> {
   final _searchCtrl = TextEditingController();
   String _query = '';
 
+  /// Radio de cobertura del mapa, en km. Filtra qué servicios se muestran
+  /// según su distancia al centro del mapa. Es distinto del `radio_km` de
+  /// cada servicio, que es la cobertura que declara el proveedor.
+  double _radioBusquedaKm = 50;
+
+  /// Centro desde el que se mide el radio. Se fija en el primer build a
+  /// partir de los servicios con ubicación, para que el filtro no cambie
+  /// de referencia en cada redibujo.
+  LatLng? _centroBusqueda;
+
   @override
   void dispose() {
     _searchCtrl.dispose();
@@ -1444,6 +1478,20 @@ class _MapaServiciosState extends State<_MapaServicios> {
         final titulo = (s['titulo'] ?? '').toString().toLowerCase();
         final cat    = (s['categoria'] ?? '').toString().toLowerCase();
         return titulo.contains(q) || cat.contains(q);
+      }).toList();
+    }
+
+    // Radio de cobertura: los que no tienen ubicación se conservan, porque
+    // filtrarlos escondería publicaciones válidas que solo no marcaron dónde.
+    final centro = _centroBusqueda;
+    if (centro != null && _radioBusquedaKm < _kRadioMaxKm) {
+      const distancia = Distance();
+      lista = lista.where((s) {
+        final lat = s['lat'], lng = s['lng'];
+        if (lat == null || lng == null) return true;
+        final km = distancia.as(LengthUnit.Kilometer, centro,
+            LatLng((lat as num).toDouble(), (lng as num).toDouble()));
+        return km <= _radioBusquedaKm;
       }).toList();
     }
     return lista;
@@ -1497,11 +1545,20 @@ class _MapaServiciosState extends State<_MapaServicios> {
 
   @override
   Widget build(BuildContext context) {
-    final filtrados     = _serviciosFiltrados;
-    final conUbicacion  = filtrados
+    final todos         = widget.servicios
         .where((s) => s['lat'] != null && s['lng'] != null)
         .toList();
-    final todos         = widget.servicios
+
+    // El centro se fija una sola vez: si cambiara en cada redibujo, el
+    // filtro por distancia daría resultados distintos sin que el usuario
+    // haya tocado nada.
+    _centroBusqueda ??= todos.isNotEmpty
+        ? LatLng((todos.first['lat'] as num).toDouble(),
+            (todos.first['lng'] as num).toDouble())
+        : _kSantiago;
+
+    final filtrados     = _serviciosFiltrados;
+    final conUbicacion  = filtrados
         .where((s) => s['lat'] != null && s['lng'] != null)
         .toList();
 
@@ -1665,9 +1722,68 @@ class _MapaServiciosState extends State<_MapaServicios> {
             ),
           ),
 
-        // ── Buscador inferior ──────────────────────────────────────────
+        // ── Radio de cobertura ─────────────────────────────────────────
         Positioned(
           bottom: 20,
+          left: 16,
+          right: 16,
+          child: Container(
+            height: 46,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(23),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2)),
+              ],
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.radar_rounded, size: 18, color: colors.primary),
+                Expanded(
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      trackHeight: 3,
+                      thumbShape:
+                          const RoundSliderThumbShape(enabledThumbRadius: 7),
+                      overlayShape:
+                          const RoundSliderOverlayShape(overlayRadius: 14),
+                    ),
+                    child: Slider(
+                      value: _radioBusquedaKm,
+                      min: 1,
+                      max: _kRadioMaxKm,
+                      activeColor: colors.primary,
+                      inactiveColor: colors.divider,
+                      onChanged: (v) =>
+                          setState(() => _radioBusquedaKm = v),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 62,
+                  child: Text(
+                    _radioBusquedaKm >= _kRadioMaxKm
+                        ? 'Todo'
+                        : '${_radioBusquedaKm.round()} km',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black87),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // ── Buscador ───────────────────────────────────────────────────
+        Positioned(
+          bottom: 76,
           left: 16,
           right: 16,
           child: Container(

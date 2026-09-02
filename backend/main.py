@@ -204,6 +204,7 @@ from database.servicios import (
     valorar_servicio,
     actualizar_certificado,
     actualizar_ubicacion,
+    editar_servicio,
     registrar_contacto,
     obtener_contactos_servicio,
     actualizar_categoria as _actualizar_categoria_servicio,
@@ -1239,9 +1240,14 @@ def ver_chat(publicacion_id: int):
 # publicacion_id. El resto (notificaciones, adjuntos) es el mismo.
 
 @app.get("/chat/servicio/{servicio_id}")
-def ver_chat_servicio(servicio_id: int, cliente_id: int):
+def ver_chat_servicio(servicio_id: int, cliente_id: Optional[int] = None):
     """Un hilo de servicio es el par (servicio, cliente): cada cliente tiene
-    su propia conversación con el proveedor."""
+    su propia conversación con el proveedor.
+
+    `cliente_id` es OPCIONAL a propósito: las versiones de la app anteriores
+    a este cambio piden el chat sin él. Exigirlo dejaba esas versiones con el
+    chat vacío hasta que actualizaran. Sin cliente se devuelve el servicio
+    completo, que es como se comportaba antes."""
     return obtener_chat(servicio_id=servicio_id, cliente_id=cliente_id)
 
 
@@ -1266,19 +1272,24 @@ def enviar_mensaje_servicio(body: dict):
     remitente_id = body.get("remitente_id")
     cliente_id = body.get("cliente_id")
     mensaje = (body.get("mensaje") or "").strip()
-    if not servicio_id or not remitente_id or not cliente_id or not mensaje:
+    if not servicio_id or not remitente_id or not mensaje:
         raise HTTPException(status_code=400, detail="Faltan datos del mensaje")
 
     servicio = obtener_servicio_por_id(servicio_id)
     if not servicio:
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
 
+    proveedor_id = servicio.get("user_id")
+    # Compatibilidad con versiones de la app que no mandan cliente_id: si
+    # escribe alguien que no es el proveedor, el cliente del hilo es él.
+    if not cliente_id:
+        cliente_id = None if remitente_id == proveedor_id else remitente_id
+
     guardar_mensaje(publicacion_id=None, servicio_id=servicio_id,
                     cliente_id=cliente_id, remitente_id=remitente_id,
                     mensaje=mensaje)
 
     # El destinatario sale del par, no de adivinar quién escribió último.
-    proveedor_id = servicio.get("user_id")
     destinatario = cliente_id if remitente_id == proveedor_id else proveedor_id
 
     if destinatario and destinatario != remitente_id:
@@ -1288,6 +1299,74 @@ def enviar_mensaje_servicio(body: dict):
                               f"Sobre '{titulo_srv}': {mensaje[:80]}")
 
     return {"ok": True}
+
+
+@app.post("/chat/servicio/{servicio_id}/imagen")
+async def enviar_imagen_chat_servicio(
+    servicio_id: int,
+    remitente_id: int = Form(...),
+    cliente_id: int = Form(...),
+    imagen: UploadFile = File(...),
+):
+    """Foto de evidencia en el chat de un servicio."""
+    servicio = obtener_servicio_por_id(servicio_id)
+    if not servicio:
+        raise HTTPException(status_code=404, detail="Servicio no encontrado")
+
+    import time as _time
+    ext = os.path.splitext(imagen.filename or "img.jpg")[1] or ".jpg"
+    nombre = f"srvchat_{servicio_id}_{remitente_id}_{int(_time.time())}{ext}"
+    with open(os.path.join(UPLOADS_DIR, nombre), "wb") as f:
+        f.write(await imagen.read())
+    imagen_url = f"/uploads/{nombre}"
+
+    guardar_mensaje(publicacion_id=None, servicio_id=servicio_id,
+                    cliente_id=cliente_id, remitente_id=remitente_id,
+                    mensaje="", imagen_url=imagen_url)
+
+    proveedor_id = servicio.get("user_id")
+    destinatario = cliente_id if remitente_id == proveedor_id else proveedor_id
+    if destinatario and destinatario != remitente_id:
+        _avisar_chat_servicio(destinatario, servicio_id, cliente_id,
+                              f"📷 Foto en '{servicio.get('titulo') or 'un servicio'}'")
+    return {"imagen_url": imagen_url}
+
+
+@app.post("/chat/servicio/{servicio_id}/video")
+async def enviar_video_chat_servicio(
+    servicio_id: int,
+    remitente_id: int = Form(...),
+    cliente_id: int = Form(...),
+    video: UploadFile = File(...),
+):
+    """Video de evidencia (hasta 1 minuto) en el chat de un servicio.
+
+    Igual que en el chat de productos, el video caduca a las 48 h y lo borra
+    el job de limpieza — son evidencias de coordinación, no archivo
+    permanente."""
+    servicio = obtener_servicio_por_id(servicio_id)
+    if not servicio:
+        raise HTTPException(status_code=404, detail="Servicio no encontrado")
+
+    import time as _time
+    from datetime import datetime, timedelta
+    ext = os.path.splitext(video.filename or "vid.mp4")[1] or ".mp4"
+    nombre = f"srvchatvid_{servicio_id}_{remitente_id}_{int(_time.time())}{ext}"
+    with open(os.path.join(UPLOADS_DIR, nombre), "wb") as f:
+        f.write(await video.read())
+    video_url = f"/uploads/{nombre}"
+
+    expira_en = (datetime.utcnow() + timedelta(hours=48)).strftime("%Y-%m-%d %H:%M:%S")
+    guardar_mensaje(publicacion_id=None, servicio_id=servicio_id,
+                    cliente_id=cliente_id, remitente_id=remitente_id,
+                    mensaje="", video_url=video_url, video_expira_en=expira_en)
+
+    proveedor_id = servicio.get("user_id")
+    destinatario = cliente_id if remitente_id == proveedor_id else proveedor_id
+    if destinatario and destinatario != remitente_id:
+        _avisar_chat_servicio(destinatario, servicio_id, cliente_id,
+                              f"🎥 Video en '{servicio.get('titulo') or 'un servicio'}'")
+    return {"video_url": video_url}
 
 
 def _avisar_chat_servicio(destinatario: int, servicio_id: int, cliente_id: int,
@@ -1878,6 +1957,60 @@ async def crear_servicio_endpoint(
         telefono=telefono, whatsapp=whatsapp,
     )
     return {"id": sid, "ok": True}
+
+
+@app.put("/servicios/{servicio_id}")
+async def editar_servicio_endpoint(
+    servicio_id: int,
+    user_id:     int   = Form(...),
+    titulo:      str   = Form(...),
+    descripcion: str   = Form(""),
+    comunas:     str   = Form(""),
+    valor:       float = Form(0),
+    modalidad:   str   = Form("servicio"),
+    categoria:   str   = Form(None),
+    color_hex:   str   = Form(None),
+    telefono:    str   = Form(None),
+    whatsapp:    str   = Form(None),
+    fotos_mantener: str = Form("[]"),   # JSON con las rutas que se conservan
+    fotos: Optional[List[UploadFile]] = File(default=None),
+):
+    """Edita una publicación de servicio. Mismo patrón que
+    PUT /publicaciones/{id}: las fotos que se conservan llegan como lista de
+    rutas y las nuevas como archivos; la lista final es la suma."""
+    servicio = obtener_servicio_por_id(servicio_id)
+    if not servicio:
+        raise HTTPException(status_code=404, detail="Servicio no encontrado")
+    if servicio.get("user_id") != user_id:
+        raise HTTPException(status_code=403, detail="No autorizado")
+
+    try:
+        conservadas = json.loads(fotos_mantener or "[]")
+        if not isinstance(conservadas, list):
+            conservadas = []
+    except Exception:
+        conservadas = []
+
+    nuevas = []
+    for foto in (fotos or [])[:2]:
+        if not foto.filename:
+            continue
+        ext = os.path.splitext(foto.filename)[1].lower() or ".jpg"
+        name = f"srv_{user_id}_{secrets.token_hex(8)}{ext}"
+        with open(os.path.join(UPLOADS_DIR, name), "wb") as f:
+            f.write(await foto.read())
+        nuevas.append(f"/uploads/{name}")
+
+    ok = editar_servicio(
+        servicio_id=servicio_id, user_id=user_id, titulo=titulo,
+        descripcion=descripcion, comunas=comunas, valor=valor,
+        modalidad=modalidad, fotos=(conservadas + nuevas)[:4],
+        categoria=categoria, color_hex=color_hex,
+        telefono=telefono, whatsapp=whatsapp,
+    )
+    if not ok:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    return {"ok": True, "servicio": obtener_servicio_por_id(servicio_id)}
 
 
 @app.patch("/servicios/{servicio_id}/ubicacion")
