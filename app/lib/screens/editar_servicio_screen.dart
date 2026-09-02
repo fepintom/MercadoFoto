@@ -52,8 +52,11 @@ class _EditarServicioScreenState extends State<EditarServicioScreen> {
     _valorCtrl =
         TextEditingController(text: valor > 0 ? valor.toStringAsFixed(0) : '');
     _modalidad = (s['modalidad'] ?? 'servicio').toString();
+    // Ojo con el `??`: mezclar Iterable<String> con un [] vacío hace que
+    // Dart infiera Object y no compile. Se resuelve con un if explícito.
+    final fotosRaw = s['fotos'];
     _fotosExistentes =
-        List<String>.from((s['fotos'] as List?)?.whereType<String>() ?? []);
+        fotosRaw is List ? fotosRaw.whereType<String>().toList() : <String>[];
     _cargarUsuario();
   }
 
