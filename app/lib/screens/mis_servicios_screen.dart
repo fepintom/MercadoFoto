@@ -5,7 +5,7 @@ import '../services/session_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import 'chat_servicio_screen.dart';
-import 'servicio_detalle_screen.dart';
+import 'editar_servicio_screen.dart';
 import 'agregar_servicio_screen.dart';
 import 'home_screen.dart';
 
@@ -348,14 +348,15 @@ class _TarjetaServicioState extends State<_TarjetaServicio> {
 
     return GestureDetector(
       onTap: () async {
-        // Navegar al detalle del servicio
-        await Navigator.push(
+        // Es MI publicación: lo natural al tocarla es editarla. Antes abría
+        // el detalle público y no se podía hacer nada desde ahí.
+        final cambiado = await Navigator.push<bool>(
           context,
           MaterialPageRoute(
-            builder: (_) => ServicioDetalleScreen(servicio: s),
+            builder: (_) => EditarServicioScreen(servicio: s),
           ),
         );
-        widget.onRefresh();
+        if (cambiado == true) widget.onRefresh();
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -499,14 +500,11 @@ class _TarjetaServicioState extends State<_TarjetaServicio> {
                   ),
                 )
               else if (_contactos != null && _contactos!.isNotEmpty)
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
-                  itemCount: _contactos!.length,
-                  separatorBuilder: (_, __) => Divider(
-                      height: 1, color: colors.divider),
-                  itemBuilder: (_, i) {
+                // Se muestran de a 3: con muchos contactos la tarjeta se
+                // hacía enorme. Si hay más, se desliza de lado.
+                _ContactosPaginados(
+                  contactos: _contactos!,
+                  filaBuilder: (i) {
                     final c = _contactos![i];
                     final esWpp = c['tipo_contacto'] == 'whatsapp';
                     return GestureDetector(
@@ -632,6 +630,92 @@ class _TarjetaServicioState extends State<_TarjetaServicio> {
         style: TextStyle(
             fontSize: 10, fontWeight: FontWeight.w600, color: color),
       ),
+    );
+  }
+}
+
+
+/// Muestra los contactos de a 3. Si hay más, se navega deslizando de lado,
+/// con puntos abajo indicando en qué página vas.
+///
+/// Antes era una lista sin límite dentro de la tarjeta: veinte contactos la
+/// convertían en una tarjeta gigantesca dentro de otra lista.
+class _ContactosPaginados extends StatefulWidget {
+  final List<Map<String, dynamic>> contactos;
+  final Widget Function(int indice) filaBuilder;
+
+  const _ContactosPaginados({
+    required this.contactos,
+    required this.filaBuilder,
+  });
+
+  @override
+  State<_ContactosPaginados> createState() => _ContactosPaginadosState();
+}
+
+class _ContactosPaginadosState extends State<_ContactosPaginados> {
+  static const _porPagina = 3;
+  final _ctrl = PageController();
+  int _pagina = 0;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final total = widget.contactos.length;
+    final paginas = (total / _porPagina).ceil();
+
+    return Column(
+      children: [
+        SizedBox(
+          // 3 filas de ~48 px cada una.
+          height: 150,
+          child: PageView.builder(
+            controller: _ctrl,
+            itemCount: paginas,
+            onPageChanged: (i) => setState(() => _pagina = i),
+            itemBuilder: (_, p) {
+              final desde = p * _porPagina;
+              final hasta = (desde + _porPagina).clamp(0, total);
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
+                child: Column(
+                  children: [
+                    for (int i = desde; i < hasta; i++) ...[
+                      widget.filaBuilder(i),
+                      if (i < hasta - 1)
+                        Divider(height: 1, color: colors.divider),
+                    ],
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        if (paginas > 1)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (int i = 0; i < paginas; i++)
+                  Container(
+                    width: _pagina == i ? 16 : 6,
+                    height: 6,
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    decoration: BoxDecoration(
+                      color: _pagina == i ? colors.primary : colors.divider,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }

@@ -1054,6 +1054,86 @@ class ApiService {
     return jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
   }
 
+  /// Foto de evidencia en el chat de un servicio.
+  static Future<void> enviarImagenChatServicio({
+    required int servicioId,
+    required int clienteId,
+    required int remitenteId,
+    required File imagen,
+  }) async {
+    final req = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/chat/servicio/$servicioId/imagen'),
+    );
+    req.fields['remitente_id'] = remitenteId.toString();
+    req.fields['cliente_id'] = clienteId.toString();
+    req.files.add(await http.MultipartFile.fromPath('imagen', imagen.path));
+    final streamed = await req.send().timeout(const Duration(seconds: 30));
+    if (streamed.statusCode != 200) {
+      throw Exception('No se pudo enviar la foto');
+    }
+  }
+
+  /// Video de evidencia (hasta 1 minuto) en el chat de un servicio.
+  static Future<void> enviarVideoChatServicio({
+    required int servicioId,
+    required int clienteId,
+    required int remitenteId,
+    required File video,
+  }) async {
+    final req = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/chat/servicio/$servicioId/video'),
+    );
+    req.fields['remitente_id'] = remitenteId.toString();
+    req.fields['cliente_id'] = clienteId.toString();
+    req.files.add(await http.MultipartFile.fromPath('video', video.path));
+    final streamed = await req.send().timeout(const Duration(minutes: 3));
+    if (streamed.statusCode != 200) {
+      throw Exception('No se pudo enviar el video');
+    }
+  }
+
+  /// Edita una publicación de servicio. `fotosMantener` son las rutas de las
+  /// fotos que ya estaban y se conservan; `fotosNuevas` las recién elegidas.
+  static Future<void> editarServicio({
+    required int servicioId,
+    required int userId,
+    required String titulo,
+    required String descripcion,
+    required String comunas,
+    required double valor,
+    required String modalidad,
+    required List<String> fotosMantener,
+    required List<File> fotosNuevas,
+    String? categoria,
+    String? telefono,
+    String? whatsapp,
+  }) async {
+    final req = http.MultipartRequest(
+      'PUT',
+      Uri.parse('$baseUrl/servicios/$servicioId'),
+    );
+    req.fields['user_id'] = userId.toString();
+    req.fields['titulo'] = titulo;
+    req.fields['descripcion'] = descripcion;
+    req.fields['comunas'] = comunas;
+    req.fields['valor'] = valor.toString();
+    req.fields['modalidad'] = modalidad;
+    req.fields['fotos_mantener'] = jsonEncode(fotosMantener);
+    if (categoria != null) req.fields['categoria'] = categoria;
+    if (telefono != null) req.fields['telefono'] = telefono;
+    if (whatsapp != null) req.fields['whatsapp'] = whatsapp;
+    for (final f in fotosNuevas) {
+      req.files.add(await http.MultipartFile.fromPath('fotos', f.path));
+    }
+    final streamed = await req.send();
+    final res = await http.Response.fromStream(streamed);
+    if (res.statusCode != 200) {
+      throw Exception(_detalle(res.body) ?? 'No se pudo guardar el servicio');
+    }
+  }
+
   /// Clientes que le escribieron a un servicio. Es la bandeja del proveedor:
   /// desde aquí entra al chat de cada uno para poder cotizarle.
   static Future<List<dynamic>> obtenerConversacionesServicio(

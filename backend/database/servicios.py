@@ -92,6 +92,31 @@ def crear_servicio(user_id, tipo, titulo, descripcion, comunas,
     return sid
 
 
+def editar_servicio(servicio_id, user_id, titulo, descripcion, comunas,
+                    valor, modalidad, fotos, categoria=None, color_hex=None,
+                    telefono=None, whatsapp=None):
+    """Actualiza una publicación de servicio. Solo el dueño puede: el
+    user_id va en el WHERE, así que si no coincide no toca nada y devuelve
+    False. `fotos` es la lista final (las que se conservan + las nuevas)."""
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute("""
+        UPDATE servicios
+        SET titulo = ?, descripcion = ?, comunas = ?, valor = ?,
+            modalidad = ?, fotos = ?,
+            categoria = COALESCE(?, categoria),
+            color_hex = COALESCE(?, color_hex),
+            telefono  = COALESCE(?, telefono),
+            whatsapp  = COALESCE(?, whatsapp)
+        WHERE id = ? AND user_id = ?
+    """, (titulo, descripcion, comunas, valor, modalidad, json.dumps(fotos),
+          categoria, color_hex, telefono, whatsapp, servicio_id, user_id))
+    ok = c.rowcount > 0
+    conn.commit()
+    conn.close()
+    return ok
+
+
 def actualizar_ubicacion(servicio_id, user_id, lat, lng, radio_km):
     conn = sqlite3.connect(DB)
     c = conn.cursor()

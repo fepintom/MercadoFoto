@@ -1,12 +1,15 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
+import '../widgets/net_image.dart';
 
 /// Chat de un servicio.
 ///
@@ -52,7 +55,13 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
   int? _userId;
   bool _cargando = true;
   bool _enviando = false;
+  bool _pagando = false;
   Timer? _poll;
+
+  /// El servicio completo, para saber su precio y si se puede contratar.
+  /// Se carga aparte porque a esta pantalla se llega desde varios lados y
+  /// no todos tienen el objeto entero a mano.
+  Map<String, dynamic>? _servicio;
 
   bool get _soyProveedor => _userId != null && _userId == widget.proveedorId;
 
@@ -72,6 +81,9 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
 
   Future<void> _inicializar() async {
     _userId = await SessionService.obtenerUser();
+    ApiService.obtenerServicioPorId(widget.servicioId).then((srv) {
+      if (mounted && srv != null) setState(() => _servicio = srv);
+    }).catchError((_) {});
     await _cargar();
     if (mounted) setState(() => _cargando = false);
     _poll = Timer.periodic(const Duration(seconds: 5), (_) => _cargar());
@@ -130,6 +142,108 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
         mensaje: texto,
       );
       _ctrl.clear();
+      await _cargar();
+      _alFinal();
+    } catch (e) {
+      _aviso('$e'.replaceFirst('Exception: ', ''), error: true);
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
+  }
+
+  // ── Adjuntos: fotos y video de evidencia ──────────────────────────────────
+
+  void _menuAdjuntar() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: colors.divider,
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: Icon(Icons.camera_alt_outlined, color: colors.primary),
+              title: Text('Tomar foto',
+                  style: TextStyle(color: colors.textPrimary)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _enviarImagen(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading:
+                  Icon(Icons.photo_library_outlined, color: colors.primary),
+              title: Text('Elegir de la galería',
+                  style: TextStyle(color: colors.textPrimary)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _enviarImagen(ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.videocam_outlined, color: colors.primary),
+              title: Text('Grabar video (máx. 1 min)',
+                  style: TextStyle(color: colors.textPrimary)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _enviarVideo();
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _enviarImagen(ImageSource origen) async {
+    if (_userId == null || _enviando) return;
+    final picked = await ImagePicker()
+        .pickImage(source: origen, imageQuality: 75, maxWidth: 1080);
+    if (picked == null) return;
+    setState(() => _enviando = true);
+    try {
+      await ApiService.enviarImagenChatServicio(
+        servicioId: widget.servicioId,
+        clienteId: widget.clienteId,
+        remitenteId: _userId!,
+        imagen: File(picked.path),
+      );
+      await _cargar();
+      _alFinal();
+    } catch (e) {
+      _aviso('$e'.replaceFirst('Exception: ', ''), error: true);
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
+  }
+
+  Future<void> _enviarVideo() async {
+    if (_userId == null || _enviando) return;
+    final picked = await ImagePicker().pickVideo(
+      source: ImageSource.camera,
+      maxDuration: const Duration(minutes: 1),
+    );
+    if (picked == null) return;
+    setState(() => _enviando = true);
+    try {
+      await ApiService.enviarVideoChatServicio(
+        servicioId: widget.servicioId,
+        clienteId: widget.clienteId,
+        remitenteId: _userId!,
+        video: File(picked.path),
+      );
       await _cargar();
       _alFinal();
     } catch (e) {
@@ -326,6 +440,122 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
     }
   }
 
+  // ── Contratar y pagar ─────────────────────────────────────────────────────
+  //
+  // Vive acá y no en el detalle del servicio porque ese es el orden real:
+  // primero se contacta, luego se cotiza y recién al final se contrata. En
+  // el detalle aparecía antes de haber hablado con nadie.
+
+  Future<void> _pagarServicio() async {
+    if (_userId == null || _pagando || _servicio == null) return;
+    final monto = (_servicio!['valor'] as num?)?.toDouble() ?? 0;
+    if (monto <= 0) {
+      _aviso('Este servicio no tiene un precio fijo. Pídele una cotización.');
+      return;
+    }
+
+    setState(() => _pagando = true);
+    try {
+      final data = await ApiService.crearPreferencia(
+        compradorId: _userId!,
+        vendedorId: widget.proveedorId,
+        tipo: 'servicio',
+        titulo: (_servicio!['titulo'] ?? 'Servicio').toString(),
+        monto: monto,
+        servicioId: widget.servicioId,
+      );
+
+      if (data['test_mode'] == true) {
+        if (!mounted) return;
+        await showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            backgroundColor: colors.surface,
+            title: Text('Servicio contratado',
+                style: TextStyle(color: colors.textPrimary)),
+            content: Text(
+              'Pago simulado (modo prueba). No se realizó ningún cobro real.\n\n'
+              'Se abonó el 80% al proveedor. El 20% restante queda en el '
+              'Seguro Garantía OkVenta por 30 días.',
+              style: TextStyle(color: colors.textSecondary),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Entendido')),
+            ],
+          ),
+        );
+        await _cargar();
+        return;
+      }
+
+      final initPoint =
+          (data['init_point'] ?? data['sandbox_init_point'] ?? '').toString();
+      if (initPoint.isEmpty) throw Exception('No se pudo iniciar el pago');
+      await launchUrl(Uri.parse(initPoint),
+          mode: LaunchMode.externalApplication);
+    } catch (e) {
+      _aviso('$e'.replaceFirst('Exception: ', ''), error: true);
+    } finally {
+      if (mounted) setState(() => _pagando = false);
+    }
+  }
+
+  /// Barra de contratar. Solo la ve el cliente, y solo si el servicio tiene
+  /// un precio fijo publicado — si no, el camino es pedir cotización.
+  Widget _barraContratar() {
+    if (_soyProveedor || _servicio == null) return const SizedBox.shrink();
+    final monto = (_servicio!['valor'] as num?)?.toDouble() ?? 0;
+    final tipo = (_servicio!['tipo'] ?? 'ofrezco').toString();
+    if (tipo != 'ofrezco' || monto <= 0) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        border: Border(top: BorderSide(color: colors.divider, width: 0.5)),
+      ),
+      child: Row(children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Precio publicado',
+                  style: TextStyle(fontSize: 11.5, color: colors.grayMid)),
+              Text(formatPrecio(monto),
+                  style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textPrimary)),
+            ],
+          ),
+        ),
+        ElevatedButton(
+          onPressed: _pagando ? null : _pagarServicio,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: colors.primary,
+            foregroundColor: Colors.white,
+            disabledBackgroundColor: colors.grayMid,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
+          ),
+          child: _pagando
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white))
+              : const Text('Contratar y pagar',
+                  style: TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.w700)),
+        ),
+      ]),
+    );
+  }
+
   // ── UI ────────────────────────────────────────────────────────────────────
 
   @override
@@ -370,6 +600,7 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
                         itemBuilder: (_, i) => _burbuja(_mensajes[i]),
                       ),
           ),
+          _barraContratar(),
           _barraEnvio(),
         ],
       ),
@@ -400,6 +631,12 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
       return _tarjetaCotizacion(m['cotizacion_id'] as int, esMio);
     }
 
+    final videoUrl = (m['video_url'] ?? '').toString();
+    if (videoUrl.isNotEmpty) return _burbujaMedia(esMio, video: videoUrl);
+
+    final imagenUrl = (m['imagen_url'] ?? '').toString();
+    if (imagenUrl.isNotEmpty) return _burbujaMedia(esMio, imagen: imagenUrl);
+
     return Align(
       alignment: esMio ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -424,6 +661,45 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
           style: TextStyle(
               fontSize: 14,
               color: esMio ? Colors.white : colors.textPrimary),
+        ),
+      ),
+    );
+  }
+
+  /// Foto o video adjunto. El video se abre con el reproductor del sistema,
+  /// igual que en el chat de productos.
+  Widget _burbujaMedia(bool esMio, {String? imagen, String? video}) {
+    final url = '${ApiService.baseUrl}${video ?? imagen}';
+    return Align(
+      alignment: esMio ? Alignment.centerRight : Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: GestureDetector(
+          onTap: () => launchUrl(Uri.parse(url),
+              mode: LaunchMode.externalApplication),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: video != null
+                ? Container(
+                    width: 200,
+                    height: 150,
+                    color: colors.carbon,
+                    alignment: Alignment.center,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.play_circle_fill_rounded,
+                            size: 40, color: Colors.white),
+                        const SizedBox(height: 6),
+                        Text('Video',
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.white.withOpacity(0.85))),
+                      ],
+                    ),
+                  )
+                : NetImage(url, width: 200, height: 200, fit: BoxFit.cover),
+          ),
         ),
       ),
     );
@@ -583,6 +859,24 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
       child: SafeArea(
         top: false,
         child: Row(children: [
+          // Adjuntar foto o video de evidencia.
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              onTap: _enviando ? null : _menuAdjuntar,
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: colors.background,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: colors.divider, width: 0.5),
+                ),
+                child: Icon(Icons.attach_file_rounded,
+                    size: 20, color: colors.grayMid),
+              ),
+            ),
+          ),
           if (_soyProveedor)
             Padding(
               padding: const EdgeInsets.only(right: 8),
