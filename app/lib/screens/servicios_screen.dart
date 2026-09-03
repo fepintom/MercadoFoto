@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../services/theme_service.dart';
+import '../services/ubicacion_service.dart';
 import '../services/vista_servicios_service.dart';
 import '../theme/app_theme.dart';
 import 'agregar_servicio_screen.dart';
@@ -17,6 +18,7 @@ import 'mapa_ubicacion_picker_screen.dart';
 import 'okdelivery_pendientes_screen.dart';
 import 'servicio_detalle_screen.dart';
 import '../widgets/net_image.dart';
+import '../widgets/punto_ubicacion.dart';
 class ServiciosScreen extends StatefulWidget {
   const ServiciosScreen({super.key});
 
@@ -293,6 +295,21 @@ class _ListaServiciosState extends State<_ListaServicios> {
   // VistaServicios, no en el State: son preferencias globales y persistidas,
   // así que al cambiarlas en "Ofrezco" la pestaña "Busco" se redibuja sola.
 
+  /// Radio de búsqueda en km, desde mi ubicación. Al llegar al tope se
+  /// apaga el filtro y se muestran todos.
+  double _radioKm = _kRadioMaxKm;
+
+  /// Mi ubicación, para medir la distancia. Sin ella el filtro no aplica.
+  Coordenadas? _miUbicacion;
+
+  @override
+  void initState() {
+    super.initState();
+    UbicacionService.obtener().then((c) {
+      if (mounted && c != null) setState(() => _miUbicacion = c);
+    });
+  }
+
   @override
   void dispose() {
     _searchCtrl.dispose();
@@ -314,7 +331,65 @@ class _ListaServiciosState extends State<_ListaServicios> {
         return titulo.contains(q) || desc.contains(q);
       }).toList();
     }
+
+    // Distancia desde mi ubicación. Los servicios sin dirección marcada se
+    // conservan: filtrarlos escondería publicaciones válidas que solo no
+    // indicaron dónde atienden.
+    final yo = _miUbicacion;
+    if (yo != null && _radioKm < _kRadioMaxKm) {
+      lista = lista.where((s) {
+        final lat = s['lat'], lng = s['lng'];
+        if (lat == null || lng == null) return true;
+        final km = UbicacionService.distanciaKm(
+            yo, Coordenadas((lat as num).toDouble(), (lng as num).toDouble()));
+        return km <= _radioKm;
+      }).toList();
+    }
     return lista;
+  }
+
+  /// Barra de radio de búsqueda. Se muestra solo si tenemos ubicación:
+  /// sin ella no hay desde dónde medir y sería un control muerto.
+  Widget _barraRadio() {
+    if (_miUbicacion == null) return const SizedBox.shrink();
+    return Container(
+      color: colors.surface,
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+      child: Row(
+        children: [
+          Icon(Icons.radar_rounded, size: 18, color: colors.primary),
+          Expanded(
+            child: SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 3,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                overlayShape:
+                    const RoundSliderOverlayShape(overlayRadius: 14),
+              ),
+              child: Slider(
+                value: _radioKm,
+                min: 1,
+                max: _kRadioMaxKm,
+                activeColor: colors.primary,
+                inactiveColor: colors.divider,
+                onChanged: (v) => setState(() => _radioKm = v),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 62,
+            child: Text(
+              _radioKm >= _kRadioMaxKm ? 'Todo' : '${_radioKm.round()} km',
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: colors.textPrimary),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _mostrarControlTamano() {
@@ -625,6 +700,9 @@ class _ListaServiciosState extends State<_ListaServicios> {
             },
           ),
         ),
+        // Radio de búsqueda: cierra el bloque blanco del encabezado, justo
+        // antes del listado.
+        _barraRadio(),
         Divider(height: 0.5, color: colors.divider),
 
         Expanded(child: _buildLista(filtrados)),
@@ -1448,15 +1526,19 @@ class _MapaServiciosState extends State<_MapaServicios> {
   final _searchCtrl = TextEditingController();
   String _query = '';
 
-  /// Radio de cobertura del mapa, en km. Filtra qué servicios se muestran
-  /// según su distancia al centro del mapa. Es distinto del `radio_km` de
-  /// cada servicio, que es la cobertura que declara el proveedor.
-  double _radioBusquedaKm = 50;
+  /// Ubicación del usuario, para pintar su punto en el mapa. Null mientras
+  /// no la haya dado o si no dio permiso.
+  Coordenadas? _miUbicacion;
 
-  /// Centro desde el que se mide el radio. Se fija en el primer build a
-  /// partir de los servicios con ubicación, para que el filtro no cambie
-  /// de referencia en cada redibujo.
-  LatLng? _centroBusqueda;
+  @override
+  void initState() {
+    super.initState();
+    // Sin bloquear: el mapa se muestra igual y el punto aparece cuando el
+    // GPS responde. Si el usuario no da permiso, simplemente no hay punto.
+    UbicacionService.obtener().then((c) {
+      if (mounted && c != null) setState(() => _miUbicacion = c);
+    });
+  }
 
   @override
   void dispose() {
@@ -1478,20 +1560,6 @@ class _MapaServiciosState extends State<_MapaServicios> {
         final titulo = (s['titulo'] ?? '').toString().toLowerCase();
         final cat    = (s['categoria'] ?? '').toString().toLowerCase();
         return titulo.contains(q) || cat.contains(q);
-      }).toList();
-    }
-
-    // Radio de cobertura: los que no tienen ubicación se conservan, porque
-    // filtrarlos escondería publicaciones válidas que solo no marcaron dónde.
-    final centro = _centroBusqueda;
-    if (centro != null && _radioBusquedaKm < _kRadioMaxKm) {
-      const distancia = Distance();
-      lista = lista.where((s) {
-        final lat = s['lat'], lng = s['lng'];
-        if (lat == null || lng == null) return true;
-        final km = distancia.as(LengthUnit.Kilometer, centro,
-            LatLng((lat as num).toDouble(), (lng as num).toDouble()));
-        return km <= _radioBusquedaKm;
       }).toList();
     }
     return lista;
@@ -1549,14 +1617,6 @@ class _MapaServiciosState extends State<_MapaServicios> {
         .where((s) => s['lat'] != null && s['lng'] != null)
         .toList();
 
-    // El centro se fija una sola vez: si cambiara en cada redibujo, el
-    // filtro por distancia daría resultados distintos sin que el usuario
-    // haya tocado nada.
-    _centroBusqueda ??= todos.isNotEmpty
-        ? LatLng((todos.first['lat'] as num).toDouble(),
-            (todos.first['lng'] as num).toDouble())
-        : _kSantiago;
-
     final filtrados     = _serviciosFiltrados;
     final conUbicacion  = filtrados
         .where((s) => s['lat'] != null && s['lng'] != null)
@@ -1599,10 +1659,21 @@ class _MapaServiciosState extends State<_MapaServicios> {
                 }).toList(),
               ),
 
-            // ── Globos de texto ───────────────────────────────────────────
-            if (conUbicacion.isNotEmpty)
-              MarkerLayer(
-                markers: conUbicacion.map((s) {
+            // ── Globos de texto + mi ubicación ────────────────────────────
+            // Sin condición: el punto de mi ubicación debe verse aunque no
+            // haya ningún servicio con dirección marcada.
+            MarkerLayer(
+                markers: [
+                  // Punto de mi ubicación, igual que en el mapa de productos.
+                  if (_miUbicacion != null)
+                    Marker(
+                      point: LatLng(_miUbicacion!.lat, _miUbicacion!.lng),
+                      width: 24,
+                      height: 24,
+                      builder: (_) => const PuntoUbicacion(),
+                    ),
+                ] +
+                    conUbicacion.map((s) {
                   final tipo    = s['tipo'] as String? ?? 'ofrezco';
                   final titulo  = s['titulo'] as String? ?? '';
                   final esMio   = widget.miUserId != null &&
@@ -1722,68 +1793,9 @@ class _MapaServiciosState extends State<_MapaServicios> {
             ),
           ),
 
-        // ── Radio de cobertura ─────────────────────────────────────────
+        // ── Buscador inferior ──────────────────────────────────────────
         Positioned(
           bottom: 20,
-          left: 16,
-          right: 16,
-          child: Container(
-            height: 46,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(23),
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2)),
-              ],
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.radar_rounded, size: 18, color: colors.primary),
-                Expanded(
-                  child: SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      trackHeight: 3,
-                      thumbShape:
-                          const RoundSliderThumbShape(enabledThumbRadius: 7),
-                      overlayShape:
-                          const RoundSliderOverlayShape(overlayRadius: 14),
-                    ),
-                    child: Slider(
-                      value: _radioBusquedaKm,
-                      min: 1,
-                      max: _kRadioMaxKm,
-                      activeColor: colors.primary,
-                      inactiveColor: colors.divider,
-                      onChanged: (v) =>
-                          setState(() => _radioBusquedaKm = v),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: 62,
-                  child: Text(
-                    _radioBusquedaKm >= _kRadioMaxKm
-                        ? 'Todo'
-                        : '${_radioBusquedaKm.round()} km',
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.black87),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        // ── Buscador ───────────────────────────────────────────────────
-        Positioned(
-          bottom: 76,
           left: 16,
           right: 16,
           child: Container(
