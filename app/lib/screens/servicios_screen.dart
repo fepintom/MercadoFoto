@@ -118,47 +118,101 @@ class _ServiciosScreenState extends State<ServiciosScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: colors.background,
-      body: Column(
+      // NestedScrollView y no un Column: es lo que permite que el encabezado
+      // (título, publicidad, frase y pestañas) se vaya hacia arriba con el
+      // mismo gesto que desplaza la lista, igual que el home del marketplace.
+      // Con un Column el encabezado se quedaría fijo ocupando pantalla.
+      body: _cargando
+          ? Center(child: CircularProgressIndicator(color: colors.primary))
+          : NestedScrollView(
+              headerSliverBuilder: (_, __) => [
+                SliverToBoxAdapter(child: _cabecera()),
+              ],
+              body: TabBarView(
+                controller: _tabController,
+                children: [
+                  _ListaServicios(
+                    servicios: _ofrezco,
+                    tipo: 'ofrezco',
+                    onRefresh: _cargar,
+                    onPublicar: _irAAgregar,
+                  ),
+                  _ListaServicios(
+                    servicios: _busco,
+                    tipo: 'busco',
+                    onRefresh: _cargar,
+                    onPublicar: _irAAgregar,
+                  ),
+                  _MapaServicios(
+                    servicios: [..._ofrezco, ..._busco],
+                    miUserId: _miUserId,
+                    onUbicacionActualizada: _cargar,
+                  ),
+                  _DeliveryTab(
+                    delivery: _delivery,
+                    miUserId: _miUserId,
+                    onRefresh: _cargar,
+                    onRegistrarme: _irAAgregar,
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+
+  /// Título, publicidad, frase y pestañas: todo en un bloque que se va con
+  /// el scroll. La publicidad va entre el título y la frase, en el mismo
+  /// sitio que ocupa en el home del marketplace.
+  ///
+  /// Va en tres piezas y no en un solo Container con padding porque el
+  /// banner trae sus propios márgenes —los del home— y encerrarlo en un
+  /// bloque con 16 de padding lo dejaría más angosto que allá.
+  Widget _cabecera() {
+    return Container(
+      color: colors.surface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          Container(
-            color: colors.surface,
+          Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Servicios',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                ),
+                // Okventin servicios: solo en modo oscuro, mismo tamaño
+                // agrandado que en el home (57).
+                ValueListenableBuilder<bool>(
+                  valueListenable: ThemeService.isDarkNotifier,
+                  builder: (_, isDark, __) {
+                    if (!isDark) return const SizedBox.shrink();
+                    return Image.asset('assets/images/okventin_servicios.png',
+                        width: 57, height: 57);
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          const BannerPublicidad(avisos: avisosServicios),
+
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Servicios',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                    ),
-                    // Okventin servicios: solo en modo oscuro, mismo tamaño
-                    // agrandado que en el home (57).
-                    ValueListenableBuilder<bool>(
-                      valueListenable: ThemeService.isDarkNotifier,
-                      builder: (_, isDark, __) {
-                        if (!isDark) return const SizedBox.shrink();
-                        return Image.asset(
-                            'assets/images/okventin_servicios.png',
-                            width: 57,
-                            height: 57);
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
                 Text(
                   'Encuentra o publica servicios profesionales',
                   style: TextStyle(fontSize: 13, color: colors.grayMid),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 TabBar(
                   controller: _tabController,
                   labelColor: colors.primary,
@@ -176,42 +230,6 @@ class _ServiciosScreenState extends State<ServiciosScreen>
                 ),
               ],
             ),
-          ),
-          Divider(height: 0.5, color: colors.divider),
-
-          // Contenido
-          Expanded(
-            child: _cargando
-                ? Center(
-                    child: CircularProgressIndicator(color: colors.primary))
-                : TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _ListaServicios(
-                        servicios: _ofrezco,
-                        tipo: 'ofrezco',
-                        onRefresh: _cargar,
-                        onPublicar: _irAAgregar,
-                      ),
-                      _ListaServicios(
-                        servicios: _busco,
-                        tipo: 'busco',
-                        onRefresh: _cargar,
-                        onPublicar: _irAAgregar,
-                      ),
-                      _MapaServicios(
-                        servicios: [..._ofrezco, ..._busco],
-                        miUserId: _miUserId,
-                        onUbicacionActualizada: _cargar,
-                      ),
-                      _DeliveryTab(
-                        delivery: _delivery,
-                        miUserId: _miUserId,
-                        onRefresh: _cargar,
-                        onRegistrarme: _irAAgregar,
-                      ),
-                    ],
-                  ),
           ),
         ],
       ),
@@ -578,11 +596,6 @@ class _ListaServiciosState extends State<_ListaServicios> {
         // gesto de refrescar no funciona cuando hay pocos servicios.
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
-          // ── Publicidad (se va al hacer scroll) ──────────────────────────
-          const SliverToBoxAdapter(
-            child: BannerPublicidad(avisos: avisosServicios),
-          ),
-
           // ── Buscador + categorías + distancia (anclados) ────────────────
           SliverPersistentHeader(
             pinned: true,
@@ -601,7 +614,12 @@ class _ListaServiciosState extends State<_ListaServicios> {
           ),
 
           if (filtrados.isEmpty)
-            SliverFillRemaining(hasScrollBody: false, child: _buildVacio())
+            // Altura fija y no SliverFillRemaining: dentro de un
+            // NestedScrollView ese sliver recibe restricciones infinitas y
+            // revienta el layout.
+            SliverToBoxAdapter(
+              child: SizedBox(height: 320, child: _buildVacio()),
+            )
           else
             _buildLista(filtrados),
         ],
