@@ -136,6 +136,14 @@ class _ConfirmarEnvioMediaScreenState
                             TextStyle(color: Colors.white54, fontSize: 14),
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.symmetric(vertical: 12),
+                        // `filled: false` es lo que arregla el texto
+                        // invisible: el tema de la app rellena TODAS las
+                        // cajas de texto de blanco (fillColor: surface), así
+                        // que aquí se pintaba un rectángulo blanco encima del
+                        // fondo oscuro y las letras blancas quedaban blanco
+                        // sobre blanco. Quien pinta el fondo de esta caja es
+                        // el Container de afuera, no la decoración.
+                        filled: false,
                       ),
                     ),
                   ),
