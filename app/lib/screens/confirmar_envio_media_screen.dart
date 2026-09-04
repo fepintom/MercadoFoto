@@ -88,15 +88,17 @@ class _ConfirmarEnvioMediaScreenState
         children: [
           Expanded(child: Center(child: _vistaPrevia())),
 
-          // Comentario + enviar, sobre el teclado.
-          Container(
+          // Comentario + enviar.
+          //
+          // SIN sumar viewInsets.bottom a mano: el Scaffold ya encoge el
+          // cuerpo cuando sale el teclado, así que sumarlo otra vez empujaba
+          // la caja de texto un teclado entero por debajo de la pantalla y
+          // no se veía lo que se escribía.
+          SafeArea(
+            top: false,
+            child: Container(
             color: Colors.black,
-            padding: EdgeInsets.fromLTRB(
-              12,
-              8,
-              12,
-              12 + MediaQuery.of(context).viewInsets.bottom,
-            ),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
             child: Row(
               children: [
                 Expanded(
@@ -110,6 +112,8 @@ class _ConfirmarEnvioMediaScreenState
                       controller: _comentarioCtrl,
                       style: const TextStyle(
                           color: Colors.white, fontSize: 14),
+                      // Sobre fondo negro el cursor por defecto se pierde.
+                      cursorColor: Colors.white,
                       minLines: 1,
                       maxLines: 4,
                       decoration: const InputDecoration(
@@ -138,6 +142,7 @@ class _ConfirmarEnvioMediaScreenState
                   ),
                 ),
               ],
+            ),
             ),
           ),
         ],
