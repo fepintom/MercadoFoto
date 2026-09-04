@@ -10,6 +10,8 @@ import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../widgets/net_image.dart';
+import 'confirmar_envio_media_screen.dart';
+import 'visor_media_screen.dart';
 
 /// Chat de un servicio.
 ///
@@ -211,14 +213,26 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
     if (_userId == null || _enviando) return;
     final picked = await ImagePicker()
         .pickImage(source: origen, imageQuality: 75, maxWidth: 1080);
-    if (picked == null) return;
+    if (picked == null || !mounted) return;
+
+    // Paso de confirmación: ver qué se eligió, poder comentarlo y poder
+    // arrepentirse. Antes se enviaba apenas se soltaba el dedo.
+    final envio = await Navigator.push<EnvioMedia>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ConfirmarEnvioMediaScreen(archivo: File(picked.path)),
+      ),
+    );
+    if (envio == null) return;
+
     setState(() => _enviando = true);
     try {
       await ApiService.enviarImagenChatServicio(
         servicioId: widget.servicioId,
         clienteId: widget.clienteId,
         remitenteId: _userId!,
-        imagen: File(picked.path),
+        imagen: envio.archivo,
+        comentario: envio.comentario,
       );
       await _cargar();
       _alFinal();
@@ -235,14 +249,25 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
       source: ImageSource.camera,
       maxDuration: const Duration(minutes: 1),
     );
-    if (picked == null) return;
+    if (picked == null || !mounted) return;
+
+    final envio = await Navigator.push<EnvioMedia>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ConfirmarEnvioMediaScreen(
+            archivo: File(picked.path), esVideo: true),
+      ),
+    );
+    if (envio == null) return;
+
     setState(() => _enviando = true);
     try {
       await ApiService.enviarVideoChatServicio(
         servicioId: widget.servicioId,
         clienteId: widget.clienteId,
         remitenteId: _userId!,
-        video: File(picked.path),
+        video: envio.archivo,
+        comentario: envio.comentario,
       );
       await _cargar();
       _alFinal();
@@ -251,6 +276,77 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
     } finally {
       if (mounted) setState(() => _enviando = false);
     }
+  }
+
+  // ── Borrar un mensaje propio ──────────────────────────────────────────────
+
+  /// Plazo para arrepentirse. Pasado, el mensaje queda: el chat es la prueba
+  /// de lo conversado si hay una disputa. El servidor valida lo mismo.
+  static const _ventanaBorrado = Duration(minutes: 1);
+
+  /// ¿Todavía se puede borrar? Se calcula contra la hora del mensaje.
+  bool _sePuedeBorrar(Map m) {
+    final fecha = DateTime.tryParse((m['fecha'] ?? '').toString());
+    if (fecha == null) return false;
+    // El servidor guarda las horas en UTC; comparar contra la hora local
+    // del teléfono daría diferencias de horas según el país.
+    final edad = DateTime.now().toUtc().difference(fecha.toUtc());
+    return !edad.isNegative && edad < _ventanaBorrado;
+  }
+
+  Future<void> _borrarMensaje(Map m) async {
+    final id = m['id'];
+    if (id is! int || _userId == null) return;
+    try {
+      await ApiService.borrarMensajeChat(mensajeId: id, userId: _userId!);
+      // Se quita de inmediato en vez de esperar el refresco de 5 s: si el
+      // mensaje sigue ahí un rato, parece que no funcionó.
+      if (mounted) {
+        setState(() => _mensajes.removeWhere((x) => x is Map && x['id'] == id));
+      }
+    } catch (e) {
+      _aviso('$e'.replaceFirst('Exception: ', ''), error: true);
+      await _cargar();
+    }
+  }
+
+  /// Menú al mantener pulsado un mensaje propio reciente.
+  void _menuMensaje(Map m) {
+    if (!_sePuedeBorrar(m)) return;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                  color: colors.divider,
+                  borderRadius: BorderRadius.circular(2)),
+            ),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: Icon(Icons.delete_outline, color: colors.primary),
+              title: Text('Eliminar mensaje',
+                  style: TextStyle(color: colors.textPrimary)),
+              subtitle: Text('Solo dentro del primer minuto',
+                  style: TextStyle(fontSize: 12, color: colors.grayMid)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _borrarMensaje(m);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
   // ── Cotización ────────────────────────────────────────────────────────────
@@ -627,79 +723,137 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
 
   Widget _burbuja(dynamic m) {
     final esMio = m['remitente'] == _userId;
-    if (m['tipo'] == 'cotizacion' && m['cotizacion_id'] is int) {
+    if (m['cotizacion_id'] != null) {
       return _tarjetaCotizacion(m['cotizacion_id'] as int, esMio);
     }
 
+    final texto = m['mensaje']?.toString() ?? '';
     final videoUrl = (m['video_url'] ?? '').toString();
-    if (videoUrl.isNotEmpty) return _burbujaMedia(esMio, video: videoUrl);
-
     final imagenUrl = (m['imagen_url'] ?? '').toString();
-    if (imagenUrl.isNotEmpty) return _burbujaMedia(esMio, imagen: imagenUrl);
 
-    return Align(
-      alignment: esMio ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.75),
-        decoration: BoxDecoration(
-          color: esMio ? colors.primary : colors.surface,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(esMio ? 16 : 4),
-            bottomRight: Radius.circular(esMio ? 4 : 16),
+    Widget contenido;
+    if (videoUrl.isNotEmpty) {
+      contenido = _burbujaMedia(esMio, video: videoUrl, comentario: texto);
+    } else if (imagenUrl.isNotEmpty) {
+      contenido = _burbujaMedia(esMio, imagen: imagenUrl, comentario: texto);
+    } else {
+      contenido = Align(
+        alignment: esMio ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.75),
+          decoration: BoxDecoration(
+            color: esMio ? colors.primary : colors.surface,
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(16),
+              topRight: const Radius.circular(16),
+              bottomLeft: Radius.circular(esMio ? 16 : 4),
+              bottomRight: Radius.circular(esMio ? 4 : 16),
+            ),
+            border:
+                esMio ? null : Border.all(color: colors.divider, width: 0.5),
           ),
-          border: esMio
-              ? null
-              : Border.all(color: colors.divider, width: 0.5),
+          child: Text(
+            texto,
+            style: TextStyle(
+                fontSize: 14,
+                color: esMio ? Colors.white : colors.textPrimary),
+          ),
         ),
-        child: Text(
-          m['mensaje']?.toString() ?? '',
-          style: TextStyle(
-              fontSize: 14,
-              color: esMio ? Colors.white : colors.textPrimary),
-        ),
-      ),
-    );
+      );
+    }
+
+    // Mantener pulsado un mensaje propio y reciente ofrece borrarlo. En los
+    // ajenos y en los viejos no hace nada, así que no se envuelve siquiera.
+    if (esMio && m is Map && _sePuedeBorrar(m)) {
+      return GestureDetector(
+        onLongPress: () => _menuMensaje(m),
+        child: contenido,
+      );
+    }
+    return contenido;
   }
 
-  /// Foto o video adjunto. El video se abre con el reproductor del sistema,
-  /// igual que en el chat de productos.
-  Widget _burbujaMedia(bool esMio, {String? imagen, String? video}) {
+  /// Foto o video adjunto.
+  ///
+  /// Al tocarla se abre el visor de la app. Antes se lanzaba el navegador
+  /// del teléfono con la URL del servidor: además de sacarte de la
+  /// conversación, dejaba a la vista la dirección interna del servidor.
+  Widget _burbujaMedia(bool esMio,
+      {String? imagen, String? video, String comentario = ''}) {
     final url = '${ApiService.baseUrl}${video ?? imagen}';
+    final esVideo = video != null;
+
     return Align(
       alignment: esMio ? Alignment.centerRight : Alignment.centerLeft,
       child: Padding(
         padding: const EdgeInsets.only(bottom: 8),
-        child: GestureDetector(
-          onTap: () => launchUrl(Uri.parse(url),
-              mode: LaunchMode.externalApplication),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: video != null
-                ? Container(
-                    width: 200,
-                    height: 150,
-                    color: colors.carbon,
-                    alignment: Alignment.center,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.play_circle_fill_rounded,
-                            size: 40, color: Colors.white),
-                        const SizedBox(height: 6),
-                        Text('Video',
-                            style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.white.withOpacity(0.85))),
-                      ],
-                    ),
-                  )
-                : NetImage(url, width: 200, height: 200, fit: BoxFit.cover),
-          ),
+        child: Column(
+          crossAxisAlignment:
+              esMio ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => VisorMediaScreen(
+                    url: url,
+                    esVideo: esVideo,
+                    comentario: comentario,
+                  ),
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: esVideo
+                    ? Container(
+                        width: 200,
+                        height: 150,
+                        color: colors.carbon,
+                        alignment: Alignment.center,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.play_circle_fill_rounded,
+                                size: 40, color: Colors.white),
+                            const SizedBox(height: 6),
+                            Text('Toca para ver',
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color:
+                                        Colors.white.withValues(alpha: 0.85))),
+                          ],
+                        ),
+                      )
+                    : NetImage(url, width: 200, height: 200, fit: BoxFit.cover),
+              ),
+            ),
+
+            // El comentario que acompañaba al archivo, pegado debajo: son
+            // una sola cosa, no dos mensajes seguidos.
+            if (comentario.trim().isNotEmpty)
+              Container(
+                margin: const EdgeInsets.only(top: 4),
+                constraints: const BoxConstraints(maxWidth: 200),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: esMio ? colors.primary : colors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: esMio
+                      ? null
+                      : Border.all(color: colors.divider, width: 0.5),
+                ),
+                child: Text(
+                  comentario,
+                  style: TextStyle(
+                      fontSize: 13,
+                      color: esMio ? Colors.white : colors.textPrimary),
+                ),
+              ),
+          ],
         ),
       ),
     );

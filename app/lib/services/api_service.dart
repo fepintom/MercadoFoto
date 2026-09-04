@@ -1060,6 +1060,7 @@ class ApiService {
     required int clienteId,
     required int remitenteId,
     required File imagen,
+    String comentario = '',
   }) async {
     final req = http.MultipartRequest(
       'POST',
@@ -1067,6 +1068,7 @@ class ApiService {
     );
     req.fields['remitente_id'] = remitenteId.toString();
     req.fields['cliente_id'] = clienteId.toString();
+    req.fields['mensaje'] = comentario;
     req.files.add(await http.MultipartFile.fromPath('imagen', imagen.path));
     final streamed = await req.send().timeout(const Duration(seconds: 30));
     if (streamed.statusCode != 200) {
@@ -1080,6 +1082,7 @@ class ApiService {
     required int clienteId,
     required int remitenteId,
     required File video,
+    String comentario = '',
   }) async {
     final req = http.MultipartRequest(
       'POST',
@@ -1087,10 +1090,40 @@ class ApiService {
     );
     req.fields['remitente_id'] = remitenteId.toString();
     req.fields['cliente_id'] = clienteId.toString();
+    req.fields['mensaje'] = comentario;
     req.files.add(await http.MultipartFile.fromPath('video', video.path));
     final streamed = await req.send().timeout(const Duration(minutes: 3));
     if (streamed.statusCode != 200) {
       throw Exception('No se pudo enviar el video');
+    }
+  }
+
+  /// Saca el texto de un error del servidor (`detail`) para poder mostrarle
+  /// al usuario el motivo real en vez de un mensaje genérico.
+  static String _detalleError(String cuerpo, String porDefecto) {
+    try {
+      final d = jsonDecode(cuerpo);
+      if (d is Map && d['detail'] is String) return d['detail'] as String;
+    } catch (_) {
+      // El servidor no siempre responde JSON (502 de Render, por ejemplo).
+    }
+    return porDefecto;
+  }
+
+  /// Borra un mensaje propio del chat.
+  ///
+  /// El plazo lo decide el servidor, no la app: esconder el botón aquí es
+  /// comodidad, pero la regla tiene que valer aunque alguien llame al
+  /// servidor por su cuenta.
+  static Future<void> borrarMensajeChat({
+    required int mensajeId,
+    required int userId,
+  }) async {
+    final resp = await http
+        .delete(Uri.parse('\$baseUrl/chat/mensaje/\$mensajeId?user_id=\$userId'))
+        .timeout(const Duration(seconds: 20));
+    if (resp.statusCode != 200) {
+      throw Exception(_detalleError(resp.body, 'No se pudo borrar el mensaje'));
     }
   }
 

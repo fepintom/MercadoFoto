@@ -270,7 +270,21 @@ def obtener_servicios_usuario_con_contactos(user_id: int) -> list:
     """, (user_id,))
     rows = c.fetchall()
     conn.close()
-    return [dict(r) for r in rows]
+
+    # `fotos` se guarda como texto JSON en la tabla. Las demás lecturas pasan
+    # por _to_dict(), que lo convierte a lista; esta consulta arma el dict a
+    # mano y se saltaba ese paso, así que la app recibía un texto donde
+    # esperaba una lista y mostraba la publicación sin ninguna foto —por eso
+    # al editar un servicio propio aparecía vacío el bloque de imágenes.
+    servicios = []
+    for r in rows:
+        d = dict(r)
+        try:
+            d["fotos"] = json.loads(d.get("fotos") or "[]")
+        except (TypeError, ValueError):
+            d["fotos"] = []
+        servicios.append(d)
+    return servicios
 
 
 # ── Valoraciones ──────────────────────────────────────────────────────────────

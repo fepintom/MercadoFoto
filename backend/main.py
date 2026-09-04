@@ -90,6 +90,9 @@ from database.chat import (
     obtener_conversaciones,
     obtener_conversaciones_servicio,
     limpiar_videos_expirados,
+    eliminar_mensaje,
+    media_servicios_vencida,
+    SEGUNDOS_PARA_BORRAR,
 )
 
 from database.favoritos import (
@@ -1307,8 +1310,14 @@ async def enviar_imagen_chat_servicio(
     remitente_id: int = Form(...),
     cliente_id: int = Form(...),
     imagen: UploadFile = File(...),
+    mensaje: str = Form(""),
 ):
-    """Foto de evidencia en el chat de un servicio."""
+    """Foto de evidencia en el chat de un servicio.
+
+    `mensaje` es el comentario opcional que el usuario escribe en la pantalla
+    de confirmación antes de enviar. Va en el mismo mensaje que la foto y no
+    como uno aparte: así no se pueden separar al leer el chat después.
+    """
     servicio = obtener_servicio_por_id(servicio_id)
     if not servicio:
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
@@ -1322,7 +1331,7 @@ async def enviar_imagen_chat_servicio(
 
     guardar_mensaje(publicacion_id=None, servicio_id=servicio_id,
                     cliente_id=cliente_id, remitente_id=remitente_id,
-                    mensaje="", imagen_url=imagen_url)
+                    mensaje=(mensaje or "").strip(), imagen_url=imagen_url)
 
     proveedor_id = servicio.get("user_id")
     destinatario = cliente_id if remitente_id == proveedor_id else proveedor_id
@@ -1338,28 +1347,34 @@ async def enviar_video_chat_servicio(
     remitente_id: int = Form(...),
     cliente_id: int = Form(...),
     video: UploadFile = File(...),
+    mensaje: str = Form(""),
 ):
     """Video de evidencia (hasta 1 minuto) en el chat de un servicio.
 
-    Igual que en el chat de productos, el video caduca a las 48 h y lo borra
-    el job de limpieza — son evidencias de coordinación, no archivo
-    permanente."""
+    Dura 30 días, no 48 h como en el chat de productos: aquí el video es la
+    prueba de cómo quedó un trabajo y el Seguro Garantía se puede reclamar
+    dentro de ese mismo mes. Borrarlo a los dos días dejaría al cliente sin
+    la evidencia justo cuando la necesita. Lo elimina la tarea de limpieza
+    a los 30 días, saltándose los servicios con garantía reclamada
+    (ver /admin/chat/limpiar_media_servicios).
+    """
     servicio = obtener_servicio_por_id(servicio_id)
     if not servicio:
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
 
     import time as _time
-    from datetime import datetime, timedelta
     ext = os.path.splitext(video.filename or "vid.mp4")[1] or ".mp4"
     nombre = f"srvchatvid_{servicio_id}_{remitente_id}_{int(_time.time())}{ext}"
     with open(os.path.join(UPLOADS_DIR, nombre), "wb") as f:
         f.write(await video.read())
     video_url = f"/uploads/{nombre}"
 
-    expira_en = (datetime.utcnow() + timedelta(hours=48)).strftime("%Y-%m-%d %H:%M:%S")
+    # Sin video_expira_en a propósito: esa columna la lee el job de las 48 h,
+    # que es para los videos del chat de productos. Estos los recoge el de
+    # los 30 días, que además respeta las disputas abiertas.
     guardar_mensaje(publicacion_id=None, servicio_id=servicio_id,
                     cliente_id=cliente_id, remitente_id=remitente_id,
-                    mensaje="", video_url=video_url, video_expira_en=expira_en)
+                    mensaje=(mensaje or "").strip(), video_url=video_url)
 
     proveedor_id = servicio.get("user_id")
     destinatario = cliente_id if remitente_id == proveedor_id else proveedor_id
@@ -1453,6 +1468,69 @@ def admin_limpiar_videos_expirados(token: str = ""):
         except Exception:
             pass
     return {"total": len(urls), "archivos_borrados": borrados}
+
+
+def _borrar_archivos_subidos(urls) -> int:
+    """Elimina del disco los archivos de una lista de URLs subidas.
+
+    Nunca lanza: si un archivo ya no está o el nombre viene raro, se ignora.
+    Un fallo limpiando no debe tumbar la operación que lo pidió.
+    """
+    borrados = 0
+    for url in urls:
+        try:
+            nombre = str(url).rsplit("/", 1)[-1]
+            ruta = os.path.join(UPLOADS_DIR, nombre)
+            if os.path.exists(ruta):
+                os.remove(ruta)
+                borrados += 1
+        except Exception:
+            pass
+    return borrados
+
+
+@app.delete("/chat/mensaje/{mensaje_id}")
+def borrar_mensaje_chat(mensaje_id: int, user_id: int):
+    """Borra un mensaje propio dentro del primer minuto.
+
+    Pasado el plazo el mensaje queda permanente: el chat es la prueba de lo
+    conversado si hay una disputa, y un historial que se puede editar a
+    cualquier hora no sirve como prueba. Por eso el plazo se valida en el
+    servidor y no solo escondiendo el botón en la app.
+    """
+    ok, motivo, archivos = eliminar_mensaje(mensaje_id, user_id)
+    if not ok:
+        detalles = {
+            "no_existe": (404, "El mensaje ya no existe"),
+            "no_es_tuyo": (403, "Solo puedes borrar tus propios mensajes"),
+            "es_cotizacion": (
+                400, "Una cotización no se borra: recházala para anularla"),
+            "fuera_de_plazo": (
+                400,
+                f"Solo se puede borrar dentro de los primeros "
+                f"{SEGUNDOS_PARA_BORRAR} segundos"),
+        }
+        codigo, texto = detalles.get(motivo, (400, "No se pudo borrar"))
+        raise HTTPException(status_code=codigo, detail=texto)
+
+    return {"ok": True, "archivos_borrados": _borrar_archivos_subidos(archivos)}
+
+
+@app.post("/admin/chat/limpiar_media_servicios")
+def admin_limpiar_media_servicios(token: str = "", dias: int = 30):
+    """Borra fotos y videos de chats de servicio con más de 30 días.
+
+    Los mensajes de texto se conservan —pesan casi nada y son el registro de
+    lo acordado—; lo que se elimina son los archivos, que es lo que ocupa
+    disco. Se saltan los servicios con garantía reclamada: ahí las
+    evidencias son justamente lo que hay que revisar.
+    """
+    SECRET = os.environ.get("ADMIN_TOKEN", "okventa-admin-2026")
+    if token != SECRET:
+        raise HTTPException(status_code=403, detail="Token inválido")
+    urls = media_servicios_vencida(dias=dias)
+    return {"total": len(urls),
+            "archivos_borrados": _borrar_archivos_subidos(urls)}
 
 
 # --------------------------------------------------
