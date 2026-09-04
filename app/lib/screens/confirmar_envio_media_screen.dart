@@ -70,8 +70,16 @@ class _ConfirmarEnvioMediaScreenState
 
   @override
   Widget build(BuildContext context) {
+    // Cuánto ocupa el teclado ahora mismo.
+    final teclado = MediaQuery.of(context).viewInsets.bottom;
+
     return Scaffold(
       backgroundColor: Colors.black,
+      // El encogido automático queda apagado y el hueco del teclado se
+      // reserva a mano, más abajo. Con el automático encendido esta pantalla
+      // seguía dejando la caja de texto fuera de la vista —se escribía a
+      // ciegas—, así que aquí la posición no depende de él.
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
@@ -88,15 +96,21 @@ class _ConfirmarEnvioMediaScreenState
         children: [
           Expanded(child: Center(child: _vistaPrevia())),
 
-          // Comentario + enviar.
+          // Comentario + enviar. Se levanta justo lo que mide el teclado.
           //
-          // SIN sumar viewInsets.bottom a mano: el Scaffold ya encoge el
-          // cuerpo cuando sale el teclado, así que sumarlo otra vez empujaba
-          // la caja de texto un teclado entero por debajo de la pantalla y
-          // no se veía lo que se escribía.
-          SafeArea(
-            top: false,
-            child: Container(
+          // Es un AnimatedPadding y no un Padding para que suba acompañando
+          // a la animación del teclado en vez de saltar de golpe.
+          AnimatedPadding(
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeOut,
+            padding: EdgeInsets.only(bottom: teclado),
+            child: SafeArea(
+              // Sin teclado hay que respetar la franja inferior del iPhone;
+              // con el teclado arriba esa franja la tapa él, y sumarla
+              // dejaría un hueco negro entre la caja y las teclas.
+              top: false,
+              bottom: teclado == 0,
+              child: Container(
             color: Colors.black,
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
             child: Row(
@@ -143,6 +157,7 @@ class _ConfirmarEnvioMediaScreenState
                 ),
               ],
             ),
+              ),
             ),
           ),
         ],
