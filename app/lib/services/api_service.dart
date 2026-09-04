@@ -1120,7 +1120,8 @@ class ApiService {
     required int userId,
   }) async {
     final resp = await http
-        .delete(Uri.parse('\$baseUrl/chat/mensaje/\$mensajeId?user_id=\$userId'))
+        .delete(Uri.parse(
+            '$baseUrl/chat/mensaje/$mensajeId?user_id=$userId'))
         .timeout(const Duration(seconds: 20));
     if (resp.statusCode != 200) {
       throw Exception(_detalleError(resp.body, 'No se pudo borrar el mensaje'));
