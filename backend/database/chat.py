@@ -230,6 +230,111 @@ def limpiar_videos_expirados():
     conn.close()
     return urls
 
+# ── Borrado ───────────────────────────────────────────────────────────────────
+
+# Ventana en la que el autor puede arrepentirse. Pasada, el mensaje queda
+# permanente: el chat es también la prueba de lo conversado si hay disputa,
+# y si se pudiera borrar a cualquier hora esa prueba no valdría nada.
+SEGUNDOS_PARA_BORRAR = 60
+
+
+def eliminar_mensaje(mensaje_id: int, user_id: int):
+    """Borra un mensaje propio dentro del plazo.
+
+    Devuelve (ok, motivo, archivos). `archivos` son las URLs de imagen/video
+    que quedaron huérfanas, para que quien llame borre el archivo físico.
+    El plazo se calcula en SQLite y no en Python a propósito: created_at se
+    escribe con CURRENT_TIMESTAMP (UTC del motor), así que comparar contra el
+    reloj del proceso podía dar diferencias de horas según la zona del server.
+    """
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT remitente_id, imagen_url, video_url, tipo,
+               (strftime('%s', 'now') - strftime('%s', created_at))
+        FROM chat WHERE id = ?
+    """, (mensaje_id,))
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return False, "no_existe", []
+
+    remitente, imagen_url, video_url, tipo, antiguedad = row
+
+    if remitente != user_id:
+        conn.close()
+        return False, "no_es_tuyo", []
+
+    # Una cotización no se borra: tiene un PDF firmado y puede estar pagada.
+    # Para deshacerla existe rechazar/anular, que deja rastro.
+    if tipo == "cotizacion":
+        conn.close()
+        return False, "es_cotizacion", []
+
+    if antiguedad is None or antiguedad > SEGUNDOS_PARA_BORRAR:
+        conn.close()
+        return False, "fuera_de_plazo", []
+
+    cursor.execute("DELETE FROM chat WHERE id = ?", (mensaje_id,))
+    conn.commit()
+    conn.close()
+
+    return True, "ok", [u for u in (imagen_url, video_url) if u]
+
+
+def media_servicios_vencida(dias: int = 30):
+    """Fotos y videos de chats de servicio con más de `dias`.
+
+    Borra la referencia y devuelve las URLs para eliminar los archivos.
+    Se salta los hilos con garantía reclamada: ahí las evidencias son
+    justamente lo que hay que mirar para resolver la disputa.
+
+    El texto de los mensajes NO se toca: ocupa casi nada y es el historial
+    de lo acordado. Lo que pesa —y lo que se limpia— son los archivos.
+    """
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+
+    # Servicios con alguna orden en disputa. Se consulta con tolerancia a
+    # fallo porque `ordenes` vive en la misma DB pero podría no existir aún
+    # en una instalación nueva, y esta limpieza no debe tumbar al worker.
+    en_disputa = set()
+    try:
+        cursor.execute("""
+            SELECT DISTINCT servicio_id FROM ordenes
+            WHERE garantia_reclamada = 1 AND servicio_id IS NOT NULL
+        """)
+        en_disputa = {r[0] for r in cursor.fetchall()}
+    except Exception:
+        pass
+
+    cursor.execute("""
+        SELECT id, servicio_id, imagen_url, video_url FROM chat
+        WHERE servicio_id IS NOT NULL
+          AND (imagen_url IS NOT NULL OR video_url IS NOT NULL)
+          AND created_at <= datetime('now', ?)
+    """, (f"-{int(dias)} days",))
+    rows = cursor.fetchall()
+
+    urls = []
+    for mensaje_id, servicio_id, imagen_url, video_url in rows:
+        if servicio_id in en_disputa:
+            continue
+        urls.extend(u for u in (imagen_url, video_url) if u)
+        cursor.execute("""
+            UPDATE chat
+            SET imagen_url = NULL,
+                video_url = NULL,
+                mensaje = ?
+            WHERE id = ?
+        """, (f"\U0001F5BC Archivo eliminado ({int(dias)} días)", mensaje_id))
+
+    conn.commit()
+    conn.close()
+    return urls
+
+
 def obtener_conversaciones_servicio(user_id: int):
     """Hilos de servicios en los que participa el usuario, sea como
     proveedor o como cliente. Un hilo = (servicio_id, cliente_id).

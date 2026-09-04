@@ -17,6 +17,8 @@ import 'delivery_registro_screen.dart';
 import 'mapa_ubicacion_picker_screen.dart';
 import 'okdelivery_pendientes_screen.dart';
 import 'servicio_detalle_screen.dart';
+import '../widgets/banner_publicidad.dart';
+import '../widgets/barra_radio_km.dart';
 import '../widgets/net_image.dart';
 import '../widgets/punto_ubicacion.dart';
 class ServiciosScreen extends StatefulWidget {
@@ -189,11 +191,13 @@ class _ServiciosScreenState extends State<ServiciosScreen>
                         servicios: _ofrezco,
                         tipo: 'ofrezco',
                         onRefresh: _cargar,
+                        onPublicar: _irAAgregar,
                       ),
                       _ListaServicios(
                         servicios: _busco,
                         tipo: 'busco',
                         onRefresh: _cargar,
+                        onPublicar: _irAAgregar,
                       ),
                       _MapaServicios(
                         servicios: [..._ofrezco, ..._busco],
@@ -204,38 +208,12 @@ class _ServiciosScreenState extends State<ServiciosScreen>
                         delivery: _delivery,
                         miUserId: _miUserId,
                         onRefresh: _cargar,
+                        onRegistrarme: _irAAgregar,
                       ),
                     ],
                   ),
           ),
         ],
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      // Con etiqueta: un "+" a secas no dice qué publica. En la pestaña Mapa
-      // se oculta porque ahí abajo va el buscador y se superponen.
-      floatingActionButton: AnimatedBuilder(
-        animation: _tabController,
-        builder: (_, __) {
-          if (_tabController.index == 2) return const SizedBox.shrink();
-          final esBusco = _tabController.index == 1;
-          return FloatingActionButton.extended(
-            onPressed: _irAAgregar,
-            backgroundColor: colors.primary,
-            foregroundColor: Colors.white,
-            icon: const Icon(Icons.add, size: 22),
-            label: Text(
-              _tabController.index == 3
-                  ? 'Registrarme'
-                  : esBusco
-                      ? 'Buscar servicio'
-                      : 'Publicar servicio',
-              style: const TextStyle(
-                  fontSize: 14, fontWeight: FontWeight.w700),
-            ),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
-          );
-        },
       ),
     );
   }
@@ -276,10 +254,15 @@ class _ListaServicios extends StatefulWidget {
   final String tipo;
   final Future<void> Function() onRefresh;
 
+  /// Publicar. Antes vivía en el botón flotante, que tapaba las tarjetas
+  /// de abajo; ahora es la pastilla que va al lado de la barra de distancia.
+  final VoidCallback onPublicar;
+
   const _ListaServicios({
     required this.servicios,
     required this.tipo,
     required this.onRefresh,
+    required this.onPublicar,
   });
 
   @override
@@ -295,18 +278,30 @@ class _ListaServiciosState extends State<_ListaServicios> {
   // VistaServicios, no en el State: son preferencias globales y persistidas,
   // así que al cambiarlas en "Ofrezco" la pestaña "Busco" se redibuja sola.
 
-  /// Radio de búsqueda en km, desde mi ubicación. Al llegar al tope se
-  /// apaga el filtro y se muestran todos.
-  double _radioKm = _kRadioMaxKm;
+  /// Radio de búsqueda en km. Mismo control y mismo rango que en el home,
+  /// para que filtrar por distancia se sienta igual en toda la app.
+  double _radioKm = 50;
+
+  /// El filtro empieza apagado: al entrar se ven todos los servicios y es
+  /// el usuario quien decide acotar. Al revés escondería resultados sin
+  /// que nadie lo haya pedido.
+  bool _filtroActivo = false;
 
   /// Mi ubicación, para medir la distancia. Sin ella el filtro no aplica.
   Coordenadas? _miUbicacion;
+
+  /// Mientras se pide el GPS por primera vez.
+  bool _cargandoUbicacion = true;
 
   @override
   void initState() {
     super.initState();
     UbicacionService.obtener().then((c) {
-      if (mounted && c != null) setState(() => _miUbicacion = c);
+      if (!mounted) return;
+      setState(() {
+        _miUbicacion = c;
+        _cargandoUbicacion = false;
+      });
     });
   }
 
@@ -336,7 +331,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
     // conservan: filtrarlos escondería publicaciones válidas que solo no
     // indicaron dónde atienden.
     final yo = _miUbicacion;
-    if (yo != null && _radioKm < _kRadioMaxKm) {
+    if (yo != null && _filtroActivo) {
       lista = lista.where((s) {
         final lat = s['lat'], lng = s['lng'];
         if (lat == null || lng == null) return true;
@@ -348,46 +343,28 @@ class _ListaServiciosState extends State<_ListaServicios> {
     return lista;
   }
 
-  /// Barra de radio de búsqueda. Se muestra solo si tenemos ubicación:
-  /// sin ella no hay desde dónde medir y sería un control muerto.
+  /// Barra de distancia + pastilla de publicar.
+  ///
+  /// Es el mismo widget que usa el home (BarraRadioKm), no una copia: así
+  /// las dos pantallas se ven idénticas por construcción. La pastilla va
+  /// dentro de la barra, lo que la acorta sola sin cálculos de ancho.
   Widget _barraRadio() {
-    if (_miUbicacion == null) return const SizedBox.shrink();
-    return Container(
-      color: colors.surface,
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
-      child: Row(
-        children: [
-          Icon(Icons.radar_rounded, size: 18, color: colors.primary),
-          Expanded(
-            child: SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                trackHeight: 3,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-                overlayShape:
-                    const RoundSliderOverlayShape(overlayRadius: 14),
-              ),
-              child: Slider(
-                value: _radioKm,
-                min: 1,
-                max: _kRadioMaxKm,
-                activeColor: colors.primary,
-                inactiveColor: colors.divider,
-                onChanged: (v) => setState(() => _radioKm = v),
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 62,
-            child: Text(
-              _radioKm >= _kRadioMaxKm ? 'Todo' : '${_radioKm.round()} km',
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: colors.textPrimary),
-            ),
-          ),
-        ],
+    final sinGps = _miUbicacion == null && !_cargandoUbicacion;
+    return BarraRadioKm(
+      radioKm: _radioKm,
+      activo: _filtroActivo,
+      sinGps: sinGps,
+      cargando: _cargandoUbicacion,
+      onToggle: () => setState(() => _filtroActivo = !_filtroActivo),
+      onChanged: (v) => setState(() {
+        _radioKm = v;
+        // Mover la barra es pedir el filtro: obligar además a pulsar el
+        // ícono haría que arrastrar no hiciera nada visible.
+        _filtroActivo = true;
+      }),
+      trailing: _PastillaPublicar(
+        esBusco: widget.tipo == 'busco',
+        onTap: widget.onPublicar,
       ),
     );
   }
@@ -589,124 +566,162 @@ class _ListaServiciosState extends State<_ListaServicios> {
   @override
   Widget build(BuildContext context) {
     final filtrados = _filtrados;
-    return Column(
-      children: [
-        // ── Buscador + control de tamaño ────────────────────────────────────
-        Container(
-          // Blanco, igual que el encabezado de arriba: antes esta franja era
-          // gris y el resultado era blanco → gris → blanco → gris en cuatro
-          // bandas seguidas. Ahora todo el encabezado es un solo bloque
-          // blanco y el único corte contra el gris es el Divider de abajo.
-          color: colors.surface,
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-          child: Row(
-            children: [
-              Expanded(
-                child: Container(
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: colors.background,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: colors.divider),
-                  ),
-                  child: TextField(
-                    controller: _searchCtrl,
-                    onChanged: (v) => setState(() => _query = v.trim()),
-                    style: const TextStyle(fontSize: 13),
-                    decoration: InputDecoration(
-                      hintText: widget.tipo == 'ofrezco'
-                          ? 'Buscar servicios...'
-                          : 'Buscar solicitudes...',
-                      hintStyle: TextStyle(color: colors.grayMid, fontSize: 13),
-                      prefixIcon: Icon(Icons.search, size: 18, color: colors.grayMid),
-                      suffixIcon: _query.isNotEmpty
-                          ? GestureDetector(
-                              onTap: () {
-                                _searchCtrl.clear();
-                                setState(() => _query = '');
-                              },
-                              child: Icon(Icons.close, size: 16, color: colors.grayMid),
-                            )
-                          : null,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 9),
-                    ),
+
+    // CustomScrollView y no Column: es lo que permite que el banner se vaya
+    // con el scroll mientras el buscador queda clavado arriba, igual que en
+    // el home. Con un Column el banner ocuparía pantalla siempre.
+    return RefreshIndicator(
+      onRefresh: widget.onRefresh,
+      color: colors.primary,
+      child: CustomScrollView(
+        // Que la lista pueda "tirarse" aunque quepa entera: sin esto el
+        // gesto de refrescar no funciona cuando hay pocos servicios.
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          // ── Publicidad (se va al hacer scroll) ──────────────────────────
+          const SliverToBoxAdapter(
+            child: BannerPublicidad(avisos: avisosServicios),
+          ),
+
+          // ── Buscador + categorías + distancia (anclados) ────────────────
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _EncabezadoServiciosDelegate(
+              height: _kAlturaEncabezado,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buscadorYVista(),
+                  _filaCategorias(),
+                  _barraRadio(),
+                  Divider(height: 0.5, color: colors.divider),
+                ],
+              ),
+            ),
+          ),
+
+          if (filtrados.isEmpty)
+            SliverFillRemaining(hasScrollBody: false, child: _buildVacio())
+          else
+            _buildLista(filtrados),
+        ],
+      ),
+    );
+  }
+
+  // ── Piezas del encabezado ─────────────────────────────────────────────
+
+  /// Buscador + botón de "cómo ver". Queda anclado arriba al hacer scroll.
+  Widget _buscadorYVista() {
+    return Container(
+        // Blanco, igual que el encabezado de arriba: antes esta franja era
+        // gris y el resultado era blanco → gris → blanco → gris en cuatro
+        // bandas seguidas. Ahora todo el encabezado es un solo bloque
+        // blanco y el único corte contra el gris es el Divider de abajo.
+        color: colors.surface,
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Container(
+                height: 38,
+                decoration: BoxDecoration(
+                  color: colors.background,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: colors.divider),
+                ),
+                child: TextField(
+                  controller: _searchCtrl,
+                  onChanged: (v) => setState(() => _query = v.trim()),
+                  style: const TextStyle(fontSize: 13),
+                  decoration: InputDecoration(
+                    hintText: widget.tipo == 'ofrezco'
+                        ? 'Buscar servicios...'
+                        : 'Buscar solicitudes...',
+                    hintStyle: TextStyle(color: colors.grayMid, fontSize: 13),
+                    prefixIcon: Icon(Icons.search, size: 18, color: colors.grayMid),
+                    suffixIcon: _query.isNotEmpty
+                        ? GestureDetector(
+                            onTap: () {
+                              _searchCtrl.clear();
+                              setState(() => _query = '');
+                            },
+                            child: Icon(Icons.close, size: 16, color: colors.grayMid),
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 9),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: _mostrarControlTamano,
-                child: Container(
-                  width: 38, height: 38,
-                  decoration: BoxDecoration(
-                    color: colors.background,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: colors.divider),
-                  ),
-                  child: Icon(Icons.photo_size_select_large_outlined,
-                      size: 17, color: colors.grayMid),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: _mostrarControlTamano,
+              child: Container(
+                width: 38, height: 38,
+                decoration: BoxDecoration(
+                  color: colors.background,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: colors.divider),
+                ),
+                child: Icon(Icons.photo_size_select_large_outlined,
+                    size: 17, color: colors.grayMid),
+              ),
+            ),
+          ],
+        ),
+    );
+  }
+
+  /// Categorías: fila propia, no comparte espacio con ningún botón.
+  Widget _filaCategorias() {
+    return Container(
+      color: colors.surface,
+      height: 40,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        // 4 a la derecha + los 8 de margen de la última pastilla = los
+        // mismos 12 que hay a la izquierda.
+        padding: const EdgeInsets.fromLTRB(12, 0, 4, 6),
+        itemCount: _kCategorias.length,
+        itemBuilder: (_, i) {
+          final cat = _kCategorias[i];
+          final sel = _categoriaSeleccionada == cat;
+          final icon = _kCategoriaIconos[cat] ?? Icons.more_horiz_rounded;
+          return GestureDetector(
+            onTap: () =>
+                setState(() => _categoriaSeleccionada = sel ? null : cat),
+            child: Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: sel ? colors.primary : colors.background,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: sel ? colors.primary : colors.divider,
+                  width: 0.5,
                 ),
               ),
-            ],
-          ),
-        ),
-
-        // ── Categorías (fila propia, no comparte espacio con ningún botón) ──
-        Container(
-          color: colors.surface,
-          height: 40,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            // 4 a la derecha + los 8 de margen de la última pastilla = los
-            // mismos 12 que hay a la izquierda.
-            padding: const EdgeInsets.fromLTRB(12, 0, 4, 6),
-            itemCount: _kCategorias.length,
-            itemBuilder: (_, i) {
-              final cat = _kCategorias[i];
-              final sel = _categoriaSeleccionada == cat;
-              final icon = _kCategoriaIconos[cat] ?? Icons.more_horiz_rounded;
-              return GestureDetector(
-                onTap: () => setState(() =>
-                    _categoriaSeleccionada = sel ? null : cat),
-                child: Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: sel ? colors.primary : colors.background,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: sel ? colors.primary : colors.divider,
-                      width: 0.5,
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(icon, size: 13,
-                          color: sel ? Colors.white : colors.grayMid),
-                      const SizedBox(width: 5),
-                      Text(cat,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: sel ? Colors.white : colors.textPrimary,
-                          )),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        // Radio de búsqueda: cierra el bloque blanco del encabezado, justo
-        // antes del listado.
-        _barraRadio(),
-        Divider(height: 0.5, color: colors.divider),
-
-        Expanded(child: _buildLista(filtrados)),
-      ],
+              alignment: Alignment.center,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon,
+                      size: 13, color: sel ? Colors.white : colors.grayMid),
+                  const SizedBox(width: 5),
+                  Text(cat,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: sel ? Colors.white : colors.textPrimary,
+                      )),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -759,24 +774,24 @@ class _ListaServiciosState extends State<_ListaServicios> {
     );
   }
 
-  // Espacio extra al final para que el FAB '+' no tape el último elemento.
-  static const _kPaddingInferiorFab = 88.0;
+  // Aire al final para que la última tarjeta no quede pegada al menú.
+  // Antes eran 88 porque el botón flotante tapaba ese trozo; ya no existe,
+  // así que basta con un margen normal.
+  static const _kPaddingInferior = 20.0;
 
+  /// La lista, como sliver: va dentro del mismo scroll que el banner, que
+  /// es lo que hace que el banner se vaya al desplazarse. Una ListView
+  /// aparte tendría su propio scroll y el banner quedaría fijo.
   Widget _buildLista(List<Map<String, dynamic>> servicios) {
-    if (servicios.isEmpty) return _buildVacio();
-
     // Escucha las dos preferencias globales, así el cambio hecho desde el
     // panel se refleja al instante en esta pestaña y en la otra.
     return ValueListenableBuilder<bool>(
       valueListenable: VistaServicios.comoListaNotifier,
       builder: (_, comoLista, __) {
         if (comoLista) {
-          return RefreshIndicator(
-            onRefresh: widget.onRefresh,
-            color: colors.primary,
-            child: ListView.separated(
-              padding:
-                  const EdgeInsets.fromLTRB(12, 12, 12, _kPaddingInferiorFab),
+          return SliverPadding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, _kPaddingInferior),
+            sliver: SliverList.separated(
               itemCount: servicios.length,
               separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (_, i) => _TarjetaServicio(servicio: servicios[i]),
@@ -786,12 +801,9 @@ class _ListaServiciosState extends State<_ListaServicios> {
 
         return ValueListenableBuilder<int>(
           valueListenable: VistaServicios.columnasNotifier,
-          builder: (_, columnas, __) => RefreshIndicator(
-            onRefresh: widget.onRefresh,
-            color: colors.primary,
-            child: GridView.builder(
-              padding:
-                  const EdgeInsets.fromLTRB(12, 12, 12, _kPaddingInferiorFab),
+          builder: (_, columnas, __) => SliverPadding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, _kPaddingInferior),
+            sliver: SliverGrid.builder(
               itemCount: servicios.length,
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: columnas,
@@ -805,6 +817,98 @@ class _ListaServiciosState extends State<_ListaServicios> {
           ),
         );
       },
+    );
+  }
+}
+
+/// Alto del encabezado anclado: buscador (56) + categorías (40) + barra de
+/// distancia (50) + el divisor. Es un número fijo porque
+/// SliverPersistentHeader necesita saber cuánto mide antes de dibujarlo; si
+/// se cambia el alto de alguna fila hay que actualizarlo aquí.
+const double _kAlturaEncabezado = 56 + 40 + 50 + 0.5;
+
+/// El encabezado que queda clavado arriba mientras el banner se va.
+class _EncabezadoServiciosDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  final double height;
+
+  const _EncabezadoServiciosDelegate(
+      {required this.child, required this.height});
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlaps) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        // La sombra aparece solo cuando hay contenido pasando por debajo:
+        // así se nota que el encabezado está flotando y no pegado.
+        boxShadow: overlaps
+            ? [
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2))
+              ]
+            : const [],
+      ),
+      child: child,
+    );
+  }
+
+  @override
+  double get maxExtent => height;
+
+  @override
+  double get minExtent => height;
+
+  @override
+  bool shouldRebuild(_EncabezadoServiciosDelegate old) => true;
+}
+
+/// El botón de publicar, como pastilla.
+///
+/// Antes era un botón flotante grande sobre la lista: se comía una esquina
+/// de la pantalla y tapaba la última tarjeta. Como pastilla usa la misma
+/// forma que las categorías —el usuario ya sabe que eso se toca— y va junto
+/// a la barra de distancia, donde queda a la vista sin estorbar.
+class _PastillaPublicar extends StatelessWidget {
+  final bool esBusco;
+  final VoidCallback onTap;
+
+  /// Texto propio. Sin esto, la pestaña Delivery diría "Publicar", que no es
+  /// lo que hace ese botón.
+  final String? etiqueta;
+
+  const _PastillaPublicar(
+      {required this.esBusco, required this.onTap, this.etiqueta});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 30,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: colors.primarySuave,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.add, size: 15, color: Colors.white),
+            const SizedBox(width: 4),
+            Text(
+              etiqueta ?? (esBusco ? 'Buscar' : 'Publicar'),
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -1227,10 +1331,16 @@ class _DeliveryTab extends StatefulWidget {
   final int? miUserId;
   final Future<void> Function() onRefresh;
 
+  /// Registrarse como delivery. Antes esto vivía en el botón flotante que
+  /// compartían las cuatro pestañas; al quitarlo, esta pestaña se quedaba
+  /// sin ninguna forma de entrar al registro.
+  final VoidCallback onRegistrarme;
+
   const _DeliveryTab({
     required this.delivery,
     required this.miUserId,
     required this.onRefresh,
+    required this.onRegistrarme,
   });
 
   @override
@@ -1238,6 +1348,21 @@ class _DeliveryTab extends StatefulWidget {
 }
 
 class _DeliveryTabState extends State<_DeliveryTab> {
+  /// Botón de registro, con la misma pastilla roja que usa "Publicar".
+  Widget _botonRegistro() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: _PastillaPublicar(
+          esBusco: false,
+          etiqueta: 'Registrarme',
+          onTap: widget.onRegistrarme,
+        ),
+      ),
+    );
+  }
+
   bool _toggling = false;
 
   Future<void> _toggleActivo(Map<String, dynamic> d) async {
@@ -1284,13 +1409,23 @@ class _DeliveryTabState extends State<_DeliveryTab> {
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 13, color: colors.grayMid),
               ),
+              const SizedBox(height: 20),
+              _PastillaPublicar(
+                esBusco: false,
+                etiqueta: 'Registrarme',
+                onTap: widget.onRegistrarme,
+              ),
             ],
           ),
         ),
       );
     }
 
-    return RefreshIndicator(
+    return Column(
+      children: [
+        _botonRegistro(),
+        Expanded(
+          child: RefreshIndicator(
       onRefresh: widget.onRefresh,
       color: colors.primary,
       child: ListView.separated(
@@ -1480,6 +1615,9 @@ class _DeliveryTabState extends State<_DeliveryTab> {
           );
         },
       ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1497,10 +1635,6 @@ class _DeliveryTabState extends State<_DeliveryTab> {
 // ── Mapa de servicios ─────────────────────────────────────────────────────────
 
 final _kSantiago = LatLng(-33.4489, -70.6693);
-
-/// Tope del radio de cobertura. Al llegar aquí el filtro se apaga: es el
-/// equivalente a "todo el país".
-const double _kRadioMaxKm = 500;
 
 class _MapaServicios extends StatefulWidget {
   final List<Map<String, dynamic>> servicios;

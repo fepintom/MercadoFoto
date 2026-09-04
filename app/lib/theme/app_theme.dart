@@ -25,6 +25,13 @@ class AppColors {
   static const Color success = Color(0xFF34C759); // "Nuevo", "Recíbelo hoy"
   static const Color warning = Color(0xFFFF9500); // "Usado", avisos
 
+  // Rojo de un punto más bajo, para elementos que están SIEMPRE en pantalla
+  // —la barra de distancia, la pastilla de publicar—. El rojo principal se
+  // diseñó para acentos que aparecen y desaparecen; sostenido durante todo
+  // el scroll cansa la vista y le compite a las fotos de las publicaciones.
+  // Baja el brillo, no el color: sigue siendo el mismo rojo encendido.
+  static const Color primarySuave = Color(0xFFC02E2E);
+
   // `carbon` es un relleno OSCURO en las dos paletas (claro y oscuro): se usa
   // como fondo de tarjetas destacadas, snackbars, chips y scrims. Por eso el
   // texto que va encima NO puede usar tokens relativos al modo
@@ -60,6 +67,9 @@ class AppColorsDark {
   // Un poco más vivos que en claro, para que resalten sobre el negro.
   static const Color success = Color(0xFF32D74B);
   static const Color warning = Color(0xFFFFA00A);
+  // En oscuro NO se baja nada: sobre fondo negro el rojo ya se lee tranquilo
+  // y apagarlo lo acercaría demasiado al fondo. Mismo valor que primary.
+  static const Color primarySuave = Color(0xFFE94B4B);
 }
 
 // ── Paleta dinámica ──────────────────────────────────────────────────────
@@ -80,6 +90,7 @@ class AppPalette {
   final Color textOnPrimary;
   final Color success;
   final Color warning;
+  final Color primarySuave;
 
   const AppPalette({
     required this.primary,
@@ -94,6 +105,7 @@ class AppPalette {
     required this.textOnPrimary,
     required this.success,
     required this.warning,
+    required this.primarySuave,
   });
 
   static const AppPalette light = AppPalette(
@@ -109,6 +121,7 @@ class AppPalette {
     textOnPrimary: AppColors.textOnPrimary,
     success: AppColors.success,
     warning: AppColors.warning,
+    primarySuave: AppColors.primarySuave,
   );
 
   static const AppPalette dark = AppPalette(
@@ -124,6 +137,7 @@ class AppPalette {
     textOnPrimary: AppColorsDark.textOnPrimary,
     success: AppColorsDark.success,
     warning: AppColorsDark.warning,
+    primarySuave: AppColorsDark.primarySuave,
   );
 
   static AppPalette of(bool isDark) => isDark ? dark : light;
@@ -257,6 +271,7 @@ class AppPalette {
       textOnPrimary: textOnPrimary,
       success: ajustar(success),
       warning: ajustar(warning),
+      primarySuave: ajustar(primarySuave),
     );
   }
 }

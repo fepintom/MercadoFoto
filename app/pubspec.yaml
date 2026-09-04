@@ -53,6 +53,11 @@ dependencies:
   # Catálogo de tienda: elegir el PDF del catálogo desde el dispositivo
   file_picker: ^8.1.2
 
+  # Reproducir los videos del chat DENTRO de la app. Sin esto, tocar un video
+  # abría el navegador con la URL del servidor: se veía como si la app te
+  # sacara a otra parte y el usuario perdía el hilo de la conversación.
+  video_player: ^2.9.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

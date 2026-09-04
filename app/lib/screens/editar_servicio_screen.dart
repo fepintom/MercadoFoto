@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -52,12 +53,30 @@ class _EditarServicioScreenState extends State<EditarServicioScreen> {
     _valorCtrl =
         TextEditingController(text: valor > 0 ? valor.toStringAsFixed(0) : '');
     _modalidad = (s['modalidad'] ?? 'servicio').toString();
-    // Ojo con el `??`: mezclar Iterable<String> con un [] vacío hace que
-    // Dart infiera Object y no compile. Se resuelve con un if explícito.
-    final fotosRaw = s['fotos'];
-    _fotosExistentes =
-        fotosRaw is List ? fotosRaw.whereType<String>().toList() : <String>[];
+    _fotosExistentes = _leerFotos(s['fotos']);
     _cargarUsuario();
+  }
+
+  /// Las fotos pueden llegar de dos formas según de dónde venga el servicio:
+  /// como lista (lo normal) o como el texto JSON tal cual sale de la base de
+  /// datos. Un endpoint devolvía lo segundo y por eso al editar un servicio
+  /// propio el bloque de fotos aparecía vacío aunque tuviera fotos. El
+  /// servidor ya está corregido; esto aguanta las dos formas para que la app
+  /// funcione también contra un servidor sin actualizar.
+  ///
+  /// Ojo con el `??`: mezclar Iterable<String> con un [] vacío hace que Dart
+  /// infiera Object y no compile. Por eso los `if` explícitos.
+  static List<String> _leerFotos(dynamic raw) {
+    if (raw is List) return raw.whereType<String>().toList();
+    if (raw is String && raw.trim().isNotEmpty) {
+      try {
+        final d = jsonDecode(raw);
+        if (d is List) return d.whereType<String>().toList();
+      } catch (_) {
+        // No era JSON: se trata como si no hubiera fotos.
+      }
+    }
+    return <String>[];
   }
 
   Future<void> _cargarUsuario() async {

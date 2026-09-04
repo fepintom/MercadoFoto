@@ -119,6 +119,32 @@ def revisar_videos_chat(api_url: str, admin_token: str):
         print(f"  ✗ videos chat: excepción: {e}")
 
 
+def revisar_media_servicios(api_url: str, admin_token: str, dias: int):
+    """Borra fotos y videos de chats de servicio con más de `dias`.
+
+    Corre una vez por vuelta como las demás tareas. Barrer todos los días lo
+    mismo cuesta muy poco: la consulta filtra por fecha y, si no hay nada
+    vencido, no toca ningún archivo.
+    """
+    try:
+        resp = requests.post(
+            f"{api_url.rstrip('/')}/admin/chat/limpiar_media_servicios",
+            params={"token": admin_token, "dias": dias},
+            timeout=60,
+        )
+        if resp.status_code != 200:
+            print(f"  ✗ media servicios: error {resp.status_code}: "
+                  f"{resp.text[:200]}")
+            return
+        data = resp.json()
+        total = data.get("total", 0)
+        if total:
+            print(f"  ✓ media servicios: {total} archivo(s) vencido(s), "
+                  f"{data.get('archivos_borrados', 0)} borrado(s)")
+    except Exception as e:
+        print(f"  ✗ media servicios: excepción: {e}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="OkDelivery timeout worker")
     parser.add_argument("--once", action="store_true", help="Procesar una vez y salir")
@@ -134,6 +160,7 @@ def main():
     timeout_minutos = int(os.environ.get("TIMEOUT_MINUTOS", "60"))
     horas_recordatorio = int(os.environ.get("HORAS_RECORDATORIO", "24"))
     horas_auto = int(os.environ.get("HORAS_AUTO_CONFIRMAR", "48"))
+    dias_media = int(os.environ.get("DIAS_MEDIA_SERVICIOS", "30"))
 
     print("=" * 55)
     print("  OkVenta — OkDelivery Timeout Worker")
@@ -146,6 +173,7 @@ def main():
         revisar(api_url, admin_token, timeout_minutos)
         revisar_confirmaciones(api_url, admin_token, horas_recordatorio, horas_auto)
         revisar_videos_chat(api_url, admin_token)
+        revisar_media_servicios(api_url, admin_token, dias_media)
         return
 
     while True:
@@ -153,6 +181,7 @@ def main():
             revisar(api_url, admin_token, timeout_minutos)
             revisar_confirmaciones(api_url, admin_token, horas_recordatorio, horas_auto)
             revisar_videos_chat(api_url, admin_token)
+            revisar_media_servicios(api_url, admin_token, dias_media)
         except KeyboardInterrupt:
             print("\nDetenido por el usuario.")
             break
