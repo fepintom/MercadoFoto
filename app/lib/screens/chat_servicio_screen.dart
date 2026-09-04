@@ -10,6 +10,7 @@ import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../widgets/net_image.dart';
+import '../widgets/boton_anular_envio.dart';
 import 'confirmar_envio_media_screen.dart';
 import 'visor_media_screen.dart';
 
@@ -278,23 +279,9 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
     }
   }
 
-  // ── Borrar un mensaje propio ──────────────────────────────────────────────
+  // ── Anular un envío propio ────────────────────────────────────────────────
 
-  /// Plazo para arrepentirse. Pasado, el mensaje queda: el chat es la prueba
-  /// de lo conversado si hay una disputa. El servidor valida lo mismo.
-  static const _ventanaBorrado = Duration(minutes: 1);
-
-  /// ¿Todavía se puede borrar? Se calcula contra la hora del mensaje.
-  bool _sePuedeBorrar(Map m) {
-    final fecha = DateTime.tryParse((m['fecha'] ?? '').toString());
-    if (fecha == null) return false;
-    // El servidor guarda las horas en UTC; comparar contra la hora local
-    // del teléfono daría diferencias de horas según el país.
-    final edad = DateTime.now().toUtc().difference(fecha.toUtc());
-    return !edad.isNegative && edad < _ventanaBorrado;
-  }
-
-  Future<void> _borrarMensaje(Map m) async {
+  Future<void> _anularMensaje(Map m) async {
     final id = m['id'];
     if (id is! int || _userId == null) return;
     try {
@@ -308,45 +295,6 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
       _aviso('$e'.replaceFirst('Exception: ', ''), error: true);
       await _cargar();
     }
-  }
-
-  /// Menú al mantener pulsado un mensaje propio reciente.
-  void _menuMensaje(Map m) {
-    if (!_sePuedeBorrar(m)) return;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: colors.surface,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                  color: colors.divider,
-                  borderRadius: BorderRadius.circular(2)),
-            ),
-            const SizedBox(height: 12),
-            ListTile(
-              leading: Icon(Icons.delete_outline, color: colors.primary),
-              title: Text('Eliminar mensaje',
-                  style: TextStyle(color: colors.textPrimary)),
-              subtitle: Text('Solo dentro del primer minuto',
-                  style: TextStyle(fontSize: 12, color: colors.grayMid)),
-              onTap: () {
-                Navigator.pop(ctx);
-                _borrarMensaje(m);
-              },
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
   }
 
   // ── Cotización ────────────────────────────────────────────────────────────
@@ -765,12 +713,22 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
       );
     }
 
-    // Mantener pulsado un mensaje propio y reciente ofrece borrarlo. En los
-    // ajenos y en los viejos no hace nada, así que no se envuelve siquiera.
-    if (esMio && m is Map && _sePuedeBorrar(m)) {
-      return GestureDetector(
-        onLongPress: () => _menuMensaje(m),
-        child: contenido,
+    // Botón de anular bajo mis propios envíos, durante un minuto. Va a la
+    // vista y no escondido en una pulsación larga: nadie descubre un gesto
+    // que no se anuncia, y menos en el minuto que tiene para usarlo.
+    if (esMio && m is Map && sePuedeAnular(m['fecha']?.toString())) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          contenido,
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: BotonAnularEnvio(
+              fecha: m['fecha']?.toString(),
+              onAnular: () => _anularMensaje(m),
+            ),
+          ),
+        ],
       );
     }
     return contenido;

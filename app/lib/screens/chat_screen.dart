@@ -4,14 +4,15 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/boton_anular_envio.dart';
 import '../widgets/net_image.dart';
 import 'producto_detalle_screen.dart';
+import 'visor_media_screen.dart';
 class ChatScreen extends StatefulWidget {
   final int publicacionId;
   final String tituloProducto;
@@ -115,15 +116,39 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Future<void> _reproducirVideo(String url) async {
-    final uri = Uri.parse(url);
+  /// Reproduce el video sin salir de la app.
+  ///
+  /// Antes se lanzaba el navegador del teléfono con la URL del servidor:
+  /// además de sacarte de la conversación, dejaba a la vista la dirección
+  /// interna del servidor.
+  void _reproducirVideo(String url) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VisorMediaScreen(url: url, esVideo: true),
+      ),
+    );
+  }
+
+  /// Anula un envío propio dentro del primer minuto.
+  Future<void> _anularMensaje(Map<String, dynamic> m) async {
+    final id = m['id'];
+    if (id is! int || _miUserId == null) return;
     try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (_) {
+      await ApiService.borrarMensajeChat(mensajeId: id, userId: _miUserId!);
+      // Se quita al instante: si el mensaje sigue en pantalla hasta el
+      // próximo refresco, parece que no funcionó.
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo reproducir el video')));
+        setState(() => _mensajes.removeWhere((x) => x['id'] == id));
       }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('$e'.replaceFirst('Exception: ', '')),
+          backgroundColor: colors.primary,
+        ));
+      }
+      await _cargarMensajes();
     }
   }
 
@@ -491,6 +516,11 @@ class _ChatScreenState extends State<ChatScreen> {
               const SizedBox(height: 2),
               Text(hora,
                   style: TextStyle(fontSize: 10, color: colors.grayMid)),
+              if (esMio && sePuedeAnular(m['fecha']?.toString()))
+                BotonAnularEnvio(
+                  fecha: m['fecha']?.toString(),
+                  onAnular: () => _anularMensaje(m),
+                ),
             ],
           ),
         ),
@@ -525,6 +555,13 @@ class _ChatScreenState extends State<ChatScreen> {
               const SizedBox(height: 2),
               Text(hora,
                   style: TextStyle(fontSize: 10, color: colors.grayMid)),
+              // Un minuto para arrepentirse. Pasado el plazo la foto queda:
+              // el chat es la prueba de lo conversado si hay una disputa.
+              if (esMio && sePuedeAnular(m['fecha']?.toString()))
+                BotonAnularEnvio(
+                  fecha: m['fecha']?.toString(),
+                  onAnular: () => _anularMensaje(m),
+                ),
             ],
           ),
         ),
