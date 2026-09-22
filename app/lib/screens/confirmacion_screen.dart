@@ -11,6 +11,7 @@ import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/descripcion_formato.dart';
 import '../widgets/space_invaders_widget.dart';
 import '../widgets/tipo_publicacion_selector.dart';
 import '../widgets/vista_previa_publicacion.dart';
@@ -1684,7 +1685,11 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
 
                       // Campos editables
                       _campo("Título", titulo),
-                      _campo("Descripción", descripcion, maxLines: 3),
+                      // Con negrita, viñetas y saltos de línea.
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: EditorDescripcion(controller: descripcion),
+                      ),
 
                       // Condición + ofertas
                       _buildCondicion(),

@@ -598,6 +598,9 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
     final fecha     = widget.formatFecha(venta['created_at'] as String?);
     final color     = widget.estadoColor(estado);
     final fotoUrl   = venta['foto_producto'] as String?;
+    // La talla que eligió el comprador: sin ella el vendedor no sabe cuál
+    // despachar si publicó varias.
+    final talla     = (venta['talla'] ?? '').toString();
     final necesitaEntrega =
         estado == 'pago_confirmado' && (delivery == null || delivery.isEmpty);
 
@@ -707,6 +710,14 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
                             ),
                           ],
                         ),
+                        if (talla.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text('Talla $talla',
+                              style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: colors.primary)),
+                        ],
                         const SizedBox(height: 6),
                         // ── Info ─────────────────────────────────────
                         Row(

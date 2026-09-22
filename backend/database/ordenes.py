@@ -48,6 +48,13 @@ def init_ordenes_db():
         ("liberado_total_en",    "TIMESTAMP"),
         ("garantia_reclamada",   "INTEGER DEFAULT 0"),
         ("cotizacion_id",        "INTEGER"),
+        # ── Talla y stock (productos) ─────────────────────────────────────
+        # `talla`: la que eligió el comprador, para que el vendedor sepa qué
+        # despachar. `stock_descontado` marca que esta orden ya restó su
+        # unidad: el webhook de Mercado Pago puede llegar varias veces por el
+        # mismo pago, y sin esta marca cada aviso restaría otra unidad.
+        ("talla",                "TEXT"),
+        ("stock_descontado",     "INTEGER DEFAULT 0"),
     ]
     for col, definition in migrations:
         if col not in cols:
@@ -60,16 +67,18 @@ def init_ordenes_db():
 
 def crear_orden(comprador_id, vendedor_id, tipo, titulo, monto,
                 publicacion_id=None, servicio_id=None, comision=0.0,
-                es_test=False):
+                es_test=False, talla=None):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
+    _ensure_ordenes_cols(c)
     c.execute("""
         INSERT INTO ordenes
             (comprador_id, vendedor_id, tipo, titulo, monto,
-             publicacion_id, servicio_id, comision_okventa, es_test)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             publicacion_id, servicio_id, comision_okventa, es_test, talla)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (comprador_id, vendedor_id, tipo, titulo, monto,
-          publicacion_id, servicio_id, comision, 1 if es_test else 0))
+          publicacion_id, servicio_id, comision, 1 if es_test else 0,
+          (talla or None)))
     oid = c.lastrowid
     # Fijar external_reference al ID real
     c.execute("UPDATE ordenes SET mp_external_ref = ? WHERE id = ?",
@@ -158,6 +167,26 @@ def guardar_preference(orden_id, preference_id):
 
 def confirmar_pago(orden_id, payment_id):
     _update(orden_id, mp_payment_id=payment_id, estado="pago_confirmado")
+
+
+def tomar_descuento_stock(orden_id) -> bool:
+    """Reserva para esta orden el derecho a descontar stock, una sola vez.
+
+    Devuelve True solo la primera vez que se llama para una orden. El UPDATE
+    es condicional y atómico, así que aunque dos avisos del mismo pago
+    lleguen a la vez, solo uno obtiene True.
+    """
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    _ensure_ordenes_cols(c)
+    c.execute("""
+        UPDATE ordenes SET stock_descontado = 1
+        WHERE id = ? AND COALESCE(stock_descontado, 0) = 0
+    """, (orden_id,))
+    tomado = c.rowcount == 1
+    conn.commit()
+    conn.close()
+    return tomado
 
 
 def confirmar_entrega(orden_id):
@@ -303,6 +332,8 @@ def _ensure_ordenes_cols(cursor):
         ("liberado_total_en",    "TIMESTAMP"),
         ("garantia_reclamada",   "INTEGER DEFAULT 0"),
         ("cotizacion_id",        "INTEGER"),
+        ("talla",                "TEXT"),
+        ("stock_descontado",     "INTEGER DEFAULT 0"),
     ]:
         if col not in existing:
             cursor.execute(f"ALTER TABLE ordenes ADD COLUMN {col} {defn}")

@@ -76,6 +76,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   // ── Búsqueda y precio ─────────────────────────────────────────────────────
   final _searchCtrl = TextEditingController();
   double? _precioMin;
+
+  /// 'nuevo', 'usado' o null (todos). Vive junto al precio porque se elige
+  /// en el mismo panel de filtros.
+  String? _condicionFiltro;
   double? _precioMax;
   bool _buscando = false;
 
@@ -289,6 +293,17 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     if (_precioMin != null) lista = lista.where((p) => (p['precio'] as num? ?? 0) >= _precioMin!).toList();
     if (_precioMax != null) lista = lista.where((p) => (p['precio'] as num? ?? 0) <= _precioMax!).toList();
 
+    // Condición. Se compara por el comienzo de la palabra y sin mayúsculas
+    // porque no todas las publicaciones la guardan igual ("nuevo", "Nuevo",
+    // "nuevo con etiqueta"). Las que no dicen nada quedan fuera mientras el
+    // filtro esté puesto: no se puede afirmar que sean lo que se busca.
+    if (_condicionFiltro != null) {
+      lista = lista.where((p) {
+        final c = (p['condicion'] ?? '').toString().trim().toLowerCase();
+        return c.startsWith(_condicionFiltro!);
+      }).toList();
+    }
+
     // Radio — sin lat/lng → siempre visible | con lat/lng → filtrar por distancia
     if (_radioActivo) {
       lista = lista.where((p) {
@@ -335,6 +350,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   bool get _radioActivo => widget.filtroUbicacionActivo && widget.miLat != null && widget.miLng != null;
   bool get _tieneFiltroPrecio => _precioMin != null || _precioMax != null;
 
+  /// Hay algún filtro del panel puesto (precio o condición). Pinta de rojo
+  /// el botón de filtros y muestra la fila de chips.
+  bool get _tieneFiltros => _tieneFiltroPrecio || _condicionFiltro != null;
+
   String _formatRadio(double km) =>
       km < 10 ? "${km.toStringAsFixed(1)} km" : "${km.toStringAsFixed(0)} km";
 
@@ -362,6 +381,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   void _mostrarFiltrosPrecio() {
     final minCtrl = TextEditingController(text: _precioMin?.toStringAsFixed(0) ?? '');
     final maxCtrl = TextEditingController(text: _precioMax?.toStringAsFixed(0) ?? '');
+    // Copia local: los chips cambian al tocarlos, pero la lista solo se
+    // filtra al pulsar "Aplicar", igual que el precio.
+    String? condicion = _condicionFiltro;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -391,7 +413,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text("Filtrar por precio",
+                    Text("Filtros",
                         style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: colors.textPrimary)),
                     // Botón para esconder el teclado y poder ver/tocar
                     // los botones de abajo (Limpiar / Aplicar).
@@ -408,6 +430,44 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
+                Text("Estado",
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.textSecondary)),
+                const SizedBox(height: 8),
+                Row(children: [
+                  for (final op in const [
+                    [null, 'Todos'],
+                    ['nuevo', 'Nuevo'],
+                    ['usado', 'Usado'],
+                  ]) ...[
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setSheetState(() => condicion = op[0]),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: condicion == op[0] ? colors.primary : colors.background,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                                color: condicion == op[0] ? colors.primary : colors.divider),
+                          ),
+                          child: Text(op[1]!,
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                color: condicion == op[0] ? colors.textOnPrimary : colors.textPrimary,
+                              )),
+                        ),
+                      ),
+                    ),
+                    if (op[0] != 'usado') const SizedBox(width: 8),
+                  ],
+                ]),
+                const SizedBox(height: 18),
+                Text("Precio",
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.textSecondary)),
+                const SizedBox(height: 8),
                 Row(children: [
                   Expanded(child: _campoFiltro(ctrl: minCtrl, hint: "Mínimo", prefix: "\$")),
                   Padding(padding: EdgeInsets.symmetric(horizontal: 12),
@@ -420,7 +480,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     child: OutlinedButton(
                       onPressed: () {
                         Navigator.pop(sheetCtx);
-                        setState(() { _precioMin = null; _precioMax = null; cargarPublicaciones(); });
+                        setState(() { _precioMin = null; _precioMax = null; _condicionFiltro = null; cargarPublicaciones(); });
                       },
                       style: OutlinedButton.styleFrom(
                         side: BorderSide(color: colors.divider),
@@ -438,6 +498,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                         setState(() {
                           _precioMin = double.tryParse(minCtrl.text.trim());
                           _precioMax = double.tryParse(maxCtrl.text.trim());
+                          _condicionFiltro = condicion;
                           _aplicarFiltros();
                         });
                       },
@@ -589,7 +650,14 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     final anchoDisponible = MediaQuery.of(context).size.width - 24; // padding lateral
     final anchoTarjeta =
         (anchoDisponible - (10 * (_columnas - 1))) / _columnas;
-    final altoTarjeta = anchoTarjeta + _kAltoBloqueTexto;
+    // Si el teléfono tiene la letra agrandada (Ajustes → Pantalla → Tamaño
+    // del texto), las mismas líneas ocupan más alto. Con un alto fijo, ahí
+    // el texto se salía por abajo de la tarjeta; ahora el bloque crece en
+    // la misma proporción que la letra.
+    final escalaLetra =
+        MediaQuery.textScalerOf(context).scale(10) / 10;
+    final altoTarjeta =
+        anchoTarjeta + _kAltoBloqueTexto * escalaLetra.clamp(1.0, 2.0);
     return anchoTarjeta / altoTarjeta;
   }
 
@@ -625,6 +693,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
         }
       }),
       child: Container(
+        // Último seguro: si por cualquier motivo el contenido no calzara,
+        // se recorta en el borde redondeado en vez de pintarse encima de la
+        // tarjeta vecina.
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: colors.surface,
           borderRadius: BorderRadius.circular(12),
@@ -673,9 +745,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Wrap(
-                    spacing: 4,
-                    runSpacing: 4,
+                  // Una sola línea, siempre. Antes era un Wrap: con una
+                  // categoría larga las etiquetas bajaban a una segunda
+                  // línea, la tarjeta (que tiene alto fijo) se quedaba
+                  // corta y el texto de abajo se salía de la cuadrícula.
+                  Row(
                     children: [
                       // Condición: nuevo / usado
                       Container(
@@ -686,6 +760,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(esNuevo ? 'Nuevo' : 'Usado',
+                            maxLines: 1,
                             style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w500,
@@ -699,25 +774,32 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                                       offset: Offset(0, 0.4)),
                                 ])),
                       ),
-                      if (categoria != null && categoria.toString().isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: colors.primary.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(4),
+                      if (categoria != null && categoria.toString().isNotEmpty) ...[
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: colors.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(categoria.toString(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                softWrap: false,
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                    color: colors.primary,
+                                    shadows: const [
+                                      Shadow(
+                                          color: Colors.black26,
+                                          blurRadius: 1.5,
+                                          offset: Offset(0, 0.4)),
+                                    ])),
                           ),
-                          child: Text(categoria.toString(),
-                              style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w500,
-                                  color: colors.primary,
-                                  shadows: [
-                                    Shadow(
-                                        color: Colors.black26,
-                                        blurRadius: 1.5,
-                                        offset: Offset(0, 0.4)),
-                                  ])),
                         ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -787,7 +869,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     final catActual = _categorias.where((c) => c.nombre == _categoriaSeleccionada);
     final subcats = catActual.isNotEmpty ? catActual.first.subcategorias : <String>[];
     if (_categoriaSeleccionada != null && subcats.isNotEmpty) h += 36.0;
-    if (_tieneFiltroPrecio) h += 32.0;
+    if (_tieneFiltros) h += 32.0;
     return h;
   }
 
@@ -856,12 +938,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     duration: const Duration(milliseconds: 200),
                     width: 40, height: 40,
                     decoration: BoxDecoration(
-                      color: _tieneFiltroPrecio ? colors.primary : colors.surface,
+                      color: _tieneFiltros ? colors.primary : colors.surface,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: _tieneFiltroPrecio ? colors.primary : colors.divider),
+                      border: Border.all(color: _tieneFiltros ? colors.primary : colors.divider),
                     ),
                     child: Icon(Icons.tune, size: 18,
-                        color: _tieneFiltroPrecio ? colors.textOnPrimary : colors.grayMid),
+                        color: _tieneFiltros ? colors.textOnPrimary : colors.grayMid),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -883,17 +965,31 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           ),
           // Category chips
           _buildCategoryBar(),
-          // Price filter chip
-          if (_tieneFiltroPrecio)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
-              child: _chipFiltro(
-                label: _precioMin != null && _precioMax != null
-                    ? "${formatPrecio(_precioMin)} — ${formatPrecio(_precioMax)}"
-                    : _precioMin != null
-                        ? "Desde ${formatPrecio(_precioMin)}"
-                        : "Hasta ${formatPrecio(_precioMax)}",
-                onClear: () => setState(() { _precioMin = null; _precioMax = null; cargarPublicaciones(); }),
+          // Chips de los filtros puestos, cada uno con su X para quitarlo.
+          if (_tieneFiltros)
+            SizedBox(
+              height: 32,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+                children: [
+                  if (_condicionFiltro != null) ...[
+                    _chipFiltro(
+                      label: _condicionFiltro == 'nuevo' ? "Nuevo" : "Usado",
+                      onClear: () => setState(() { _condicionFiltro = null; _aplicarFiltros(); }),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  if (_tieneFiltroPrecio)
+                    _chipFiltro(
+                      label: _precioMin != null && _precioMax != null
+                          ? "${formatPrecio(_precioMin)} — ${formatPrecio(_precioMax)}"
+                          : _precioMin != null
+                              ? "Desde ${formatPrecio(_precioMin)}"
+                              : "Hasta ${formatPrecio(_precioMax)}",
+                      onClear: () => setState(() { _precioMin = null; _precioMax = null; cargarPublicaciones(); }),
+                    ),
+                ],
               ),
             ),
         ],

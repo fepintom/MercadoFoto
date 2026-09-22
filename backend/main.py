@@ -62,6 +62,8 @@ from database.publicaciones import (
     guardar_info_adicional,
     obtener_publicaciones_cercanas,
     obtener_publicaciones_por_usuario,
+    descontar_stock,
+    tallas_de,
 )
 
 from database.users import (
@@ -188,6 +190,7 @@ from database.ordenes import (
     cancelar_orden as ordenes_cancelar_orden,
     obtener_pendientes_pago_vencidas,
     contar_ventas_completadas,
+    tomar_descuento_stock,
 )
 from services.mp_service import (
     crear_preferencia as mp_crear_preferencia,
@@ -1871,6 +1874,9 @@ def perfil_publico(user_id: int):
     return {
         "user_id": user_id,
         "nombre": nombre,
+        # La foto es pública igual que el nombre: es lo que el vendedor elige
+        # mostrar. Antes no venía y el perfil solo podía pintar una inicial.
+        "foto_url": usuario.get("foto_url") or "",
         "publicaciones": publicaciones,
     }
 
@@ -2465,7 +2471,7 @@ def crear_preferencia_endpoint(body: dict):
       comprador_id, vendedor_id, tipo ('producto'|'servicio'),
       titulo, monto, comprador_email,
       publicacion_id? (producto), servicio_id? (servicio),
-      imagen_url?
+      imagen_url?, talla? (producto con tallas)
     """
     comprador_id  = body.get("comprador_id")
     vendedor_id   = body.get("vendedor_id")
@@ -2476,9 +2482,40 @@ def crear_preferencia_endpoint(body: dict):
     pub_id        = body.get("publicacion_id")
     srv_id        = body.get("servicio_id")
     imagen_url    = body.get("imagen_url", "")
+    talla         = (body.get("talla") or "").strip() or None
 
     if not comprador_id or not vendedor_id or monto <= 0:
         raise HTTPException(status_code=400, detail="Datos incompletos")
+
+    # ── Producto: que exista, que quede stock y que la talla sea válida ──
+    # Se revisa aquí, antes de cobrar, y no solo en la app: dos compradores
+    # pueden abrir la misma publicación a la vez, y el segundo no debe poder
+    # pagar la unidad que el primero ya se llevó.
+    if tipo == "producto" and pub_id:
+        pub = obtener_publicacion_por_id(pub_id)
+        if not pub:
+            raise HTTPException(status_code=404,
+                                detail="La publicación ya no existe")
+        if (pub.get("estado") or "disponible") != "disponible":
+            raise HTTPException(status_code=409,
+                                detail="Este producto ya se vendió")
+        stock_actual = pub.get("stock")
+        if stock_actual is not None and int(stock_actual) <= 0:
+            raise HTTPException(status_code=409,
+                                detail="Este producto se quedó sin stock")
+        tallas = tallas_de(pub)
+        if tallas:
+            if not talla:
+                raise HTTPException(status_code=400,
+                                    detail="Elige una talla antes de comprar")
+            if talla not in tallas:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"La talla {talla} no está disponible")
+        else:
+            # Una publicación sin tallas no guarda una talla suelta que
+            # pudiera mandar una app vieja o un error de la pantalla.
+            talla = None
 
     from services.mp_service import _comision_pct
     comision = round(monto * _comision_pct() / 100, 2)
@@ -2496,6 +2533,7 @@ def crear_preferencia_endpoint(body: dict):
         servicio_id=srv_id,
         comision=comision,
         es_test=modo_test,
+        talla=talla,
     )
 
     # ── MODO TEST: simular pago aprobado al instante, sin llamar a MP ────────
@@ -2601,6 +2639,26 @@ def _procesar_pago_aprobado(orden: dict, payment_id: str):
         )
         return
 
+    # ── Stock: se descuenta al confirmarse el pago, una sola vez ─────────
+    # El pago aprobado es el momento en que la venta queda hecha. Antes no
+    # se descontaba nunca: una publicación con 1 unidad seguía a la venta
+    # después de venderse. tomar_descuento_stock() garantiza que si Mercado
+    # Pago avisa dos veces del mismo pago, la unidad se resta una sola vez.
+    if orden.get("publicacion_id") and tomar_descuento_stock(orden_id):
+        try:
+            restante = descontar_stock(orden["publicacion_id"])
+            registrar_evento(
+                orden_id, "stock_descontado",
+                detalle=("sin stock cargado: unidad única, marcada vendida"
+                         if restante is None else f"quedan {restante}"))
+        except Exception as e:
+            # Un fallo aquí no puede tumbar la confirmación del pago: el
+            # cobro ya ocurrió. Queda registrado para revisarlo a mano.
+            registrar_evento(orden_id, "stock_error", detalle=str(e)[:200])
+
+    # La talla va en el aviso al vendedor: sin ella no sabe qué despachar.
+    talla_txt = f" (talla {orden['talla']})" if orden.get("talla") else ""
+
     # Obtener ubicación del comprador para informar al vendedor
     comprador = obtener_usuario_por_id(orden["comprador_id"])
     ubicacion_str = ""
@@ -2610,9 +2668,9 @@ def _procesar_pago_aprobado(orden: dict, payment_id: str):
             ubicacion_str = ciudad
     push_body = (
         f"Tu comprador está en {ubicacion_str}. "
-        f"¿Cómo entregas '{orden['titulo']}'?"
+        f"¿Cómo entregas '{orden['titulo']}'{talla_txt}?"
         if ubicacion_str else
-        f"Elige cómo entregarás '{orden['titulo']}'"
+        f"Elige cómo entregarás '{orden['titulo']}'{talla_txt}"
     )
     # Notificar al vendedor con acción de elegir entrega
     fcm_tok = obtener_fcm_token(orden["vendedor_id"])
@@ -2634,7 +2692,8 @@ def _procesar_pago_aprobado(orden: dict, payment_id: str):
             pass
     crear_notificacion(
         orden["vendedor_id"], "elegir_entrega",
-        f"💳 Pago confirmado por '{orden['titulo']}'. Elige cómo entregar.",
+        f"💳 Pago confirmado por '{orden['titulo']}'{talla_txt}. "
+        f"Elige cómo entregar.",
         orden_id=orden_id,
     )
 
