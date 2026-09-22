@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
+import '../widgets/avatar_usuario.dart' show urlFotoPerfil;
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 
@@ -507,8 +508,7 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
                               radius: 48,
                               backgroundColor: colors.divider,
                               backgroundImage: _fotoUrl.isNotEmpty
-                                  ? NetworkImage(
-                                      '${ApiService.baseUrl}$_fotoUrl')
+                                  ? NetworkImage(urlFotoPerfil(_fotoUrl) ?? '')
                                   : null,
                               child: _fotoUrl.isEmpty
                                   ? Text(

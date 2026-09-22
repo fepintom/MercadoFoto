@@ -19,6 +19,8 @@ import 'evaluaciones_vendedor_screen.dart';
 import 'perfil_publico_screen.dart';
 import 'soporte_chat_screen.dart';
 import '../widgets/net_image.dart';
+import '../widgets/avatar_usuario.dart';
+import '../widgets/descripcion_formato.dart';
 import '../widgets/reputacion_vendedor.dart';
 
 // ── Modelo para opciones de compartir (fácil de extender) ─────────────────
@@ -53,6 +55,107 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   bool _esFavorito = false;
   bool _toggleandoFavorito = false;
   bool _comprando = false;
+
+  /// Talla que eligió el comprador. Null hasta que toque una.
+  String? _tallaElegida;
+
+  /// Tallas que ofrece el vendedor, o [] si el producto no usa tallas.
+  ///
+  /// Se guardan como texto JSON {"tipo": "adulto", "valores": ["S","M"]},
+  /// que es como las manda la pantalla de venta. Antes el detalle nunca las
+  /// leía: el vendedor las marcaba y el comprador no las veía en ningún lado.
+  List<String> get _tallas {
+    final raw = widget.producto['tallas'];
+    if (raw == null) return const [];
+    dynamic d = raw;
+    if (raw is String) {
+      if (raw.trim().isEmpty) return const [];
+      try {
+        d = jsonDecode(raw);
+      } catch (_) {
+        return raw
+            .split(',')
+            .map((t) => t.trim())
+            .where((t) => t.isNotEmpty)
+            .toList();
+      }
+    }
+    if (d is Map) d = d['valores'];
+    if (d is List) {
+      return d.map((t) => t.toString()).where((t) => t.isNotEmpty).toList();
+    }
+    return const [];
+  }
+
+  /// Unidades que quedan, o null si el vendedor no cargó stock.
+  int? get _stock {
+    final v = widget.producto['stock'];
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse('${v ?? ''}');
+  }
+
+  bool get _agotado {
+    final st = _stock;
+    final estado = (widget.producto['estado'] ?? 'disponible').toString();
+    return estado == 'vendido' || (st != null && st <= 0);
+  }
+
+  /// Fila de tallas para elegir. Solo aparece si el producto tiene tallas.
+  Widget _selectorTallas() {
+    final tallas = _tallas;
+    if (tallas.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _tallaElegida == null ? 'Elige tu talla' : 'Talla: $_tallaElegida',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: colors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: tallas.map((t) {
+              final sel = t == _tallaElegida;
+              return GestureDetector(
+                onTap: () => setState(() => _tallaElegida = sel ? null : t),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  constraints: const BoxConstraints(minWidth: 46),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: sel ? colors.primary : colors.surface,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: sel ? colors.primary : colors.divider,
+                      width: sel ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Text(
+                    t,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: sel ? Colors.white : colors.textPrimary,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
   bool _guardandoInfoAdicional = false;
 
   late TextEditingController _skuController;
@@ -656,6 +759,19 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
       return;
     }
 
+    // Con tallas, hay que elegir una: si no, el vendedor recibe una venta
+    // sin saber qué despachar. El servidor exige lo mismo.
+    if (_tallas.isNotEmpty && _tallaElegida == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Elige una talla antes de comprar'),
+          backgroundColor: colors.carbon,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     setState(() => _comprando = true);
     try {
       final data = await ApiService.crearPreferencia(
@@ -666,6 +782,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
         monto: monto,
         publicacionId: pubId,
         imagenUrl: imagenUrl,
+        talla: _tallaElegida,
       );
 
       // ── Modo prueba: el pago ya quedó simulado como aprobado en el backend.
@@ -690,7 +807,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error al iniciar el pago: $e'),
+          content: Text('$e'.replaceFirst('Exception: ', '')),
           backgroundColor: colors.primary,
           behavior: SnackBarBehavior.floating,
         ),
@@ -1811,16 +1928,16 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          ownerId != null
-                              ? Icons.verified_user_rounded
-                              : Icons.person_outline_rounded,
-                          size: 14,
-                          color: ownerId != null
-                              ? colors.textPrimary
-                              : colors.grayMid,
+                        // La cara del vendedor junto a su nombre. Antes
+                        // había un ícono genérico: el comprador no sabía a
+                        // quién le compraba hasta abrir el chat.
+                        AvatarUsuario(
+                          fotoUrl: widget.producto['foto_vendedor']
+                              ?.toString(),
+                          nombre: vendedor.toString(),
+                          tamano: 22,
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 6),
                         Text(
                           vendedor,
                           style: TextStyle(
@@ -1951,10 +2068,10 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                   const Divider(height: 1, thickness: 0.5),
                   const SizedBox(height: 16),
 
-                  // Descripción
-                  Text(
+                  // Descripción, con sus negritas, viñetas y párrafos.
+                  TextoDescripcion(
                     descripcion,
-                    style: TextStyle(
+                    estilo: TextStyle(
                       fontSize: 15,
                       color: colors.textSecondary,
                       height: 1.6,
@@ -2250,6 +2367,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                           ],
                         ),
                         const SizedBox(height: 10),
+                        _selectorTallas(),
                         // Botón de compra — antes decía "Pagar con
                         // MercadoPago" en el azul de esa marca; ahora usa
                         // el rojo principal de OkVenta y el texto es
@@ -2315,8 +2433,9 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: ElevatedButton.icon(
-                                onPressed:
-                                    _comprando ? null : _comprarConMP,
+                                onPressed: (_comprando || _agotado)
+                                    ? null
+                                    : _comprarConMP,
                                 icon: _comprando
                                     ? const SizedBox(
                                         width: 16,
@@ -2327,7 +2446,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                       )
                                     : const Icon(Icons.shopping_bag_rounded,
                                         size: 18),
-                                label: const Text("Comprar"),
+                                label: Text(_agotado ? "Agotado" : "Comprar"),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: colors.primary,
                                   foregroundColor: Colors.white,

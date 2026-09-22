@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import 'catalogo_screen.dart' show VitrinaCatalogo;
 import 'producto_detalle_screen.dart';
+import '../widgets/avatar_usuario.dart';
 import '../widgets/net_image.dart';
 import '../widgets/reputacion_vendedor.dart';
 class PerfilPublicoScreen extends StatefulWidget {
@@ -25,6 +26,9 @@ class PerfilPublicoScreen extends StatefulWidget {
 class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
   bool _cargando = true;
   String _nombre = '';
+  /// Foto del vendedor. Antes el perfil pintaba solo una inicial porque el
+  /// servidor ni siquiera la mandaba.
+  String _fotoUrl = '';
   List<dynamic> _publicaciones = [];
   Map<String, dynamic>? _reputacion;
   /// Catálogo de tienda del vendedor, si subió uno y ya está procesado.
@@ -62,6 +66,7 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
         final data = json.decode(res.body);
         setState(() {
           _nombre = data['nombre'] ?? widget.nombre;
+          _fotoUrl = (data['foto_url'] ?? '').toString();
           _publicaciones = data['publicaciones'] ?? [];
           _reputacion = reputacion;
           _cargando = false;
@@ -80,9 +85,6 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
     }
   }
 
-  // ── Inicial del nombre para el avatar ─────────────────────────────────────
-  String get _inicial =>
-      _nombre.isNotEmpty ? _nombre[0].toUpperCase() : '?';
 
   // ── Precio formateado ──────────────────────────────────────────────────────
   String _formatPrecio(dynamic precio) {
@@ -172,29 +174,8 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
             padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
             child: Column(
               children: [
-                // Avatar con inicial
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [colors.primary, Color(0xFF00C9A7)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      _inicial,
-                      style: const TextStyle(
-                        fontSize: 36,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
+                // Foto del vendedor; sin foto, la inicial.
+                AvatarUsuario(fotoUrl: _fotoUrl, nombre: _nombre, tamano: 80),
                 const SizedBox(height: 12),
 
                 // Nombre
@@ -322,6 +303,7 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
         // (nombre_vendedor + user_id se añaden para que el detalle funcione)
         final prodConVendedor = Map<String, dynamic>.from(prod)
           ..['nombre_vendedor'] = _nombre
+          ..['foto_vendedor'] = _fotoUrl
           ..['user_id'] = widget.userId;
 
         Navigator.push(

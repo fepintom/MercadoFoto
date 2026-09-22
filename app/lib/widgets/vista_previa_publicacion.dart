@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import 'descripcion_formato.dart';
 import '../utils/format_utils.dart';
 import '../widgets/net_image.dart';
 
@@ -203,11 +204,13 @@ class VistaPreviaPublicacion extends StatelessWidget {
                         const SizedBox(height: 20),
                         const Divider(height: 1, thickness: 0.5),
                         const SizedBox(height: 16),
-                        Text(
+                        // Igual que en el detalle real: la vista previa
+                        // tiene que mostrar las negritas y viñetas.
+                        TextoDescripcion(
                           descripcion.isEmpty
                               ? 'Sin descripción'
                               : descripcion,
-                          style: TextStyle(
+                          estilo: TextStyle(
                               fontSize: 15,
                               color: colors.textSecondary,
                               height: 1.6),

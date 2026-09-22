@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/descripcion_formato.dart';
 import '../widgets/net_image.dart';
 import '../widgets/vista_previa_publicacion.dart';
 
@@ -327,12 +328,10 @@ class _EditarPublicacionScreenState extends State<EditarPublicacionScreen> {
                             : null,
                   ),
                   const SizedBox(height: 16),
-                  _campo(
-                    label: "Descripción",
-                    ctrl: _descCtrl,
-                    maxLines: 4,
-                    maxLength: 500,
-                  ),
+                  // Mismo editor que al publicar. El tope sube de 500 a
+                  // 1500: las viñetas y los saltos de línea ocupan
+                  // caracteres, y con 500 una descripción ordenada no cabía.
+                  EditorDescripcion(controller: _descCtrl, maxLength: 1500),
                   const SizedBox(height: 16),
                   _campo(
                     label: "Precio (CLP)",

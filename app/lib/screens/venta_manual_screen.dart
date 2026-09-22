@@ -9,6 +9,7 @@ import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/descripcion_formato.dart';
 import '../widgets/space_invaders_widget.dart';
 import '../widgets/tipo_publicacion_selector.dart';
 import '../widgets/vista_previa_publicacion.dart';
@@ -366,7 +367,11 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
                 _buildFotosSection(),
                 const SizedBox(height: 24),
                 _buildCampo("Título *", _titulo),
-                _buildCampoMultilinea("Descripción", _descripcion),
+                // Con negrita, viñetas y saltos de línea.
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: EditorDescripcion(controller: _descripcion),
+                ),
                 _buildCondicion(),
                 _buildAceptaOfertas(),
                 const SizedBox(height: 16),
@@ -558,20 +563,6 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
       padding: const EdgeInsets.only(bottom: 16),
       child: TextField(
         controller: ctrl,
-        style: TextStyle(
-            fontSize: 15, color: colors.textPrimary),
-        decoration: _inputDeco(label),
-      ),
-    );
-  }
-
-  Widget _buildCampoMultilinea(
-      String label, TextEditingController ctrl) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: TextField(
-        controller: ctrl,
-        maxLines: 3,
         style: TextStyle(
             fontSize: 15, color: colors.textPrimary),
         decoration: _inputDeco(label),

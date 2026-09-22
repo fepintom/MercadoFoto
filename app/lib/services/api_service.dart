@@ -376,6 +376,9 @@ class ApiService {
     int? servicioId,
     String compradorEmail = '',
     String imagenUrl = '',
+    /// Talla elegida por el comprador. Obligatoria si la publicación tiene
+    /// tallas: el servidor rechaza la compra sin ella.
+    String? talla,
   }) async {
     final body = <String, dynamic>{
       'comprador_id': compradorId,
@@ -388,6 +391,7 @@ class ApiService {
     };
     if (publicacionId != null) body['publicacion_id'] = publicacionId;
     if (servicioId != null) body['servicio_id'] = servicioId;
+    if (talla != null && talla.isNotEmpty) body['talla'] = talla;
 
     final response = await http.post(
       Uri.parse('$baseUrl/pagos/crear-preferencia'),
@@ -397,7 +401,10 @@ class ApiService {
     if (response.statusCode == 200) {
       return Map<String, dynamic>.from(jsonDecode(response.body));
     }
-    throw Exception('Error al crear preferencia: ${response.body}');
+    // El motivo real ("Este producto ya se vendió", "Elige una talla…") en
+    // vez del JSON crudo del servidor.
+    throw Exception(
+        _detalleError(response.body, 'No se pudo iniciar el pago'));
   }
 
   static Future<List<Map<String, dynamic>>> obtenerMisCompras(

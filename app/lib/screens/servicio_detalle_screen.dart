@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
+import '../widgets/avatar_usuario.dart' show urlFotoPerfil;
 import '../services/session_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
@@ -284,8 +285,7 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                         radius: 24,
                         backgroundColor: colors.primary.withOpacity(0.15),
                         backgroundImage: fotoUrl.isNotEmpty
-                            ? NetworkImage(
-                                '${ApiService.baseUrl}$fotoUrl')
+                            ? NetworkImage(urlFotoPerfil(fotoUrl) ?? '')
                             : null,
                         child: fotoUrl.isEmpty
                             ? Text(
@@ -631,7 +631,7 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
 
   Widget _fotoPlaceholder(String fotoUrl, String nombre) {
     if (fotoUrl.isNotEmpty) {
-      return NetImage('${ApiService.baseUrl}$fotoUrl', fit: BoxFit.cover);
+      return NetImage(urlFotoPerfil(fotoUrl) ?? '', fit: BoxFit.cover);
     }
     return _colorPlaceholder(nombre);
   }

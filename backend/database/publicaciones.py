@@ -173,7 +173,8 @@ def obtener_publicaciones():
         p.stock,
         p.codigo_universal,
         p.tallas,
-        p.tipo_publicacion
+        p.tipo_publicacion,
+        u.foto_url
     FROM publicaciones p
     LEFT JOIN users u
     ON p.user_id = u.id
@@ -215,6 +216,9 @@ def obtener_publicaciones():
             "codigo_universal": row[19],
             "tallas": row[20],
             "tipo_publicacion": row[21],
+            # Foto del vendedor. Sin ella el comprador no podía ver quién
+            # le vende: la tarjeta, el detalle y el chat solo tenían nombre.
+            "foto_vendedor": row[22] or "",
         })
 
     return publicaciones
@@ -414,7 +418,8 @@ def obtener_publicacion_por_id(publicacion_id):
         CASE WHEN u.nombre IS NOT NULL AND TRIM(u.nombre) <> ''
              THEN u.nombre ELSE 'Usuario invitado' END,
         p.lat, p.lng, p.condicion, p.acepta_ofertas,
-        p.sku, p.stock, p.codigo_universal, p.tallas, p.tipo_publicacion
+        p.sku, p.stock, p.codigo_universal, p.tallas, p.tipo_publicacion,
+        u.foto_url
     FROM publicaciones p
     LEFT JOIN users u ON p.user_id = u.id
     WHERE p.id = ?
@@ -439,6 +444,7 @@ def obtener_publicacion_por_id(publicacion_id):
         "sku": row[17], "stock": row[18],
         "codigo_universal": row[19], "tallas": row[20],
         "tipo_publicacion": row[21],
+        "foto_vendedor": row[22] or "",
     }
 
 
@@ -527,7 +533,8 @@ def obtener_publicaciones_cercanas(lat, lng, radio_km=5.0):
         CASE WHEN u.nombre IS NOT NULL AND TRIM(u.nombre) <> ''
              THEN u.nombre ELSE 'Usuario invitado' END,
         p.lat, p.lng, p.condicion, p.acepta_ofertas,
-        p.sku, p.stock, p.codigo_universal, p.tallas
+        p.sku, p.stock, p.codigo_universal, p.tallas,
+        u.foto_url
     FROM publicaciones p
     LEFT JOIN users u ON p.user_id = u.id
     WHERE p.estado = 'disponible'
@@ -567,6 +574,7 @@ def obtener_publicaciones_cercanas(lat, lng, radio_km=5.0):
                 "condicion": row[15], "acepta_ofertas": row[16],
                 "sku": row[17], "stock": row[18],
                 "codigo_universal": row[19], "tallas": row[20],
+                "foto_vendedor": row[21] or "",
             })
 
     resultado.sort(key=lambda x: x["distancia_km"])
@@ -608,3 +616,79 @@ def obtener_publicaciones_por_usuario(user_id: int):
         for r in rows
     ]
 
+
+
+# --------------------------------------------------
+# STOCK: DESCUENTO AL CONFIRMARSE UNA VENTA
+# --------------------------------------------------
+
+def descontar_stock(publicacion_id, cantidad=1):
+    """Resta unidades al confirmarse un pago y cierra la publicación al agotarse.
+
+    Devuelve el stock que queda, o None si la publicación no llevaba stock.
+
+    Dos casos, según lo que haya cargado el vendedor:
+      · Con stock numérico: se resta. Al llegar a 0 la publicación pasa a
+        'vendido' y deja de aparecer en el marketplace; así nadie paga por
+        algo que ya no existe.
+      · Sin stock (el vendedor no llenó el campo): se entiende que era una
+        unidad única —lo normal en un marketplace de segunda mano— y la
+        publicación se marca 'vendido' con la primera venta.
+
+    La resta se hace en SQL con MAX(…, 0) para que dos ventas simultáneas de
+    la última unidad no dejen el stock en negativo.
+    """
+    conn = sqlite3.connect(DB)
+    cursor = conn.cursor()
+    cursor.execute("SELECT stock FROM publicaciones WHERE id = ?",
+                   (publicacion_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return None
+
+    if row[0] is None:
+        cursor.execute(
+            "UPDATE publicaciones SET estado = 'vendido' WHERE id = ?",
+            (publicacion_id,))
+        conn.commit()
+        conn.close()
+        return None
+
+    cursor.execute("""
+        UPDATE publicaciones
+        SET stock = MAX(COALESCE(stock, 0) - ?, 0)
+        WHERE id = ?
+    """, (int(cantidad), publicacion_id))
+    cursor.execute("SELECT stock FROM publicaciones WHERE id = ?",
+                   (publicacion_id,))
+    restante = cursor.fetchone()[0]
+    if restante is not None and restante <= 0:
+        cursor.execute(
+            "UPDATE publicaciones SET estado = 'vendido' WHERE id = ?",
+            (publicacion_id,))
+    conn.commit()
+    conn.close()
+    return restante
+
+
+def tallas_de(publicacion):
+    """Lista de tallas que ofrece una publicación, o [] si no usa tallas.
+
+    En la base se guardan como texto JSON {"tipo": ..., "valores": [...]}
+    (así las manda la pantalla de venta). Se tolera también una lista suelta
+    o texto separado por comas, por si alguna publicación vieja quedó así.
+    """
+    import json as _json
+    raw = (publicacion or {}).get("tallas")
+    if not raw:
+        return []
+    try:
+        d = _json.loads(raw) if isinstance(raw, str) else raw
+    except (TypeError, ValueError):
+        return [t.strip() for t in str(raw).split(",") if t.strip()]
+    if isinstance(d, dict):
+        d = d.get("valores") or []
+    if isinstance(d, list):
+        return [str(t) for t in d if str(t).strip()]
+    return []
