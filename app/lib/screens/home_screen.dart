@@ -133,8 +133,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  String _formatRadio(double km) =>
-      km < 10 ? "${km.toStringAsFixed(1)} km" : "${km.toStringAsFixed(0)} km";
 
   Future<void> _iniciarSesion() async {
     final user = await SessionService.obtenerUser();
@@ -608,102 +606,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── SLIDER DE RADIO (barra fija inferior, reemplaza categorías) ───────────
-  Widget _buildSliderRadio() {
-    final bool sinGps = _miPosicion == null && !_cargandoUbicacion;
-    final bool activo = _filtroUbicacionActivo && !sinGps;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border(top: BorderSide(color: colors.divider, width: 0.5)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      height: 50,
-      child: Row(
-        children: [
-          // Icono-toggle
-          GestureDetector(
-            onTap: () {
-              if (_cargandoUbicacion) return;
-              if (sinGps) { Geolocator.openAppSettings(); return; }
-              setState(() => _filtroUbicacionActivo = !_filtroUbicacionActivo);
-              _guardarPrefsUbicacion();
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 30, height: 30,
-              decoration: BoxDecoration(
-                color: activo ? colors.primary.withValues(alpha: 0.10) : colors.background,
-                shape: BoxShape.circle,
-              ),
-              child: _cargandoUbicacion
-                  ? Padding(
-                      padding: EdgeInsets.all(7),
-                      child: CircularProgressIndicator(strokeWidth: 2, color: colors.grayMid),
-                    )
-                  : Icon(
-                      sinGps ? Icons.location_off_outlined : Icons.near_me_rounded,
-                      size: 15,
-                      color: activo ? colors.primary : colors.grayMid,
-                    ),
-            ),
-          ),
-
-          const SizedBox(width: 8),
-
-          // Slider o mensaje sin GPS
-          Expanded(
-            child: sinGps
-                ? GestureDetector(
-                    onTap: () => Geolocator.openAppSettings(),
-                    child: Text(
-                      "GPS no disponible — toca para activar",
-                      style: TextStyle(fontSize: 12, color: colors.grayMid),
-                    ),
-                  )
-                : SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      trackHeight: 3,
-                      thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                      overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-                      activeTrackColor: activo ? colors.primary : colors.grayMid.withValues(alpha: 0.4),
-                      inactiveTrackColor: colors.divider,
-                      thumbColor: activo ? colors.primary : colors.grayMid,
-                      overlayColor: colors.primary.withValues(alpha: 0.12),
-                    ),
-                    child: Slider(
-                      value: _radioKm,
-                      min: 1,
-                      max: 2000,
-                      onChanged: (v) => setState(() {
-                        _radioKm = v;
-                        if (!_filtroUbicacionActivo) _filtroUbicacionActivo = true;
-                      }),
-                      onChangeEnd: (_) => _guardarPrefsUbicacion(),
-                    ),
-                  ),
-          ),
-
-          // Valor km
-          if (!sinGps && !_cargandoUbicacion)
-            SizedBox(
-              width: 58,
-              child: Text(
-                _formatRadio(_radioKm),
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: activo ? colors.primary : colors.grayMid,
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
   // ── BARRA INFERIOR ─────────────────────────────────────────────────────────
   Widget _buildBottomNav() {
     return Container(
@@ -982,6 +884,19 @@ class _HomeScreenState extends State<HomeScreen> {
       miLng: _miPosicion?.longitude,
       radioKm: _radioKm,
       filtroUbicacionActivo: _filtroUbicacionActivo && _miPosicion != null,
+      // El estado de la ubicación sigue viviendo aquí (lo comparten todas
+      // las pestañas); el marketplace solo dibuja la barra y avisa.
+      sinGps: _miPosicion == null && !_cargandoUbicacion,
+      cargandoUbicacion: _cargandoUbicacion,
+      onRadioChanged: (v) => setState(() {
+        _radioKm = v;
+        if (!_filtroUbicacionActivo) _filtroUbicacionActivo = true;
+      }),
+      onRadioSoltado: (_) => _guardarPrefsUbicacion(),
+      onToggleUbicacion: () {
+        setState(() => _filtroUbicacionActivo = !_filtroUbicacionActivo);
+        _guardarPrefsUbicacion();
+      },
     );
   }
 
@@ -1192,7 +1107,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                 ),
-                if (_tab == 0) _buildSliderRadio(),
+                // La barra de distancia ya no va aquí abajo: pegada al menú
+                // se tocaba sin querer con la palma al sostener el teléfono.
+                // Ahora viaja dentro del marketplace, debajo de las
+                // categorías, en el mismo lugar que en Servicios.
                 _buildBottomNav(),
               ],
             ),

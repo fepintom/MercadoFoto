@@ -20,6 +20,7 @@ import 'perfil_publico_screen.dart';
 import 'soporte_chat_screen.dart';
 import '../widgets/net_image.dart';
 import '../widgets/avatar_usuario.dart';
+import 'servicios_screen.dart';
 import '../widgets/descripcion_formato.dart';
 import '../widgets/reputacion_vendedor.dart';
 
@@ -99,6 +100,92 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     final st = _stock;
     final estado = (widget.producto['estado'] ?? 'disponible').toString();
     return estado == 'vendido' || (st != null && st <= 0);
+  }
+
+  /// Aviso de instalación y puente con Servicios.
+  ///
+  /// Es donde la app deja de ser dos cosas separadas: un producto que
+  /// necesita instalación manda al comprador a contratar a alguien, con la
+  /// búsqueda ya escrita.
+  Widget _bloqueInstalacion() {
+    final requiere = widget.producto['requiere_instalacion'] == true ||
+        widget.producto['requiere_instalacion'] == 1;
+    if (!requiere) return const SizedBox.shrink();
+
+    final laHaceVendedor = widget.producto['instalacion_vendedor'] == true ||
+        widget.producto['instalacion_vendedor'] == 1;
+
+    // Se busca por categoría y no por el título completo: "Aire
+    // acondicionado Samsung 12000 BTU inverter" no encuentra a nadie,
+    // "Electrodomésticos" sí.
+    final busqueda = (widget.producto['categoria'] ?? '').toString();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.handyman_outlined, size: 18, color: colors.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  laHaceVendedor
+                      ? 'El vendedor también lo instala'
+                      : 'Este producto requiere instalación',
+                  style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            laHaceVendedor
+                ? 'Coordina con él por el chat antes de comprar: la '
+                    'instalación se acuerda aparte del precio del producto.'
+                : 'El vendedor no la hace. Puedes contratar a alguien en '
+                    'Servicios.',
+            style: TextStyle(
+                fontSize: 12.5, color: colors.textSecondary, height: 1.4),
+          ),
+          if (!laHaceVendedor) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ServiciosScreen(busquedaInicial: busqueda),
+                  ),
+                ),
+                icon: const Icon(Icons.search_rounded, size: 17),
+                label: const Text('Buscar quién lo instale'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: colors.primary,
+                  side: BorderSide(color: colors.primary),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  textStyle: const TextStyle(
+                      fontSize: 13.5, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   /// Fila de tallas para elegir. Solo aparece si el producto tiene tallas.
@@ -2367,6 +2454,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                           ],
                         ),
                         const SizedBox(height: 10),
+                        _bloqueInstalacion(),
                         _selectorTallas(),
                         // Botón de compra — antes decía "Pagar con
                         // MercadoPago" en el azul de esa marca; ahora usa

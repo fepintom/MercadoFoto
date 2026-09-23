@@ -22,7 +22,13 @@ import '../widgets/barra_radio_km.dart';
 import '../widgets/net_image.dart';
 import '../widgets/punto_ubicacion.dart';
 class ServiciosScreen extends StatefulWidget {
-  const ServiciosScreen({super.key});
+  /// Texto con el que abrir el buscador ya escrito.
+  ///
+  /// Lo usa el detalle de un producto que requiere instalación: el comprador
+  /// llega buscando "aire acondicionado" sin tener que escribirlo.
+  final String? busquedaInicial;
+
+  const ServiciosScreen({super.key, this.busquedaInicial});
 
   @override
   State<ServiciosScreen> createState() => _ServiciosScreenState();
@@ -276,11 +282,15 @@ class _ListaServicios extends StatefulWidget {
   /// de abajo; ahora es la pastilla que va al lado de la barra de distancia.
   final VoidCallback onPublicar;
 
+  /// Búsqueda con la que abrir la pestaña, si se llegó buscando algo.
+  final String? busquedaInicial;
+
   const _ListaServicios({
     required this.servicios,
     required this.tipo,
     required this.onRefresh,
     required this.onPublicar,
+    this.busquedaInicial,
   });
 
   @override
@@ -314,6 +324,11 @@ class _ListaServiciosState extends State<_ListaServicios> {
   @override
   void initState() {
     super.initState();
+    final inicial = widget.busquedaInicial?.trim() ?? '';
+    if (inicial.isNotEmpty) {
+      _searchCtrl.text = inicial;
+      _query = inicial;
+    }
     UbicacionService.obtener().then((c) {
       if (!mounted) return;
       setState(() {

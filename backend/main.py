@@ -664,6 +664,8 @@ async def publicar_producto(
     condicion: Optional[str] = Form("nuevo"),
     acepta_ofertas: int = Form(1),
     tallas: Optional[str] = Form(None),
+    requiere_instalacion: Optional[int] = Form(0),
+    instalacion_vendedor: Optional[int] = Form(0),
     tipo_publicacion: Optional[str] = Form("expres"),
     sku: Optional[str] = Form(None),
     stock: Optional[int] = Form(None),
@@ -727,6 +729,12 @@ async def publicar_producto(
             sku=sku,
             stock=stock,
             codigo_universal=codigo_universal,
+            requiere_instalacion=requiere_instalacion or 0,
+            # Solo tiene sentido decir "yo la instalo" si el producto la
+            # necesita: si no, se descarta para no guardar datos que se
+            # contradicen entre sí.
+            instalacion_vendedor=(instalacion_vendedor or 0)
+                                 if (requiere_instalacion or 0) else 0,
         )
 
         return {

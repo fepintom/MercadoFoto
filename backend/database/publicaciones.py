@@ -46,6 +46,10 @@ def init_publicaciones_db():
         "codigo_universal TEXT",
         "tallas TEXT",
         "tipo_publicacion TEXT DEFAULT 'expres'",
+        # Instalación: si el producto la necesita y si la hace el mismo
+        # vendedor. Es lo que permite que una venta derive en un servicio.
+        "requiere_instalacion INTEGER DEFAULT 0",
+        "instalacion_vendedor INTEGER DEFAULT 0",
     ]:
         try:
             cursor.execute(f"ALTER TABLE publicaciones ADD COLUMN {col}")
@@ -81,6 +85,8 @@ def guardar_publicacion(
     sku=None,
     stock=None,
     codigo_universal=None,
+    requiere_instalacion=0,
+    instalacion_vendedor=0,
 ):
 
     conn = sqlite3.connect(DB)
@@ -107,9 +113,11 @@ def guardar_publicacion(
             tipo_publicacion,
             sku,
             stock,
-            codigo_universal
+            codigo_universal,
+            requiere_instalacion,
+            instalacion_vendedor
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         titulo,
         descripcion,
@@ -131,6 +139,8 @@ def guardar_publicacion(
         sku,
         stock,
         codigo_universal,
+        1 if requiere_instalacion else 0,
+        1 if instalacion_vendedor else 0,
     ))
 
     conn.commit()
@@ -174,7 +184,9 @@ def obtener_publicaciones():
         p.codigo_universal,
         p.tallas,
         p.tipo_publicacion,
-        u.foto_url
+        u.foto_url,
+        COALESCE(p.requiere_instalacion, 0),
+        COALESCE(p.instalacion_vendedor, 0)
     FROM publicaciones p
     LEFT JOIN users u
     ON p.user_id = u.id
@@ -219,6 +231,8 @@ def obtener_publicaciones():
             # Foto del vendedor. Sin ella el comprador no podía ver quién
             # le vende: la tarjeta, el detalle y el chat solo tenían nombre.
             "foto_vendedor": row[22] or "",
+            "requiere_instalacion": bool(row[23]),
+            "instalacion_vendedor": bool(row[24]),
         })
 
     return publicaciones
@@ -419,7 +433,9 @@ def obtener_publicacion_por_id(publicacion_id):
              THEN u.nombre ELSE 'Usuario invitado' END,
         p.lat, p.lng, p.condicion, p.acepta_ofertas,
         p.sku, p.stock, p.codigo_universal, p.tallas, p.tipo_publicacion,
-        u.foto_url
+        u.foto_url,
+        COALESCE(p.requiere_instalacion, 0),
+        COALESCE(p.instalacion_vendedor, 0)
     FROM publicaciones p
     LEFT JOIN users u ON p.user_id = u.id
     WHERE p.id = ?
@@ -445,6 +461,8 @@ def obtener_publicacion_por_id(publicacion_id):
         "codigo_universal": row[19], "tallas": row[20],
         "tipo_publicacion": row[21],
         "foto_vendedor": row[22] or "",
+        "requiere_instalacion": bool(row[23]),
+        "instalacion_vendedor": bool(row[24]),
     }
 
 
@@ -534,7 +552,9 @@ def obtener_publicaciones_cercanas(lat, lng, radio_km=5.0):
              THEN u.nombre ELSE 'Usuario invitado' END,
         p.lat, p.lng, p.condicion, p.acepta_ofertas,
         p.sku, p.stock, p.codigo_universal, p.tallas,
-        u.foto_url
+        u.foto_url,
+        COALESCE(p.requiere_instalacion, 0),
+        COALESCE(p.instalacion_vendedor, 0)
     FROM publicaciones p
     LEFT JOIN users u ON p.user_id = u.id
     WHERE p.estado = 'disponible'
@@ -575,6 +595,8 @@ def obtener_publicaciones_cercanas(lat, lng, radio_km=5.0):
                 "sku": row[17], "stock": row[18],
                 "codigo_universal": row[19], "tallas": row[20],
                 "foto_vendedor": row[21] or "",
+                "requiere_instalacion": bool(row[22]),
+                "instalacion_vendedor": bool(row[23]),
             })
 
     resultado.sort(key=lambda x: x["distancia_km"])
