@@ -13,6 +13,7 @@ import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/descripcion_formato.dart';
 import '../widgets/space_invaders_widget.dart';
+import '../widgets/selector_instalacion.dart';
 import '../widgets/tipo_publicacion_selector.dart';
 import '../widgets/vista_previa_publicacion.dart';
 import 'mis_publicaciones_screen.dart';
@@ -135,6 +136,10 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
   // Distinto de la "talla de envío" de arriba: esta es la talla real de la
   // prenda o el zapato, seleccionada con cuadritos (no texto ni imagen).
   final Set<String> _tallasProducto = {};
+
+  // Instalación: el puente con la sección de Servicios.
+  bool _requiereInstalacion = false;
+  bool _instalacionVendedor = false;
 
   static const _tallasRopa = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
 
@@ -498,6 +503,8 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
       request.fields["condicion"]    = _condicion;
       request.fields["acepta_ofertas"] = _aceptaOfertas ? "1" : "0";
       request.fields["tipo_publicacion"] = _tipoPublicacion;
+      request.fields["requiere_instalacion"] = _requiereInstalacion ? "1" : "0";
+      request.fields["instalacion_vendedor"] = _instalacionVendedor ? "1" : "0";
       if (_tipoPublicacion == 'full') {
         if (_skuCtrl.text.trim().isNotEmpty) {
           request.fields["sku"] = _skuCtrl.text.trim();
@@ -1705,6 +1712,18 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
                           skuCtrl: _skuCtrl,
                           stockCtrl: _stockCtrl,
                           codigoCtrl: _codigoCtrl,
+                        ),
+                      ),
+
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: SelectorInstalacion(
+                          requiere: _requiereInstalacion,
+                          laHaceVendedor: _instalacionVendedor,
+                          onChanged: (r, v) => setState(() {
+                            _requiereInstalacion = r;
+                            _instalacionVendedor = v;
+                          }),
                         ),
                       ),
 

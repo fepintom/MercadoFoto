@@ -10,6 +10,7 @@ import '../services/api_service.dart';
 import '../services/cart_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/barra_radio_km.dart';
 import 'carrito_screen.dart';
 import 'producto_detalle_screen.dart';
 import '../widgets/net_image.dart';
@@ -32,6 +33,17 @@ class MarketplaceScreen extends StatefulWidget {
   final bool filtroUbicacionActivo;
   final Widget? banner;
 
+  // ── Barra de distancia ──────────────────────────────────────────────
+  // Antes vivía abajo, pegada al menú, y se tocaba sin querer con la palma.
+  // Ahora se dibuja aquí, debajo de las categorías, igual que en Servicios.
+  // El estado sigue en HomeScreen porque lo comparten todas las pestañas:
+  // esta pantalla solo dibuja y avisa hacia arriba.
+  final bool sinGps;
+  final bool cargandoUbicacion;
+  final ValueChanged<double>? onRadioChanged;
+  final ValueChanged<double>? onRadioSoltado;
+  final VoidCallback? onToggleUbicacion;
+
   const MarketplaceScreen({
     super.key,
     this.miLat,
@@ -39,6 +51,11 @@ class MarketplaceScreen extends StatefulWidget {
     this.radioKm = 50.0,
     this.filtroUbicacionActivo = false,
     this.banner,
+    this.sinGps = false,
+    this.cargandoUbicacion = false,
+    this.onRadioChanged,
+    this.onRadioSoltado,
+    this.onToggleUbicacion,
   });
 
   @override
@@ -80,6 +97,17 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   /// 'nuevo', 'usado' o null (todos). Vive junto al precio porque se elige
   /// en el mismo panel de filtros.
   String? _condicionFiltro;
+
+  /// Cómo se ordena la lista: 'recientes' (lo de siempre), 'precio_asc',
+  /// 'precio_desc' o 'categoria'.
+  String _orden = 'recientes';
+
+  static const Map<String, String> _nombresOrden = {
+    'recientes': 'Más recientes',
+    'precio_asc': 'Precio: menor a mayor',
+    'precio_desc': 'Precio: mayor a menor',
+    'categoria': 'Por categoría',
+  };
   double? _precioMax;
   bool _buscando = false;
 
@@ -317,7 +345,37 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
       }).toList();
     }
 
+    // ── Orden ───────────────────────────────────────────────────────────
+    // Se ordena al final, sobre lo ya filtrado. La lista llega del servidor
+    // de más nueva a más vieja, así que 'recientes' no toca nada: cualquier
+    // otro orden rehace la lista sin perder ese criterio de desempate.
+    switch (_orden) {
+      case 'precio_asc':
+        lista.sort((a, b) =>
+            _precioDe(a).compareTo(_precioDe(b)));
+        break;
+      case 'precio_desc':
+        lista.sort((a, b) =>
+            _precioDe(b).compareTo(_precioDe(a)));
+        break;
+      case 'categoria':
+        // Agrupadas alfabéticamente, y dentro de cada grupo se respeta el
+        // orden de llegada (las más nuevas primero).
+        lista.sort((a, b) => (a['categoria'] ?? '')
+            .toString()
+            .toLowerCase()
+            .compareTo((b['categoria'] ?? '').toString().toLowerCase()));
+        break;
+    }
+
     _filtradas = lista;
+  }
+
+  /// El precio como número, tolerando que venga como texto o venga vacío.
+  double _precioDe(Map<String, dynamic> p) {
+    final v = p['precio'];
+    if (v is num) return v.toDouble();
+    return double.tryParse('${v ?? ''}') ?? 0;
   }
 
   // ── Búsqueda en backend ───────────────────────────────────────────────────
@@ -352,7 +410,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
 
   /// Hay algún filtro del panel puesto (precio o condición). Pinta de rojo
   /// el botón de filtros y muestra la fila de chips.
-  bool get _tieneFiltros => _tieneFiltroPrecio || _condicionFiltro != null;
+  bool get _tieneFiltros =>
+      _tieneFiltroPrecio || _condicionFiltro != null || _orden != 'recientes';
 
   String _formatRadio(double km) =>
       km < 10 ? "${km.toStringAsFixed(1)} km" : "${km.toStringAsFixed(0)} km";
@@ -384,6 +443,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     // Copia local: los chips cambian al tocarlos, pero la lista solo se
     // filtra al pulsar "Aplicar", igual que el precio.
     String? condicion = _condicionFiltro;
+    String orden = _orden;
+    // Categoría elegida desde el panel: solo se usa cuando el orden es
+    // "Por categoría", que es donde tiene sentido acotar a una.
+    String? categoria = _categoriaSeleccionada;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -430,6 +493,86 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
+                Text("Ordenar por",
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.textSecondary)),
+                const SizedBox(height: 8),
+                for (final op in _nombresOrden.entries)
+                  GestureDetector(
+                    onTap: () => setSheetState(() => orden = op.key),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                      decoration: BoxDecoration(
+                        color: orden == op.key
+                            ? colors.primary.withValues(alpha: 0.08)
+                            : colors.background,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                            color: orden == op.key ? colors.primary : colors.divider),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            orden == op.key
+                                ? Icons.radio_button_checked_rounded
+                                : Icons.radio_button_unchecked_rounded,
+                            size: 18,
+                            color: orden == op.key ? colors.primary : colors.grayMid,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(op.value,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: orden == op.key
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
+                                color: colors.textPrimary,
+                              )),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                // Elegir UNA categoría. Aparece solo al ordenar por
+                // categoría: es ahí donde la pregunta "¿cuál?" tiene sentido.
+                if (orden == 'categoria') ...[
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    height: 34,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        for (final c in <String?>[null, ..._categorias.map((e) => e.nombre)])
+                          Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: GestureDetector(
+                              onTap: () => setSheetState(() => categoria = c),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: categoria == c ? colors.primary : colors.background,
+                                  borderRadius: BorderRadius.circular(17),
+                                  border: Border.all(
+                                      color: categoria == c ? colors.primary : colors.divider),
+                                ),
+                                child: Text(c ?? 'Todas',
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: categoria == c
+                                          ? colors.textOnPrimary
+                                          : colors.textPrimary,
+                                    )),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 18),
                 Text("Estado",
                     style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.textSecondary)),
                 const SizedBox(height: 8),
@@ -480,7 +623,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     child: OutlinedButton(
                       onPressed: () {
                         Navigator.pop(sheetCtx);
-                        setState(() { _precioMin = null; _precioMax = null; _condicionFiltro = null; cargarPublicaciones(); });
+                        setState(() {
+                          _precioMin = null;
+                          _precioMax = null;
+                          _condicionFiltro = null;
+                          _orden = 'recientes';
+                          cargarPublicaciones();
+                        });
                       },
                       style: OutlinedButton.styleFrom(
                         side: BorderSide(color: colors.divider),
@@ -499,6 +648,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                           _precioMin = double.tryParse(minCtrl.text.trim());
                           _precioMax = double.tryParse(maxCtrl.text.trim());
                           _condicionFiltro = condicion;
+                          _orden = orden;
+                          // La categoría del panel manda sobre la fila de
+                          // pastillas de arriba: es la última que tocó.
+                          if (orden == 'categoria') {
+                            _categoriaSeleccionada = categoria;
+                            _subcategoriaSeleccionada = null;
+                          }
                           _aplicarFiltros();
                         });
                       },
@@ -865,7 +1021,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   // ── Sticky header height (search + categories + optional chips) ──────────
 
   double get _stickyHeaderHeight {
-    double h = 60.0 + 46.0; // search row + main category bar
+    // buscador + categorías + barra de distancia (50)
+    double h = 60.0 + 46.0 + (widget.onRadioChanged != null ? 50.0 : 0.0);
     final catActual = _categorias.where((c) => c.nombre == _categoriaSeleccionada);
     final subcats = catActual.isNotEmpty ? catActual.first.subcategorias : <String>[];
     if (_categoriaSeleccionada != null && subcats.isNotEmpty) h += 36.0;
@@ -965,6 +1122,18 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           ),
           // Category chips
           _buildCategoryBar(),
+          // Distancia: mismo widget que usa Servicios, así las dos pantallas
+          // se ven y se comportan igual por construcción.
+          if (widget.onRadioChanged != null)
+            BarraRadioKm(
+              radioKm: widget.radioKm,
+              activo: widget.filtroUbicacionActivo,
+              sinGps: widget.sinGps,
+              cargando: widget.cargandoUbicacion,
+              onChanged: widget.onRadioChanged!,
+              onChangeEnd: widget.onRadioSoltado,
+              onToggle: widget.onToggleUbicacion,
+            ),
           // Chips de los filtros puestos, cada uno con su X para quitarlo.
           if (_tieneFiltros)
             SizedBox(
@@ -973,6 +1142,16 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
                 children: [
+                  if (_orden != 'recientes') ...[
+                    _chipFiltro(
+                      label: _nombresOrden[_orden] ?? _orden,
+                      onClear: () => setState(() {
+                        _orden = 'recientes';
+                        _aplicarFiltros();
+                      }),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
                   if (_condicionFiltro != null) ...[
                     _chipFiltro(
                       label: _condicionFiltro == 'nuevo' ? "Nuevo" : "Usado",

@@ -11,6 +11,7 @@ import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/descripcion_formato.dart';
 import '../widgets/space_invaders_widget.dart';
+import '../widgets/selector_instalacion.dart';
 import '../widgets/tipo_publicacion_selector.dart';
 import '../widgets/vista_previa_publicacion.dart';
 import 'mis_publicaciones_screen.dart';
@@ -42,6 +43,10 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
   // Tallas (Ropa / Calzado)
   Set<String> _tallasSeleccionadas = {};
   String _tipoTalla = 'adulto'; // 'adulto' | 'niño'
+
+  // Instalación: el puente con la sección de Servicios.
+  bool _requiereInstalacion = false;
+  bool _instalacionVendedor = false;
 
   static const _categorias = [
     'Automotriz',
@@ -192,6 +197,8 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
           request.fields["codigo_universal"] = _codigoCtrl.text.trim();
         }
       }
+      request.fields["requiere_instalacion"] = _requiereInstalacion ? "1" : "0";
+      request.fields["instalacion_vendedor"] = _instalacionVendedor ? "1" : "0";
       if (_esRopaOCalzado && _tallasSeleccionadas.isNotEmpty) {
         request.fields["tallas"] = jsonEncode({
           'tipo': _tipoTalla,
@@ -381,6 +388,15 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
                   skuCtrl: _skuCtrl,
                   stockCtrl: _stockCtrl,
                   codigoCtrl: _codigoCtrl,
+                ),
+                const SizedBox(height: 16),
+                SelectorInstalacion(
+                  requiere: _requiereInstalacion,
+                  laHaceVendedor: _instalacionVendedor,
+                  onChanged: (r, v) => setState(() {
+                    _requiereInstalacion = r;
+                    _instalacionVendedor = v;
+                  }),
                 ),
                 const SizedBox(height: 16),
                 _buildCampoPrecio(),
