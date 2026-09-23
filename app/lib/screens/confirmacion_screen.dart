@@ -13,6 +13,7 @@ import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/descripcion_formato.dart';
 import '../widgets/space_invaders_widget.dart';
+import '../widgets/invitacion_servicio_instalacion.dart';
 import '../widgets/selector_instalacion.dart';
 import '../widgets/tipo_publicacion_selector.dart';
 import '../widgets/vista_previa_publicacion.dart';
@@ -562,6 +563,17 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
       }
 
       if (!mounted) return;
+      // Si dijo que él instala, se le ofrece publicarlo en Servicios.
+      // Va después de publicar, no antes: ya terminó lo que vino a hacer.
+      if (_requiereInstalacion && _instalacionVendedor) {
+        await ofrecerPublicarInstalacion(
+          context,
+          tituloProducto: titulo.text.trim(),
+          categoriaProducto: _categoria,
+          subcategoriaProducto: _subcategoria,
+        );
+        if (!mounted) return;
+      }
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const MisPublicacionesScreen()),

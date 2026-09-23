@@ -14,7 +14,24 @@ import 'mapa_ubicacion_picker_screen.dart';
 
 class AgregarServicioScreen extends StatefulWidget {
   final String tipoInicial;
-  const AgregarServicioScreen({super.key, this.tipoInicial = 'ofrezco'});
+
+  // ── Formulario prellenado ───────────────────────────────────────────
+  // Lo usa la invitación que aparece al publicar un producto que el
+  // vendedor mismo instala: llega con el título, la descripción y la
+  // categoría escritos, y él solo corrige y pone el precio. Todo es
+  // editable: el proveedor sabe mejor que nosotros cómo se llama su
+  // trabajo.
+  final String? tituloInicial;
+  final String? descripcionInicial;
+  final String? categoriaInicial;
+
+  const AgregarServicioScreen({
+    super.key,
+    this.tipoInicial = 'ofrezco',
+    this.tituloInicial,
+    this.descripcionInicial,
+    this.categoriaInicial,
+  });
 
   @override
   State<AgregarServicioScreen> createState() =>
@@ -64,6 +81,10 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
   void initState() {
     super.initState();
     _tipo = widget.tipoInicial;
+    _tituloCtrl.text = widget.tituloInicial ?? '';
+    _descCtrl.text = widget.descripcionInicial ?? '';
+    final cat = widget.categoriaInicial;
+    if (cat != null && _kCategorias.contains(cat)) _categoria = cat;
     _cargarUsuario();
   }
 
