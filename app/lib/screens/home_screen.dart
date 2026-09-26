@@ -25,6 +25,7 @@ import 'mensajes_screen.dart';
 import 'chat_screen.dart';
 import 'oferta_screen.dart';
 import 'servicios_screen.dart';
+import 'comunidad_screen.dart';
 import 'mis_direcciones_screen.dart';
 import '../widgets/registro_form_widget.dart';
 
@@ -40,8 +41,19 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Estado de navegación: 0=Inicio, 1=Mensajes, 2=Encontrar, 3=Mi OkVenta, 4=Vender
+  // Pestaña visible del IndexedStack: 0=OkMarket, 2=OkServicios,
+  // 3=Comunidad (el 1 queda reservado: Alertas abre como hoja).
   int _tab = 0;
+
+  static const int _kTabOkMarket = 0;
+  static const int _kTabOkServicios = 2;
+  static const int _kTabComunidad = 3;
+
+  // Códigos de los botones de la barra (no son pestañas: algunos abren
+  // pantallas encima). 3 = Encontrar, 4 = Mi OkVenta, 1 = Alertas.
+  static const int _kNavComunidad = 10;
+  static const int _kNavOkMarket = 5;
+  static const int _kNavOkServicios = 6;
   int? userId;
   String nombreUsuario = "";
   int _notifCount = 0;
@@ -336,18 +348,26 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ── NAVEGACIÓN ──────────────────────────────────────────────────────────────
+  /// "+ Publicar" de OkMarket: lo que antes hacía el botón "Vender" de la
+  /// barra inferior.
+  void _abrirVender() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const vender.VenderScreen()),
+    ).then((_) => _inicializar());
+  }
+
   void _onNavTap(int index) {
-    if (index == 5) {
-      // Vender
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const vender.VenderScreen()),
-      ).then((_) => _inicializar());
+    if (index == _kNavOkMarket) {
+      setState(() => _tab = _kTabOkMarket);
       return;
     }
-    if (index == 6) {
-      // Servicios
-      setState(() => _tab = 2);
+    if (index == _kNavOkServicios) {
+      setState(() => _tab = _kTabOkServicios);
+      return;
+    }
+    if (index == _kNavComunidad) {
+      setState(() => _tab = _kTabComunidad);
       return;
     }
     if (index == 4) {
@@ -628,11 +648,14 @@ class _HomeScreenState extends State<HomeScreen> {
           height: 62,
           child: Row(
             children: [
-              // Inicio
-              Expanded(child: _navItem(0, Icons.home_rounded, "Inicio")),
+              // Comunidad (antes "Inicio"; el marketplace pasó a OkMarket)
+              Expanded(
+                  child: _navItem(_kNavComunidad, Icons.groups_outlined,
+                      "Comunidad",
+                      seleccionado: _tab == _kTabComunidad)),
               // Notificaciones
               Expanded(child: _navItemBadge(1, Icons.notifications_outlined, "Alertas", _notifCount)),
-              // Servicios + Vender — CENTRO destacados
+              // OkServicios + OkMarket — CENTRO destacados
               _navDobleDestacado(),
               // Encontrar
               Expanded(child: _navItem(3, Icons.explore_outlined, "Encontrar")),
@@ -645,8 +668,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _navItem(int index, IconData icon, String label) {
-    final selected = _tab == index;
+  Widget _navItem(int index, IconData icon, String label,
+      {bool? seleccionado}) {
+    final selected = seleccionado ?? _tab == index;
     return GestureDetector(
       onTap: () => _onNavTap(index),
       behavior: HitTestBehavior.opaque,
@@ -746,15 +770,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _navDobleDestacado() {
-    final selServ = _tab == 2;
+    final selServ = _tab == _kTabOkServicios;
+    final selMarket = _tab == _kTabOkMarket;
     return SizedBox(
       width: 140,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // ── Servicios ──────────────────────────────────────
+          // ── OkServicios ────────────────────────────────────
           GestureDetector(
-            onTap: () => _onNavTap(6),
+            onTap: () => _onNavTap(_kNavOkServicios),
             behavior: HitTestBehavior.opaque,
             child: SizedBox(
               width: 64,
@@ -792,7 +817,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Transform.translate(
                     offset: const Offset(0, -8),
                     child: Text(
-                      "Servicios",
+                      "OkServicios",
                       style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
@@ -804,9 +829,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          // ── Vender ─────────────────────────────────────────
+          // ── OkMarket (antes "Vender") ─────────────────────
+          // Mismo diseño que tenía Vender; ahora lleva al marketplace. La
+          // lógica de vender pasó al "+ Publicar" de arriba a la derecha.
           GestureDetector(
-            onTap: () => _onNavTap(5),
+            onTap: () => _onNavTap(_kNavOkMarket),
             behavior: HitTestBehavior.opaque,
             child: SizedBox(
               width: 64,
@@ -856,10 +883,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   Transform.translate(
                     offset: const Offset(0, -8),
                     child: Text(
-                      "Vender",
+                      "OkMarket",
                       style: TextStyle(
                         fontSize: 9,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: selMarket ? FontWeight.w800 : FontWeight.w700,
                         color: colors.primary,
                       ),
                     ),
@@ -897,6 +924,7 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() => _filtroUbicacionActivo = !_filtroUbicacionActivo);
         _guardarPrefsUbicacion();
       },
+      onPublicar: _abrirVender,
     );
   }
 
@@ -1104,6 +1132,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       // pestaña (un widget const idéntico se "saltea" en el
                       // rebuild y quedaba con los colores del modo anterior).
                       ServiciosScreen(),
+                      ComunidadScreen(
+                        activa: _tab == _kTabComunidad,
+                        onPedirLogin: _abrirLoginModal,
+                      ),
                     ],
                   ),
                 ),
@@ -1111,7 +1143,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 // se tocaba sin querer con la palma al sostener el teléfono.
                 // Ahora viaja dentro del marketplace, debajo de las
                 // categorías, en el mismo lugar que en Servicios.
-                _buildBottomNav(),
+                // Con el teclado abierto (escribiendo en la Comunidad o en
+                // un buscador) la barra se esconde: si no, sube pegada al
+                // teclado y le quita media pantalla al chat.
+                if (MediaQuery.of(context).viewInsets.bottom == 0)
+                  _buildBottomNav(),
               ],
             ),
           ),

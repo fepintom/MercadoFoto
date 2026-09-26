@@ -18,7 +18,7 @@ import 'mapa_ubicacion_picker_screen.dart';
 import 'okdelivery_pendientes_screen.dart';
 import 'servicio_detalle_screen.dart';
 import '../widgets/banner_publicidad.dart';
-import '../widgets/barra_radio_km.dart';
+import '../widgets/barra_filtros.dart';
 import '../widgets/net_image.dart';
 import '../widgets/punto_ubicacion.dart';
 class ServiciosScreen extends StatefulWidget {
@@ -278,8 +278,8 @@ class _ListaServicios extends StatefulWidget {
   final String tipo;
   final Future<void> Function() onRefresh;
 
-  /// Publicar. Antes vivía en el botón flotante, que tapaba las tarjetas
-  /// de abajo; ahora es la pastilla que va al lado de la barra de distancia.
+  /// Publicar. Va fijo a la derecha de la fila de filtros, al alcance del
+  /// pulgar.
   final VoidCallback onPublicar;
 
   /// Búsqueda con la que abrir la pestaña, si se llegó buscando algo.
@@ -298,7 +298,17 @@ class _ListaServicios extends StatefulWidget {
 }
 
 class _ListaServiciosState extends State<_ListaServicios> {
-  String? _categoriaSeleccionada;
+  /// Categorías puestas en el filtro (pueden ser varias). Se muestran en
+  /// rojo en la fila de arriba y se quitan arrastrándolas fuera.
+  final List<String> _categoriasSel = [];
+
+  /// Qué panel está abierto bajo la fila de filtros.
+  PanelFiltro _panel = PanelFiltro.ninguno;
+
+  static final List<OpcionCategoria> _opcionesCategorias = [
+    for (final c in _kCategorias)
+      OpcionCategoria(c, _kCategoriaIconos[c] ?? Icons.more_horiz_rounded),
+  ];
   final _searchCtrl = TextEditingController();
   String _query = '';
 
@@ -346,9 +356,9 @@ class _ListaServiciosState extends State<_ListaServicios> {
 
   List<Map<String, dynamic>> get _filtrados {
     var lista = widget.servicios;
-    if (_categoriaSeleccionada != null) {
+    if (_categoriasSel.isNotEmpty) {
       lista = lista
-          .where((s) => (s['categoria'] ?? 'Otros') == _categoriaSeleccionada)
+          .where((s) => _categoriasSel.contains(s['categoria'] ?? 'Otros'))
           .toList();
     }
     if (_query.isNotEmpty) {
@@ -376,29 +386,33 @@ class _ListaServiciosState extends State<_ListaServicios> {
     return lista;
   }
 
-  /// Barra de distancia + pastilla de publicar.
-  ///
-  /// Es el mismo widget que usa el home (BarraRadioKm), no una copia: así
-  /// las dos pantallas se ven idénticas por construcción. La pastilla va
-  /// dentro de la barra, lo que la acorta sola sin cálculos de ancho.
-  Widget _barraRadio() {
+  /// Distancia, categorías y "+ Publicar". Es el mismo widget que usa
+  /// OkMarket, no una copia: así las dos pantallas se ven idénticas por
+  /// construcción.
+  Widget _barraFiltros() {
     final sinGps = _miUbicacion == null && !_cargandoUbicacion;
-    return BarraRadioKm(
+    return BarraFiltros(
       radioKm: _radioKm,
-      activo: _filtroActivo,
+      distanciaActiva: _filtroActivo,
       sinGps: sinGps,
-      cargando: _cargandoUbicacion,
-      onToggle: () => setState(() => _filtroActivo = !_filtroActivo),
-      onChanged: (v) => setState(() {
+      cargandoUbicacion: _cargandoUbicacion,
+      onToggleDistancia: () => setState(() => _filtroActivo = !_filtroActivo),
+      onRadioChanged: (v) => setState(() {
         _radioKm = v;
         // Mover la barra es pedir el filtro: obligar además a pulsar el
         // ícono haría que arrastrar no hiciera nada visible.
         _filtroActivo = true;
       }),
-      trailing: _PastillaPublicar(
-        esBusco: widget.tipo == 'busco',
-        onTap: widget.onPublicar,
-      ),
+      categorias: _opcionesCategorias,
+      seleccionadas: _categoriasSel,
+      onAgregarCategoria: (c) => setState(() {
+        if (!_categoriasSel.contains(c)) _categoriasSel.add(c);
+      }),
+      onQuitarCategoria: (c) => setState(() => _categoriasSel.remove(c)),
+      panel: _panel,
+      onPanel: (p) => setState(() => _panel = p),
+      onPublicar: widget.onPublicar,
+      etiquetaPublicar: widget.tipo == 'busco' ? 'Buscar' : 'Publicar',
     );
   }
 
@@ -615,13 +629,14 @@ class _ListaServiciosState extends State<_ListaServicios> {
           SliverPersistentHeader(
             pinned: true,
             delegate: _EncabezadoServiciosDelegate(
-              height: _kAlturaEncabezado,
+              height: _kAlturaBuscador +
+                  BarraFiltros.alto(_panel) +
+                  _kAlturaDivisor,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _buscadorYVista(),
-                  _filaCategorias(),
-                  _barraRadio(),
+                  _barraFiltros(),
                   Divider(height: 0.5, color: colors.divider),
                 ],
               ),
@@ -707,59 +722,8 @@ class _ListaServiciosState extends State<_ListaServicios> {
     );
   }
 
-  /// Categorías: fila propia, no comparte espacio con ningún botón.
-  Widget _filaCategorias() {
-    return Container(
-      color: colors.surface,
-      height: 40,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        // 4 a la derecha + los 8 de margen de la última pastilla = los
-        // mismos 12 que hay a la izquierda.
-        padding: const EdgeInsets.fromLTRB(12, 0, 4, 6),
-        itemCount: _kCategorias.length,
-        itemBuilder: (_, i) {
-          final cat = _kCategorias[i];
-          final sel = _categoriaSeleccionada == cat;
-          final icon = _kCategoriaIconos[cat] ?? Icons.more_horiz_rounded;
-          return GestureDetector(
-            onTap: () =>
-                setState(() => _categoriaSeleccionada = sel ? null : cat),
-            child: Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: sel ? colors.primary : colors.background,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: sel ? colors.primary : colors.divider,
-                  width: 0.5,
-                ),
-              ),
-              alignment: Alignment.center,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon,
-                      size: 13, color: sel ? Colors.white : colors.grayMid),
-                  const SizedBox(width: 5),
-                  Text(cat,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: sel ? Colors.white : colors.textPrimary,
-                      )),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   Widget _buildVacio() {
-    final sinResultados = _categoriaSeleccionada != null || _query.isNotEmpty;
+    final sinResultados = _categoriasSel.isNotEmpty || _query.isNotEmpty;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -854,11 +818,12 @@ class _ListaServiciosState extends State<_ListaServicios> {
   }
 }
 
-/// Alto del encabezado anclado: buscador (56) + categorías (40) + barra de
-/// distancia (50) + el divisor. Es un número fijo porque
+/// Altos del encabezado anclado: buscador + fila de filtros (su alto
+/// depende del panel abierto, ver BarraFiltros.alto) + el divisor.
 /// SliverPersistentHeader necesita saber cuánto mide antes de dibujarlo; si
 /// se cambia el alto de alguna fila hay que actualizarlo aquí.
-const double _kAlturaEncabezado = 56 + 40 + 50 + 0.5;
+const double _kAlturaBuscador = 56;
+const double _kAlturaDivisor = 0.5;
 
 /// El encabezado que queda clavado arriba mientras el banner se va.
 class _EncabezadoServiciosDelegate extends SliverPersistentHeaderDelegate {
