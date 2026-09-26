@@ -858,25 +858,34 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ],
                       ),
-                      padding: const EdgeInsets.all(8),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.shopping_bag_outlined,
-                                color: Colors.white, size: 16),
-                            SizedBox(width: 2),
-                            Text(
-                              'ok',
-                              style: TextStyle(
+                      // Bolsa + etiqueta de precio: dos elementos, igual
+                      // que la llave y el martillo de OkServicios, para que
+                      // los dos botones del centro se lean como un par.
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Center(
+                            child: Icon(Icons.shopping_bag_outlined,
                                 color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
+                                size: selMarket ? 24 : 22),
+                          ),
+                          Positioned(
+                            right: 7,
+                            bottom: 7,
+                            child: Transform.rotate(
+                              angle: -0.35,
+                              child: Container(
+                                padding: const EdgeInsets.all(1.5),
+                                decoration: BoxDecoration(
+                                  color: colors.primary,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.sell_rounded,
+                                    color: Colors.white, size: 11),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

@@ -1514,16 +1514,27 @@ class ApiService {
     String? anclaTipo,
     int? anclaId,
   }) async {
-    final r = await http.post(
-      Uri.parse('$baseUrl/comunidad/mensajes'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'user_id': userId,
-        'texto': texto,
-        if (anclaTipo != null) 'ancla_tipo': anclaTipo,
-        if (anclaId != null) 'ancla_id': anclaId,
-      }),
-    );
+    Future<http.Response> intento() => http
+        .post(
+          Uri.parse('$baseUrl/comunidad/mensajes'),
+          headers: {'Content-Type': 'application/json; charset=utf-8'},
+          body: jsonEncode({
+            'user_id': userId,
+            'texto': texto,
+            if (anclaTipo != null) 'ancla_tipo': anclaTipo,
+            if (anclaId != null) 'ancla_id': anclaId,
+          }),
+        )
+        .timeout(const Duration(seconds: 25));
+    // Un reintento si la conexión se corta (típico cuando el servidor recién
+    // despierta o se está redesplegando: "connection reset by peer").
+    http.Response r;
+    try {
+      r = await intento();
+    } catch (_) {
+      await Future.delayed(const Duration(seconds: 2));
+      r = await intento();
+    }
     final data = jsonDecode(utf8.decode(r.bodyBytes));
     if (r.statusCode != 200) {
       throw Exception(data is Map ? (data['detail'] ?? 'Error') : 'Error');
