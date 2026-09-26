@@ -259,6 +259,8 @@ from routers.catalogos import router as catalogos_router
 
 from database.cotizaciones import init_cotizaciones_db
 from routers.cotizaciones import router as cotizaciones_router
+from database.comunidad import init_comunidad_db
+from routers.comunidad import router as comunidad_router
 from database.ordenes import (
     liberar_inicial as ordenes_liberar_inicial,
     liberar_retencion as ordenes_liberar_retencion,
@@ -432,6 +434,7 @@ init_agent_logs_db()
 init_verificacion_paquete_db()
 init_catalogos_db()
 init_cotizaciones_db()
+init_comunidad_db()
 
 # --------------------------------------------------
 # CORS
@@ -454,6 +457,7 @@ app.include_router(okdelivery_router)
 app.include_router(verificacion_paquete_router)
 app.include_router(catalogos_router)
 app.include_router(cotizaciones_router)
+app.include_router(comunidad_router)
 
 # --------------------------------------------------
 # MODELOS

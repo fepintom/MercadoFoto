@@ -10,7 +10,7 @@ import '../services/api_service.dart';
 import '../services/cart_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/barra_radio_km.dart';
+import '../widgets/barra_filtros.dart';
 import 'carrito_screen.dart';
 import 'producto_detalle_screen.dart';
 import '../widgets/net_image.dart';
@@ -44,6 +44,10 @@ class MarketplaceScreen extends StatefulWidget {
   final ValueChanged<double>? onRadioSoltado;
   final VoidCallback? onToggleUbicacion;
 
+  /// "+ Publicar" (arriba a la derecha). Hace lo que antes hacía el botón
+  /// "Vender" de la barra inferior.
+  final VoidCallback? onPublicar;
+
   const MarketplaceScreen({
     super.key,
     this.miLat,
@@ -56,6 +60,7 @@ class MarketplaceScreen extends StatefulWidget {
     this.onRadioChanged,
     this.onRadioSoltado,
     this.onToggleUbicacion,
+    this.onPublicar,
   });
 
   @override
@@ -81,8 +86,22 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     // "General" era redundante.
     Categoria(nombre: "General",      icono: Icons.category_rounded,             subcategorias: []),
   ];
-  String? _categoriaSeleccionada;
+  /// Categorías puestas en el filtro (pueden ser varias). Se muestran en
+  /// rojo en la fila de arriba y se quitan arrastrándolas fuera.
+  final List<String> _categoriasSel = [];
+
+  /// La categoría, cuando hay exactamente una: es el único caso en que
+  /// tienen sentido las subcategorías y el título con su nombre.
+  String? get _categoriaUnica =>
+      _categoriasSel.length == 1 ? _categoriasSel.first : null;
   String? _subcategoriaSeleccionada;
+
+  /// Qué panel está abierto bajo la fila de filtros.
+  PanelFiltro _panel = PanelFiltro.ninguno;
+
+  static final List<OpcionCategoria> _opcionesCategorias = _categorias
+      .map((c) => OpcionCategoria(c.nombre, c.icono))
+      .toList();
 
   // ── Datos ─────────────────────────────────────────────────────────────────
   List<Map<String, dynamic>> _todas = [];
@@ -294,13 +313,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     var lista = List<Map<String, dynamic>>.from(_todas);
 
     // Categoría
-    if (_categoriaSeleccionada != null) {
+    if (_categoriasSel.isNotEmpty) {
+      final elegidas = _categoriasSel.map((c) => c.toLowerCase()).toSet();
       lista = lista.where((p) =>
-        (p['categoria'] ?? '').toString().toLowerCase() ==
-        _categoriaSeleccionada!.toLowerCase()
+        elegidas.contains((p['categoria'] ?? '').toString().toLowerCase())
       ).toList();
     }
-    if (_subcategoriaSeleccionada != null) {
+    if (_categoriaUnica != null && _subcategoriaSeleccionada != null) {
       lista = lista.where((p) =>
         (p['subcategoria'] ?? '').toString().toLowerCase() ==
         _subcategoriaSeleccionada!.toLowerCase()
@@ -446,7 +465,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     String orden = _orden;
     // Categoría elegida desde el panel: solo se usa cuando el orden es
     // "Por categoría", que es donde tiene sentido acotar a una.
-    String? categoria = _categoriaSeleccionada;
+    String? categoria = _categoriaUnica;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -652,7 +671,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                           // La categoría del panel manda sobre la fila de
                           // pastillas de arriba: es la última que tocó.
                           if (orden == 'categoria') {
-                            _categoriaSeleccionada = categoria;
+                            _categoriasSel
+                              ..clear()
+                              ..addAll([if (categoria != null) categoria]);
                             _subcategoriaSeleccionada = null;
                           }
                           _aplicarFiltros();
@@ -696,103 +717,66 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     );
   }
 
-  // ── Barra de categorías (inline, en el scroll) ────────────────────────────
+  // ── Categorías ────────────────────────────────────────────────────────────
 
-  Widget _buildCategoryBar() {
-    final catActual = _categorias.where((c) => c.nombre == _categoriaSeleccionada);
-    final subcats = catActual.isNotEmpty ? catActual.first.subcategorias : <String>[];
+  void _agregarCategoria(String c) => setState(() {
+        if (!_categoriasSel.contains(c)) _categoriasSel.add(c);
+        _subcategoriaSeleccionada = null;
+        _aplicarFiltros();
+      });
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Categorías principales
-        SizedBox(
-          height: 46,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            itemCount: _categorias.length,
-            itemBuilder: (_, i) {
-              final cat = _categorias[i];
-              final selected = _categoriaSeleccionada == cat.nombre;
-              return GestureDetector(
-                onTap: () => setState(() {
-                  _categoriaSeleccionada    = selected ? null : cat.nombre;
-                  _subcategoriaSeleccionada = null;
-                  _aplicarFiltros();
-                }),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  decoration: BoxDecoration(
-                    color: selected ? colors.primary : colors.surface,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: selected ? colors.primary : colors.divider,
-                      width: 0.5,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(cat.icono, size: 13,
-                          color: selected ? Colors.white : colors.grayMid),
-                      const SizedBox(width: 5),
-                      Text(cat.nombre,
-                          style: TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w500,
-                            color: selected ? Colors.white : colors.textPrimary,
-                          )),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
+  void _quitarCategoria(String c) => setState(() {
+        _categoriasSel.remove(c);
+        _subcategoriaSeleccionada = null;
+        _aplicarFiltros();
+      });
 
-        // Subcategorías
-        if (_categoriaSeleccionada != null && subcats.isNotEmpty)
-          SizedBox(
-            height: 36,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              itemCount: subcats.length,
-              itemBuilder: (_, i) {
-                final sub = subcats[i];
-                final selected = _subcategoriaSeleccionada == sub;
-                return GestureDetector(
-                  onTap: () => setState(() {
-                    _subcategoriaSeleccionada = selected ? null : sub;
-                    _aplicarFiltros();
-                  }),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    margin: const EdgeInsets.only(right: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: selected ? colors.carbon : colors.surface,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: selected ? colors.carbon : colors.divider,
-                        width: 0.5,
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(sub,
-                          style: TextStyle(
-                            fontSize: 11, fontWeight: FontWeight.w500,
-                            color: selected ? Colors.white : colors.textSecondary,
-                          )),
-                    ),
-                  ),
-                );
-              },
+  List<String> get _subcategoriasVisibles {
+    final unica = _categoriaUnica;
+    if (unica == null) return const [];
+    final cat = _categorias.where((c) => c.nombre == unica);
+    return cat.isNotEmpty ? cat.first.subcategorias : const [];
+  }
+
+  /// Subcategorías de la categoría puesta. Solo con UNA categoría: con
+  /// varias, mezclar sus subcategorías en una fila no se entendería.
+  Widget? _filaSubcategorias() {
+    final subcats = _subcategoriasVisibles;
+    if (subcats.isEmpty) return null;
+    return ListView.builder(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(12, 2, 12, 6),
+      itemCount: subcats.length,
+      itemBuilder: (_, i) {
+        final sub = subcats[i];
+        final selected = _subcategoriaSeleccionada == sub;
+        return GestureDetector(
+          onTap: () => setState(() {
+            _subcategoriaSeleccionada = selected ? null : sub;
+            _aplicarFiltros();
+          }),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            margin: const EdgeInsets.only(right: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: selected ? colors.carbon : colors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: selected ? colors.carbon : colors.divider,
+                width: 0.5,
+              ),
+            ),
+            child: Center(
+              child: Text(sub,
+                  style: TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w500,
+                    color: selected ? Colors.white : colors.textSecondary,
+                  )),
             ),
           ),
-      ],
+        );
+      },
     );
   }
 
@@ -1021,11 +1005,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   // ── Sticky header height (search + categories + optional chips) ──────────
 
   double get _stickyHeaderHeight {
-    // buscador + categorías + barra de distancia (50)
-    double h = 60.0 + 46.0 + (widget.onRadioChanged != null ? 50.0 : 0.0);
-    final catActual = _categorias.where((c) => c.nombre == _categoriaSeleccionada);
-    final subcats = catActual.isNotEmpty ? catActual.first.subcategorias : <String>[];
-    if (_categoriaSeleccionada != null && subcats.isNotEmpty) h += 36.0;
+    // buscador + fila de filtros (y el panel que esté abierto)
+    double h = 60.0 +
+        BarraFiltros.alto(_panel,
+            conExtra: _subcategoriasVisibles.isNotEmpty);
     if (_tieneFiltros) h += 32.0;
     return h;
   }
@@ -1120,20 +1103,26 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
               ],
             ),
           ),
-          // Category chips
-          _buildCategoryBar(),
-          // Distancia: mismo widget que usa Servicios, así las dos pantallas
-          // se ven y se comportan igual por construcción.
-          if (widget.onRadioChanged != null)
-            BarraRadioKm(
-              radioKm: widget.radioKm,
-              activo: widget.filtroUbicacionActivo,
-              sinGps: widget.sinGps,
-              cargando: widget.cargandoUbicacion,
-              onChanged: widget.onRadioChanged!,
-              onChangeEnd: widget.onRadioSoltado,
-              onToggle: widget.onToggleUbicacion,
-            ),
+          // Distancia, categorías y "+ Publicar": el mismo widget que usa
+          // OkServicios, así las dos pantallas se comportan igual.
+          BarraFiltros(
+            fondo: colors.background,
+            radioKm: widget.radioKm,
+            distanciaActiva: widget.filtroUbicacionActivo,
+            sinGps: widget.sinGps,
+            cargandoUbicacion: widget.cargandoUbicacion,
+            onRadioChanged: widget.onRadioChanged ?? (_) {},
+            onRadioSoltado: widget.onRadioSoltado,
+            onToggleDistancia: widget.onToggleUbicacion,
+            categorias: _opcionesCategorias,
+            seleccionadas: _categoriasSel,
+            onAgregarCategoria: _agregarCategoria,
+            onQuitarCategoria: _quitarCategoria,
+            extraCategorias: _filaSubcategorias(),
+            panel: _panel,
+            onPanel: (p) => setState(() => _panel = p),
+            onPublicar: widget.onPublicar,
+          ),
           // Chips de los filtros puestos, cada uno con su X para quitarlo.
           if (_tieneFiltros)
             SizedBox(
@@ -1187,11 +1176,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
       ));
     }
 
-    final tituloSeccion = _categoriaSeleccionada != null
-        ? _subcategoriaSeleccionada != null
-            ? "$_categoriaSeleccionada · $_subcategoriaSeleccionada"
-            : _categoriaSeleccionada!
-        : "Okmarket";
+    final tituloSeccion = _categoriasSel.isEmpty
+        ? "Okmarket"
+        : _categoriaUnica != null && _subcategoriaSeleccionada != null
+            ? "$_categoriaUnica · $_subcategoriaSeleccionada"
+            : _categoriasSel.join(" · ");
 
     return CustomScrollView(
       slivers: [
@@ -1282,8 +1271,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                               ? "Sin productos en ${_formatRadio(widget.radioKm)} de tu ubicación"
                               : _searchCtrl.text.isNotEmpty
                                   ? "Sin resultados para \"${_searchCtrl.text}\""
-                                  : _categoriaSeleccionada != null
-                                      ? "Sin productos en esta categoría"
+                                  : _categoriasSel.isNotEmpty
+                                      ? "Sin productos en estas categorías"
                                       : "No hay productos disponibles",
                       textAlign: TextAlign.center,
                       style: TextStyle(

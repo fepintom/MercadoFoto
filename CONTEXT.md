@@ -88,6 +88,11 @@ Foto de perfil (nombre de archivo único), dirección manual como fallback, RUT 
 
 **Pendientes de decisión de producto** (no implementados, requieren definición): selección/eliminación en bloque de publicaciones; si el flujo de compra de un servicio debe saltar el checkout MP e ir directo al chat; contenido real de "Historial".
 
+### 9. Navegación nueva + filtros + Comunidad (sep 2026)
+- **Barra inferior**: "Inicio" → **Comunidad** (ícono `groups_outlined`); "Vender" → **OkMarket** (mismo diseño, abre el marketplace); "Servicios" → **OkServicios**. La lógica de vender vive ahora en el botón **"+ Publicar"** arriba a la derecha de OkMarket (abre `VenderScreen`). En OkServicios "+ Publicar"/"+ Buscar" según la pestaña.
+- **Fila de filtros compartida** `widgets/barra_filtros.dart` (OkMarket y OkServicios): `[◎ Distancia|50 km] [Categorías ▼] [cat ✕]…  [+ Publicar]`. Distancia y Categorías despliegan su panel debajo (categorías en una sola línea deslizable). Multi-categoría; las elegidas quedan en rojo arriba y se quitan **manteniendo presionado y arrastrando fuera** (efecto esfumado con blur + chispas, `PastillaQuitable`). El alto del encabezado anclado se calcula con `BarraFiltros.alto(panel)`.
+- **Comunidad** (`screens/comunidad_screen.dart`): chat público todos-con-todos, emojis, anclar productos/servicios propios (tarjeta en el mensaje + franja "Anclados"). Polling cada 4 s solo con la pestaña visible. Backend: `routers/comunidad.py`, `database/comunidad.py` (tabla `comunidad_mensajes`), bot en `services/comunidad_bot.py` (bienvenida, responde a `@okventa` — IA con `ANTHROPIC_API_KEY`, reglas sin ella —, y `POST /admin/comunidad/bot/oferta?token=` para que publique una oferta). Sin moderación todavía.
+
 ## Sistema de diseño
 
 `app/lib/theme/app_theme.dart` — `AppColors.primary` = `#D62B2B` (rojo), `carbon`, `grayMid`, `background` = `#F2F2F7`, `surface` = blanco, `divider` = `#E0E0E5`. Nunca `Colors.blue/grey/red/white` hardcoded, siempre `AppColors.*`.

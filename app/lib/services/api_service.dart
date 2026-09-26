@@ -1476,4 +1476,58 @@ class ApiService {
     } catch (_) {}
     return null;
   }
+
+  // ──────────────────────────────────────────────
+  // COMUNIDAD (chat público)
+  // ──────────────────────────────────────────────
+
+  /// Sin [despuesDe] trae los últimos mensajes; con él, solo los nuevos.
+  static Future<List<Map<String, dynamic>>> obtenerMensajesComunidad(
+      {int despuesDe = 0}) async {
+    final uri = Uri.parse('$baseUrl/comunidad/mensajes').replace(
+        queryParameters: {'despues_de': '$despuesDe'});
+    final r = await http.get(uri);
+    if (r.statusCode != 200) return [];
+    return List<Map<String, dynamic>>.from(
+        jsonDecode(utf8.decode(r.bodyBytes)));
+  }
+
+  static Future<List<Map<String, dynamic>>> obtenerAncladosComunidad() async {
+    final r = await http.get(Uri.parse('$baseUrl/comunidad/anclados'));
+    if (r.statusCode != 200) return [];
+    return List<Map<String, dynamic>>.from(
+        jsonDecode(utf8.decode(r.bodyBytes)));
+  }
+
+  /// Lo que el usuario puede anclar: {publicaciones: [...], servicios: [...]}
+  static Future<Map<String, dynamic>> obtenerAnclables(int userId) async {
+    final r = await http.get(Uri.parse('$baseUrl/comunidad/anclables/$userId'));
+    if (r.statusCode != 200) return {'publicaciones': [], 'servicios': []};
+    return Map<String, dynamic>.from(jsonDecode(utf8.decode(r.bodyBytes)));
+  }
+
+  /// Envía un mensaje. Devuelve el mensaje guardado; lanza con el texto del
+  /// servidor si algo falla (p. ej. "Vas muy rápido").
+  static Future<Map<String, dynamic>> enviarMensajeComunidad({
+    required int userId,
+    String texto = '',
+    String? anclaTipo,
+    int? anclaId,
+  }) async {
+    final r = await http.post(
+      Uri.parse('$baseUrl/comunidad/mensajes'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'user_id': userId,
+        'texto': texto,
+        if (anclaTipo != null) 'ancla_tipo': anclaTipo,
+        if (anclaId != null) 'ancla_id': anclaId,
+      }),
+    );
+    final data = jsonDecode(utf8.decode(r.bodyBytes));
+    if (r.statusCode != 200) {
+      throw Exception(data is Map ? (data['detail'] ?? 'Error') : 'Error');
+    }
+    return Map<String, dynamic>.from(data);
+  }
 }
