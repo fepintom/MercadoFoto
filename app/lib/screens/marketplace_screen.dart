@@ -671,9 +671,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                           // La categoría del panel manda sobre la fila de
                           // pastillas de arriba: es la última que tocó.
                           if (orden == 'categoria') {
+                            // Copia local: `categoria` la cambia el panel,
+                            // así que Dart no puede asumir que sigue no nula.
+                            final elegida = categoria;
                             _categoriasSel
                               ..clear()
-                              ..addAll([if (categoria != null) categoria]);
+                              ..addAll([if (elegida != null) elegida]);
                             _subcategoriaSeleccionada = null;
                           }
                           _aplicarFiltros();
