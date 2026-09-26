@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
+import '../utils/regiones_chile.dart';
 import 'barra_radio_km.dart';
 
 /// Qué panel está desplegado bajo la fila de filtros.
@@ -20,11 +21,14 @@ class OpcionCategoria {
 
 /// La fila de filtros de OkMarket y OkServicios, en un solo lugar.
 ///
-///   [◎ 50 km] [Categorías ▼] [Hogar ✕] [Autos ✕] ...      [+ Publicar]
+///   [◎ Filtro de búsqueda] [Categorías ▼] [Biobío] [Hogar] ...  [+ Publicar]
 ///
-/// - Distancia y Categorías son botones que despliegan su panel debajo.
-///   El de distancia dice su estado ("Distancia" apagado, "50 km" en rojo
-///   encendido) para que el usuario sepa por qué ve menos avisos.
+/// - "Filtro de búsqueda" y "Categorías" despliegan su panel debajo.
+///   El filtro tiene dos modos: "Cerca de mí" (radio en km desde el GPS) y
+///   "Por zona" (una o varias regiones, para buscar lejos de donde uno
+///   está; p. ej. comprarle algo a un pariente que vive en otra región).
+///   El botón dice su estado ("50 km", "Biobío", "2 regiones") en rojo
+///   cuando filtra, para que el usuario sepa por qué ve menos avisos.
 /// - Las categorías elegidas quedan arriba, en rojo, como filtros puestos.
 ///   Para quitar una se mantiene presionada y se arrastra fuera: se esfuma.
 /// - "Publicar" va fijo a la derecha, donde cae el pulgar al sostener el
@@ -42,6 +46,13 @@ class BarraFiltros extends StatelessWidget {
   final ValueChanged<double> onRadioChanged;
   final ValueChanged<double>? onRadioSoltado;
   final VoidCallback? onToggleDistancia;
+
+  // Zona (regiones). Sin [onModoZona] la barra solo ofrece distancia.
+  final bool modoZona;
+  final List<String> regiones;
+  final ValueChanged<bool>? onModoZona;
+  final ValueChanged<String>? onAgregarRegion;
+  final ValueChanged<String>? onQuitarRegion;
 
   // Categorías
   final List<OpcionCategoria> categorias;
@@ -79,6 +90,11 @@ class BarraFiltros extends StatelessWidget {
     this.cargandoUbicacion = false,
     this.onRadioSoltado,
     this.onToggleDistancia,
+    this.modoZona = false,
+    this.regiones = const [],
+    this.onModoZona,
+    this.onAgregarRegion,
+    this.onQuitarRegion,
     this.extraCategorias,
     this.onPublicar,
     this.etiquetaPublicar = 'Publicar',
@@ -86,15 +102,20 @@ class BarraFiltros extends StatelessWidget {
   });
 
   static const double altoFila = 46;
+  static const double altoModos = 40;
   static const double altoPanelDistancia = 50;
+  static const double altoPanelRegiones = 44;
   static const double altoPanelCategorias = 44;
   static const double altoExtra = 36;
 
   /// Alto total según lo desplegado. Lo necesita el SliverPersistentHeader.
-  static double alto(PanelFiltro panel, {bool conExtra = false}) {
+  static double alto(PanelFiltro panel,
+      {bool conExtra = false, bool modoZona = false, bool conZona = true}) {
     switch (panel) {
       case PanelFiltro.distancia:
-        return altoFila + altoPanelDistancia;
+        return altoFila +
+            (conZona ? altoModos : 0) +
+            (modoZona ? altoPanelRegiones : altoPanelDistancia);
       case PanelFiltro.categorias:
         return altoFila + altoPanelCategorias + (conExtra ? altoExtra : 0);
       case PanelFiltro.ninguno:
@@ -135,6 +156,16 @@ class BarraFiltros extends StatelessWidget {
                         _botonDistancia(),
                         const SizedBox(width: 6),
                         _botonCategorias(),
+                        if (modoZona)
+                          for (final r in regiones) ...[
+                            const SizedBox(width: 6),
+                            PastillaQuitable(
+                              key: ValueKey('reg-$r'),
+                              etiqueta: r,
+                              icono: Icons.place_outlined,
+                              onQuitar: () => onQuitarRegion?.call(r),
+                            ),
+                          ],
                         for (final c in seleccionadas) ...[
                           const SizedBox(width: 6),
                           PastillaQuitable(
@@ -170,15 +201,7 @@ class BarraFiltros extends StatelessWidget {
   Widget _panelDesplegado() {
     switch (panel) {
       case PanelFiltro.distancia:
-        return BarraRadioKm(
-          radioKm: radioKm,
-          activo: distanciaActiva,
-          sinGps: sinGps,
-          cargando: cargandoUbicacion,
-          onChanged: onRadioChanged,
-          onChangeEnd: onRadioSoltado,
-          onToggle: onToggleDistancia,
-        );
+        return _panelFiltro();
       case PanelFiltro.categorias:
         return Column(
           mainAxisSize: MainAxisSize.min,
@@ -201,17 +224,31 @@ class BarraFiltros extends StatelessWidget {
   // ── Botones de la fila ──────────────────────────────────────────────────
 
   Widget _botonDistancia() {
-    final encendido = distanciaActiva && !sinGps;
     final abierto = panel == PanelFiltro.distancia;
-    final texto = sinGps
-        ? 'Sin GPS'
-        : encendido
-            ? BarraRadioKm.formatRadio(radioKm)
-            : 'Distancia';
+    if (modoZona) {
+      final activo = regiones.isNotEmpty;
+      return _PastillaBoton(
+        icono: Icons.map_outlined,
+        texto: !activo
+            ? 'Filtro de búsqueda'
+            : regiones.length == 1
+                ? 'Zona'
+                : '${regiones.length} regiones',
+        activo: activo,
+        abierto: abierto,
+        flecha: true,
+        onTap: () => _alternar(PanelFiltro.distancia),
+      );
+    }
+    final encendido = distanciaActiva && !sinGps;
+    final texto = encendido
+        ? BarraRadioKm.formatRadio(radioKm)
+        : 'Filtro de búsqueda';
     return _PastillaBoton(
-      icono: sinGps ? Icons.location_off_outlined : Icons.near_me_rounded,
+      icono: Icons.near_me_rounded,
       texto: texto,
       activo: encendido,
+      flecha: true,
       abierto: abierto,
       onTap: () => _alternar(PanelFiltro.distancia),
     );
@@ -226,6 +263,147 @@ class BarraFiltros extends StatelessWidget {
       abierto: abierto,
       flecha: true,
       onTap: () => _alternar(PanelFiltro.categorias),
+    );
+  }
+
+  Widget _panelFiltro() {
+    final radio = BarraRadioKm(
+      radioKm: radioKm,
+      activo: distanciaActiva,
+      sinGps: sinGps,
+      cargando: cargandoUbicacion,
+      onChanged: onRadioChanged,
+      onChangeEnd: onRadioSoltado,
+      onToggle: onToggleDistancia,
+    );
+    if (onModoZona == null) return radio;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _filaModos(),
+        modoZona ? _carruselRegiones() : radio,
+      ],
+    );
+  }
+
+  // ── Panel del filtro de búsqueda ───────────────────────────────────────
+
+  /// "Cerca de mí" / "Por zona". Solo uno filtra a la vez: buscar en otra
+  /// región y a la vez a 10 km de mí no tiene sentido.
+  Widget _filaModos() {
+    Widget opcion(String texto, IconData icono, bool sel, bool zona) {
+      return Expanded(
+        child: GestureDetector(
+          onTap: () {
+            if (sel) return;
+            HapticFeedback.selectionClick();
+            onModoZona?.call(zona);
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            margin: const EdgeInsets.symmetric(horizontal: 3),
+            decoration: BoxDecoration(
+              color: sel ? colors.surface : Colors.transparent,
+              borderRadius: BorderRadius.circular(9),
+              boxShadow: sel
+                  ? [
+                      BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 3,
+                          offset: const Offset(0, 1))
+                    ]
+                  : const [],
+            ),
+            alignment: Alignment.center,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icono,
+                    size: 14, color: sel ? colors.primary : colors.grayMid),
+                const SizedBox(width: 5),
+                Text(texto,
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                        color: sel ? colors.textPrimary : colors.grayMid)),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      height: altoModos,
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: colors.divider, width: 0.5)),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          color: colors.background,
+          borderRadius: BorderRadius.circular(11),
+        ),
+        child: Row(children: [
+          opcion('Cerca de mí', Icons.near_me_rounded, !modoZona, false),
+          opcion('Por zona', Icons.map_outlined, modoZona, true),
+        ]),
+      ),
+    );
+  }
+
+  /// Regiones de norte a sur. Las elegidas suben a la fila de arriba.
+  Widget _carruselRegiones() {
+    final disponibles =
+        RegionesChile.nombres.where((r) => !regiones.contains(r)).toList();
+    return SizedBox(
+      height: altoPanelRegiones,
+      child: disponibles.isEmpty
+          ? Center(
+              child: Text('Todas las regiones están en el filtro',
+                  style: TextStyle(fontSize: 12, color: colors.grayMid)))
+          : ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(12, 7, 6, 7),
+              itemCount: disponibles.length,
+              itemBuilder: (_, i) {
+                final r = disponibles[i];
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      onAgregarRegion?.call(r);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: colors.background,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      alignment: Alignment.center,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.place_outlined,
+                              size: 13, color: colors.grayMid),
+                          const SizedBox(width: 4),
+                          Text(r,
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: colors.textPrimary)),
+                          const SizedBox(width: 3),
+                          Icon(Icons.add_rounded,
+                              size: 13, color: colors.grayMid),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
     );
   }
 

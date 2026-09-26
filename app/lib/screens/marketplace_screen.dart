@@ -11,6 +11,7 @@ import '../services/cart_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/barra_filtros.dart';
+import '../utils/regiones_chile.dart';
 import 'carrito_screen.dart';
 import 'producto_detalle_screen.dart';
 import '../widgets/net_image.dart';
@@ -98,6 +99,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
 
   /// Qué panel está abierto bajo la fila de filtros.
   PanelFiltro _panel = PanelFiltro.ninguno;
+
+  /// Filtro de búsqueda en modo "Por zona": se filtra por región y no por
+  /// distancia (el radio sigue guardado para cuando se vuelva a "Cerca").
+  bool _modoZona = false;
+  final List<String> _regionesSel = [];
+
+  bool get _zonaActiva => _modoZona && _regionesSel.isNotEmpty;
 
   static final List<OpcionCategoria> _opcionesCategorias = _categorias
       .map((c) => OpcionCategoria(c.nombre, c.icono))
@@ -364,6 +372,16 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
       }).toList();
     }
 
+    // Zona — solo publicaciones con ubicación en alguna región elegida. Las
+    // que no tienen lat/lng quedan fuera: no se sabe dónde están.
+    if (_zonaActiva) {
+      final elegidas = _regionesSel.toSet();
+      lista = lista.where((p) {
+        final r = RegionesChile.regionDeItem(p);
+        return r != null && elegidas.contains(r);
+      }).toList();
+    }
+
     // ── Orden ───────────────────────────────────────────────────────────
     // Se ordena al final, sobre lo ya filtrado. La lista llega del servidor
     // de más nueva a más vieja, así que 'recientes' no toca nada: cualquier
@@ -424,7 +442,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  bool get _radioActivo => widget.filtroUbicacionActivo && widget.miLat != null && widget.miLng != null;
+  bool get _radioActivo => !_modoZona && widget.filtroUbicacionActivo && widget.miLat != null && widget.miLng != null;
   bool get _tieneFiltroPrecio => _precioMin != null || _precioMax != null;
 
   /// Hay algún filtro del panel puesto (precio o condición). Pinta de rojo
@@ -1011,8 +1029,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     // buscador + fila de filtros (y el panel que esté abierto)
     double h = 60.0 +
         BarraFiltros.alto(_panel,
-            conExtra: _subcategoriasVisibles.isNotEmpty);
+            conExtra: _subcategoriasVisibles.isNotEmpty,
+            modoZona: _modoZona);
     if (_tieneFiltros) h += 32.0;
+    h += 0.5; // divisor inferior
     return h;
   }
 
@@ -1020,9 +1040,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
 
   Widget _buildStickyHeader() {
     return Container(
-      // Gris (igual que el fondo bajo las miniaturas de productos), para que
-      // la barra resalte del blanco de arriba en vez de camuflarse.
-      color: colors.background,
+      // Un solo bloque del color de superficie, igual que en OkServicios:
+      // buscador, filtros y chips forman una pieza y se separan de la
+      // lista por el divisor de abajo. Antes era gris y, al cambiar el
+      // modo de color, se fundía con el fondo y las pastillas se perdían.
+      color: colors.surface,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1035,17 +1057,11 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                   child: Container(
                     height: 40,
                     decoration: BoxDecoration(
-                      // Blanco para que resalte sobre el fondo gris del
-                      // header (antes ambos eran blancos y se camuflaba).
-                      color: colors.surface,
+                      // Mismo tratamiento que el buscador de OkServicios:
+                      // caja gris dentro del bloque de superficie.
+                      color: colors.background,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: colors.divider),
-                      boxShadow: [
-                        BoxShadow(
-                            color: Colors.black.withOpacity(0.06),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1)),
-                      ],
                     ),
                     child: TextField(
                       controller: _searchCtrl,
@@ -1081,7 +1097,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     duration: const Duration(milliseconds: 200),
                     width: 40, height: 40,
                     decoration: BoxDecoration(
-                      color: _tieneFiltros ? colors.primary : colors.surface,
+                      color: _tieneFiltros ? colors.primary : colors.background,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: _tieneFiltros ? colors.primary : colors.divider),
                     ),
@@ -1095,7 +1111,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                   child: Container(
                     width: 40, height: 40,
                     decoration: BoxDecoration(
-                      color: colors.surface,
+                      color: colors.background,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: colors.divider),
                     ),
@@ -1109,7 +1125,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           // Distancia, categorías y "+ Publicar": el mismo widget que usa
           // OkServicios, así las dos pantallas se comportan igual.
           BarraFiltros(
-            fondo: colors.background,
             radioKm: widget.radioKm,
             distanciaActiva: widget.filtroUbicacionActivo,
             sinGps: widget.sinGps,
@@ -1117,6 +1132,20 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
             onRadioChanged: widget.onRadioChanged ?? (_) {},
             onRadioSoltado: widget.onRadioSoltado,
             onToggleDistancia: widget.onToggleUbicacion,
+            modoZona: _modoZona,
+            regiones: _regionesSel,
+            onModoZona: (z) => setState(() {
+              _modoZona = z;
+              _aplicarFiltros();
+            }),
+            onAgregarRegion: (r) => setState(() {
+              if (!_regionesSel.contains(r)) _regionesSel.add(r);
+              _aplicarFiltros();
+            }),
+            onQuitarRegion: (r) => setState(() {
+              _regionesSel.remove(r);
+              _aplicarFiltros();
+            }),
             categorias: _opcionesCategorias,
             seleccionadas: _categoriasSel,
             onAgregarCategoria: _agregarCategoria,
@@ -1163,6 +1192,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 ],
               ),
             ),
+          // Corte único contra la lista, igual que en OkServicios.
+          Divider(height: 0.5, thickness: 0.5, color: colors.divider),
         ],
       ),
     );
@@ -1270,6 +1301,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     Text(
                       _errorConexion
                           ? "Sin conexión al servidor"
+                          : _zonaActiva
+                              ? "Sin productos en ${_regionesSel.length == 1 ? _regionesSel.first : 'esas regiones'}"
                           : _radioActivo
                               ? "Sin productos en ${_formatRadio(widget.radioKm)} de tu ubicación"
                               : _searchCtrl.text.isNotEmpty

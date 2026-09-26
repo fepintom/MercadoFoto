@@ -19,6 +19,7 @@ import 'okdelivery_pendientes_screen.dart';
 import 'servicio_detalle_screen.dart';
 import '../widgets/banner_publicidad.dart';
 import '../widgets/barra_filtros.dart';
+import '../utils/regiones_chile.dart';
 import '../widgets/net_image.dart';
 import '../widgets/punto_ubicacion.dart';
 class ServiciosScreen extends StatefulWidget {
@@ -305,6 +306,11 @@ class _ListaServiciosState extends State<_ListaServicios> {
   /// Qué panel está abierto bajo la fila de filtros.
   PanelFiltro _panel = PanelFiltro.ninguno;
 
+  /// Filtro de búsqueda en modo "Por zona": filtra por región en vez de
+  /// por distancia.
+  bool _modoZona = false;
+  final List<String> _regionesSel = [];
+
   static final List<OpcionCategoria> _opcionesCategorias = [
     for (final c in _kCategorias)
       OpcionCategoria(c, _kCategoriaIconos[c] ?? Icons.more_horiz_rounded),
@@ -374,13 +380,22 @@ class _ListaServiciosState extends State<_ListaServicios> {
     // conservan: filtrarlos escondería publicaciones válidas que solo no
     // indicaron dónde atienden.
     final yo = _miUbicacion;
-    if (yo != null && _filtroActivo) {
+    if (yo != null && _filtroActivo && !_modoZona) {
       lista = lista.where((s) {
         final lat = s['lat'], lng = s['lng'];
         if (lat == null || lng == null) return true;
         final km = UbicacionService.distanciaKm(
             yo, Coordenadas((lat as num).toDouble(), (lng as num).toDouble()));
         return km <= _radioKm;
+      }).toList();
+    }
+
+    // Por zona: solo los servicios con ubicación en alguna región elegida.
+    if (_modoZona && _regionesSel.isNotEmpty) {
+      final elegidas = _regionesSel.toSet();
+      lista = lista.where((s) {
+        final r = RegionesChile.regionDeItem(s);
+        return r != null && elegidas.contains(r);
       }).toList();
     }
     return lista;
@@ -409,6 +424,13 @@ class _ListaServiciosState extends State<_ListaServicios> {
         if (!_categoriasSel.contains(c)) _categoriasSel.add(c);
       }),
       onQuitarCategoria: (c) => setState(() => _categoriasSel.remove(c)),
+      modoZona: _modoZona,
+      regiones: _regionesSel,
+      onModoZona: (z) => setState(() => _modoZona = z),
+      onAgregarRegion: (r) => setState(() {
+        if (!_regionesSel.contains(r)) _regionesSel.add(r);
+      }),
+      onQuitarRegion: (r) => setState(() => _regionesSel.remove(r)),
       panel: _panel,
       onPanel: (p) => setState(() => _panel = p),
       onPublicar: widget.onPublicar,
@@ -630,7 +652,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
             pinned: true,
             delegate: _EncabezadoServiciosDelegate(
               height: _kAlturaBuscador +
-                  BarraFiltros.alto(_panel) +
+                  BarraFiltros.alto(_panel, modoZona: _modoZona) +
                   _kAlturaDivisor,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -723,7 +745,9 @@ class _ListaServiciosState extends State<_ListaServicios> {
   }
 
   Widget _buildVacio() {
-    final sinResultados = _categoriasSel.isNotEmpty || _query.isNotEmpty;
+    final sinResultados = _categoriasSel.isNotEmpty ||
+        _query.isNotEmpty ||
+        (_modoZona && _regionesSel.isNotEmpty);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),

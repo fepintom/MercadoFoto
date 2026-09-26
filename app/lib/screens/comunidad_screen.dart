@@ -8,6 +8,7 @@ import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/avatar_usuario.dart';
 import '../widgets/net_image.dart';
+import 'perfil_publico_screen.dart';
 import 'producto_detalle_screen.dart';
 import 'servicio_detalle_screen.dart';
 
@@ -188,8 +189,15 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
       }
     } catch (e) {
       if (!mounted) return;
+      final txt = e.toString();
+      final deRed = txt.contains('Socket') ||
+          txt.contains('Connection') ||
+          txt.contains('ClientException') ||
+          txt.contains('TimeoutException');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(e.toString().replaceFirst('Exception: ', '')),
+        content: Text(deRed
+            ? 'No se pudo conectar con el servidor. Revisa tu internet e intenta de nuevo.'
+            : txt.replaceFirst('Exception: ', '')),
         backgroundColor: colors.primary,
       ));
     } finally {
@@ -427,9 +435,11 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
       crossAxisAlignment:
           mio ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
-        if (!mio && !mismoAutor)
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 2),
+        if (!mismoAutor)
+          GestureDetector(
+            onTap: esBot ? null : () => _abrirPerfil(m, nombre),
+            child: Padding(
+            padding: const EdgeInsets.only(left: 4, right: 4, bottom: 2),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               Text(nombre.isEmpty ? 'Usuario' : nombre,
                   style: TextStyle(
@@ -441,6 +451,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                 Icon(Icons.verified_rounded, size: 12, color: colors.primary),
               ],
             ]),
+          ),
           ),
         Container(
           constraints: BoxConstraints(
@@ -487,24 +498,49 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!mio) ...[
-            SizedBox(
-              width: 30,
-              child: mismoAutor
-                  ? null
-                  : Padding(
-                      padding: const EdgeInsets.only(top: 16),
-                      child: esBot
-                          ? _avatarBot()
-                          : AvatarUsuario(
-                              fotoUrl: m['foto_url'],
-                              nombre: nombre,
-                              tamano: 28),
-                    ),
-            ),
+            _columnaAvatar(m, esBot, mismoAutor, nombre),
             const SizedBox(width: 6),
           ],
           Flexible(child: contenido),
+          if (mio) ...[
+            const SizedBox(width: 6),
+            _columnaAvatar(m, esBot, mismoAutor, nombre),
+          ],
         ],
+      ),
+    );
+  }
+
+  /// Foto del autor (solo en el primer mensaje de cada tanda). Tocarla
+  /// abre su perfil, igual que tocar el nombre.
+  Widget _columnaAvatar(
+      Map<String, dynamic> m, bool esBot, bool mismoAutor, String nombre) {
+    return SizedBox(
+      width: 30,
+      child: mismoAutor
+          ? null
+          : Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: esBot
+                  ? _avatarBot()
+                  : GestureDetector(
+                      onTap: () => _abrirPerfil(m, nombre),
+                      child: AvatarUsuario(
+                          fotoUrl: m['foto_url'], nombre: nombre, tamano: 28),
+                    ),
+            ),
+    );
+  }
+
+  void _abrirPerfil(Map<String, dynamic> m, String nombre) {
+    final uid = (m['user_id'] as num?)?.toInt();
+    if (uid == null) return;
+    _foco.unfocus();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PerfilPublicoScreen(
+            userId: uid, nombre: nombre.isEmpty ? 'Usuario' : nombre),
       ),
     );
   }

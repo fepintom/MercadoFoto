@@ -14,7 +14,7 @@ Autorización: igual que el resto del proyecto (sin JWT), se recibe
 """
 import os
 import time
-from typing import Optional
+from typing import Dict, Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
@@ -25,7 +25,9 @@ from services import comunidad_bot as bot
 router = APIRouter()
 
 # Freno anti-spam simple, en memoria: un mensaje cada 2 segundos por usuario.
-_ultimo_envio: dict[int, float] = {}
+# `Dict` de typing y no `dict[...]`: el servidor puede correr un Python
+# anterior a 3.9, donde `dict[int, float]` revienta al importar el módulo.
+_ultimo_envio: Dict[int, float] = {}
 _INTERVALO_MIN = 2.0
 
 
