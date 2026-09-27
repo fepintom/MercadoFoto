@@ -1,1334 +1,1372 @@
+import 'dart:convert';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart' hide Path;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
-import '../utils/format_utils.dart';
+import '../services/ubicacion_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/format_utils.dart';
+import '../utils/regiones_chile.dart';
+import '../widgets/barra_filtros.dart';
+import '../widgets/invitacion_servicio_instalacion.dart'
+    show categoriaServicioParaProducto;
+import '../widgets/net_image.dart';
+import 'mapa_ubicacion_picker_screen.dart';
 import 'producto_detalle_screen.dart';
+import 'servicio_detalle_screen.dart';
+import 'servicios_screen.dart';
 
+/// Encontrar: EL mapa de la app.
+///
+/// Antes había dos mapas —este, solo con productos, y la pestaña "Mapa" de
+/// OkServicios— cada uno con sus filtros y su código. Ahora hay uno:
+///
+/// - Arriba, dos interruptores: Productos y Servicios. Se pueden ver los dos
+///   a la vez (pin con foto y precio / círculo oscuro con la llave), que es
+///   justamente lo útil: el calentador en venta y el gasfíter que lo
+///   instala, a dos cuadras.
+/// - Debajo, la misma fila de filtros de OkMarket y OkServicios (filtro de
+///   búsqueda cerca de mí / por zona, y categorías). Al elegir una región,
+///   el mapa se mueve hasta allá.
+/// - Al tocar un producto, la ficha muestra una descripción breve y si
+///   requiere instalación: si la hace el vendedor, o qué proveedor de
+///   OkServicios se sugiere.
+///
+/// En el mapa van solo los servicios que se OFRECEN: los "busco" son
+/// pedidos, no lugares a donde ir.
 class EncontrarScreen extends StatefulWidget {
-  const EncontrarScreen({super.key});
+  /// Abrir con la capa de servicios encendida y la de productos apagada
+  /// (se llega así desde el botón de mapa de OkServicios).
+  final bool soloServicios;
+
+  const EncontrarScreen({super.key, this.soloServicios = false});
 
   @override
   State<EncontrarScreen> createState() => _EncontrarScreenState();
 }
 
-class _EncontrarScreenState extends State<EncontrarScreen>
-    with SingleTickerProviderStateMixin {
-  List<Map<String, dynamic>> _productosCercanos = [];
-  bool _loading = true;
-  bool _errorPermisos = false;
-  double _radioKm = 5.0;
-  double? _miLat;
-  double? _miLng;
+// Categorías de cada capa (las mismas que OkMarket y OkServicios).
+const _kCatsProductos = <OpcionCategoria>[
+  OpcionCategoria('Automotriz', Icons.directions_car_rounded),
+  OpcionCategoria('Electrónica', Icons.devices_rounded),
+  OpcionCategoria('Hogar', Icons.weekend_rounded),
+  OpcionCategoria('Ropa', Icons.checkroom_outlined),
+  OpcionCategoria('Deportes', Icons.fitness_center_rounded),
+  OpcionCategoria('Ocio', Icons.sports_soccer_rounded),
+  OpcionCategoria('Mascotas', Icons.pets_rounded),
+  OpcionCategoria('Salud', Icons.health_and_safety_outlined),
+  OpcionCategoria('Construcción', Icons.construction_outlined),
+  OpcionCategoria('Fotografía', Icons.camera_alt_outlined),
+  OpcionCategoria('Educación', Icons.menu_book_outlined),
+  OpcionCategoria('Negocios', Icons.business_center_outlined),
+  OpcionCategoria('General', Icons.category_rounded),
+];
 
-  Map<String, dynamic>? _seleccionado;
-  late MapController _mapCtrl;
+const _kCatsServicios = <OpcionCategoria>[
+  OpcionCategoria('Construcción', Icons.construction_outlined),
+  OpcionCategoria('Transporte', Icons.directions_car_outlined),
+  OpcionCategoria('Electrodomésticos', Icons.kitchen_outlined),
+  OpcionCategoria('Servicio', Icons.miscellaneous_services_outlined),
+  OpcionCategoria('Salud', Icons.health_and_safety_outlined),
+  OpcionCategoria('Profesional', Icons.business_center_outlined),
+  OpcionCategoria('Asesorías', Icons.support_agent_outlined),
+  OpcionCategoria('Computación', Icons.computer_outlined),
+  OpcionCategoria('Otros', Icons.more_horiz_rounded),
+];
 
-  // ── Filtros por categoría ─────────────────────────────────────────────────
-  Set<String> _categoriasSeleccionadas = {};
-  bool _filtroCategoriasActivo = false;
-  bool _panelFiltroAbierto     = false;
+final _kSantiago = LatLng(-33.4489, -70.6693);
 
-  // ── Filtro por precio ────────────────────────────────────────────────────
-  double? _precioMin;
-  double? _precioMax;
-  bool get _tieneFiltroPrecio => _precioMin != null || _precioMax != null;
-
-  // ── Buscador ──────────────────────────────────────────────────────────────
+class _EncontrarScreenState extends State<EncontrarScreen> {
+  final _mapCtrl = MapController();
   final _searchCtrl = TextEditingController();
+
+  // Datos
+  List<Map<String, dynamic>> _productos = [];
+  List<Map<String, dynamic>> _servicios = [];
+  bool _cargando = true;
+  bool _errorConexion = false;
+  int? _miUserId;
+
+  // Ubicación
+  Coordenadas? _yo;
+  bool _buscandoGps = true;
+
+  // Capas
+  bool _verProductos = true;
+  bool _verServicios = false;
+
+  // Filtros (la misma barra que OkMarket / OkServicios)
+  PanelFiltro _panel = PanelFiltro.ninguno;
+  double _radioKm = 10;
+  bool _distanciaActiva = false;
+  bool _modoZona = false;
+  final List<String> _regiones = [];
+  final List<String> _categorias = [];
   String _query = '';
 
-  List<Map<String, dynamic>> get _productosVisibles {
-    var lista = _categoriasSeleccionadas.isEmpty
-        ? _productosCercanos
-        : _productosCercanos.where((p) {
-            final cat = (p['categoria'] ?? '').toString();
-            return _categoriasSeleccionadas.contains(cat);
-          }).toList();
-    if (_query.isNotEmpty) {
-      final q = _query.toLowerCase();
-      lista = lista.where((p) {
-        final titulo = (p['titulo'] ?? '').toString().toLowerCase();
-        final cat    = (p['categoria'] ?? '').toString().toLowerCase();
-        return titulo.contains(q) || cat.contains(q);
-      }).toList();
-    }
-    if (_precioMin != null) {
-      lista = lista.where((p) => (p['precio'] as num? ?? 0) >= _precioMin!).toList();
-    }
-    if (_precioMax != null) {
-      lista = lista.where((p) => (p['precio'] as num? ?? 0) <= _precioMax!).toList();
-    }
-    return lista;
-  }
-
-  List<String> get _categoriasDisponibles {
-    final cats = _productosCercanos
-        .map((p) => (p['categoria'] ?? '').toString())
-        .where((c) => c.isNotEmpty)
-        .toSet()
-        .toList();
-    cats.sort();
-    return cats;
-  }
-
-  // ── Animación pulso ───────────────────────────────────────────────────────
-  late AnimationController _pulsoCtrl;
-  late Animation<double>    _pulsoAnim;
+  // Selección
+  Map<String, dynamic>? _selProducto;
+  Map<String, dynamic>? _selServicio;
 
   @override
   void initState() {
     super.initState();
-    _mapCtrl = MapController();
-
-    // Pulso: oscila entre opacidad baja y alta, cada 1.4 s, ida y vuelta
-    _pulsoCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat(reverse: true);
-
-    _pulsoAnim = CurvedAnimation(
-      parent: _pulsoCtrl,
-      curve: Curves.easeInOut,
-    );
-
-    _obtenerUbicacionYProductos();
+    if (widget.soloServicios) {
+      _verProductos = false;
+      _verServicios = true;
+    }
+    SessionService.obtenerUser().then((id) {
+      if (mounted) setState(() => _miUserId = id);
+    });
+    _cargarDatos();
+    _cargarUbicacion();
   }
 
   @override
   void dispose() {
-    _pulsoCtrl.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
 
-  // ── GPS + carga de productos ───────────────────────────────────────────────
-  Future<void> _obtenerUbicacionYProductos() async {
+  // ── Carga ────────────────────────────────────────────────────────────────
+
+  /// Se traen TODAS las publicaciones y servicios con ubicación, no solo
+  /// los cercanos: el modo "Por zona" busca en otras regiones.
+  Future<void> _cargarDatos() async {
     setState(() {
-      _loading = true;
-      _errorPermisos = false;
-      _seleccionado = null;
+      _cargando = true;
+      _errorConexion = false;
     });
-
     try {
-      bool habilitado = await Geolocator.isLocationServiceEnabled();
-      if (!habilitado) {
-        if (!mounted) return;
-        setState(() { _loading = false; _errorPermisos = true; });
-        return;
-      }
-
-      LocationPermission permiso = await Geolocator.checkPermission();
-      if (permiso == LocationPermission.denied) {
-        permiso = await Geolocator.requestPermission();
-      }
-      if (permiso == LocationPermission.deniedForever ||
-          permiso == LocationPermission.denied) {
-        if (!mounted) return;
-        setState(() { _loading = false; _errorPermisos = true; });
-        return;
-      }
-
-      final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-
-      final lat = pos.latitude;
-      final lng = pos.longitude;
-
-      // Sincronizar con el backend si está autenticado
-      final sesion = await SessionService.obtenerSesion();
-      final userId = sesion["user_id"];
-      if (userId != null) {
-        await ApiService.actualizarUbicacion(userId: userId, lat: lat, lng: lng);
-      }
-
-      final productos = await ApiService.obtenerPublicacionesCercanas(
-        lat: lat,
-        lng: lng,
-        radioKm: _radioKm,
-      );
-
-      if (!mounted) return;
+      final r = await http
+          .get(Uri.parse('${ApiService.baseUrl}/publicaciones'))
+          .timeout(const Duration(seconds: 15));
+      final todos = List<Map<String, dynamic>>.from(
+          jsonDecode(utf8.decode(r.bodyBytes)));
+      final servs = await ApiService.obtenerServicios(tipo: 'ofrezco');
       if (!mounted) return;
       setState(() {
-        _miLat = lat;
-        _miLng = lng;
-        _productosCercanos = productos;
-        _loading = false;
-      });
-
-      // Centrar mapa en posición del usuario
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _miLat != null && _miLng != null) {
-          _mapCtrl.move(LatLng(_miLat!, _miLng!), 13.5);
-        }
+        _productos = todos
+            .where((p) =>
+                p['lat'] is num &&
+                p['lng'] is num &&
+                (p['estado'] ?? 'disponible') == 'disponible')
+            .toList();
+        _servicios =
+            servs.where((s) => s['lat'] is num && s['lng'] is num).toList();
+        _cargando = false;
       });
     } catch (e) {
-      debugPrint("ERROR ubicación: $e");
-      if (!mounted) return;
-      setState(() { _loading = false; _errorPermisos = true; });
+      debugPrint('ERROR Encontrar: $e');
+      if (mounted) {
+        setState(() {
+          _cargando = false;
+          _errorConexion = true;
+        });
+      }
     }
   }
 
-  // ── Abrir en Apple Maps / Google Maps ─────────────────────────────────────
-  Future<void> _abrirEnMapa(Map<String, dynamic> p) async {
-    final lat = p['lat'] as double?;
-    final lng = p['lng'] as double?;
+  Future<void> _cargarUbicacion({bool centrar = true}) async {
+    setState(() => _buscandoGps = true);
+    final c = await UbicacionService.obtener(usarCache: !centrar);
+    if (!mounted) return;
+    setState(() {
+      _yo = c ?? _yo;
+      _buscandoGps = false;
+    });
+    if (c != null) {
+      final uid = await SessionService.obtenerUser();
+      if (uid != null) {
+        try {
+          await ApiService.actualizarUbicacion(
+              userId: uid, lat: c.lat, lng: c.lng);
+        } catch (_) {}
+      }
+      if (centrar) _mover(LatLng(c.lat, c.lng), 13.5);
+    }
+  }
+
+  void _mover(LatLng p, double zoom) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        _mapCtrl.move(p, zoom);
+      } catch (_) {}
+    });
+  }
+
+  /// Encuadra el mapa en las regiones elegidas.
+  void _encuadrarRegiones() {
+    final puntos = <LatLng>[
+      for (final r in _regiones)
+        for (final (lat, lng) in RegionesChile.puntosDe(r)) LatLng(lat, lng),
+    ];
+    if (puntos.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        _mapCtrl.fitBounds(
+          LatLngBounds.fromPoints(puntos),
+          options: const FitBoundsOptions(
+              padding: EdgeInsets.all(40), maxZoom: 12),
+        );
+      } catch (_) {}
+    });
+  }
+
+  // ── Filtrado ─────────────────────────────────────────────────────────────
+
+  bool get _radioAplica => !_modoZona && _distanciaActiva && _yo != null;
+  bool get _zonaAplica => _modoZona && _regiones.isNotEmpty;
+
+  bool _pasaUbicacion(Map item) {
+    if (_zonaAplica) {
+      final r = RegionesChile.regionDeItem(item);
+      return r != null && _regiones.contains(r);
+    }
+    if (_radioAplica) return _km(item) <= _radioKm;
+    return true;
+  }
+
+  /// Cada capa se filtra solo con las categorías que son suyas: elegir
+  /// "Transporte" (de servicios) no debe esconder todos los productos.
+  bool _pasaCategoria(Map item, List<OpcionCategoria> propias) {
+    final mias =
+        _categorias.where((c) => propias.any((o) => o.nombre == c)).toList();
+    if (mias.isEmpty) return true;
+    return mias.contains((item['categoria'] ?? '').toString());
+  }
+
+  bool _pasaTexto(Map item) {
+    if (_query.isEmpty) return true;
+    final q = _query.toLowerCase();
+    return (item['titulo'] ?? '').toString().toLowerCase().contains(q) ||
+        (item['categoria'] ?? '').toString().toLowerCase().contains(q);
+  }
+
+  List<Map<String, dynamic>> get _productosVisibles => !_verProductos
+      ? const []
+      : _productos
+          .where((p) =>
+              _pasaUbicacion(p) &&
+              _pasaCategoria(p, _kCatsProductos) &&
+              _pasaTexto(p))
+          .toList();
+
+  List<Map<String, dynamic>> get _serviciosVisibles => !_verServicios
+      ? const []
+      : _servicios
+          .where((s) =>
+              _pasaUbicacion(s) &&
+              _pasaCategoria(s, _kCatsServicios) &&
+              _pasaTexto(s))
+          .toList();
+
+  /// Categorías que ofrece la barra según las capas encendidas. Con las
+  /// dos, se juntan sin repetir (Construcción y Salud existen en ambas).
+  List<OpcionCategoria> get _opcionesCategorias {
+    final out = <OpcionCategoria>[];
+    void sumar(List<OpcionCategoria> l) {
+      for (final o in l) {
+        if (!out.any((x) => x.nombre == o.nombre)) out.add(o);
+      }
+    }
+
+    if (_verProductos) sumar(_kCatsProductos);
+    if (_verServicios) sumar(_kCatsServicios);
+    return out;
+  }
+
+  /// Al apagar una capa, sus categorías dejan de tener sentido en el filtro.
+  void _limpiarCategoriasHuerfanas() {
+    final validas = _opcionesCategorias.map((o) => o.nombre).toSet();
+    _categorias.removeWhere((c) => !validas.contains(c));
+  }
+
+  // ── Utilidades ───────────────────────────────────────────────────────────
+
+  static double _dist(double lat1, double lng1, double lat2, double lng2) {
+    const r = 6371.0;
+    final dLat = (lat2 - lat1) * math.pi / 180;
+    final dLng = (lng2 - lng1) * math.pi / 180;
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat1 * math.pi / 180) *
+            math.cos(lat2 * math.pi / 180) *
+            math.sin(dLng / 2) *
+            math.sin(dLng / 2);
+    return r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+  }
+
+  double _km(Map item) {
+    final yo = _yo;
+    final lat = item['lat'], lng = item['lng'];
+    if (yo == null || lat is! num || lng is! num) return double.infinity;
+    return _dist(yo.lat, yo.lng, lat.toDouble(), lng.toDouble());
+  }
+
+  static String _fmtKm(double km) {
+    if (km.isInfinite) return '';
+    return km < 1
+        ? '${(km * 1000).toStringAsFixed(0)} m'
+        : '${km.toStringAsFixed(km < 10 ? 1 : 0)} km';
+  }
+
+  static String _url(String u) =>
+      u.startsWith('http') ? u : '${ApiService.baseUrl}$u';
+
+  static bool _si(dynamic v) => v == true || v == 1 || v == '1';
+
+  /// La descripción viene con marcas de formato (negritas, viñetas): para
+  /// dos líneas de adelanto basta el texto plano.
+  static String _textoPlano(dynamic d) => (d ?? '')
+      .toString()
+      .replaceAll(RegExp(r'[*_#>`~]'), '')
+      .replaceAll(RegExp(r'^\s*[-•]\s*', multiLine: true), '')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+
+  static String _nombreServicio(Map s) => [s['nombre'], s['apellido']]
+      .where((x) => x != null && '$x'.trim().isNotEmpty)
+      .join(' ');
+
+  Future<void> _comoLlegar(Map item) async {
+    final lat = (item['lat'] as num?)?.toDouble();
+    final lng = (item['lng'] as num?)?.toDouble();
     if (lat == null || lng == null) return;
-
+    // Punto aproximado: no se revela la dirección exacta del vendedor.
     final rng = math.Random();
-    final latAprox = lat + (rng.nextDouble() - 0.5) * 0.002;
-    final lngAprox = lng + (rng.nextDouble() - 0.5) * 0.002;
-    final titulo = Uri.encodeComponent(p['titulo'] ?? 'OkVenta');
-
-    final apple = Uri.parse('maps://?q=$titulo&ll=$latAprox,$lngAprox');
+    final la = lat + (rng.nextDouble() - 0.5) * 0.002;
+    final ln = lng + (rng.nextDouble() - 0.5) * 0.002;
+    final titulo =
+        Uri.encodeComponent((item['titulo'] ?? 'OkVenta').toString());
+    final apple = Uri.parse('maps://?q=$titulo&ll=$la,$ln');
     if (await canLaunchUrl(apple)) {
       await launchUrl(apple);
     } else {
-      await launchUrl(
-        Uri.parse('https://www.google.com/maps?q=$latAprox,$lngAprox'),
-        mode: LaunchMode.externalApplication,
-      );
+      await launchUrl(Uri.parse('https://www.google.com/maps?q=$la,$ln'),
+          mode: LaunchMode.externalApplication);
     }
   }
 
-  String _formatDistancia(dynamic d) {
-    if (d == null) return '';
-    final km = (d as num).toDouble();
-    return km < 1.0
-        ? "${(km * 1000).toStringAsFixed(0)} m"
-        : "${km.toStringAsFixed(1)} km";
+  // ── Instalación: quién la hace ────────────────────────────────────────────
+
+  String _catServicioDe(Map p) => categoriaServicioParaProducto(
+      (p['categoria'] ?? '').toString(), (p['subcategoria'] ?? '').toString());
+
+  /// El servicio que publicó el propio vendedor para instalar (el que le
+  /// ofrece publicar la invitación después de vender), si existe.
+  Map<String, dynamic>? _servicioDelVendedor(Map p) {
+    final vendedor = p['user_id'];
+    if (vendedor == null) return null;
+    final cat = _catServicioDe(p);
+    final suyos = _servicios.where((s) => s['user_id'] == vendedor).toList();
+    if (suyos.isEmpty) return null;
+    return suyos.firstWhere(
+      (s) =>
+          (s['titulo'] ?? '').toString().toLowerCase().contains('instala') ||
+          s['categoria'] == cat,
+      orElse: () => suyos.first,
+    );
   }
 
-  // ── Filtro radio (bottom sheet) ───────────────────────────────────────────
-  void _mostrarFiltroRadio() {
-    double radioTmp = _radioKm;
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: colors.surface,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, set) => Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(
-                      color: colors.divider,
-                      borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text("Radio de búsqueda",
-                  style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: colors.textPrimary)),
-              const SizedBox(height: 4),
-              Text("${radioTmp.toStringAsFixed(0)} km",
-                  style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      color: colors.primary)),
-              Slider(
-                value: radioTmp,
-                min: 1,
-                max: 50,
-                divisions: 49,
-                activeColor: colors.primary,
-                inactiveColor: colors.divider,
-                onChanged: (v) => set(() => radioTmp = v),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    setState(() => _radioKm = radioTmp);
-                    _obtenerUbicacionYProductos();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Text("Buscar en este radio",
-                      style: TextStyle(
-                          color: colors.textOnPrimary,
-                          fontWeight: FontWeight.w600)),
-                ),
-              ),
-            ],
-          ),
+  /// Proveedor sugerido para instalar un producto.
+  ///
+  /// Solo si la categoría del producto tiene una equivalencia clara en
+  /// OkServicios: sugerir a alguien de "Otros" sería recomendar a
+  /// cualquiera. Entre los que calzan: primero certificados, después mejor
+  /// nota y al final el más cercano al producto. Además tiene que atender
+  /// esa zona: no se sugiere a alguien a 300 km.
+  Map<String, dynamic>? _proveedorSugerido(Map p) {
+    final cat = _catServicioDe(p);
+    if (cat == 'Otros') return null;
+    final plat = p['lat'], plng = p['lng'];
+    if (plat is! num || plng is! num) return null;
+
+    final candidatos = <(Map<String, dynamic>, double)>[];
+    for (final s in _servicios) {
+      if (s['categoria'] != cat || s['user_id'] == p['user_id']) continue;
+      final d = _dist(plat.toDouble(), plng.toDouble(),
+          (s['lat'] as num).toDouble(), (s['lng'] as num).toDouble());
+      final cobertura =
+          math.max(((s['radio_km'] as num?) ?? 5).toDouble(), 25.0);
+      if (d <= cobertura) candidatos.add((s, d));
+    }
+    if (candidatos.isEmpty) return null;
+    candidatos.sort((a, b) {
+      final ca = _si(a.$1['certificado_verificado']) ? 1 : 0;
+      final cb = _si(b.$1['certificado_verificado']) ? 1 : 0;
+      if (ca != cb) return cb - ca;
+      final ra = ((a.$1['rating'] as num?) ?? 0).toDouble();
+      final rb = ((b.$1['rating'] as num?) ?? 0).toDouble();
+      if (ra != rb) return rb.compareTo(ra);
+      return a.$2.compareTo(b.$2);
+    });
+    final mejor = Map<String, dynamic>.from(candidatos.first.$1);
+    mejor['_km_al_producto'] = candidatos.first.$2;
+    return mejor;
+  }
+
+  // ── Dueño de un servicio: ajustar ubicación y radio ───────────────────────
+  // Vivía en el mapa de OkServicios; se trae aquí para no perderlo.
+
+  Future<void> _ajustarUbicacion(Map<String, dynamic> s) async {
+    final res = await Navigator.push<UbicacionElegida>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MapaUbicacionPickerScreen(
+          latInicial: (s['lat'] as num).toDouble(),
+          lngInicial: (s['lng'] as num).toDouble(),
+          radioKmInicial: ((s['radio_km'] as num?) ?? 5).toDouble(),
         ),
       ),
     );
+    if (res == null || !mounted) return;
+    try {
+      final r = await http.patch(
+        Uri.parse('${ApiService.baseUrl}/servicios/${s['id']}/ubicacion'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': _miUserId,
+          'lat': res.lat,
+          'lng': res.lng,
+          'radio_km': res.radioKm,
+        }),
+      );
+      if (!mounted) return;
+      final ok = r.statusCode == 200;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+            ok ? '✅ Ubicación actualizada' : 'No se pudo actualizar la ubicación'),
+        backgroundColor: ok ? Colors.green : colors.primary,
+      ));
+      if (ok) {
+        setState(() => _selServicio = null);
+        _cargarDatos();
+      }
+    } catch (_) {}
   }
 
-  // ── Marker widget ─────────────────────────────────────────────────────────
-  Widget _buildMarker(Map<String, dynamic> p) {
-    final bool sel = _seleccionado?['id'] == p['id'];
-    final imagenUrl = p['imagen_url'] ?? '';
-    final precio = p['precio'];
+  // ── UI ───────────────────────────────────────────────────────────────────
 
-    return GestureDetector(
-      onTap: () {
-        setState(() => _seleccionado = sel ? null : p);
-        if (!sel) {
-          final lat = (p['lat'] as num?)?.toDouble();
-          final lng = (p['lng'] as num?)?.toDouble();
-          if (lat != null && lng != null) {
-            _mapCtrl.move(LatLng(lat, lng), _mapCtrl.zoom);
-          }
-        }
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Foto en miniatura con borde de selección
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            decoration: BoxDecoration(
-              color: colors.surface,
-              borderRadius: BorderRadius.circular(sel ? 10 : 8),
-              border: Border.all(
-                color: sel ? colors.primary : Colors.white,
-                width: sel ? 2.5 : 2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: sel
-                      ? colors.primary.withOpacity(0.35)
-                      : Colors.black.withOpacity(0.25),
-                  blurRadius: sel ? 10 : 5,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(sel ? 6 : 4),
-              child: Image.network(
-                "${ApiService.baseUrl}$imagenUrl",
-                width: sel ? 36 : 28,
-                height: sel ? 36 : 28,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  width: sel ? 36 : 28,
-                  height: sel ? 36 : 28,
-                  color: colors.background,
-                  child: Icon(Icons.image_outlined,
-                      color: colors.grayMid, size: 14),
-                ),
-              ),
-            ),
-          ),
-
-          // Badge precio
-          if (precio != null)
-            Container(
-              margin: const EdgeInsets.only(top: 3),
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-              constraints: const BoxConstraints(maxWidth: 64),
-              decoration: BoxDecoration(
-                color: sel ? colors.primary : colors.carbon,
-                borderRadius: BorderRadius.circular(4),
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 3,
-                      offset: const Offset(0, 1))
-                ],
-              ),
-              // FittedBox: el marcador tiene un ancho fijo y angosto; si el
-              // precio no entra, se achica en vez de cortarse a la mitad.
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  _formatPrecio(precio),
-                  maxLines: 1,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-
-          // Punta indicadora
-          CustomPaint(
-            size: const Size(12, 6),
-            painter: _PuntaPainter(
-                sel ? colors.primary : colors.carbon),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatPrecio(dynamic precio) => formatPrecio(precio);
-
-  // ── Tarjeta inferior cuando hay producto seleccionado ─────────────────────
-  Widget _buildTarjetaSeleccionada(Map<String, dynamic> p) {
-    final titulo = p['titulo'] ?? '';
-    final precio = p['precio'];
-    final imagenUrl = p['imagen_url'] ?? '';
-    final distancia = _formatDistancia(p['distancia_km']);
-    final categoria = p['categoria'] ?? '';
-
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
-      child: SafeArea(
-        top: false,
-        child: Container(
-          margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: colors.surface,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.14),
-                blurRadius: 20,
-                offset: const Offset(0, -4),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              // Imagen
-              GestureDetector(
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(
-                        builder: (_) => ProductoDetalleScreen(producto: p))),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Container(
-                    width: 80, height: 80, color: Colors.white,
-                    child: Image.network(
-                      "${ApiService.baseUrl}$imagenUrl",
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.contain,
-                      alignment: const Alignment(0, -0.4),
-                      errorBuilder: (_, __, ___) => Container(
-                        width: 80,
-                        height: 80,
-                        color: Colors.white,
-                        child: Icon(Icons.image_outlined,
-                            color: colors.grayMid),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Categoría + distancia
-                    Row(
-                      children: [
-                        if (categoria.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: colors.primary.withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(categoria,
-                                style: TextStyle(
-                                    fontSize: 10,
-                                    color: colors.primary,
-                                    fontWeight: FontWeight.w500)),
-                          ),
-                        const Spacer(),
-                        if (distancia.isNotEmpty)
-                          Row(
-                            children: [
-                              Icon(Icons.place_outlined,
-                                  size: 11, color: colors.grayMid),
-                              const SizedBox(width: 2),
-                              Text(distancia,
-                                  style: TextStyle(
-                                      fontSize: 11,
-                                      color: colors.grayMid)),
-                            ],
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 5),
-                    Text(titulo,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                            color: colors.textPrimary)),
-                    const SizedBox(height: 5),
-                    Row(
-                      children: [
-                        if (precio != null)
-                          Text(
-                            formatPrecio(precio),
-                            style: TextStyle(
-                                fontSize: 16,
-                                color: colors.primary,
-                                fontWeight: FontWeight.w700),
-                          ),
-                        const Spacer(),
-                        // Ver en mapa externo
-                        if (p['lat'] != null)
-                          GestureDetector(
-                            onTap: () => _abrirEnMapa(p),
-                            child: Row(
-                              children: [
-                                Icon(Icons.open_in_new_rounded,
-                                    size: 13, color: colors.grayMid),
-                                SizedBox(width: 3),
-                                Text("Maps",
-                                    style: TextStyle(
-                                        fontSize: 11,
-                                        color: colors.grayMid)),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(width: 8),
-
-              // Botón ver detalle
-              GestureDetector(
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(
-                        builder: (_) => ProductoDetalleScreen(producto: p))),
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: colors.primary,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.arrow_forward_rounded,
-                      color: Colors.white, size: 18),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Dot de ubicación del usuario ──────────────────────────────────────────
-  Widget _buildUserDot() {
-    return Container(
-      width: 20,
-      height: 20,
-      decoration: BoxDecoration(
-        color: Colors.blue,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 2.5),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.blue.withOpacity(0.4),
-              blurRadius: 8,
-              spreadRadius: 2)
-        ],
-      ),
-    );
-  }
-
-  // ── BUILD ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final productos = _productosVisibles;
+    final servicios = _serviciosVisibles;
+    final hayFicha = _selProducto != null || _selServicio != null;
+
     return Scaffold(
       backgroundColor: colors.background,
       appBar: AppBar(
         backgroundColor: colors.surface,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios,
-              size: 18, color: colors.textPrimary),
+          icon: Icon(Icons.arrow_back_ios, size: 18, color: colors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("Encontrar",
-                style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: colors.textPrimary)),
-            if (!_loading && !_errorPermisos)
-              Text(
-                "Radio: ${_radioKm.toStringAsFixed(0)} km · ${_productosCercanos.length} productos",
-                style: TextStyle(fontSize: 11, color: colors.grayMid),
-              ),
-          ],
-        ),
+        titleSpacing: 0,
+        title: Text('Encontrar',
+            style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: colors.textPrimary)),
         actions: [
           IconButton(
-            icon: Icon(Icons.tune, color: colors.textPrimary),
-            onPressed: _mostrarFiltroRadio,
-          ),
-          IconButton(
-            icon: Icon(Icons.my_location, color: colors.primary),
-            onPressed: _obtenerUbicacionYProductos,
+            tooltip: 'Recargar',
+            icon: Icon(Icons.refresh_rounded, color: colors.textPrimary),
+            onPressed: _cargarDatos,
           ),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(0.5),
-          child: Container(height: 0.5, color: colors.divider),
-        ),
       ),
-      body: _loading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: colors.primary),
-                  SizedBox(height: 16),
-                  Text("Obteniendo tu ubicación…",
-                      style: TextStyle(color: colors.grayMid)),
-                ],
-              ),
-            )
-          : _errorPermisos
-              ? _pantallaPermisos()
-              : _buildMapa(),
+      body: Column(
+        children: [
+          _encabezado(productos.length, servicios.length),
+          Expanded(
+            child: _cargando
+                ? Center(
+                    child: CircularProgressIndicator(color: colors.primary))
+                : _errorConexion
+                    ? _vistaError()
+                    : Stack(
+                        children: [
+                          _mapa(productos, servicios),
+                          if (!hayFicha)
+                            Positioned(
+                              right: 12,
+                              bottom: 16,
+                              child: _botonMiUbicacion(),
+                            ),
+                          if (productos.isEmpty && servicios.isEmpty)
+                            Positioned(
+                              top: 12,
+                              left: 12,
+                              right: 12,
+                              child: _avisoVacio(),
+                            ),
+                          if (_selProducto != null)
+                            Positioned(
+                              left: 12,
+                              right: 12,
+                              bottom: 12,
+                              child: _fichaProducto(_selProducto!),
+                            ),
+                          if (_selServicio != null)
+                            Positioned(
+                              left: 12,
+                              right: 12,
+                              bottom: 12,
+                              child: _fichaServicio(_selServicio!),
+                            ),
+                        ],
+                      ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildMapa() {
-    // Posición inicial: el usuario, o Santiago de Chile como fallback
-    final center = (_miLat != null && _miLng != null)
-        ? LatLng(_miLat!, _miLng!)
-        : LatLng(-33.4489, -70.6693);
-
-    // Construir la lista de marcadores
-    final markers = <Marker>[];
-
-    // Dot del usuario
-    if (_miLat != null && _miLng != null) {
-      markers.add(Marker(
-        point: LatLng(_miLat!, _miLng!),
-        width: 24,
-        height: 24,
-        builder: (_) => _buildUserDot(),
-      ));
-    }
-
-    // Marcadores de productos (filtrados)
-    for (final p in _productosVisibles) {
-      final lat = (p['lat'] as num?)?.toDouble();
-      final lng = (p['lng'] as num?)?.toDouble();
-      if (lat == null || lng == null) continue;
-
-      final bool sel = _seleccionado?['id'] == p['id'];
-      markers.add(Marker(
-        point: LatLng(lat, lng),
-        width: sel ? 50 : 40,
-        height: sel ? 56 : 46,
-        anchorPos: AnchorPos.align(AnchorAlign.top),
-        builder: (_) => _buildMarker(p),
-      ));
-    }
-
-    // Círculos de 2 km por producto
-    final circulos = _productosVisibles
-        .where((p) => p['lat'] != null && p['lng'] != null)
-        .map((p) => CircleMarker(
-              point: LatLng(
-                (p['lat'] as num).toDouble(),
-                (p['lng'] as num).toDouble(),
-              ),
-              radius: 2000,           // 2 km en metros
-              useRadiusInMeter: true,
-              color: colors.success.withOpacity(0),   // relleno: animado
-              borderStrokeWidth: 2.5,
-              borderColor: colors.success.withOpacity(0), // borde: animado
-            ))
-        .toList();
-
-    return Column(
-      children: [
-        // ── Mapa (con panel de filtro flotante a la izquierda) ────────
-        Expanded(child: Stack(
-      children: [
-        // ── Mapa ─────────────────────────────────────────────────────
-        AnimatedBuilder(
-          animation: _pulsoAnim,
-          builder: (_, __) {
-            // Actualizar opacidades en cada tick
-            final relleno = 0.06 + _pulsoAnim.value * 0.10;   // 0.06 → 0.16
-            final borde   = 0.35 + _pulsoAnim.value * 0.45;   // 0.35 → 0.80
-            final circulosAnimados = _productosVisibles
-                .where((p) => p['lat'] != null && p['lng'] != null)
-                .map((p) => CircleMarker(
-                      point: LatLng(
-                        (p['lat'] as num).toDouble(),
-                        (p['lng'] as num).toDouble(),
-                      ),
-                      radius: 2000,
-                      useRadiusInMeter: true,
-                      color: colors.success.withOpacity(relleno),
-                      borderStrokeWidth: 2.0,
-                      borderColor:
-                          colors.success.withOpacity(borde),
-                    ))
-                .toList();
-
-            return FlutterMap(
-              mapController: _mapCtrl,
-              options: MapOptions(
-                center: center,
-                zoom: 13.5,
-                maxZoom: 19,
-                onTap: (_, __) => setState(() => _seleccionado = null),
-              ),
+  Widget _encabezado(int nProd, int nServ) {
+    return Container(
+      color: colors.surface,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Capas: se pueden encender las dos. Nunca quedan las dos
+          // apagadas: apagar la última enciende la otra.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+            child: Row(
               children: [
-                TileLayer(
-                  urlTemplate:
-                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.okventa.app',
+                _interruptorCapa(
+                  texto: 'Productos',
+                  icono: Icons.shopping_bag_outlined,
+                  n: nProd,
+                  activo: _verProductos,
+                  color: colors.primary,
+                  onTap: () => setState(() {
+                    _verProductos = !_verProductos;
+                    if (!_verProductos && !_verServicios) _verServicios = true;
+                    _limpiarCategoriasHuerfanas();
+                    _selProducto = null;
+                  }),
                 ),
-                // Círculos pulsantes DEBAJO de los marcadores
-                CircleLayer(circles: circulosAnimados),
-                MarkerLayer(
-                  markers: markers,
-                  rotate: false,
+                const SizedBox(width: 8),
+                _interruptorCapa(
+                  texto: 'Servicios',
+                  icono: Icons.handyman_outlined,
+                  n: nServ,
+                  activo: _verServicios,
+                  color: colors.carbon,
+                  onTap: () => setState(() {
+                    _verServicios = !_verServicios;
+                    if (!_verProductos && !_verServicios) _verProductos = true;
+                    _limpiarCategoriasHuerfanas();
+                    _selServicio = null;
+                  }),
                 ),
               ],
-            );
-          },
-        ),
-
-        // ── Panel de filtro lateral izquierdo ─────────────────────────
-        Positioned(
-          left: 8,
-          top: 12,
-          child: _buildPanelFiltro(),
-        ),
-
-        // ── Badge contador arriba ──────────────────────────────────────
-        if (_productosCercanos.isNotEmpty)
-          Positioned(
-            top: 12,
-            left: _panelFiltroAbierto ? 106 : 106,
-            right: 16,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 7),
-                decoration: BoxDecoration(
-                  color: colors.surface,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                        color: Colors.black.withOpacity(0.12),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2))
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.location_on_rounded,
-                        size: 14, color: colors.primary),
-                    const SizedBox(width: 5),
-                    Text(
-                      "${_productosCercanos.length} producto${_productosCercanos.length == 1 ? '' : 's'} a ${_radioKm.toStringAsFixed(0)} km",
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: colors.textPrimary),
-                    ),
-                  ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 2),
+            child: Container(
+              height: 38,
+              decoration: BoxDecoration(
+                color: colors.background,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: colors.divider),
+              ),
+              child: TextField(
+                controller: _searchCtrl,
+                onChanged: (v) => setState(() => _query = v.trim()),
+                style: const TextStyle(fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: 'Buscar en el mapa…',
+                  hintStyle: TextStyle(color: colors.grayMid, fontSize: 13),
+                  prefixIcon:
+                      Icon(Icons.search, size: 18, color: colors.grayMid),
+                  suffixIcon: _query.isNotEmpty
+                      ? GestureDetector(
+                          onTap: () {
+                            _searchCtrl.clear();
+                            setState(() => _query = '');
+                          },
+                          child:
+                              Icon(Icons.close, size: 16, color: colors.grayMid))
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 9),
                 ),
               ),
             ),
           ),
-
-        // ── Sin productos en el radio ──────────────────────────────────
-        if (_productosCercanos.isEmpty && !_loading)
-          Positioned(
-            top: 12,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: colors.surface,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                        color: Colors.black.withOpacity(0.12),
-                        blurRadius: 8)
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.search_off_rounded,
-                        size: 14, color: colors.grayMid),
-                    const SizedBox(width: 6),
-                    Text(
-                      "Sin productos en ${_radioKm.toStringAsFixed(0)} km",
-                      style: TextStyle(
-                          fontSize: 12, color: colors.grayMid),
-                    ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: _mostrarFiltroRadio,
-                      child: Text("Ampliar",
-                          style: TextStyle(
-                              fontSize: 12,
-                              color: colors.primary,
-                              fontWeight: FontWeight.w600)),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+          BarraFiltros(
+            radioKm: _radioKm,
+            distanciaActiva: _distanciaActiva,
+            sinGps: _yo == null && !_buscandoGps,
+            cargandoUbicacion: _buscandoGps,
+            onRadioChanged: (v) => setState(() {
+              _radioKm = v;
+              _distanciaActiva = true;
+            }),
+            onToggleDistancia: () =>
+                setState(() => _distanciaActiva = !_distanciaActiva),
+            modoZona: _modoZona,
+            regiones: _regiones,
+            onModoZona: (z) {
+              setState(() => _modoZona = z);
+              final yo = _yo;
+              if (z) {
+                _encuadrarRegiones();
+              } else if (yo != null) {
+                _mover(LatLng(yo.lat, yo.lng), 12.5);
+              }
+            },
+            onAgregarRegion: (r) {
+              setState(() {
+                if (!_regiones.contains(r)) _regiones.add(r);
+              });
+              _encuadrarRegiones();
+            },
+            onQuitarRegion: (r) {
+              setState(() => _regiones.remove(r));
+              _encuadrarRegiones();
+            },
+            categorias: _opcionesCategorias,
+            seleccionadas: _categorias,
+            onAgregarCategoria: (c) => setState(() {
+              if (!_categorias.contains(c)) _categorias.add(c);
+            }),
+            onQuitarCategoria: (c) => setState(() => _categorias.remove(c)),
+            panel: _panel,
+            onPanel: (p) => setState(() => _panel = p),
           ),
+          Divider(height: 0.5, thickness: 0.5, color: colors.divider),
+        ],
+      ),
+    );
+  }
 
-        // ── Buscador inferior ──────────────────────────────────────────
-        Positioned(
-          bottom: _seleccionado != null ? 130 : 20,
-          left: 16,
-          right: 72,
-          child: Container(
-            height: 44,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(22),
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2))
-              ],
-            ),
-            child: TextField(
-              controller: _searchCtrl,
-              onChanged: (v) => setState(() => _query = v.trim()),
-              style: TextStyle(fontSize: 14, color: colors.textPrimary),
-              decoration: InputDecoration(
-                hintText: 'Buscar producto en el mapa…',
-                hintStyle: TextStyle(fontSize: 13, color: colors.grayMid),
-                prefixIcon: Icon(Icons.search_rounded,
-                    size: 18, color: colors.grayMid),
-                suffixIcon: _query.isNotEmpty
-                    ? GestureDetector(
-                        onTap: () {
-                          _searchCtrl.clear();
-                          setState(() => _query = '');
-                        },
-                        child: Icon(Icons.close_rounded,
-                            size: 16, color: colors.grayMid),
-                      )
-                    : null,
-                border: InputBorder.none,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
-              ),
-            ),
+  Widget _interruptorCapa({
+    required String texto,
+    required IconData icono,
+    required int n,
+    required bool activo,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          height: 36,
+          decoration: BoxDecoration(
+            color: activo ? color : colors.background,
+            borderRadius: BorderRadius.circular(18),
+            border:
+                Border.all(color: activo ? color : colors.divider, width: 0.8),
           ),
-        ),
-
-        // ── Tarjeta del producto seleccionado ──────────────────────────
-        if (_seleccionado != null)
-          _buildTarjetaSeleccionada(_seleccionado!),
-
-        // ── Botón centrar en mi posición ───────────────────────────────
-        Positioned(
-          bottom: _seleccionado != null ? 130 : 20,
-          right: 16,
-          child: Column(
+          alignment: Alignment.center,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              _fabMapa(
-                icon: Icons.my_location_rounded,
-                onTap: () {
-                  if (_miLat != null && _miLng != null) {
-                    _mapCtrl.move(
-                        LatLng(_miLat!, _miLng!),
-                        _mapCtrl.zoom);
-                  }
-                },
-              ),
-              const SizedBox(height: 8),
-              _fabMapa(
-                icon: Icons.tune_rounded,
-                onTap: _mostrarFiltroRadio,
-              ),
+              Icon(activo ? Icons.check_rounded : icono,
+                  size: 15, color: activo ? Colors.white : colors.grayMid),
+              const SizedBox(width: 5),
+              Text(texto,
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: activo ? Colors.white : colors.textSecondary)),
+              if (activo && !_cargando) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text('$n',
+                      style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white)),
+                ),
+              ],
             ],
           ),
         ),
-      ],
-        )),  // cierra Expanded(child: Stack(
-      ],
-    );  // cierra Column
-  }
-
-  Widget _fabMapa({required IconData icon, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: colors.surface,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 8,
-                offset: const Offset(0, 2))
-          ],
-        ),
-        child: Icon(icon, size: 20, color: colors.textPrimary),
       ),
     );
   }
 
-  // ── Bottom sheet: filtro por precio ──────────────────────────────────────
-  void _mostrarFiltroPrecio() {
-    final minCtrl = TextEditingController(text: _precioMin?.toStringAsFixed(0) ?? '');
-    final maxCtrl = TextEditingController(text: _precioMax?.toStringAsFixed(0) ?? '');
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: colors.surface,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => Padding(
-        padding: EdgeInsets.only(
-            left: 20, right: 20, top: 20,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(
-                    color: colors.divider,
-                    borderRadius: BorderRadius.circular(2)),
-              ),
+  Widget _mapa(List<Map<String, dynamic>> productos,
+      List<Map<String, dynamic>> servicios) {
+    final yo = _yo;
+    final centro = yo != null ? LatLng(yo.lat, yo.lng) : _kSantiago;
+
+    final markers = <Marker>[
+      for (final s in servicios)
+        Marker(
+          point: LatLng(
+              (s['lat'] as num).toDouble(), (s['lng'] as num).toDouble()),
+          width: 44,
+          height: 50,
+          anchorPos: AnchorPos.align(AnchorAlign.top),
+          builder: (_) => _pinServicio(s),
+        ),
+      for (final p in productos)
+        Marker(
+          point: LatLng(
+              (p['lat'] as num).toDouble(), (p['lng'] as num).toDouble()),
+          width: 64,
+          height: 60,
+          anchorPos: AnchorPos.align(AnchorAlign.top),
+          builder: (_) => _pinProducto(p),
+        ),
+      if (yo != null)
+        Marker(
+          point: LatLng(yo.lat, yo.lng),
+          width: 22,
+          height: 22,
+          builder: (_) => _puntoYo(),
+        ),
+    ];
+
+    return FlutterMap(
+      mapController: _mapCtrl,
+      options: MapOptions(
+        center: centro,
+        zoom: yo != null ? 13.5 : 11,
+        maxZoom: 19,
+        onTap: (_, __) => setState(() {
+          _selProducto = null;
+          _selServicio = null;
+        }),
+      ),
+      children: [
+        TileLayer(
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'com.okventa.app',
+        ),
+        if (_radioAplica && yo != null)
+          CircleLayer(circles: [
+            CircleMarker(
+              point: LatLng(yo.lat, yo.lng),
+              radius: _radioKm * 1000,
+              useRadiusInMeter: true,
+              color: colors.primary.withValues(alpha: 0.06),
+              borderStrokeWidth: 1.5,
+              borderColor: colors.primary.withValues(alpha: 0.5),
             ),
-            const SizedBox(height: 20),
-            Text('Filtrar por precio',
-                style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: colors.textPrimary)),
-            const SizedBox(height: 16),
-            Row(children: [
-              Expanded(
-                child: TextField(
-                  controller: minCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    hintText: 'Mínimo', prefixText: '\$',
-                    hintStyle: TextStyle(color: colors.grayMid, fontSize: 14),
-                    filled: true, fillColor: colors.background,
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: colors.divider)),
-                    enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: colors.divider)),
-                    focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: colors.primary)),
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          ]),
+        MarkerLayer(markers: markers),
+      ],
+    );
+  }
+
+  Widget _puntoYo() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.blue,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2.5),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.blue.withValues(alpha: 0.4),
+              blurRadius: 8,
+              spreadRadius: 2),
+        ],
+      ),
+    );
+  }
+
+  /// Producto: foto + precio, como siempre.
+  Widget _pinProducto(Map<String, dynamic> p) {
+    final sel = _selProducto?['id'] == p['id'];
+    final img = (p['imagen_url'] ?? '').toString();
+    final vacio = Container(
+      width: 30,
+      height: 30,
+      color: colors.background,
+      child: Icon(Icons.shopping_bag_outlined, size: 15, color: colors.primary),
+    );
+    return GestureDetector(
+      onTap: () => setState(() {
+        _selServicio = null;
+        _selProducto = sel ? null : p;
+      }),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                  color: sel ? colors.primary : Colors.white,
+                  width: sel ? 2.5 : 2),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 5,
+                    offset: const Offset(0, 2)),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(5),
+              child: img.isEmpty
+                  ? vacio
+                  : NetImage(_url(img),
+                      width: 30, height: 30, errorWidget: vacio),
+            ),
+          ),
+          Container(
+            margin: const EdgeInsets.only(top: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+            constraints: const BoxConstraints(maxWidth: 64),
+            decoration: BoxDecoration(
+              color: sel ? colors.primary : colors.primaryDark,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(formatPrecio(p['precio']),
+                  maxLines: 1,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700)),
+            ),
+          ),
+          CustomPaint(
+            size: const Size(10, 5),
+            painter: _PuntaPainter(sel ? colors.primary : colors.primaryDark),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Servicio: círculo oscuro con la llave, para que no se confunda con un
+  /// producto aunque estén uno encima del otro.
+  Widget _pinServicio(Map<String, dynamic> s) {
+    final sel = _selServicio?['id'] == s['id'];
+    final cert = _si(s['certificado_verificado']);
+    return GestureDetector(
+      onTap: () => setState(() {
+        _selProducto = null;
+        _selServicio = sel ? null : s;
+      }),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: sel ? 38 : 34,
+                height: sel ? 38 : 34,
+                decoration: BoxDecoration(
+                  color: sel ? colors.primary : colors.carbon,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.3),
+                        blurRadius: 5,
+                        offset: const Offset(0, 2)),
+                  ],
+                ),
+                child: const Icon(Icons.handyman_rounded,
+                    size: 17, color: Colors.white),
+              ),
+              if (cert)
+                Positioned(
+                  right: -3,
+                  top: -3,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                        color: Colors.white, shape: BoxShape.circle),
+                    child: Icon(Icons.verified_rounded,
+                        size: 14, color: colors.success),
                   ),
                 ),
-              ),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text('—', style: TextStyle(color: colors.grayMid, fontSize: 18)),
-              ),
-              Expanded(
-                child: TextField(
-                  controller: maxCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    hintText: 'Máximo', prefixText: '\$',
-                    hintStyle: TextStyle(color: colors.grayMid, fontSize: 14),
-                    filled: true, fillColor: colors.background,
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: colors.divider)),
-                    enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: colors.divider)),
-                    focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide(color: colors.primary)),
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  ),
-                ),
-              ),
-            ]),
-            const SizedBox(height: 20),
-            Row(children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    setState(() { _precioMin = null; _precioMax = null; });
-                  },
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: colors.divider),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Text('Limpiar', style: TextStyle(color: colors.textSecondary)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    setState(() {
-                      _precioMin = double.tryParse(minCtrl.text.trim());
-                      _precioMax = double.tryParse(maxCtrl.text.trim());
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('Aplicar', style: TextStyle(color: Colors.white)),
-                ),
-              ),
-            ]),
-          ],
+            ],
+          ),
+          CustomPaint(
+            size: const Size(10, 6),
+            painter: _PuntaPainter(sel ? colors.primary : colors.carbon),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _botonMiUbicacion() {
+    return Material(
+      color: colors.surface,
+      shape: const CircleBorder(),
+      elevation: 3,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: () {
+          if (_modoZona) setState(() => _modoZona = false);
+          _cargarUbicacion();
+        },
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: _buscandoGps
+              ? Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: colors.primary))
+              : Icon(Icons.my_location, size: 20, color: colors.primary),
         ),
       ),
     );
   }
 
-  // ── Panel de filtro lateral colapsable ───────────────────────────────────
-  Widget _buildPanelFiltro() {
-    final cats = _categoriasDisponibles;
-    return ConstrainedBox(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.55,
+  Widget _avisoVacio() {
+    final texto = _zonaAplica
+        ? 'Nada con ubicación en ${_regiones.length == 1 ? _regiones.first : 'esas regiones'}'
+        : _radioAplica
+            ? 'Nada a menos de ${_fmtKm(_radioKm)} de ti'
+            : 'Sin resultados con estos filtros';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 8),
+        ],
       ),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeInOut,
-        width: 88,
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.95),
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.14),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            )
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+      child: Row(children: [
+        Icon(Icons.search_off_rounded, size: 18, color: colors.grayMid),
+        const SizedBox(width: 8),
+        Expanded(
+            child: Text(texto,
+                style: TextStyle(fontSize: 13, color: colors.textSecondary))),
+      ]),
+    );
+  }
+
+  Widget _vistaError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.wifi_off_rounded, size: 48, color: colors.primary),
+          const SizedBox(height: 12),
+          Text('Sin conexión al servidor',
+              style: TextStyle(
+                  fontWeight: FontWeight.w600, color: colors.textPrimary)),
+          const SizedBox(height: 12),
+          TextButton(
+              onPressed: _cargarDatos,
+              child: Text('Reintentar', style: TextStyle(color: colors.primary))),
+        ]),
+      ),
+    );
+  }
+
+  // ── Fichas ───────────────────────────────────────────────────────────────
+
+  Widget _contenedorFicha(
+      {required Widget child, required VoidCallback onClose}) {
+    return Material(
+      color: colors.surface,
+      elevation: 8,
+      borderRadius: BorderRadius.circular(16),
+      child: Stack(
+        children: [
+          Padding(padding: const EdgeInsets.all(12), child: child),
+          Positioned(
+            right: 2,
+            top: 2,
+            child: IconButton(
+              visualDensity: VisualDensity.compact,
+              icon: Icon(Icons.close_rounded, size: 18, color: colors.grayMid),
+              onPressed: onClose,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _miniatura(String url, IconData icono) {
+    final fallback = Container(
+      width: 72,
+      height: 72,
+      decoration: BoxDecoration(
+          color: colors.background, borderRadius: BorderRadius.circular(10)),
+      child: Icon(icono, color: colors.grayMid),
+    );
+    if (url.isEmpty) return fallback;
+    return NetImage(_url(url),
+        width: 72,
+        height: 72,
+        borderRadius: BorderRadius.circular(10),
+        errorWidget: fallback);
+  }
+
+  Widget _descripcion(dynamic d) {
+    final t = _textoPlano(d);
+    if (t.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Text(t,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+              fontSize: 12.5, height: 1.3, color: colors.textSecondary)),
+    );
+  }
+
+  Widget _fichaProducto(Map<String, dynamic> p) {
+    final km = _km(p);
+    return _contenedorFicha(
+      onClose: () => setState(() => _selProducto = null),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header — toca para colapsar/expandir
-              GestureDetector(
-                onTap: () => setState(() {
-                  _panelFiltroAbierto = !_panelFiltroAbierto;
-                  if (!_panelFiltroAbierto) {
-                    _filtroCategoriasActivo = false;
-                    _categoriasSeleccionadas.clear();
-                  } else {
-                    _filtroCategoriasActivo = true;
-                  }
-                }),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-                  color: colors.carbon,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+              _miniatura((p['imagen_url'] ?? '').toString(),
+                  Icons.shopping_bag_outlined),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 26),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        _panelFiltroAbierto
-                            ? Icons.tune_rounded
-                            : Icons.tune_rounded,
-                        size: 12, color: Colors.white,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          _panelFiltroAbierto ? 'Filtrar' : 'Filtrar',
-                          style: const TextStyle(
-                              fontSize: 11,
+                      Text((p['titulo'] ?? '').toString(),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 14,
                               fontWeight: FontWeight.w700,
-                              color: Colors.white),
-                        ),
-                      ),
-                      Icon(
-                        _panelFiltroAbierto
-                            ? Icons.expand_less_rounded
-                            : Icons.expand_more_rounded,
-                        size: 13, color: Colors.white70,
+                              color: colors.textPrimary)),
+                      const SizedBox(height: 2),
+                      Text(formatPrecio(p['precio']),
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: colors.primary)),
+                      Text(
+                        [
+                          (p['nombre_vendedor'] ?? '').toString(),
+                          _fmtKm(km),
+                        ].where((x) => x.isNotEmpty).join(' · '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 11, color: colors.grayMid),
                       ),
                     ],
                   ),
                 ),
               ),
-
-              // Precio (siempre visible cuando el panel está abierto)
-              if (_panelFiltroAbierto)
-                InkWell(
-                  onTap: _mostrarFiltroPrecio,
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                    color: _tieneFiltroPrecio
-                        ? colors.primary.withOpacity(0.1)
-                        : null,
-                    child: Column(
-                      children: [
-                        Icon(Icons.attach_money_rounded,
-                            size: 16,
-                            color: _tieneFiltroPrecio
-                                ? colors.primary
-                                : colors.grayMid),
-                        const SizedBox(height: 2),
-                        Text('Precio',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: _tieneFiltroPrecio
-                                  ? FontWeight.w700
-                                  : FontWeight.w500,
-                              color: _tieneFiltroPrecio
-                                  ? colors.primary
-                                  : colors.grayMid,
-                            )),
-                      ],
-                    ),
-                  ),
+            ],
+          ),
+          _descripcion(p['descripcion']),
+          _lineaInstalacion(p),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _comoLlegar(p),
+                icon: const Icon(Icons.directions_outlined, size: 16),
+                label: const Text('Cómo llegar'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: colors.textPrimary,
+                  side: BorderSide(color: colors.divider),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
                 ),
-              if (_panelFiltroAbierto)
-                Container(height: 0.5, color: colors.divider),
-
-              // Categorías (solo cuando abierto)
-              if (_panelFiltroAbierto && cats.isNotEmpty)
-                Flexible(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        // "Todas"
-                        _fCat(null, Icons.apps_rounded, 'Todas',
-                            _categoriasSeleccionadas.isEmpty),
-                        Container(height: 0.5, color: colors.divider),
-                        ...cats.map((cat) {
-                          final sel = _categoriasSeleccionadas.contains(cat);
-                          final icono = _iconoCategoria(cat);
-                          return InkWell(
-                            onTap: () => setState(() {
-                              if (sel) {
-                                _categoriasSeleccionadas.remove(cat);
-                              } else {
-                                _categoriasSeleccionadas.add(cat);
-                              }
-                            }),
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 6),
-                              color: sel
-                                  ? colors.primary.withOpacity(0.1)
-                                  : null,
-                              child: Column(
-                                children: [
-                                  Icon(icono,
-                                      size: 16,
-                                      color: sel
-                                          ? colors.primary
-                                          : colors.grayMid),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    cat.length > 8
-                                        ? '${cat.substring(0, 7)}…'
-                                        : cat,
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: sel
-                                          ? FontWeight.w700
-                                          : FontWeight.w500,
-                                      color: sel
-                                          ? colors.primary
-                                          : colors.grayMid,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => ProductoDetalleScreen(producto: p)),
                 ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.primary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+                child: const Text('Ver producto'),
+              ),
+            ),
+          ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _cajaInstalacion({
+    required IconData icono,
+    required Color color,
+    required String titulo,
+    String? detalle,
+    String? accion,
+    VoidCallback? onAccion,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 0.6),
+      ),
+      child: Row(children: [
+        Icon(icono, size: 18, color: color),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(titulo,
+                  style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary)),
+              if (detalle != null && detalle.isNotEmpty)
+                Text(detalle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                        TextStyle(fontSize: 11.5, color: colors.textSecondary)),
             ],
           ),
         ),
-      ),
+        if (accion != null)
+          TextButton(
+            onPressed: onAccion,
+            style: TextButton.styleFrom(
+              foregroundColor: colors.primary,
+              visualDensity: VisualDensity.compact,
+            ),
+            child: Text(accion,
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+          ),
+      ]),
     );
   }
 
-  Widget _fCat(String? cat, IconData icon, String label, bool sel) {
-    return InkWell(
-      onTap: () => setState(() => _categoriasSeleccionadas.clear()),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        color: sel ? colors.primary.withOpacity(0.1) : null,
-        child: Column(
-          children: [
-            Icon(icon,
-                size: 16,
-                color: sel ? colors.primary : colors.grayMid),
-            const SizedBox(height: 2),
-            Text(label,
-                style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                    color: sel ? colors.primary : colors.grayMid)),
-          ],
+  /// Línea de instalación de la ficha de producto. Tres casos: la hace el
+  /// vendedor / se sugiere un proveedor de OkServicios / no requiere (nada).
+  Widget _lineaInstalacion(Map<String, dynamic> p) {
+    if (!_si(p['requiere_instalacion'])) return const SizedBox.shrink();
+
+    if (_si(p['instalacion_vendedor'])) {
+      final suyo = _servicioDelVendedor(p);
+      return _cajaInstalacion(
+        icono: Icons.check_circle_rounded,
+        color: colors.success,
+        titulo: 'Instalación incluida',
+        detalle: 'La hace el mismo vendedor',
+        accion: suyo != null ? 'Ver servicio' : null,
+        onAccion: suyo == null
+            ? null
+            : () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => ServicioDetalleScreen(servicio: suyo))),
+      );
+    }
+
+    final prov = _proveedorSugerido(p);
+    if (prov != null) {
+      final rating = ((prov['rating'] as num?) ?? 0).toDouble();
+      final kmProv = prov['_km_al_producto'];
+      final partes = <String>[
+        _nombreServicio(prov),
+        (prov['titulo'] ?? '').toString(),
+        if (rating > 0) '★ ${rating.toStringAsFixed(1)}',
+        if (kmProv is double) 'a ${_fmtKm(kmProv)} del producto',
+      ].where((x) => x.isNotEmpty).toList();
+      return _cajaInstalacion(
+        icono: Icons.handyman_rounded,
+        color: colors.carbon,
+        titulo: _si(prov['certificado_verificado'])
+            ? 'Requiere instalación · sugerido (certificado)'
+            : 'Requiere instalación · sugerido',
+        detalle: partes.join(' · '),
+        accion: 'Ver',
+        onAccion: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => ServicioDetalleScreen(servicio: prov))),
+      );
+    }
+
+    // Sin proveedor que calce (o categoría sin equivalencia): se manda a
+    // buscar, igual que en el detalle del producto.
+    return _cajaInstalacion(
+      icono: Icons.build_outlined,
+      color: colors.warning,
+      titulo: 'Requiere instalación',
+      detalle: 'El vendedor no la hace',
+      accion: 'Buscar',
+      onAccion: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ServiciosScreen(
+              busquedaInicial: (p['categoria'] ?? '').toString()),
         ),
       ),
     );
   }
 
-  IconData _iconoCategoria(String cat) {
-    const map = <String, IconData>{
-      'Electrónica':  Icons.devices_outlined,
-      'Automotriz':   Icons.directions_car_outlined,
-      'Hogar':        Icons.home_outlined,
-      'Ropa':         Icons.checkroom_outlined,
-      'Deportes':     Icons.fitness_center_outlined,
-      'Ocio':         Icons.sports_esports_outlined,
-      'Mascotas':     Icons.pets_outlined,
-      'Salud':        Icons.health_and_safety_outlined,
-      'Construcción': Icons.construction_outlined,
-      'Fotografía':   Icons.camera_alt_outlined,
-      'Educación':    Icons.menu_book_outlined,
-      'Negocios':     Icons.business_center_outlined,
-      'General':      Icons.category_outlined,
-    };
-    return map[cat] ?? Icons.more_horiz_rounded;
-  }
+  Widget _fichaServicio(Map<String, dynamic> s) {
+    final fotos = s['fotos'];
+    final foto =
+        (fotos is List && fotos.isNotEmpty) ? fotos.first.toString() : '';
+    final rating = ((s['rating'] as num?) ?? 0).toDouble();
+    final nVal = ((s['num_valoraciones'] as num?) ?? 0).toInt();
+    final cert = _si(s['certificado_verificado']);
+    final valor = s['valor'];
+    final porHora = s['modalidad'] == 'hora';
+    final km = _km(s);
+    final esMio = _miUserId != null && s['user_id'] == _miUserId;
 
-  // ── Pantallas auxiliares ──────────────────────────────────────────────────
-  Widget _pantallaPermisos() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.location_off,
-                size: 64, color: colors.grayMid.withOpacity(0.4)),
-            const SizedBox(height: 20),
-            Text("Necesitamos tu ubicación",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: colors.textPrimary)),
-            const SizedBox(height: 12),
-            Text(
-              "Para mostrarte productos cerca de ti, necesitamos acceder a tu ubicación.",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: colors.grayMid, fontSize: 14, height: 1.5),
-            ),
-            const SizedBox(height: 28),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () async =>
-                    await Geolocator.openAppSettings(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+    final datos = <String>[
+      if (valor is num && valor > 0)
+        '${formatPrecio(valor)}${porHora ? ' / hora' : ''}',
+      if (rating > 0) '★ ${rating.toStringAsFixed(1)} ($nVal)',
+      _fmtKm(km),
+    ].where((x) => x.isNotEmpty).join(' · ');
+
+    return _contenedorFicha(
+      onClose: () => setState(() => _selServicio = null),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _miniatura(foto, Icons.handyman_outlined),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 26),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text((s['titulo'] ?? '').toString(),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: colors.textPrimary)),
+                      const SizedBox(height: 2),
+                      Row(children: [
+                        Flexible(
+                          child: Text(_nombreServicio(s),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: 12, color: colors.textSecondary)),
+                        ),
+                        if (cert) ...[
+                          const SizedBox(width: 4),
+                          Icon(Icons.verified_rounded,
+                              size: 14, color: colors.success),
+                        ],
+                      ]),
+                      if (datos.isNotEmpty)
+                        Text(datos,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: colors.primary)),
+                    ],
+                  ),
                 ),
-                child: Text("Abrir configuración",
-                    style: TextStyle(
-                        color: colors.textOnPrimary,
-                        fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+          _descripcion(s['descripcion']),
+          const SizedBox(height: 10),
+          Row(children: [
+            if (esMio) ...[
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => _ajustarUbicacion(s),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: colors.textPrimary,
+                    side: BorderSide(color: colors.divider),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Ajustar ubicación'),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => ServicioDetalleScreen(servicio: s)),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.carbon,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+                child: Text(esMio ? 'Ver mi servicio' : 'Ver y contactar'),
               ),
             ),
-            const SizedBox(height: 12),
-            TextButton(
-              onPressed: _obtenerUbicacionYProductos,
-              child: Text("Reintentar",
-                  style: TextStyle(color: colors.primary)),
-            ),
-          ],
-        ),
+          ]),
+        ],
       ),
     );
   }
 }
 
-// ── Painter para la punta del marcador ────────────────────────────────────────
+/// La punta de los pines.
 class _PuntaPainter extends CustomPainter {
   final Color color;
   const _PuntaPainter(this.color);
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
     final path = ui.Path()
       ..moveTo(0, 0)
       ..lineTo(size.width / 2, size.height)
       ..lineTo(size.width, 0)
       ..close();
-    canvas.drawPath(path, paint);
+    canvas.drawPath(path, Paint()..color = color);
   }
 
   @override

@@ -1,9 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:http/http.dart' as http;
-import 'package:latlong2/latlong.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
@@ -14,14 +10,13 @@ import '../theme/app_theme.dart';
 import 'agregar_servicio_screen.dart';
 import 'delivery_proximamente_screen.dart';
 import 'delivery_registro_screen.dart';
-import 'mapa_ubicacion_picker_screen.dart';
+import 'encontrar_screen.dart';
 import 'okdelivery_pendientes_screen.dart';
 import 'servicio_detalle_screen.dart';
 import '../widgets/banner_publicidad.dart';
 import '../widgets/barra_filtros.dart';
 import '../utils/regiones_chile.dart';
 import '../widgets/net_image.dart';
-import '../widgets/punto_ubicacion.dart';
 class ServiciosScreen extends StatefulWidget {
   /// Texto con el que abrir el buscador ya escrito.
   ///
@@ -48,7 +43,7 @@ class _ServiciosScreenState extends State<ServiciosScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _inicializar();
   }
 
@@ -98,8 +93,8 @@ class _ServiciosScreenState extends State<ServiciosScreen>
       }
       return;
     }
-    // Tab 3 = Delivery → registro en pausa (ver okDeliveryDisponible)
-    if (_tabController.index == 3) {
+    // Tab 2 = Delivery → registro en pausa (ver okDeliveryDisponible)
+    if (_tabController.index == 2) {
       if (!mounted) return;
       await Navigator.push(
         context,
@@ -108,7 +103,8 @@ class _ServiciosScreenState extends State<ServiciosScreen>
       _cargar();
       return;
     }
-    // Pasar el tipo según el tab activo (0=Ofrezco, 1=Busco, 2=Mapa→Ofrezco)
+    // Pasar el tipo según el tab activo (0=Ofrezco, 1=Busco). El mapa de
+    // servicios se mudó a Encontrar, junto con el de productos.
     final tipoInicial =
         _tabController.index == 1 ? 'busco' : 'ofrezco';
     if (!mounted) return;
@@ -150,11 +146,6 @@ class _ServiciosScreenState extends State<ServiciosScreen>
                     onRefresh: _cargar,
                     onPublicar: _irAAgregar,
                   ),
-                  _MapaServicios(
-                    servicios: [..._ofrezco, ..._busco],
-                    miUserId: _miUserId,
-                    onUbicacionActualizada: _cargar,
-                  ),
                   _DeliveryTab(
                     delivery: _delivery,
                     miUserId: _miUserId,
@@ -194,6 +185,19 @@ class _ServiciosScreenState extends State<ServiciosScreen>
                     ),
                   ),
                 ),
+                // El mapa de servicios vive ahora en Encontrar, junto con
+                // el de productos; este botón lleva directo, con la capa de
+                // servicios encendida.
+                IconButton(
+                  tooltip: 'Ver en el mapa',
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) =>
+                            const EncontrarScreen(soloServicios: true)),
+                  ),
+                  icon: Icon(Icons.map_outlined, color: colors.textPrimary),
+                ),
                 // Okventin servicios: solo en modo oscuro, mismo tamaño
                 // agrandado que en el home (57).
                 ValueListenableBuilder<bool>(
@@ -231,7 +235,6 @@ class _ServiciosScreenState extends State<ServiciosScreen>
                   tabs: const [
                     Tab(text: 'Ofrezco'),
                     Tab(text: 'Busco'),
-                    Tab(text: 'Mapa'),
                     Tab(text: 'Delivery'),
                   ],
                 ),
@@ -1653,586 +1656,6 @@ class _DeliveryTabState extends State<_DeliveryTab> {
         size: 20, color: colors.grayMid);
   }
 }
-
-// ── Mapa de servicios ─────────────────────────────────────────────────────────
-
-final _kSantiago = LatLng(-33.4489, -70.6693);
-
-class _MapaServicios extends StatefulWidget {
-  final List<Map<String, dynamic>> servicios;
-  final int? miUserId;
-  final VoidCallback onUbicacionActualizada;
-
-  const _MapaServicios({
-    required this.servicios,
-    required this.miUserId,
-    required this.onUbicacionActualizada,
-  });
-
-  @override
-  State<_MapaServicios> createState() => _MapaServiciosState();
-}
-
-class _MapaServiciosState extends State<_MapaServicios> {
-  bool    _guardando        = false;
-  bool    _panelAbierto     = false;
-  String? _filtroTipo;       // null = todos | 'ofrezco' | 'busco'
-  String? _filtroCategoria;  // null = todas | nombre de categoría
-
-  final _searchCtrl = TextEditingController();
-  String _query = '';
-
-  /// Ubicación del usuario, para pintar su punto en el mapa. Null mientras
-  /// no la haya dado o si no dio permiso.
-  Coordenadas? _miUbicacion;
-
-  @override
-  void initState() {
-    super.initState();
-    // Sin bloquear: el mapa se muestra igual y el punto aparece cuando el
-    // GPS responde. Si el usuario no da permiso, simplemente no hay punto.
-    UbicacionService.obtener().then((c) {
-      if (mounted && c != null) setState(() => _miUbicacion = c);
-    });
-  }
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    super.dispose();
-  }
-
-  List<Map<String, dynamic>> get _serviciosFiltrados {
-    var lista = widget.servicios.where((s) {
-      if (_filtroTipo != null && s['tipo'] != _filtroTipo) return false;
-      if (_filtroCategoria != null && s['categoria'] != _filtroCategoria) {
-        return false;
-      }
-      return true;
-    }).toList();
-    if (_query.isNotEmpty) {
-      final q = _query.toLowerCase();
-      lista = lista.where((s) {
-        final titulo = (s['titulo'] ?? '').toString().toLowerCase();
-        final cat    = (s['categoria'] ?? '').toString().toLowerCase();
-        return titulo.contains(q) || cat.contains(q);
-      }).toList();
-    }
-    return lista;
-  }
-
-  Future<void> _ajustarRadio(Map<String, dynamic> s) async {
-    final result = await Navigator.push<UbicacionElegida>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => MapaUbicacionPickerScreen(
-          latInicial:    (s['lat'] as num).toDouble(),
-          lngInicial:    (s['lng'] as num).toDouble(),
-          radioKmInicial: (s['radio_km'] as num?)?.toDouble() ?? 5.0,
-        ),
-      ),
-    );
-    if (result == null || !mounted) return;
-
-    setState(() => _guardando = true);
-    try {
-      final resp = await http.patch(
-        Uri.parse('${ApiService.baseUrl}/servicios/${s['id']}/ubicacion'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'user_id':  widget.miUserId,
-          'lat':      result.lat,
-          'lng':      result.lng,
-          'radio_km': result.radioKm,
-        }),
-      );
-      if (resp.statusCode == 200 && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Ubicación actualizada'),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        widget.onUbicacionActualizada();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _guardando = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final todos         = widget.servicios
-        .where((s) => s['lat'] != null && s['lng'] != null)
-        .toList();
-
-    final filtrados     = _serviciosFiltrados;
-    final conUbicacion  = filtrados
-        .where((s) => s['lat'] != null && s['lng'] != null)
-        .toList();
-
-    final center = todos.isNotEmpty
-        ? LatLng(
-            (todos.first['lat'] as num).toDouble(),
-            (todos.first['lng'] as num).toDouble(),
-          )
-        : _kSantiago;
-
-    return Stack(
-      children: [
-        FlutterMap(
-          options: MapOptions(center: center, zoom: 11),
-          children: [
-            TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.okventa.app',
-            ),
-
-            // ── Círculos de cobertura ─────────────────────────────────────
-            if (conUbicacion.isNotEmpty)
-              CircleLayer(
-                circles: conUbicacion.map((s) {
-                  final radioKm = (s['radio_km'] as num?)?.toDouble() ?? 5.0;
-                  final color   = _hexColor(s['color_hex'] as String?);
-                  return CircleMarker(
-                    point: LatLng(
-                      (s['lat'] as num).toDouble(),
-                      (s['lng'] as num).toDouble(),
-                    ),
-                    radius: radioKm * 1000,
-                    useRadiusInMeter: true,
-                    color: color.withOpacity(0.12),
-                    borderStrokeWidth: 1.5,
-                    borderColor: color.withOpacity(0.5),
-                  );
-                }).toList(),
-              ),
-
-            // ── Globos de texto + mi ubicación ────────────────────────────
-            // Sin condición: el punto de mi ubicación debe verse aunque no
-            // haya ningún servicio con dirección marcada.
-            MarkerLayer(
-                markers: [
-                  // Punto de mi ubicación, igual que en el mapa de productos.
-                  if (_miUbicacion != null)
-                    Marker(
-                      point: LatLng(_miUbicacion!.lat, _miUbicacion!.lng),
-                      width: 24,
-                      height: 24,
-                      builder: (_) => const PuntoUbicacion(),
-                    ),
-                ] +
-                    conUbicacion.map((s) {
-                  final tipo    = s['tipo'] as String? ?? 'ofrezco';
-                  final titulo  = s['titulo'] as String? ?? '';
-                  final esMio   = widget.miUserId != null &&
-                      s['user_id'] == widget.miUserId;
-                  final color   = _hexColor(s['color_hex'] as String?);
-                  final palabras = titulo.trim()
-                      .split(RegExp(r'\s+'))
-                      .take(2)
-                      .join(' ');
-                  final label =
-                      '${tipo == 'ofrezco' ? 'Ofrezco' : 'Busco'}: $palabras';
-
-                  return Marker(
-                    point: LatLng(
-                      (s['lat'] as num).toDouble(),
-                      (s['lng'] as num).toDouble(),
-                    ),
-                    width: 170,
-                    height: esMio ? 64 : 46,
-                    anchorPos: AnchorPos.align(AnchorAlign.bottom),
-                    builder: (_) => Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        GestureDetector(
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  ServicioDetalleScreen(servicio: s),
-                            ),
-                          ),
-                          child: _GloboMarcador(label: label, color: color),
-                        ),
-                        // Botón ajustar radio SOLO para el titular
-                        if (esMio)
-                          GestureDetector(
-                            onTap: _guardando ? null : () => _ajustarRadio(s),
-                            child: Container(
-                              margin: const EdgeInsets.only(top: 2),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 7, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                    color: color.withOpacity(0.5)),
-                                boxShadow: [
-                                  BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
-                                      blurRadius: 4)
-                                ],
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.radar_rounded,
-                                      size: 11, color: color),
-                                  const SizedBox(width: 3),
-                                  Text('Ajustar radio',
-                                      style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w700,
-                                          color: color)),
-                                ],
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-          ],
-        ),
-
-        // ── Panel de filtros (izquierda) ──────────────────────────────────
-        Positioned(
-          left: 8,
-          top: 12,
-          child: _buildFiltroPanel(),
-        ),
-
-        // Aviso cuando no hay ubicaciones tras filtrar
-        if (conUbicacion.isEmpty)
-          Positioned(
-            top: 16,
-            left: 110,
-            right: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.black.withOpacity(0.12),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2))
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.info_outline,
-                      size: 13, color: colors.grayMid),
-                  SizedBox(width: 5),
-                  Flexible(
-                    child: Text(
-                      'Sin ubicación registrada',
-                      style: TextStyle(
-                          fontSize: 11, color: colors.grayMid),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-        // ── Buscador inferior ──────────────────────────────────────────
-        Positioned(
-          bottom: 20,
-          left: 16,
-          right: 16,
-          child: Container(
-            height: 44,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(22),
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2))
-              ],
-            ),
-            child: TextField(
-              controller: _searchCtrl,
-              onChanged: (v) => setState(() => _query = v.trim()),
-              style: TextStyle(fontSize: 14, color: colors.textPrimary),
-              decoration: InputDecoration(
-                hintText: 'Buscar servicio en el mapa…',
-                hintStyle: TextStyle(fontSize: 13, color: colors.grayMid),
-                prefixIcon: Icon(Icons.search_rounded,
-                    size: 18, color: colors.grayMid),
-                suffixIcon: _query.isNotEmpty
-                    ? GestureDetector(
-                        onTap: () {
-                          _searchCtrl.clear();
-                          setState(() => _query = '');
-                        },
-                        child: Icon(Icons.close_rounded,
-                            size: 16, color: colors.grayMid),
-                      )
-                    : null,
-                border: InputBorder.none,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
-              ),
-            ),
-          ),
-        ),
-
-        if (_guardando)
-          Container(
-            color: Colors.black26,
-            child: const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            ),
-          ),
-      ],
-    );
-  }
-
-  // ── Panel de filtros lateral izquierdo (colapsable) ──────────────────────
-  Widget _buildFiltroPanel() {
-    return ConstrainedBox(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.55,
-      ),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeInOut,
-        width: 88,
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.95),
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.14),
-                blurRadius: 10,
-                offset: const Offset(0, 3))
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Header — toca para expandir/colapsar
-              GestureDetector(
-                onTap: () => setState(() {
-                  _panelAbierto = !_panelAbierto;
-                  if (!_panelAbierto) {
-                    _filtroTipo      = null;
-                    _filtroCategoria = null;
-                  }
-                }),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 7),
-                  color: colors.carbon,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.tune_rounded,
-                          size: 12, color: Colors.white),
-                      const SizedBox(width: 4),
-                      const Expanded(
-                        child: Text('Filtrar',
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white)),
-                      ),
-                      Icon(
-                        _panelAbierto
-                            ? Icons.expand_less_rounded
-                            : Icons.expand_more_rounded,
-                        size: 13,
-                        color: Colors.white70,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Contenido — solo visible cuando el panel está abierto
-              if (_panelAbierto) ...[
-                // Filtro por tipo
-                _fBtn(null, Icons.apps_rounded, 'Todos',
-                    _filtroTipo == null, colors.textPrimary),
-                _fBtn('ofrezco', Icons.handyman_outlined, 'Ofrezco',
-                    _filtroTipo == 'ofrezco', colors.primary),
-                _fBtn('busco', Icons.search_rounded, 'Busco',
-                    _filtroTipo == 'busco', colors.warning),
-
-                Container(height: 0.5, color: colors.divider),
-
-                // Categorías (scrollable)
-                Flexible(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: _kCategorias.map((cat) {
-                        final icon =
-                            _kCategoriaIconos[cat] ?? Icons.more_horiz_rounded;
-                        final sel = _filtroCategoria == cat;
-                        return InkWell(
-                          onTap: () => setState(() {
-                            _filtroCategoria = sel ? null : cat;
-                          }),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 6),
-                            color: sel
-                                ? colors.primary.withOpacity(0.1)
-                                : null,
-                            child: Column(
-                              children: [
-                                Icon(icon,
-                                    size: 16,
-                                    color: sel
-                                        ? colors.primary
-                                        : colors.grayMid),
-                                const SizedBox(height: 2),
-                                Text(
-                                  cat.length > 8
-                                      ? '${cat.substring(0, 7)}…'
-                                      : cat,
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: sel
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
-                                    color: sel
-                                        ? colors.primary
-                                        : colors.grayMid,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _fBtn(String? tipo, IconData icon, String label,
-      bool sel, Color color) {
-    return InkWell(
-      onTap: () => setState(() {
-        _filtroTipo = (tipo == null || _filtroTipo == tipo) ? tipo : tipo;
-        if (tipo == null) _filtroTipo = null;
-        else _filtroTipo = _filtroTipo == tipo ? null : tipo;
-      }),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-        color: sel ? color.withOpacity(0.1) : null,
-        child: Row(
-          children: [
-            Icon(icon,
-                size: 14,
-                color: sel ? color : colors.grayMid),
-            const SizedBox(width: 5),
-            Flexible(
-              child: Text(
-                label,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight:
-                      sel ? FontWeight.w700 : FontWeight.w500,
-                  color: sel ? color : colors.grayMid,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Globo de marcador (speech bubble) ────────────────────────────────────────
-
-class _GloboMarcador extends StatelessWidget {
-  final String label;
-  final Color  color;
-  const _GloboMarcador({required this.label, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Burbuja
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: [
-              BoxShadow(
-                  color: color.withOpacity(0.4),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2))
-            ],
-          ),
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.2,
-            ),
-          ),
-        ),
-        // Triángulo puntero — truco de borders sin CustomPainter
-        SizedBox(
-          width: 12,
-          height: 6,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              border: Border(
-                left: const BorderSide(
-                    width: 6, color: Colors.transparent),
-                right: const BorderSide(
-                    width: 6, color: Colors.transparent),
-                top: BorderSide(width: 6, color: color),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Widget estrellas ──────────────────────────────────────────────────────────
 
 class _Estrellas extends StatelessWidget {
   final double rating;
