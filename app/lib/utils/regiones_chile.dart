@@ -134,6 +134,17 @@ class RegionesChile {
     return nombres[idx];
   }
 
+  /// Puntos de referencia de una región: sirven para encuadrar el mapa
+  /// cuando el usuario elige esa región.
+  static List<(double, double)> puntosDe(String region) {
+    final idx = nombres.indexOf(region);
+    if (idx < 0) return const [];
+    return [
+      for (final (lat, lng, r) in _ciudades)
+        if (r == idx) (lat, lng),
+    ];
+  }
+
   /// Igual que [regionDe] pero leyendo lat/lng de un mapa de la API.
   static String? regionDeItem(Map item) {
     final lat = item['lat'], lng = item['lng'];
