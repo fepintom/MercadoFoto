@@ -11,6 +11,7 @@ import '../services/cart_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/barra_filtros.dart';
+import '../widgets/insignia.dart';
 import '../utils/regiones_chile.dart';
 import 'carrito_screen.dart';
 import 'producto_detalle_screen.dart';
@@ -879,6 +880,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                         top: Radius.circular(12)),
                   ),
                 ),
+                // Lo instala el mismo vendedor: se ve antes de abrir el aviso.
+                if (item['instalacion_vendedor'] == true ||
+                    item['instalacion_vendedor'] == 1)
+                  const Positioned(
+                    left: 6, bottom: 6,
+                    child: Insignia.instalacion(tamano: 28),
+                  ),
                 if (distKm != null)
                   Positioned(
                     top: 6, right: 6,

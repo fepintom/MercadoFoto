@@ -10,6 +10,7 @@ import '../services/auth_service.dart';
 import '../services/cart_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/insignia.dart';
 import '../utils/format_utils.dart';
 import '../widgets/registro_form_widget.dart';
 import 'chat_screen.dart';
@@ -133,7 +134,10 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.handyman_outlined, size: 18, color: colors.primary),
+              laHaceVendedor
+                  ? const Insignia.instalacion(tamano: 30)
+                  : Icon(Icons.handyman_outlined,
+                      size: 18, color: colors.primary),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
