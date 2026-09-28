@@ -15,6 +15,7 @@ import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../utils/regiones_chile.dart';
 import '../widgets/barra_filtros.dart';
+import '../widgets/insignia.dart';
 import '../widgets/invitacion_servicio_instalacion.dart'
     show categoriaServicioParaProducto;
 import '../widgets/net_image.dart';
@@ -800,6 +801,7 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
       color: colors.background,
       child: Icon(Icons.shopping_bag_outlined, size: 15, color: colors.primary),
     );
+    final instala = _si(p['instalacion_vendedor']);
     return GestureDetector(
       onTap: () => setState(() {
         _selServicio = null;
@@ -808,6 +810,7 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          Stack(clipBehavior: Clip.none, children: [
           Container(
             decoration: BoxDecoration(
               color: colors.surface,
@@ -830,6 +833,13 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
                       width: 30, height: 30, errorWidget: vacio),
             ),
           ),
+          if (instala)
+            const Positioned(
+              right: -8,
+              top: -6,
+              child: Insignia.instalacion(tamano: 16, explicable: false),
+            ),
+          ]),
           Container(
             margin: const EdgeInsets.only(top: 2),
             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
@@ -891,15 +901,10 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
                     size: 17, color: Colors.white),
               ),
               if (cert)
-                Positioned(
-                  right: -3,
-                  top: -3,
-                  child: Container(
-                    decoration: const BoxDecoration(
-                        color: Colors.white, shape: BoxShape.circle),
-                    child: Icon(Icons.verified_rounded,
-                        size: 14, color: colors.success),
-                  ),
+                const Positioned(
+                  right: -5,
+                  top: -5,
+                  child: Insignia.certificado(tamano: 18, explicable: false),
                 ),
             ],
           ),
@@ -1126,6 +1131,7 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
 
   Widget _cajaInstalacion({
     required IconData icono,
+    Widget? lider,
     required Color color,
     required String titulo,
     String? detalle,
@@ -1141,7 +1147,7 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
         border: Border.all(color: color.withValues(alpha: 0.3), width: 0.6),
       ),
       child: Row(children: [
-        Icon(icono, size: 18, color: color),
+        lider ?? Icon(icono, size: 18, color: color),
         const SizedBox(width: 8),
         Expanded(
           child: Column(
@@ -1184,7 +1190,8 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
       final suyo = _servicioDelVendedor(p);
       return _cajaInstalacion(
         icono: Icons.check_circle_rounded,
-        color: colors.success,
+        lider: const Insignia.instalacion(tamano: 26),
+        color: Insignia.dorado,
         titulo: 'Instalación incluida',
         detalle: 'La hace el mismo vendedor',
         accion: suyo != null ? 'Ver servicio' : null,
@@ -1209,6 +1216,9 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
       ].where((x) => x.isNotEmpty).toList();
       return _cajaInstalacion(
         icono: Icons.handyman_rounded,
+        lider: _si(prov['certificado_verificado'])
+            ? const Insignia.certificado(tamano: 26)
+            : null,
         color: colors.carbon,
         titulo: _si(prov['certificado_verificado'])
             ? 'Requiere instalación · sugerido (certificado)'
@@ -1294,8 +1304,7 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
                         ),
                         if (cert) ...[
                           const SizedBox(width: 4),
-                          Icon(Icons.verified_rounded,
-                              size: 14, color: colors.success),
+                          const Insignia.certificado(tamano: 18),
                         ],
                       ]),
                       if (datos.isNotEmpty)

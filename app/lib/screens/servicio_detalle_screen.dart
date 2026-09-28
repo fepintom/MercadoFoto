@@ -8,6 +8,7 @@ import '../widgets/avatar_usuario.dart' show urlFotoPerfil;
 import '../services/session_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/insignia.dart';
 import 'chat_servicio_screen.dart';
 import '../widgets/net_image.dart';
 class ServicioDetalleScreen extends StatefulWidget {
@@ -332,26 +333,17 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                                 ),
                                 if (verificado) ...[
                                   const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 7, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.green.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: const Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.verified,
-                                            color: Colors.green, size: 12),
-                                        SizedBox(width: 3),
-                                        Text('Profesional Certificado',
-                                            style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w700,
-                                                color: Colors.green)),
-                                      ],
-                                    ),
+                                  const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Insignia.certificado(tamano: 24),
+                                      SizedBox(width: 4),
+                                      Text('Profesional certificado',
+                                          style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w800,
+                                              color: Insignia.dorado)),
+                                    ],
                                   ),
                                 ],
                               ],

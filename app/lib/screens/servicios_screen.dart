@@ -15,6 +15,7 @@ import 'okdelivery_pendientes_screen.dart';
 import 'servicio_detalle_screen.dart';
 import '../widgets/banner_publicidad.dart';
 import '../widgets/barra_filtros.dart';
+import '../widgets/insignia.dart';
 import '../utils/regiones_chile.dart';
 import '../widgets/net_image.dart';
 class ServiciosScreen extends StatefulWidget {
@@ -1034,27 +1035,17 @@ class _TarjetaServicio extends StatelessWidget {
                                 fontSize: 10, color: colors.grayMid)),
                       ),
                       if (verificado)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                                color: Colors.green.withOpacity(0.4)),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.verified, color: Colors.green, size: 10),
-                              SizedBox(width: 2),
-                              Text('Certificado',
-                                  style: TextStyle(
-                                      fontSize: 9,
-                                      color: Colors.green,
-                                      fontWeight: FontWeight.w700)),
-                            ],
-                          ),
+                        const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Insignia.certificado(tamano: 18),
+                            SizedBox(width: 3),
+                            Text('Certificado',
+                                style: TextStyle(
+                                    fontSize: 9,
+                                    color: Insignia.dorado,
+                                    fontWeight: FontWeight.w800)),
+                          ],
                         ),
                     ],
                   ),
@@ -1232,6 +1223,8 @@ class _TarjetaServicioCompacta extends StatelessWidget {
     final modalidad = servicio['modalidad'] as String? ?? 'servicio';
     final valor     = (servicio['valor'] as num?)?.toDouble() ?? 0;
     final fotos     = servicio['fotos'] as List? ?? [];
+    final verificado = servicio['certificado_verificado'] == true ||
+        servicio['certificado_verificado'] == 1;
     final tipoColor = tipo == 'ofrezco' ? colors.primary : colors.warning;
     final prefix    = tipo == 'ofrezco' ? 'Ofrezco' : 'Busco';
 
@@ -1285,6 +1278,11 @@ class _TarjetaServicioCompacta extends StatelessWidget {
                                 ),
                               ),
                             )),
+                  if (verificado)
+                    const Positioned(
+                      right: 4, top: 4,
+                      child: Insignia.certificado(tamano: 26),
+                    ),
                   Positioned(
                     left: 0, top: 0,
                     child: Container(
