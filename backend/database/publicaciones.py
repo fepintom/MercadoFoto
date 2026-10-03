@@ -50,6 +50,10 @@ def init_publicaciones_db():
         # vendedor. Es lo que permite que una venta derive en un servicio.
         "requiere_instalacion INTEGER DEFAULT 0",
         "instalacion_vendedor INTEGER DEFAULT 0",
+        # Precio "antes" de una rebaja. Lo llena solo _registrar_cambio_precio
+        # cuando el vendedor baja el precio; de ahí sale el % de descuento
+        # que muestra la etiqueta "Oferta" del aviso.
+        "precio_original REAL",
     ]:
         try:
             cursor.execute(f"ALTER TABLE publicaciones ADD COLUMN {col}")
@@ -63,6 +67,52 @@ def init_publicaciones_db():
 # --------------------------------------------------
 # GUARDAR PUBLICACION
 # --------------------------------------------------
+
+# Bajo este porcentaje no se anuncia oferta: bajar $10 de $50.000 no es un
+# descuento que valga la pena destacar.
+DESCUENTO_MINIMO_PCT = 5
+
+
+def descuento_pct(precio, precio_original):
+    """% de descuento respecto del precio original, o 0 si no hay."""
+    try:
+        if not precio_original or not precio or precio_original <= precio:
+            return 0
+        pct = int(round((precio_original - precio) * 100.0 / precio_original))
+        return pct if pct >= DESCUENTO_MINIMO_PCT else 0
+    except Exception:
+        return 0
+
+
+def _registrar_cambio_precio(cursor, publicacion_id, nuevo_precio):
+    """Antes de cambiar el precio, anota el precio "antes" si es una rebaja.
+
+    - Baja de precio sin rebaja anterior: el precio actual pasa a ser el
+      original (de ahí sale el %).
+    - Otra baja sobre una rebaja: se mantiene el original de la primera, así
+      el % muestra el descuento total.
+    - Sube hasta (o por sobre) el original: ya no hay oferta, se borra.
+    """
+    try:
+        cursor.execute(
+            "SELECT precio, precio_original FROM publicaciones WHERE id = ?",
+            (publicacion_id,))
+        r = cursor.fetchone()
+        if not r or r[0] is None or nuevo_precio is None:
+            return
+        actual, original = float(r[0]), r[1]
+        nuevo = float(nuevo_precio)
+        if nuevo < actual:
+            if original is None or float(original) < actual:
+                original = actual
+        elif original is not None and nuevo >= float(original):
+            original = None
+        cursor.execute(
+            "UPDATE publicaciones SET precio_original = ? WHERE id = ?",
+            (original, publicacion_id))
+    except Exception as e:
+        print(f"WARN precio_original {publicacion_id}: {e}")
+
 
 def guardar_publicacion(
     titulo,
@@ -186,7 +236,8 @@ def obtener_publicaciones():
         p.tipo_publicacion,
         u.foto_url,
         COALESCE(p.requiere_instalacion, 0),
-        COALESCE(p.instalacion_vendedor, 0)
+        COALESCE(p.instalacion_vendedor, 0),
+        p.precio_original
     FROM publicaciones p
     LEFT JOIN users u
     ON p.user_id = u.id
@@ -233,6 +284,8 @@ def obtener_publicaciones():
             "foto_vendedor": row[22] or "",
             "requiere_instalacion": bool(row[23]),
             "instalacion_vendedor": bool(row[24]),
+            "precio_original": row[25],
+            "descuento_pct": descuento_pct(row[3], row[25]),
         })
 
     return publicaciones
@@ -403,6 +456,8 @@ def actualizar_precio(publicacion_id, nuevo_precio):
 
     precio_anterior = row[0]
 
+    _registrar_cambio_precio(cursor, publicacion_id, nuevo_precio)
+
     cursor.execute("""
         UPDATE publicaciones
         SET precio = ?
@@ -435,7 +490,8 @@ def obtener_publicacion_por_id(publicacion_id):
         p.sku, p.stock, p.codigo_universal, p.tallas, p.tipo_publicacion,
         u.foto_url,
         COALESCE(p.requiere_instalacion, 0),
-        COALESCE(p.instalacion_vendedor, 0)
+        COALESCE(p.instalacion_vendedor, 0),
+        p.precio_original
     FROM publicaciones p
     LEFT JOIN users u ON p.user_id = u.id
     WHERE p.id = ?
@@ -463,6 +519,8 @@ def obtener_publicacion_por_id(publicacion_id):
         "foto_vendedor": row[22] or "",
         "requiere_instalacion": bool(row[23]),
         "instalacion_vendedor": bool(row[24]),
+        "precio_original": row[25],
+        "descuento_pct": descuento_pct(row[3], row[25]),
     }
 
 
@@ -476,6 +534,8 @@ def editar_publicacion(publicacion_id, titulo, descripcion, precio,
 
     conn = sqlite3.connect(DB)
     cursor = conn.cursor()
+
+    _registrar_cambio_precio(cursor, publicacion_id, precio)
 
     if imagen_url is not None:
         cursor.execute("""

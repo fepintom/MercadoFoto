@@ -10,6 +10,7 @@ import '../services/auth_service.dart';
 import '../services/cart_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/etiqueta_oferta.dart';
 import '../widgets/insignia.dart';
 import '../utils/format_utils.dart';
 import '../widgets/registro_form_widget.dart';
@@ -2125,15 +2126,45 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Text(
-                          formatPrecio(precio),
-                          style: TextStyle(
-                            fontSize: 28,
-                            color: colors.primary,
-                            fontWeight: FontWeight.w800,
+                        // Flexible + FittedBox: con un precio largo y la
+                        // etiqueta al lado, el precio se achica en vez de
+                        // desbordar la pantalla.
+                        Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              formatPrecio(precio),
+                              style: TextStyle(
+                                fontSize: 28,
+                                color: colors.primary,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
                           ),
                         ),
+                        // Rebaja: el precio de antes tachado y la etiqueta.
+                        if (EtiquetaOferta.de(widget.producto) > 0) ...[
+                          const SizedBox(width: 10),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                formatPrecio(widget.producto['precio_original']),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: colors.grayMid,
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              EtiquetaOferta(
+                                  pct: EtiquetaOferta.de(widget.producto)),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),

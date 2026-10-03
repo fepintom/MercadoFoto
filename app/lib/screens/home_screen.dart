@@ -596,6 +596,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ? 'Agregar dirección'
         : [etiqueta, direccion].where((s) => s.isNotEmpty).join(' · ');
 
+    // En negro (texto principal), no en rojo: el rojo queda para
+    // acciones y filtros; la dirección es un dato.
     return GestureDetector(
       onTap: _mostrarSelectorDireccion,
       behavior: HitTestBehavior.opaque,
@@ -605,7 +607,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Icon(
             dir == null ? Icons.add_location_alt_outlined : Icons.location_on_rounded,
             size: 14,
-            color: colors.primary,
+            color: colors.textPrimary,
           ),
           const SizedBox(width: 4),
           Expanded(
@@ -613,14 +615,14 @@ class _HomeScreenState extends State<HomeScreen> {
               texto,
               style: TextStyle(
                 fontSize: 12,
-                color: colors.primary,
+                color: colors.textPrimary,
                 fontWeight: FontWeight.w600,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: colors.primary),
+          Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: colors.textPrimary),
         ],
       ),
     );

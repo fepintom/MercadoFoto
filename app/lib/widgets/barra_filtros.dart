@@ -5,9 +5,15 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/regiones_chile.dart';
 import 'barra_radio_km.dart';
+
+/// Color de los íconos y flechas de las pastillas: el rojo de "Publicar"
+/// en modo claro y blanco en modo oscuro (el gris se perdía en ambos).
+Color colorIconoPastilla() =>
+    ThemeService.isDarkMode ? Colors.white : colors.primarySuave;
 
 /// Qué panel está desplegado bajo la fila de filtros.
 enum PanelFiltro { ninguno, distancia, categorias }
@@ -387,7 +393,7 @@ class BarraFiltros extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.place_outlined,
-                              size: 13, color: colors.grayMid),
+                              size: 13, color: colorIconoPastilla()),
                           const SizedBox(width: 4),
                           Text(r,
                               style: TextStyle(
@@ -396,7 +402,7 @@ class BarraFiltros extends StatelessWidget {
                                   color: colors.textPrimary)),
                           const SizedBox(width: 3),
                           Icon(Icons.add_rounded,
-                              size: 13, color: colors.grayMid),
+                              size: 13, color: colorIconoPastilla()),
                         ],
                       ),
                     ),
@@ -444,7 +450,7 @@ class BarraFiltros extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(c.icono, size: 13, color: colors.grayMid),
+                          Icon(c.icono, size: 13, color: colorIconoPastilla()),
                           const SizedBox(width: 5),
                           Text(c.nombre,
                               style: TextStyle(
@@ -453,7 +459,7 @@ class BarraFiltros extends StatelessWidget {
                                   color: colors.textPrimary)),
                           const SizedBox(width: 3),
                           Icon(Icons.add_rounded,
-                              size: 13, color: colors.grayMid),
+                              size: 13, color: colorIconoPastilla()),
                         ],
                       ),
                     ),
@@ -503,7 +509,8 @@ class _PastillaBoton extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icono, size: 13, color: activo ? colors.primary : colors.grayMid),
+            Icon(icono,
+                size: 13, color: activo ? colors.primary : colorIconoPastilla()),
             const SizedBox(width: 5),
             Text(texto,
                 style: TextStyle(
@@ -516,7 +523,7 @@ class _PastillaBoton extends StatelessWidget {
                 turns: abierto ? 0.5 : 0,
                 duration: const Duration(milliseconds: 180),
                 child: Icon(Icons.keyboard_arrow_down_rounded,
-                    size: 16, color: colors.grayMid),
+                    size: 16, color: colorIconoPastilla()),
               ),
             ],
           ],
