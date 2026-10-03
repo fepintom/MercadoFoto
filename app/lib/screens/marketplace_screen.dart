@@ -8,9 +8,11 @@ import '../utils/format_utils.dart';
 
 import '../services/api_service.dart';
 import '../services/cart_service.dart';
+import '../services/session_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/barra_filtros.dart';
+import '../widgets/etiqueta_oferta.dart';
 import '../widgets/insignia.dart';
 import '../utils/regiones_chile.dart';
 import 'carrito_screen.dart';
@@ -150,6 +152,43 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     super.initState();
     cargarPublicaciones();
     _cargarColumnas();
+    SessionService.obtenerUser().then((id) {
+      if (mounted) setState(() => _miUserId = id);
+    });
+  }
+
+  /// Para no ofrecer "agregar al carro" en mis propias publicaciones.
+  int? _miUserId;
+
+  void _agregarAlCarro(Map<String, dynamic> item) {
+    final agregado = CartService.addProducto(Map<String, dynamic>.from(item));
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.clearSnackBars();
+    messenger.showSnackBar(SnackBar(
+      content: Text(agregado ? 'Agregado al carro' : 'Ya estaba en tu carro'),
+      backgroundColor: colors.carbon,
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 2),
+      action: SnackBarAction(
+        label: 'Ver carro',
+        textColor: Colors.white,
+        onPressed: () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const CarritoScreen())),
+      ),
+    ));
+  }
+
+  void _abrirDetalle(Map<String, dynamic> item) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ProductoDetalleScreen(producto: item)),
+    ).then((result) {
+      if (result == true) {
+        cargarPublicaciones(); // producto editado o eliminado → reload
+      } else if (mounted) {
+        setState(() {}); // solo refrescar estado local (favorito, etc.)
+      }
+    });
   }
 
   Future<void> _cargarColumnas() async {
@@ -806,7 +845,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   // Evita que el bloque de texto se corte cuando hay más columnas (tarjetas
   // más angostas → la imagen cuadrada también se achica en alto, pero el
   // texto de abajo necesita ~118px sin importar el ancho).
-  static const double _kAltoBloqueTexto = 132;
+  // 132 del texto + 40 de la fila de botones (carro / ver detalle).
+  static const double _kAltoBloqueTexto = 172;
 
   double _aspectRatioTarjeta(BuildContext context) {
     final anchoDisponible = MediaQuery.of(context).size.width - 24; // padding lateral
@@ -843,17 +883,15 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
       );
     }
 
+    final int dcto = EtiquetaOferta.de(item);
+    final precioOriginal = item['precio_original'];
+    final stock = item['stock'];
+    final bool agotado = (item['estado'] ?? 'disponible') != 'disponible' ||
+        (stock is num && stock <= 0);
+    final bool esMio = _miUserId != null && item['user_id'] == _miUserId;
+
     return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => ProductoDetalleScreen(producto: item)),
-      ).then((result) {
-        if (result == true) {
-          cargarPublicaciones(); // producto editado o eliminado → reload
-        } else {
-          setState(() {}); // solo refrescar estado local (favorito, etc.)
-        }
-      }),
+      onTap: () => _abrirDetalle(item),
       child: Container(
         // Último seguro: si por cualquier motivo el contenido no calzara,
         // se recorta en el borde redondeado en vez de pintarse encima de la
@@ -924,7 +962,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: (esNuevo ? colors.success : colors.warning)
+                          color: (esNuevo ? colors.success : colors.primary)
                               .withValues(alpha: 0.10),
                           borderRadius: BorderRadius.circular(4),
                         ),
@@ -935,7 +973,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                                 fontWeight: FontWeight.w500,
                                 color: esNuevo
                                     ? colors.success
-                                    : colors.warning,
+                                    : colors.primary,
                                 shadows: const [
                                   Shadow(
                                       color: Colors.black26,
@@ -949,7 +987,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: colors.primary.withValues(alpha: 0.08),
+                              color: colors.grayMid.withValues(alpha: 0.14),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(categoria.toString(),
@@ -959,7 +997,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                                 style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w500,
-                                    color: colors.primary,
+                                    color: colors.textSecondary,
                                     shadows: const [
                                       Shadow(
                                           color: Colors.black26,
@@ -979,14 +1017,34 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                   // FittedBox: si la tarjeta queda muy angosta (más columnas),
                   // el precio se achica para seguir viéndose completo en una
                   // sola línea en vez de cortarse.
+                  // Precio (+ el de antes tachado) y, si hay rebaja, la
+                  // etiqueta "OFERTA -x%". Todo en una línea que se achica
+                  // si la tarjeta es angosta.
                   SizedBox(
                     width: double.infinity,
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
-                      child: Text(formatPrecio(precio),
-                          maxLines: 1,
-                          style: TextStyle(fontSize: 17, color: colors.primary, fontWeight: FontWeight.w700)),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(formatPrecio(precio),
+                              maxLines: 1,
+                              style: TextStyle(fontSize: 17, color: colors.primary, fontWeight: FontWeight.w700)),
+                          if (dcto > 0) ...[
+                            const SizedBox(width: 5),
+                            Text(formatPrecio(precioOriginal),
+                                maxLines: 1,
+                                style: TextStyle(
+                                    fontSize: 11,
+                                    color: colors.grayMid,
+                                    decoration: TextDecoration.lineThrough)),
+                            const SizedBox(width: 5),
+                            EtiquetaOferta(pct: dcto, compacta: true),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -1002,12 +1060,76 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 10),
+                  // Carro (abajo a la izquierda) y Ver detalle (abajo a la
+                  // derecha). Sin carro en lo propio ni en lo agotado.
+                  Row(
+                    children: [
+                      if (!esMio && !agotado) ...[
+                        _botonCarro(item),
+                        const SizedBox(width: 6),
+                      ],
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () => _abrirDetalle(item),
+                          child: Container(
+                            height: 30,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: colors.grayMid.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(agotado ? 'Agotado' : 'Ver detalle',
+                                  maxLines: 1,
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: colors.textSecondary)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  /// Botón de carro de la tarjeta. Cambia a "en el carro" si ya está.
+  Widget _botonCarro(Map<String, dynamic> item) {
+    return ValueListenableBuilder<List<Map<String, dynamic>>>(
+      valueListenable: CartService.cartNotifier,
+      builder: (_, __, ___) {
+        final enCarro = CartService.contiene((item['id'] as num?)?.toInt());
+        return GestureDetector(
+          onTap: () => _agregarAlCarro(item),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            width: 38,
+            height: 30,
+            decoration: BoxDecoration(
+              color: enCarro
+                  ? colors.primary
+                  : colors.primary.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              enCarro
+                  ? Icons.shopping_cart_rounded
+                  : Icons.add_shopping_cart_rounded,
+              size: 17,
+              color: enCarro ? Colors.white : colors.primary,
+            ),
+          ),
+        );
+      },
     );
   }
 
