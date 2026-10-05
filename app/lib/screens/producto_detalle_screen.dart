@@ -9,6 +9,7 @@ import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/cart_service.dart';
 import '../services/session_service.dart';
+import '../services/favoritos_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/etiqueta_oferta.dart';
 import '../widgets/insignia.dart';
@@ -379,6 +380,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
       }
       if (!mounted) return;
       setState(() => _esFavorito = !_esFavorito);
+      // Para que el corazón de la tarjeta en OkMarket quede igual.
+      FavoritosService.marcar(pubId, _esFavorito);
     } catch (e) {
       debugPrint("ERROR favorito: $e");
     } finally {
@@ -1801,7 +1804,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                   Stack(
                     children: [
                       AspectRatio(
-                        aspectRatio: 1,
+                        aspectRatio: 4 / 3,
                         child: PageView.builder(
                           controller: _imgPageController,
                           itemCount: imagenes.length,
@@ -1853,7 +1856,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                   GestureDetector(
                     onTap: () => _verFotoCompleta(imagenes, 0),
                     child: AspectRatio(
-                      aspectRatio: 1,
+                      aspectRatio: 4 / 3,
                       child: ColoredBox(
                         color: Colors.white,
                         child: NetImage(
@@ -1869,7 +1872,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
 
             Padding(
               padding:
-                  const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  const EdgeInsets.fromLTRB(14, 12, 14, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -2003,7 +2006,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                   Text(
                     titulo,
                     style: TextStyle(
-                      fontSize: 22,
+                      fontSize: 19,
                       fontWeight: FontWeight.w700,
                       color: colors.textPrimary,
                     ),
@@ -2112,12 +2115,12 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                     ),
                   ],
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
 
                   // Precio
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 12),
+                        horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: colors.surface,
                       borderRadius: BorderRadius.circular(12),
@@ -2137,7 +2140,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                             child: Text(
                               formatPrecio(precio),
                               style: TextStyle(
-                                fontSize: 28,
+                                fontSize: 24,
                                 color: colors.primary,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -2186,9 +2189,9 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                     ),
                   ],
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
                   const Divider(height: 1, thickness: 0.5),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
 
                   // Descripción, con sus negritas, viñetas y párrafos.
                   TextoDescripcion(
@@ -2200,12 +2203,12 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
 
                   // Medios de pago aceptados
                   _mediosDePago(),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
 
                   // Devolución gratis + Compra protegida
                   Row(
@@ -2263,7 +2266,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                     ],
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
 
                   // Información adicional — siempre de solo lectura aquí.
                   // El dueño la edita desde "Editar publicación" (un solo
@@ -2291,8 +2294,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
 
                     return Container(
                       width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                       decoration: BoxDecoration(
                         color: colors.surface,
                         borderRadius: BorderRadius.circular(12),
@@ -2363,8 +2366,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                       onTap: _abrirRegistroModal,
                       child: Container(
                         width: double.infinity,
-                        margin: const EdgeInsets.only(bottom: 16),
-                        padding: const EdgeInsets.all(14),
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: colors.background,
                           borderRadius: BorderRadius.circular(12),
@@ -2389,7 +2392,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                       ),
                     ),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 10),
 
                   // ── BOTONES ACCIÓN ─────────────────────────────────
 
@@ -2404,7 +2407,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                           foregroundColor: colors.textOnPrimary,
                           elevation: 0,
                           padding:
-                              const EdgeInsets.symmetric(vertical: 14),
+                              const EdgeInsets.symmetric(vertical: 11),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
                         ),
@@ -2432,7 +2435,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                   side: BorderSide(
                                       color: colors.textPrimary, width: 1),
                                   padding:
-                                      const EdgeInsets.symmetric(vertical: 12),
+                                      const EdgeInsets.symmetric(vertical: 10),
                                   shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12)),
                                   textStyle: const TextStyle(
@@ -2453,7 +2456,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                   side: BorderSide(
                                       color: colors.textPrimary, width: 1),
                                   padding:
-                                      const EdgeInsets.symmetric(vertical: 12),
+                                      const EdgeInsets.symmetric(vertical: 10),
                                   shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12)),
                                   textStyle: const TextStyle(
@@ -2619,7 +2622,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                               foregroundColor: colors.textOnPrimary,
                               elevation: 0,
                               padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
+                                  const EdgeInsets.symmetric(vertical: 11),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12)),
                             ),
@@ -2753,7 +2756,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                               side: BorderSide(
                                   color: colors.primary, width: 1),
                               padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
+                                  const EdgeInsets.symmetric(vertical: 11),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12)),
                             ),
@@ -2762,7 +2765,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                       ],
                     ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 14),
                 ],
               ),
             ),

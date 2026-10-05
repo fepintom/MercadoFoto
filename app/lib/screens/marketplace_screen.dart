@@ -8,6 +8,7 @@ import '../utils/format_utils.dart';
 
 import '../services/api_service.dart';
 import '../services/cart_service.dart';
+import '../services/favoritos_service.dart';
 import '../services/session_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
@@ -154,6 +155,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     _cargarColumnas();
     SessionService.obtenerUser().then((id) {
       if (mounted) setState(() => _miUserId = id);
+      if (id != null) FavoritosService.cargar(id);
     });
   }
 
@@ -231,7 +233,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       color: colors.textPrimary)),
               const SizedBox(height: 4),
               Text('Achica para ver más productos, agranda para verlos más grandes',
-                  style: TextStyle(fontSize: 12, color: colors.grayMid)),
+                  style: TextStyle(fontSize: 12, color: colors.textPrimary)),
               Row(
                 children: [
                   Icon(Icons.grid_view_rounded,
@@ -265,7 +267,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
               const SizedBox(height: 4),
               Text(
                 'Oscurece el gris del fondo. Solo aplica al modo diurno.',
-                style: TextStyle(fontSize: 12, color: colors.grayMid),
+                style: TextStyle(fontSize: 12, color: colors.textPrimary),
               ),
               ValueListenableBuilder<double>(
                 valueListenable: ThemeService.bgTintNotifier,
@@ -571,7 +573,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text("Ordenar por",
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.textSecondary)),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.textPrimary)),
                 const SizedBox(height: 8),
                 for (final op in _nombresOrden.entries)
                   GestureDetector(
@@ -651,7 +653,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
 
                 const SizedBox(height: 18),
                 Text("Estado",
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.textSecondary)),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.textPrimary)),
                 const SizedBox(height: 8),
                 Row(children: [
                   for (final op in const [
@@ -686,12 +688,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                 ]),
                 const SizedBox(height: 18),
                 Text("Precio",
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.textSecondary)),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: colors.textPrimary)),
                 const SizedBox(height: 8),
                 Row(children: [
                   Expanded(child: _campoFiltro(ctrl: minCtrl, hint: "Mínimo", prefix: "\$")),
                   Padding(padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Text("—", style: TextStyle(color: colors.grayMid, fontSize: 18))),
+                    child: Text("—", style: TextStyle(color: colors.textPrimary, fontSize: 18))),
                   Expanded(child: _campoFiltro(ctrl: maxCtrl, hint: "Máximo", prefix: "\$")),
                 ]),
                 const SizedBox(height: 20),
@@ -713,7 +715,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: Text("Limpiar", style: TextStyle(color: colors.textSecondary)),
+                      child: Text("Limpiar", style: TextStyle(color: colors.textPrimary)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -832,7 +834,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
               child: Text(sub,
                   style: TextStyle(
                     fontSize: 11, fontWeight: FontWeight.w500,
-                    color: selected ? Colors.white : colors.textSecondary,
+                    color: selected ? Colors.white : colors.textPrimary,
                   )),
             ),
           ),
@@ -841,29 +843,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     );
   }
 
-  // ── Aspect ratio dinámico de la tarjeta (imagen cuadrada + texto fijo) ────
-  // Evita que el bloque de texto se corte cuando hay más columnas (tarjetas
-  // más angostas → la imagen cuadrada también se achica en alto, pero el
-  // texto de abajo necesita ~118px sin importar el ancho).
-  // 132 del texto + 40 de la fila de botones (carro / ver detalle).
-  static const double _kAltoBloqueTexto = 172;
-
-  double _aspectRatioTarjeta(BuildContext context) {
-    final anchoDisponible = MediaQuery.of(context).size.width - 24; // padding lateral
-    final anchoTarjeta =
-        (anchoDisponible - (10 * (_columnas - 1))) / _columnas;
-    // Si el teléfono tiene la letra agrandada (Ajustes → Pantalla → Tamaño
-    // del texto), las mismas líneas ocupan más alto. Con un alto fijo, ahí
-    // el texto se salía por abajo de la tarjeta; ahora el bloque crece en
-    // la misma proporción que la letra.
-    final escalaLetra =
-        MediaQuery.textScalerOf(context).scale(10) / 10;
-    final altoTarjeta =
-        anchoTarjeta + _kAltoBloqueTexto * escalaLetra.clamp(1.0, 2.0);
-    return anchoTarjeta / altoTarjeta;
-  }
-
   // ── Card de producto ──────────────────────────────────────────────────────
+  //
+  // Ajustada al contenido: ya no hay un alto fijo estimado (que dejaba
+  // espacio en blanco). Cada fila de la grilla mide lo que la tarjeta más
+  // alta de esa fila necesita, y las demás se estiran para quedar parejas,
+  // con los botones siempre abajo (ver _filaDeTarjetas).
 
   Widget _itemProducto(Map<String, dynamic> item) {
     final imagenUrl = item['imagen_url'] ?? "";
@@ -874,6 +859,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     final categoria = item['categoria'];
     final condicion = (item['condicion'] as String?) ?? 'nuevo';
     final bool esNuevo = condicion == 'nuevo';
+    final bool angosta = _columnas >= 3;
 
     double? distKm;
     if (_radioActivo && item['lat'] != null && item['lng'] != null) {
@@ -890,20 +876,30 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
         (stock is num && stock <= 0);
     final bool esMio = _miUserId != null && item['user_id'] == _miUserId;
 
+    Widget etiqueta(String texto, Color color) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(texto,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              softWrap: false,
+              style: TextStyle(
+                  fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+        );
+
     return GestureDetector(
       onTap: () => _abrirDetalle(item),
       child: Container(
-        // Último seguro: si por cualquier motivo el contenido no calzara,
-        // se recorta en el borde redondeado en vez de pintarse encima de la
-        // tarjeta vecina.
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: colors.surface,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: colors.divider, width: 0.5),
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Stack(
@@ -914,22 +910,25 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     "${ApiService.baseUrl}$imagenUrl",
                     width: double.infinity,
                     fit: BoxFit.contain,
-                    borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(12)),
                   ),
+                ),
+                // Corazón de favoritos: arriba a la derecha.
+                Positioned(
+                  top: 4, right: 4,
+                  child: _botonFavorito(item),
                 ),
                 // Lo instala el mismo vendedor: se ve antes de abrir el aviso.
                 if (item['instalacion_vendedor'] == true ||
                     item['instalacion_vendedor'] == 1)
                   const Positioned(
-                    left: 6, bottom: 6,
-                    child: Insignia.instalacion(tamano: 28),
+                    left: 5, bottom: 5,
+                    child: Insignia.instalacion(tamano: 26),
                   ),
                 if (distKm != null)
                   Positioned(
-                    top: 6, right: 6,
+                    top: 5, left: 5,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: colors.carbon.withValues(alpha: 0.80),
                         borderRadius: BorderRadius.circular(20),
@@ -937,168 +936,212 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.near_me_rounded, size: 10, color: Colors.white),
-                          const SizedBox(width: 3),
+                          const Icon(Icons.near_me_rounded, size: 9, color: Colors.white),
+                          const SizedBox(width: 2),
                           Text(_formatRadio(distKm),
-                              style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600)),
+                              style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w600)),
                         ],
                       ),
                     ),
                   ),
               ],
             ),
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Una sola línea, siempre. Antes era un Wrap: con una
-                  // categoría larga las etiquetas bajaban a una segunda
-                  // línea, la tarjeta (que tiene alto fijo) se quedaba
-                  // corta y el texto de abajo se salía de la cuadrícula.
-                  Row(
-                    children: [
-                      // Condición: nuevo / usado
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: (esNuevo ? colors.success : colors.primary)
-                              .withValues(alpha: 0.10),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(esNuevo ? 'Nuevo' : 'Usado',
-                            maxLines: 1,
-                            style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
-                                color: esNuevo
-                                    ? colors.success
-                                    : colors.primary,
-                                shadows: const [
-                                  Shadow(
-                                      color: Colors.black26,
-                                      blurRadius: 1.5,
-                                      offset: Offset(0, 0.4)),
-                                ])),
-                      ),
-                      if (categoria != null && categoria.toString().isNotEmpty) ...[
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: colors.grayMid.withValues(alpha: 0.14),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(categoria.toString(),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                softWrap: false,
-                                style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w500,
-                                    color: colors.textSecondary,
-                                    shadows: const [
-                                      Shadow(
-                                          color: Colors.black26,
-                                          blurRadius: 1.5,
-                                          offset: Offset(0, 0.4)),
-                                    ])),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(titulo,
-                      maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: colors.textPrimary)),
-                  const SizedBox(height: 6),
-                  // FittedBox: si la tarjeta queda muy angosta (más columnas),
-                  // el precio se achica para seguir viéndose completo en una
-                  // sola línea en vez de cortarse.
-                  // Precio (+ el de antes tachado) y, si hay rebaja, la
-                  // etiqueta "OFERTA -x%". Todo en una línea que se achica
-                  // si la tarjeta es angosta.
-                  SizedBox(
-                    width: double.infinity,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(formatPrecio(precio),
-                              maxLines: 1,
-                              style: TextStyle(fontSize: 17, color: colors.primary, fontWeight: FontWeight.w700)),
-                          if (dcto > 0) ...[
-                            const SizedBox(width: 5),
-                            Text(formatPrecio(precioOriginal),
-                                maxLines: 1,
-                                style: TextStyle(
-                                    fontSize: 11,
-                                    color: colors.grayMid,
-                                    decoration: TextDecoration.lineThrough)),
-                            const SizedBox(width: 5),
-                            EtiquetaOferta(pct: dcto, compacta: true),
-                          ],
+            // Expanded + Spacer: si otra tarjeta de la fila es más alta,
+            // el sobrante queda arriba de los botones y estos se alinean.
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 6, 8, 7),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        etiqueta(esNuevo ? 'Nuevo' : 'Usado',
+                            esNuevo ? colors.success : colors.primary),
+                        if (categoria != null &&
+                            categoria.toString().isNotEmpty) ...[
+                          const SizedBox(width: 4),
+                          Flexible(
+                              child: etiqueta(
+                                  categoria.toString(), colors.textPrimary)),
                         ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(registrado ? Icons.verified_user : Icons.person_outline,
-                          size: 12, color: registrado ? colors.textPrimary : colors.grayMid),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(vendedor,
-                            maxLines: 1, overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 11, color: registrado ? colors.textPrimary : colors.grayMid)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  // Carro (abajo a la izquierda) y Ver detalle (abajo a la
-                  // derecha). Sin carro en lo propio ni en lo agotado.
-                  Row(
-                    children: [
-                      if (!esMio && !agotado) ...[
-                        _botonCarro(item),
-                        const SizedBox(width: 6),
                       ],
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => _abrirDetalle(item),
-                          child: Container(
-                            height: 30,
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: colors.grayMid.withValues(alpha: 0.14),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(agotado ? 'Agotado' : 'Ver detalle',
+                    ),
+                    const SizedBox(height: 3),
+                    Text(titulo,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12.5,
+                            height: 1.2,
+                            color: colors.textPrimary)),
+                    const SizedBox(height: 3),
+                    // Precio (+ el de antes tachado) y la etiqueta de oferta.
+                    SizedBox(
+                      width: double.infinity,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(formatPrecio(precio),
+                                maxLines: 1,
+                                style: TextStyle(
+                                    fontSize: 16,
+                                    color: colors.primary,
+                                    fontWeight: FontWeight.w800)),
+                            if (dcto > 0) ...[
+                              const SizedBox(width: 5),
+                              Text(formatPrecio(precioOriginal),
                                   maxLines: 1,
                                   style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                      color: colors.textSecondary)),
+                                      fontSize: 11,
+                                      color: colors.textPrimary,
+                                      decoration: TextDecoration.lineThrough)),
+                              const SizedBox(width: 5),
+                              EtiquetaOferta(pct: dcto, compacta: true),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Icon(registrado ? Icons.verified_user : Icons.person_outline,
+                            size: 11, color: colors.textPrimary),
+                        const SizedBox(width: 3),
+                        Expanded(
+                          child: Text(vendedor,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 10.5, color: colors.textPrimary)),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    const SizedBox(height: 6),
+                    // Carro (izquierda) y Ver detalle (derecha), del mismo
+                    // alto. Con 3+ columnas la tarjeta es angosta: el botón
+                    // dice "Ver" en vez de cortar "Ver detalle".
+                    Row(
+                      children: [
+                        if (!esMio && !agotado) ...[
+                          _botonCarro(item),
+                          const SizedBox(width: 5),
+                        ],
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _abrirDetalle(item),
+                            child: Container(
+                              height: _kAltoBoton,
+                              alignment: Alignment.center,
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              decoration: BoxDecoration(
+                                color: colors.grayMid.withValues(alpha: 0.16),
+                                borderRadius: BorderRadius.circular(7),
+                              ),
+                              child: Text(
+                                  agotado
+                                      ? 'Agotado'
+                                      : angosta
+                                          ? 'Ver'
+                                          : 'Ver detalle',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.fade,
+                                  softWrap: false,
+                                  style: TextStyle(
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: colors.textPrimary)),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  static const double _kAltoBoton = 28;
+
+  /// Una fila de la grilla: las tarjetas comparten el alto de la más alta
+  /// (IntrinsicHeight), así la fila queda pareja y sin aire de sobra.
+  Widget _filaDeTarjetas(int fila) {
+    const gap = 8.0;
+    final inicio = fila * _columnas;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: gap),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var c = 0; c < _columnas; c++) ...[
+              if (c > 0) const SizedBox(width: gap),
+              Expanded(
+                child: inicio + c < _filtradas.length
+                    ? _itemProducto(_filtradas[inicio + c])
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Corazón de favoritos de la tarjeta.
+  Widget _botonFavorito(Map<String, dynamic> item) {
+    final id = (item['id'] as num?)?.toInt();
+    return ValueListenableBuilder<Set<int>>(
+      valueListenable: FavoritosService.ids,
+      builder: (_, __, ___) {
+        final fav = FavoritosService.es(id);
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () async {
+            final uid = _miUserId;
+            if (uid == null || id == null) {
+              ScaffoldMessenger.of(context)
+                ..clearSnackBars()
+                ..showSnackBar(SnackBar(
+                  content: const Text('Inicia sesión para guardar favoritos'),
+                  backgroundColor: colors.carbon,
+                  behavior: SnackBarBehavior.floating,
+                ));
+              return;
+            }
+            await FavoritosService.alternar(uid, id);
+          },
+          child: Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.92),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1)),
+              ],
+            ),
+            child: Icon(
+              fav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+              size: 16,
+              color: fav ? colors.primary : const Color(0xFF222222),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1112,19 +1155,19 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           onTap: () => _agregarAlCarro(item),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
-            width: 38,
-            height: 30,
+            width: 34,
+            height: _kAltoBoton,
             decoration: BoxDecoration(
               color: enCarro
                   ? colors.primary
                   : colors.primary.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(7),
             ),
             child: Icon(
               enCarro
                   ? Icons.shopping_cart_rounded
                   : Icons.add_shopping_cart_rounded,
-              size: 17,
+              size: 15,
               color: enCarro ? Colors.white : colors.primary,
             ),
           ),
@@ -1340,12 +1383,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
       ));
     }
 
-    final tituloSeccion = _categoriasSel.isEmpty
-        ? "Okmarket"
-        : _categoriaUnica != null && _subcategoriaSeleccionada != null
-            ? "$_categoriaUnica · $_subcategoriaSeleccionada"
-            : _categoriasSel.join(" · ");
-
     return CustomScrollView(
       slivers: [
         // ── Banner (se desvanece al hacer scroll) ────────────────────────────
@@ -1361,54 +1398,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           ),
         ),
 
-        // ── Título sección + ícono carrito ────────────────────────────────────
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(tituloSeccion,
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: colors.textPrimary)),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const CarritoScreen()),
-                  ),
-                  child: ValueListenableBuilder<List<Map<String, dynamic>>>(
-                    valueListenable: CartService.cartNotifier,
-                    builder: (_, cart, __) => Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Container(
-                          width: 34, height: 34,
-                          decoration: BoxDecoration(
-                            color: cart.isNotEmpty ? colors.primary.withValues(alpha: 0.10) : colors.background,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(Icons.shopping_bag_outlined, size: 18,
-                              color: cart.isNotEmpty ? colors.primary : colors.grayMid),
-                        ),
-                        if (cart.isNotEmpty)
-                          Positioned(
-                            right: -2, top: -2,
-                            child: Container(
-                              width: 15, height: 15,
-                              decoration: BoxDecoration(color: colors.primary, shape: BoxShape.circle),
-                              child: Center(child: Text("${cart.length}",
-                                  style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w700))),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 4),
-              ],
-            ),
-          ),
-        ),
+        // Sin título ni bolsa: el carro ya está arriba junto a mensajes, y
+        // las categorías elegidas se ven como pastillas en la barra.
+        const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
         // ── Sin resultados / error ────────────────────────────────────────────
         if (_filtradas.isEmpty)
@@ -1442,7 +1434,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                                       : "No hay productos disponibles",
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: _errorConexion ? colors.textPrimary : colors.grayMid,
+                        color: _errorConexion ? colors.textPrimary : colors.textPrimary,
                         fontSize: 14,
                         fontWeight: _errorConexion ? FontWeight.w600 : FontWeight.normal,
                       ),
@@ -1452,7 +1444,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       Text(
                         "Verifica que el servidor esté activo\n(${ApiService.baseUrl})",
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: colors.grayMid, fontSize: 12),
+                        style: TextStyle(color: colors.textPrimary, fontSize: 12),
                       ),
                       const SizedBox(height: 16),
                       TextButton.icon(
@@ -1468,7 +1460,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       Padding(
                         padding: EdgeInsets.only(top: 8),
                         child: Text("Ajusta el radio en la barra inferior",
-                            style: TextStyle(color: colors.grayMid, fontSize: 12)),
+                            style: TextStyle(color: colors.textPrimary, fontSize: 12)),
                       ),
                   ],
                 ),
@@ -1476,25 +1468,14 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
             ),
           ),
 
-        // ── Grid de productos ─────────────────────────────────────────────────
+        // ── Grid de productos (por filas, ajustada al contenido) ─────────────
         if (_filtradas.isNotEmpty)
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
-            sliver: SliverGrid(
+            padding: const EdgeInsets.fromLTRB(10, 0, 10, 20),
+            sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
-                (_, i) => _itemProducto(_filtradas[i]),
-                childCount: _filtradas.length,
-              ),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: _columnas,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                // La imagen es cuadrada (AspectRatio 1) y el bloque de texto
-                // debajo (categoría/título/precio/vendedor) mide ~118 sin
-                // importar el ancho de la tarjeta. Si el aspect ratio fuera
-                // fijo, con más columnas la tarjeta se hace tan baja que el
-                // texto queda cortado. Lo calculamos según el ancho real.
-                childAspectRatio: _aspectRatioTarjeta(context),
+                (_, fila) => _filaDeTarjetas(fila),
+                childCount: (_filtradas.length / _columnas).ceil(),
               ),
             ),
           ),

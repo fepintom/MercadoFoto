@@ -261,6 +261,7 @@ from database.cotizaciones import init_cotizaciones_db
 from routers.cotizaciones import router as cotizaciones_router
 from database.comunidad import init_comunidad_db
 from routers.comunidad import router as comunidad_router
+from routers.pagos_usuario import router as pagos_usuario_router
 from database.ordenes import (
     liberar_inicial as ordenes_liberar_inicial,
     liberar_retencion as ordenes_liberar_retencion,
@@ -458,6 +459,7 @@ app.include_router(verificacion_paquete_router)
 app.include_router(catalogos_router)
 app.include_router(cotizaciones_router)
 app.include_router(comunidad_router)
+app.include_router(pagos_usuario_router)
 
 # --------------------------------------------------
 # MODELOS

@@ -331,7 +331,7 @@ class BarraFiltros extends StatelessWidget {
                     style: TextStyle(
                         fontSize: 12,
                         fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                        color: sel ? colors.textPrimary : colors.grayMid)),
+                        color: sel ? colors.textPrimary : colors.textPrimary)),
               ],
             ),
           ),
@@ -368,7 +368,7 @@ class BarraFiltros extends StatelessWidget {
       child: disponibles.isEmpty
           ? Center(
               child: Text('Todas las regiones están en el filtro',
-                  style: TextStyle(fontSize: 12, color: colors.grayMid)))
+                  style: TextStyle(fontSize: 12, color: colors.textPrimary)))
           : ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.fromLTRB(12, 7, 6, 7),
@@ -426,7 +426,7 @@ class BarraFiltros extends StatelessWidget {
       child: disponibles.isEmpty
           ? Center(
               child: Text('Todas las categorías están en el filtro',
-                  style: TextStyle(fontSize: 12, color: colors.grayMid)))
+                  style: TextStyle(fontSize: 12, color: colors.textPrimary)))
           : ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.fromLTRB(12, 7, 6, 7),
