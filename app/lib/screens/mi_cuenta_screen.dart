@@ -11,6 +11,7 @@ import 'ayuda_chat_screen.dart';
 import 'ayuda_screen.dart';
 import 'favoritos_screen.dart';
 import 'mis_compras_screen.dart';
+import 'mis_pagos_screen.dart';
 import 'catalogo_screen.dart';
 import 'mis_publicaciones_screen.dart';
 import 'mis_servicios_screen.dart';
@@ -956,6 +957,15 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                               context,
                               MaterialPageRoute(
                                   builder: (_) => const MisVentasScreen()),
+                            );
+                          }),
+                          _itemMenu(
+                              Icons.account_balance_wallet_outlined,
+                              "Mis pagos", () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const MisPagosScreen()),
                             );
                           }),
                           _itemMenu(

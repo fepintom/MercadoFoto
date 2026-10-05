@@ -10,7 +10,6 @@ import '../theme/app_theme.dart';
 import 'agregar_servicio_screen.dart';
 import 'delivery_proximamente_screen.dart';
 import 'delivery_registro_screen.dart';
-import 'encontrar_screen.dart';
 import 'okdelivery_pendientes_screen.dart';
 import 'servicio_detalle_screen.dart';
 import '../widgets/banner_publicidad.dart';
@@ -172,46 +171,9 @@ class _ServiciosScreenState extends State<ServiciosScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Servicios',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                ),
-                // El mapa de servicios vive ahora en Encontrar, junto con
-                // el de productos; este botón lleva directo, con la capa de
-                // servicios encendida.
-                IconButton(
-                  tooltip: 'Ver en el mapa',
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) =>
-                            const EncontrarScreen(soloServicios: true)),
-                  ),
-                  icon: Icon(Icons.map_outlined, color: colors.textPrimary),
-                ),
-                // Okventin servicios: solo en modo oscuro, mismo tamaño
-                // agrandado que en el home (57).
-                ValueListenableBuilder<bool>(
-                  valueListenable: ThemeService.isDarkNotifier,
-                  builder: (_, isDark, __) {
-                    if (!isDark) return const SizedBox.shrink();
-                    return Image.asset('assets/images/okventin_servicios.png',
-                        width: 57, height: 57);
-                  },
-                ),
-              ],
-            ),
-          ),
+          // Sin título "Servicios" ni botón de mapa: el nombre ya está en la
+          // barra inferior (OkServicios) y el mapa vive en Encontrar.
+          const SizedBox(height: 6),
 
           const BannerPublicidad(avisos: avisosServicios),
 
@@ -222,13 +184,13 @@ class _ServiciosScreenState extends State<ServiciosScreen>
               children: [
                 Text(
                   'Encuentra o publica servicios profesionales',
-                  style: TextStyle(fontSize: 13, color: colors.grayMid),
+                  style: TextStyle(fontSize: 13, color: colors.textPrimary),
                 ),
                 const SizedBox(height: 8),
                 TabBar(
                   controller: _tabController,
                   labelColor: colors.primary,
-                  unselectedLabelColor: colors.grayMid,
+                  unselectedLabelColor: colors.textPrimary,
                   indicatorColor: colors.primary,
                   indicatorWeight: 2.5,
                   labelStyle: const TextStyle(
@@ -471,7 +433,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
                       color: colors.textPrimary)),
               const SizedBox(height: 4),
               Text('Se aplica a todas las vistas de servicios',
-                  style: TextStyle(fontSize: 12, color: colors.grayMid)),
+                  style: TextStyle(fontSize: 12, color: colors.textPrimary)),
               const SizedBox(height: 12),
               ValueListenableBuilder<bool>(
                 valueListenable: VistaServicios.comoListaNotifier,
@@ -515,7 +477,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
                       const SizedBox(height: 4),
                       Text('Achica para ver más servicios por pantalla',
                           style:
-                              TextStyle(fontSize: 12, color: colors.grayMid)),
+                              TextStyle(fontSize: 12, color: colors.textPrimary)),
                       ValueListenableBuilder<int>(
                         valueListenable: VistaServicios.columnasNotifier,
                         builder: (_, columnas, __) => Row(
@@ -561,7 +523,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
                       const SizedBox(height: 4),
                       Text('Oscurece el gris del fondo de la app',
                           style:
-                              TextStyle(fontSize: 12, color: colors.grayMid)),
+                              TextStyle(fontSize: 12, color: colors.textPrimary)),
                       ValueListenableBuilder<double>(
                         valueListenable: ThemeService.bgTintNotifier,
                         builder: (_, tint, __) => Row(
@@ -780,7 +742,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
               style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: colors.textSecondary),
+                  color: colors.textPrimary),
             ),
             const SizedBox(height: 8),
             Text(
@@ -791,7 +753,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
                       : 'Publica lo que necesitas y recibe propuestas',
               textAlign: TextAlign.center,
               style:
-                  TextStyle(fontSize: 13, color: colors.grayMid),
+                  TextStyle(fontSize: 13, color: colors.textPrimary),
             ),
           ],
         ),
@@ -1032,7 +994,7 @@ class _TarjetaServicio extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                                fontSize: 10, color: colors.grayMid)),
+                                fontSize: 10, color: colors.textPrimary)),
                       ),
                       if (verificado)
                         const Row(
@@ -1090,7 +1052,7 @@ class _TarjetaServicio extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                  fontSize: 10, color: colors.grayMid)),
+                                  fontSize: 10, color: colors.textPrimary)),
                         ),
                       ],
                     ),
@@ -1113,7 +1075,7 @@ class _TarjetaServicio extends StatelessWidget {
                       const SizedBox(width: 2),
                       Text('($numVal)',
                           style: TextStyle(
-                              fontSize: 9, color: colors.grayMid)),
+                              fontSize: 9, color: colors.textPrimary)),
                     ],
                   ),
 
@@ -1334,7 +1296,7 @@ class _TarjetaServicioCompacta extends StatelessWidget {
                       const SizedBox(width: 2),
                       Text('($numVal)',
                           style: TextStyle(
-                              fontSize: 9, color: colors.grayMid)),
+                              fontSize: 9, color: colors.textPrimary)),
                     ],
                   ),
                 ],
@@ -1424,13 +1386,13 @@ class _DeliveryTabState extends State<_DeliveryTab> {
                 style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: colors.textSecondary),
+                    color: colors.textPrimary),
               ),
               const SizedBox(height: 8),
               Text(
                 'Muy pronto podrás registrarte como Delivery OkVenta',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: colors.grayMid),
+                style: TextStyle(fontSize: 13, color: colors.textPrimary),
               ),
               const SizedBox(height: 20),
               _PastillaPublicar(
@@ -1550,7 +1512,7 @@ class _DeliveryTabState extends State<_DeliveryTab> {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: activo ? Colors.green : colors.grayMid,
+                            color: activo ? Colors.green : colors.textPrimary,
                           ),
                         ),
                       ),
@@ -1558,7 +1520,7 @@ class _DeliveryTabState extends State<_DeliveryTab> {
                         const SizedBox(width: 8),
                         Text(comunas,
                             style: TextStyle(
-                                fontSize: 11, color: colors.grayMid)),
+                                fontSize: 11, color: colors.textPrimary)),
                       ],
                     ],
                   ),

@@ -1541,4 +1541,18 @@ class ApiService {
     }
     return Map<String, dynamic>.from(data);
   }
+
+  // ──────────────────────────────────────────────
+  // MIS PAGOS (pagos recibidos como vendedor / proveedor)
+  // ──────────────────────────────────────────────
+
+  /// {resumen: {liberado, retenido, en_disputa, comisiones},
+  ///  movimientos: [...]}. Null si no se pudo cargar.
+  static Future<Map<String, dynamic>?> obtenerMisPagos(int userId) async {
+    final r = await http
+        .get(Uri.parse('$baseUrl/usuarios/$userId/pagos'))
+        .timeout(const Duration(seconds: 20));
+    if (r.statusCode != 200) return null;
+    return Map<String, dynamic>.from(jsonDecode(utf8.decode(r.bodyBytes)));
+  }
 }
