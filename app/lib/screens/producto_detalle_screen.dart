@@ -11,6 +11,7 @@ import '../services/cart_service.dart';
 import '../services/session_service.dart';
 import '../services/favoritos_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/acciones_producto.dart';
 import '../widgets/etiqueta_oferta.dart';
 import '../widgets/insignia.dart';
 import '../utils/format_utils.dart';
@@ -2514,23 +2515,13 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                   final enCarro =
                                       CartService.contiene(pubId);
                                   return OutlinedButton.icon(
-                                    onPressed: () {
-                                      final agregado = CartService.addProducto(
-                                          Map<String, dynamic>.from(
-                                              widget.producto));
-                                      ScaffoldMessenger.of(context)
-                                          .clearSnackBars();
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(SnackBar(
-                                        content: Text(agregado
-                                            ? "Agregado al carro"
-                                            : "Ya estaba en tu carro"),
-                                        backgroundColor: colors.carbon,
-                                        behavior: SnackBarBehavior.floating,
-                                        duration:
-                                            const Duration(seconds: 2),
-                                      ));
-                                    },
+                                    // Si el vendedor ofrece instalación,
+                                    // pregunta con o sin instalación.
+                                    onPressed: () =>
+                                        AccionesProducto.agregarAlCarro(
+                                            context,
+                                            Map<String, dynamic>.from(
+                                                widget.producto)),
                                     icon: Icon(
                                         enCarro
                                             ? Icons.check_rounded
@@ -2570,7 +2561,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                             strokeWidth: 2,
                                             color: Colors.white),
                                       )
-                                    : const Icon(Icons.shopping_bag_rounded,
+                                    : const Icon(Icons.shopping_cart_rounded,
                                         size: 18),
                                 label: Text(_agotado ? "Agotado" : "Comprar"),
                                 style: ElevatedButton.styleFrom(

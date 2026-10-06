@@ -237,7 +237,8 @@ def obtener_publicaciones():
         u.foto_url,
         COALESCE(p.requiere_instalacion, 0),
         COALESCE(p.instalacion_vendedor, 0),
-        p.precio_original
+        p.precio_original,
+        COALESCE(NULLIF(TRIM(u.ciudad), ''), NULLIF(TRIM(u.comuna), ''))
     FROM publicaciones p
     LEFT JOIN users u
     ON p.user_id = u.id
@@ -286,6 +287,8 @@ def obtener_publicaciones():
             "instalacion_vendedor": bool(row[24]),
             "precio_original": row[25],
             "descuento_pct": descuento_pct(row[3], row[25]),
+            # Ciudad (o comuna) del vendedor, bajo su nombre en la tarjeta.
+            "ciudad_vendedor": row[26],
         })
 
     return publicaciones
@@ -491,7 +494,8 @@ def obtener_publicacion_por_id(publicacion_id):
         u.foto_url,
         COALESCE(p.requiere_instalacion, 0),
         COALESCE(p.instalacion_vendedor, 0),
-        p.precio_original
+        p.precio_original,
+        COALESCE(NULLIF(TRIM(u.ciudad), ''), NULLIF(TRIM(u.comuna), ''))
     FROM publicaciones p
     LEFT JOIN users u ON p.user_id = u.id
     WHERE p.id = ?
@@ -521,6 +525,7 @@ def obtener_publicacion_por_id(publicacion_id):
         "instalacion_vendedor": bool(row[24]),
         "precio_original": row[25],
         "descuento_pct": descuento_pct(row[3], row[25]),
+        "ciudad_vendedor": row[26],
     }
 
 

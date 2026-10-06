@@ -803,7 +803,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Icon(
-          esServicio ? Icons.handyman_outlined : Icons.shopping_bag_outlined,
+          esServicio ? Icons.handyman_outlined : Icons.shopping_cart_outlined,
           size: tam * 0.45,
           color: colors.grayMid),
     );
@@ -962,7 +962,7 @@ class _SelectorAnclaState extends State<_SelectorAncla> {
               child: Icon(
                   a['tipo'] == 'servicio'
                       ? Icons.handyman_outlined
-                      : Icons.shopping_bag_outlined,
+                      : Icons.shopping_cart_outlined,
                   color: colors.grayMid),
             )
           : NetImage(

@@ -20,7 +20,7 @@ extension _TipoAyudaExt on _TipoAyuda {
 
   IconData get icono {
     switch (this) {
-      case _TipoAyuda.pedido:   return Icons.shopping_bag_outlined;
+      case _TipoAyuda.pedido:   return Icons.shopping_cart_outlined;
       case _TipoAyuda.venta:    return Icons.storefront_outlined;
       case _TipoAyuda.servicio: return Icons.handyman_outlined;
       case _TipoAyuda.otros:    return Icons.help_outline_rounded;

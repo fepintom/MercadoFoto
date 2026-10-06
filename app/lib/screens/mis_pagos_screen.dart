@@ -257,7 +257,7 @@ class _MisPagosScreenState extends State<MisPagosScreen> {
       decoration: BoxDecoration(
           color: colors.background, borderRadius: BorderRadius.circular(8)),
       child: Icon(
-          esServicio ? Icons.handyman_outlined : Icons.shopping_bag_outlined,
+          esServicio ? Icons.handyman_outlined : Icons.shopping_cart_outlined,
           size: 20,
           color: colors.textPrimary),
     );

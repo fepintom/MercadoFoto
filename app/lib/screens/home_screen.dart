@@ -471,7 +471,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        Icons.shopping_bag_outlined,
+                        Icons.shopping_cart_outlined,
                         size: 20,
                         color: cart.isNotEmpty
                             ? colors.primary

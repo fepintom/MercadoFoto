@@ -8,15 +8,17 @@ import '../utils/format_utils.dart';
 
 import '../services/api_service.dart';
 import '../services/cart_service.dart';
+import '../services/contenido_oculto_service.dart';
 import '../services/favoritos_service.dart';
 import '../services/session_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/barra_filtros.dart';
+import '../widgets/acciones_producto.dart';
+import '../widgets/avatar_historia.dart';
 import '../widgets/etiqueta_oferta.dart';
-import '../widgets/insignia.dart';
 import '../utils/regiones_chile.dart';
-import 'carrito_screen.dart';
+import 'perfil_publico_screen.dart';
 import 'producto_detalle_screen.dart';
 import '../widgets/net_image.dart';
 
@@ -157,28 +159,17 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
       if (mounted) setState(() => _miUserId = id);
       if (id != null) FavoritosService.cargar(id);
     });
+    ContenidoOcultoService.cargar().then((_) => _refiltrar());
+    ContenidoOcultoService.publicaciones.addListener(_refiltrar);
+    ContenidoOcultoService.vendedores.addListener(_refiltrar);
+  }
+
+  void _refiltrar() {
+    if (mounted) setState(_aplicarFiltros);
   }
 
   /// Para no ofrecer "agregar al carro" en mis propias publicaciones.
   int? _miUserId;
-
-  void _agregarAlCarro(Map<String, dynamic> item) {
-    final agregado = CartService.addProducto(Map<String, dynamic>.from(item));
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.clearSnackBars();
-    messenger.showSnackBar(SnackBar(
-      content: Text(agregado ? 'Agregado al carro' : 'Ya estaba en tu carro'),
-      backgroundColor: colors.carbon,
-      behavior: SnackBarBehavior.floating,
-      duration: const Duration(seconds: 2),
-      action: SnackBarAction(
-        label: 'Ver carro',
-        textColor: Colors.white,
-        onPressed: () => Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const CarritoScreen())),
-      ),
-    ));
-  }
 
   void _abrirDetalle(Map<String, dynamic> item) {
     Navigator.push(
@@ -312,6 +303,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
 
   @override
   void dispose() {
+    ContenidoOcultoService.publicaciones.removeListener(_refiltrar);
+    ContenidoOcultoService.vendedores.removeListener(_refiltrar);
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -363,6 +356,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     var lista = List<Map<String, dynamic>>.from(_todas);
 
     // Categoría
+    // "No me interesa" y vendedores bloqueados (menú de los tres puntos).
+    lista = lista.where((p) => !ContenidoOcultoService.oculta(p)).toList();
+
     if (_categoriasSel.isNotEmpty) {
       final elegidas = _categoriasSel.map((c) => c.toLowerCase()).toSet();
       lista = lista.where((p) =>
@@ -854,12 +850,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     final imagenUrl = item['imagen_url'] ?? "";
     final titulo    = item['titulo'] ?? "";
     final precio    = item['precio'] ?? 0;
-    final vendedor  = item['nombre_vendedor'] ?? "Usuario invitado";
-    final bool registrado = item['user_id'] != null;
+    final vendedor  = (item['nombre_vendedor'] ?? "Usuario invitado").toString();
     final categoria = item['categoria'];
     final condicion = (item['condicion'] as String?) ?? 'nuevo';
     final bool esNuevo = condicion == 'nuevo';
     final bool angosta = _columnas >= 3;
+    final double tamBoton = angosta ? 26 : 30;
 
     double? distKm;
     if (_radioActivo && item['lat'] != null && item['lng'] != null) {
@@ -875,6 +871,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     final bool agotado = (item['estado'] ?? 'disponible') != 'disponible' ||
         (stock is num && stock <= 0);
     final bool esMio = _miUserId != null && item['user_id'] == _miUserId;
+    final String ciudad = (item['ciudad_vendedor'] ??
+            RegionesChile.regionDeItem(item) ??
+            '')
+        .toString();
+    final vendedorId = (item['user_id'] as num?)?.toInt();
+    final fotoVendedor = (item['foto_vendedor'] ?? '').toString();
 
     Widget etiqueta(String texto, Color color) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
@@ -902,6 +904,65 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Vendedor: foto (anillo si tiene historia), nombre, ciudad, ⋯
+            Padding(
+              padding: const EdgeInsets.fromLTRB(6, 6, 0, 4),
+              child: Row(
+                children: [
+                  AvatarHistoria(
+                    fotoUrl: fotoVendedor.isEmpty
+                        ? null
+                        : fotoVendedor.startsWith('http')
+                            ? fotoVendedor
+                            : "${ApiService.baseUrl}$fotoVendedor",
+                    nombre: vendedor,
+                    tamano: angosta ? 26 : 30,
+                    tieneHistoria: item['tiene_historia'] == true,
+                    onTap: vendedorId == null
+                        ? null
+                        : () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PerfilPublicoScreen(
+                                    userId: vendedorId, nombre: vendedor),
+                              ),
+                            ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(vendedor,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontSize: angosta ? 11 : 12,
+                                fontWeight: FontWeight.w700,
+                                color: colors.textPrimary)),
+                        if (ciudad.isNotEmpty)
+                          Text(ciudad,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: angosta ? 9.5 : 10.5,
+                                  color: colors.textPrimary)),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => AccionesProducto.mostrarMenu(context, item),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      child: Icon(Icons.more_horiz_rounded,
+                          size: 20, color: colors.textPrimary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // ── Foto con la columna de acciones a la derecha ────────────────
             Stack(
               children: [
                 AspectRatio(
@@ -912,18 +973,25 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     fit: BoxFit.contain,
                   ),
                 ),
-                // Corazón de favoritos: arriba a la derecha.
                 Positioned(
-                  top: 4, right: 4,
-                  child: _botonFavorito(item),
-                ),
-                // Lo instala el mismo vendedor: se ve antes de abrir el aviso.
-                if (item['instalacion_vendedor'] == true ||
-                    item['instalacion_vendedor'] == 1)
-                  const Positioned(
-                    left: 5, bottom: 5,
-                    child: Insignia.instalacion(tamano: 26),
+                  top: 4,
+                  right: 4,
+                  child: Column(
+                    children: [
+                      _botonFavorito(item, tamBoton),
+                      SizedBox(height: angosta ? 4 : 6),
+                      _botonRedondo(
+                        icono: Icons.share_rounded,
+                        tam: tamBoton,
+                        onTap: () => AccionesProducto.compartir(context, item),
+                      ),
+                      if (!esMio && !agotado) ...[
+                        SizedBox(height: angosta ? 4 : 6),
+                        _botonCarro(item, tamBoton),
+                      ],
+                    ],
                   ),
+                ),
                 if (distKm != null)
                   Positioned(
                     top: 5, left: 5,
@@ -946,8 +1014,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                   ),
               ],
             ),
-            // Expanded + Spacer: si otra tarjeta de la fila es más alta,
-            // el sobrante queda arriba de los botones y estos se alinean.
+            // Expanded + Spacer: si otra tarjeta de la fila es más alta, el
+            // sobrante queda arriba del botón y los botones se alinean.
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(8, 6, 8, 7),
@@ -1007,59 +1075,64 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        Icon(registrado ? Icons.verified_user : Icons.person_outline,
-                            size: 11, color: colors.textPrimary),
-                        const SizedBox(width: 3),
-                        Expanded(
-                          child: Text(vendedor,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 10.5, color: colors.textPrimary)),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    const SizedBox(height: 6),
-                    // Carro (izquierda) y Ver detalle (derecha), del mismo
-                    // alto. Con 3+ columnas la tarjeta es angosta: el botón
-                    // dice "Ver" en vez de cortar "Ver detalle".
-                    Row(
-                      children: [
-                        if (!esMio && !agotado) ...[
-                          _botonCarro(item),
-                          const SizedBox(width: 5),
-                        ],
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () => _abrirDetalle(item),
-                            child: Container(
-                              height: _kAltoBoton,
-                              alignment: Alignment.center,
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
-                              decoration: BoxDecoration(
-                                color: colors.grayMid.withValues(alpha: 0.16),
-                                borderRadius: BorderRadius.circular(7),
+                    // "Ofrece instalación": ícono de OkServicios sin círculo
+                    // + enlace que abre el aviso flotante desde aquí mismo.
+                    if (AccionesProducto.ofreceInstalacion(item) && !esMio) ...[
+                      const SizedBox(height: 4),
+                      Builder(
+                        builder: (enlaceCtx) => GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => AccionesProducto.mostrarAvisoInstalacion(
+                              enlaceCtx, item),
+                          child: Row(
+                            children: [
+                              Icon(Icons.handyman_rounded,
+                                  size: angosta ? 13 : 15,
+                                  color: colors.textPrimary),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                    angosta ? 'Instalación' : 'Ofrece instalación',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                        fontSize: angosta ? 10.5 : 11.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: colors.textPrimary,
+                                        decoration: TextDecoration.underline,
+                                        decorationColor: colors.textPrimary)),
                               ),
-                              child: Text(
-                                  agotado
-                                      ? 'Agotado'
-                                      : angosta
-                                          ? 'Ver'
-                                          : 'Ver detalle',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.fade,
-                                  softWrap: false,
-                                  style: TextStyle(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: colors.textPrimary)),
-                            ),
+                            ],
                           ),
                         ),
-                      ],
+                      ),
+                    ],
+                    const Spacer(),
+                    const SizedBox(height: 6),
+                    // Abajo, solo "Ver detalle" a lo ancho (el carro subió a
+                    // la columna de acciones de la foto).
+                    GestureDetector(
+                      onTap: () => _abrirDetalle(item),
+                      child: Container(
+                        height: _kAltoBoton,
+                        width: double.infinity,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: colors.grayMid.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                        child: Text(
+                            agotado
+                                ? 'Agotado'
+                                : angosta
+                                    ? 'Detalle'
+                                    : 'Ver detalle',
+                            maxLines: 1,
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: colors.textPrimary)),
+                      ),
                     ),
                   ],
                 ),
@@ -1067,6 +1140,36 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Botón redondo blanco de la columna de acciones de la foto.
+  Widget _botonRedondo({
+    required IconData icono,
+    required double tam,
+    required VoidCallback onTap,
+    Color? fondo,
+    Color? color,
+  }) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        width: tam,
+        height: tam,
+        decoration: BoxDecoration(
+          color: fondo ?? Colors.white.withValues(alpha: 0.95),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 3,
+                offset: const Offset(0, 1)),
+          ],
+        ),
+        child: Icon(icono,
+            size: tam * 0.55, color: color ?? const Color(0xFF1B2A41)),
       ),
     );
   }
@@ -1098,15 +1201,19 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     );
   }
 
-  /// Corazón de favoritos de la tarjeta.
-  Widget _botonFavorito(Map<String, dynamic> item) {
+  /// Corazón de favoritos: blanco con contorno; marcado, círculo rojo con
+  /// corazón blanco.
+  Widget _botonFavorito(Map<String, dynamic> item, double tam) {
     final id = (item['id'] as num?)?.toInt();
     return ValueListenableBuilder<Set<int>>(
       valueListenable: FavoritosService.ids,
       builder: (_, __, ___) {
         final fav = FavoritosService.es(id);
-        return GestureDetector(
-          behavior: HitTestBehavior.opaque,
+        return _botonRedondo(
+          icono: fav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+          tam: tam,
+          fondo: fav ? colors.primary : null,
+          color: fav ? Colors.white : null,
           onTap: () async {
             final uid = _miUserId;
             if (uid == null || id == null) {
@@ -1121,56 +1228,26 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
             }
             await FavoritosService.alternar(uid, id);
           },
-          child: Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.92),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.15),
-                    blurRadius: 3,
-                    offset: const Offset(0, 1)),
-              ],
-            ),
-            child: Icon(
-              fav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-              size: 16,
-              color: fav ? colors.primary : const Color(0xFF222222),
-            ),
-          ),
         );
       },
     );
   }
 
-  /// Botón de carro de la tarjeta. Cambia a "en el carro" si ya está.
-  Widget _botonCarro(Map<String, dynamic> item) {
+  /// Carro de la columna de acciones. Lleno (rojo) si ya está en el carro.
+  /// Si el vendedor ofrece instalación, pregunta con o sin instalación.
+  Widget _botonCarro(Map<String, dynamic> item, double tam) {
     return ValueListenableBuilder<List<Map<String, dynamic>>>(
       valueListenable: CartService.cartNotifier,
       builder: (_, __, ___) {
         final enCarro = CartService.contiene((item['id'] as num?)?.toInt());
-        return GestureDetector(
-          onTap: () => _agregarAlCarro(item),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: 34,
-            height: _kAltoBoton,
-            decoration: BoxDecoration(
-              color: enCarro
-                  ? colors.primary
-                  : colors.primary.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(7),
-            ),
-            child: Icon(
-              enCarro
-                  ? Icons.shopping_cart_rounded
-                  : Icons.add_shopping_cart_rounded,
-              size: 15,
-              color: enCarro ? Colors.white : colors.primary,
-            ),
-          ),
+        return _botonRedondo(
+          icono: enCarro
+              ? Icons.shopping_cart_rounded
+              : Icons.add_shopping_cart_rounded,
+          tam: tam,
+          fondo: enCarro ? colors.primary : null,
+          color: enCarro ? Colors.white : null,
+          onTap: () => AccionesProducto.agregarAlCarro(context, item),
         );
       },
     );
