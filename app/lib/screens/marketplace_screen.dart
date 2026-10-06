@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../services/historias_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/format_utils.dart';
@@ -326,6 +327,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   // ── Carga (siempre todos, el filtro de categoría es client-side) ──────────
 
   Future<void> cargarPublicaciones() async {
+    HistoriasService.cargarActivos();
     setState(() { _loading = true; _errorConexion = false; });
     try {
       final response = await http.get(
@@ -918,6 +920,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     nombre: vendedor,
                     tamano: angosta ? 26 : 30,
                     tieneHistoria: item['tiene_historia'] == true,
+                    userId: vendedorId,
                     onTap: vendedorId == null
                         ? null
                         : () => Navigator.push(
@@ -965,12 +968,15 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
             // ── Foto con la columna de acciones a la derecha ────────────────
             Stack(
               children: [
+                // La foto es la protagonista (como en Mercado Libre): más
+                // alta que ancha (4:5) y llenando el recuadro (cover), así
+                // el producto se ve grande. Tocar la tarjeta abre el detalle.
                 AspectRatio(
-                  aspectRatio: 1,
+                  aspectRatio: 4 / 5,
                   child: NetImage(
                     "${ApiService.baseUrl}$imagenUrl",
                     width: double.infinity,
-                    fit: BoxFit.contain,
+                    fit: BoxFit.cover,
                   ),
                 ),
                 Positioned(
@@ -1107,33 +1113,8 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                         ),
                       ),
                     ],
-                    const Spacer(),
-                    const SizedBox(height: 6),
-                    // Abajo, solo "Ver detalle" a lo ancho (el carro subió a
-                    // la columna de acciones de la foto).
-                    GestureDetector(
-                      onTap: () => _abrirDetalle(item),
-                      child: Container(
-                        height: _kAltoBoton,
-                        width: double.infinity,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: colors.grayMid.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(7),
-                        ),
-                        child: Text(
-                            agotado
-                                ? 'Agotado'
-                                : angosta
-                                    ? 'Detalle'
-                                    : 'Ver detalle',
-                            maxLines: 1,
-                            style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: colors.textPrimary)),
-                      ),
-                    ),
+                    // Sin botón "Ver detalle": toda la tarjeta abre el
+                    // producto, y así la foto gana ese espacio.
                   ],
                 ),
               ),
@@ -1174,7 +1155,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     );
   }
 
-  static const double _kAltoBoton = 28;
 
   /// Una fila de la grilla: las tarjetas comparten el alto de la más alta
   /// (IntrinsicHeight), así la fila queda pareja y sin aire de sobra.

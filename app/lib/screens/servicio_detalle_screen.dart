@@ -27,6 +27,12 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
   int _miRating = 0;
   bool _enviandoRating = false;
 
+  /// Lo que dice el servidor: si contraté el servicio, si ya lo califiqué
+  /// (y con cuánto). La calificación es UNA sola vez y solo si lo contraté.
+  bool _contrato = false;
+  bool _puedeValorar = false;
+  int? _miValoracion;
+
   @override
   void initState() {
     super.initState();
@@ -37,6 +43,23 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
   Future<void> _cargarUserId() async {
     _miUserId = await SessionService.obtenerUser();
     if (mounted) setState(() {});
+    _cargarMiValoracion();
+  }
+
+  Future<void> _cargarMiValoracion() async {
+    final uid = _miUserId;
+    if (uid == null) return;
+    try {
+      final r = await http.get(Uri.parse(
+          '${ApiService.baseUrl}/servicios/${_srv['id']}/mi_valoracion?user_id=$uid'));
+      if (r.statusCode != 200 || !mounted) return;
+      final d = jsonDecode(utf8.decode(r.bodyBytes));
+      setState(() {
+        _contrato = d['contrato'] == true;
+        _puedeValorar = d['puede_valorar'] == true;
+        _miValoracion = (d['estrellas'] as num?)?.toInt();
+      });
+    } catch (_) {}
   }
 
   Future<void> _valorar(int estrellas) async {
@@ -46,7 +69,30 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
             content: Text('Debes iniciar sesión para calificar')));
       return;
     }
-    setState(() { _miRating = estrellas; _enviandoRating = true; });
+    if (!_puedeValorar) return;
+    // Es definitiva: se confirma antes de guardar.
+    setState(() => _miRating = estrellas);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('¿Calificar con $estrellas estrella${estrellas == 1 ? '' : 's'}?'),
+        content: const Text(
+            'La calificación es definitiva: después no se puede cambiar.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Calificar')),
+        ],
+      ),
+    );
+    if (ok != true) {
+      if (mounted) setState(() => _miRating = 0);
+      return;
+    }
+    setState(() => _enviandoRating = true);
     try {
       final res = await http.post(
         Uri.parse('${ApiService.baseUrl}/servicios/${_srv['id']}/valorar'),
@@ -58,7 +104,19 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
         setState(() {
           _srv['rating']           = data['rating'];
           _srv['num_valoraciones'] = data['num_valoraciones'];
+          _miValoracion = estrellas;
+          _puedeValorar = false;
         });
+      } else if (mounted) {
+        String msg = 'No se pudo guardar la calificación';
+        try {
+          msg = (jsonDecode(utf8.decode(res.bodyBytes))['detail'] ?? msg)
+              .toString();
+        } catch (_) {}
+        setState(() => _miRating = 0);
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(msg)));
+        _cargarMiValoracion();
       }
     } catch (_) {} finally {
       if (mounted) setState(() => _enviandoRating = false);
@@ -520,7 +578,8 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
 
   Widget _buildCalificacion(double rating, int numVal) {
     final esPropio = _miUserId != null && _miUserId == _srv['user_id'];
-    final puedeValorar = _miUserId != null && !esPropio;
+    // Solo quien contrató el servicio y aún no lo calificó.
+    final puedeValorar = _miUserId != null && !esPropio && _puedeValorar;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -571,12 +630,13 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
             if (puedeValorar) ...[
               const SizedBox(height: 12),
               Text(
-                'Califica este servicio si lo has contratado:',
-                style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                'Contrataste este servicio. Califícalo (solo una vez):',
+                style: TextStyle(fontSize: 12, color: colors.textPrimary),
               ),
               const SizedBox(height: 8),
               _estrellasInteractivas(rating),
             ],
+            _miCalificacionFija(),
           ] else ...[
             Text('$numVal valoración${numVal == 1 ? '' : 'es'}',
                 style: TextStyle(
@@ -584,12 +644,13 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
             if (puedeValorar) ...[
               const SizedBox(height: 12),
               Text(
-                'Tu calificación:',
-                style: TextStyle(fontSize: 12, color: colors.textSecondary),
+                'Contrataste este servicio. Califícalo (solo una vez):',
+                style: TextStyle(fontSize: 12, color: colors.textPrimary),
               ),
               const SizedBox(height: 8),
-              _estrellasInteractivas(rating),
+              _estrellasInteractivas(0),
             ],
+            _miCalificacionFija(),
           ],
 
           if (_enviandoRating)
@@ -599,6 +660,33 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  /// La nota que ya di: solo lectura, no se puede cambiar.
+  Widget _miCalificacionFija() {
+    final v = _miValoracion;
+    if (v == null) {
+      // Aviso para quien aún no lo contrata (no para el dueño).
+      final esDueno = _srv['user_id'] == _miUserId;
+      if (_miUserId == null || _contrato || esDueno) {
+        return const SizedBox.shrink();
+      }
+      return Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: Text('Podrás calificarlo después de contratarlo por OkVenta.',
+            style: TextStyle(fontSize: 12, color: colors.textPrimary)),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(children: [
+        Text('Tu calificación: ',
+            style: TextStyle(fontSize: 12, color: colors.textPrimary)),
+        for (var i = 0; i < 5; i++)
+          Icon(i < v ? Icons.star : Icons.star_border,
+              color: Colors.amber, size: 18),
+      ]),
     );
   }
 

@@ -34,6 +34,8 @@ class _BannerPublicidadState extends State<BannerPublicidad> {
         BannerImagen('assets/images/banner1.jpg'),
         BannerImagen('assets/images/banner2.jpg'),
         BannerImagen('assets/images/banner3.jpg'),
+        BannerImagen('assets/images/banner4.jpg'),
+        BannerImagen('assets/images/banner5.jpg'),
       ];
 
   @override
@@ -62,13 +64,16 @@ class _BannerPublicidadState extends State<BannerPublicidad> {
     final avisos = _avisos;
     return Column(
       children: [
-        Container(
-          margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-          height: 130,
-          child: PageView(
-            controller: _controller,
-            onPageChanged: (i) => setState(() => _paginaActual = i),
-            children: avisos,
+        // Proporción de los banners (2,5:1): se ven completos.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          child: AspectRatio(
+            aspectRatio: 2.5,
+            child: PageView(
+              controller: _controller,
+              onPageChanged: (i) => setState(() => _paginaActual = i),
+              children: avisos,
+            ),
           ),
         ),
         const SizedBox(height: 8),
@@ -131,8 +136,11 @@ class BannerImagen extends StatelessWidget {
 /// vendida para servicios. Están aquí, en una lista con nombre propio, para
 /// que reemplazarlos sea cambiar esta línea y no ir a buscar dentro de la
 /// pantalla.
+/// En servicios parte "Técnicos acreditados", que es el de ellos.
 const List<Widget> avisosServicios = [
+  BannerImagen('assets/images/banner4.jpg'),
   BannerImagen('assets/images/banner1.jpg'),
   BannerImagen('assets/images/banner2.jpg'),
   BannerImagen('assets/images/banner3.jpg'),
+  BannerImagen('assets/images/banner5.jpg'),
 ];

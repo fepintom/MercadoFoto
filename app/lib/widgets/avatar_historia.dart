@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../services/historias_service.dart';
 import '../theme/app_theme.dart';
 import 'avatar_usuario.dart';
 
@@ -12,14 +13,16 @@ import 'avatar_usuario.dart';
 ///   a tocarlo.
 /// - Sin historia: un borde fino y neutro.
 ///
-/// Por ahora la app no tiene historias: el anillo queda listo y se enciende
-/// solo cuando el servidor mande `tiene_historia: true` en la publicación.
+/// Si se pasa [userId], el anillo se enciende solo cuando ese usuario tiene
+/// una historia vigente (HistoriasService.activos) y al tocar la foto se
+/// abren sus historias; si no tiene, se usa [onTap] (p. ej. ir al perfil).
 class AvatarHistoria extends StatefulWidget {
   final String? fotoUrl;
   final String nombre;
   final double tamano;
   final bool tieneHistoria;
   final VoidCallback? onTap;
+  final int? userId;
 
   const AvatarHistoria({
     super.key,
@@ -28,6 +31,7 @@ class AvatarHistoria extends StatefulWidget {
     this.tamano = 30,
     this.tieneHistoria = false,
     this.onTap,
+    this.userId,
   });
 
   @override
@@ -46,22 +50,37 @@ class _AvatarHistoriaState extends State<AvatarHistoria>
     Color(0xFFFEDA75),
   ];
 
+  bool get _activa =>
+      widget.tieneHistoria ||
+      (widget.userId != null && HistoriasService.tiene(widget.userId));
+
+  void _cambioActivos() {
+    if (!mounted) return;
+    final antes = _giro != null;
+    _sincronizar();
+    if (antes != (_giro != null)) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
+    HistoriasService.activos.addListener(_cambioActivos);
     _sincronizar();
   }
 
   @override
   void didUpdateWidget(covariant AvatarHistoria old) {
     super.didUpdateWidget(old);
-    if (old.tieneHistoria != widget.tieneHistoria) _sincronizar();
+    if (old.tieneHistoria != widget.tieneHistoria ||
+        old.userId != widget.userId) {
+      _sincronizar();
+    }
   }
 
   /// La animación solo corre si hay historia: cientos de tarjetas sin
   /// historia no deben gastar batería girando nada.
   void _sincronizar() {
-    if (widget.tieneHistoria) {
+    if (_activa) {
       _giro ??= AnimationController(
           vsync: this, duration: const Duration(seconds: 4))
         ..repeat();
@@ -73,6 +92,7 @@ class _AvatarHistoriaState extends State<AvatarHistoria>
 
   @override
   void dispose() {
+    HistoriasService.activos.removeListener(_cambioActivos);
     _giro?.dispose();
     super.dispose();
   }
@@ -131,7 +151,15 @@ class _AvatarHistoriaState extends State<AvatarHistoria>
     }
 
     return GestureDetector(
-      onTap: widget.onTap,
+      onTap: () async {
+        final uid = widget.userId;
+        if (uid != null && HistoriasService.tiene(uid)) {
+          final hubo = await HistoriasService.abrir(context,
+              userId: uid, nombre: widget.nombre, fotoUrl: widget.fotoUrl);
+          if (hubo) return;
+        }
+        widget.onTap?.call();
+      },
       behavior: HitTestBehavior.opaque,
       child: SizedBox(width: t, height: t, child: anillo),
     );

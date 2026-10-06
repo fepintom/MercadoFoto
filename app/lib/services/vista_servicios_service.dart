@@ -17,7 +17,7 @@ class VistaServicios {
   /// true = "Como lista" (una tarjeta ancha por fila).
   /// false = "Como miniaturas" (grilla de tarjetas compactas).
   static final ValueNotifier<bool> comoListaNotifier =
-      ValueNotifier<bool>(true);
+      ValueNotifier<bool>(false);
 
   /// Columnas de la grilla cuando se ve "Como miniaturas" (2 o 3).
   /// No aplica en modo lista.
@@ -36,7 +36,8 @@ class VistaServicios {
       // lista. Ahora la vista es una preferencia aparte, así que un 1
       // guardado se traduce a "como lista" con la grilla en su valor por
       // defecto.
-      final colGuardadas = prefs.getInt(_kPrefColumnas) ?? 1;
+      // Por defecto, 2 columnas como OkMarket (antes era la lista).
+      final colGuardadas = prefs.getInt(_kPrefColumnas) ?? 2;
       final listaGuardada = prefs.getBool(_kPrefComoLista);
 
       comoListaNotifier.value = listaGuardada ?? (colGuardadas == 1);

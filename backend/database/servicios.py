@@ -290,15 +290,61 @@ def obtener_servicios_usuario_con_contactos(user_id: int) -> list:
 # ── Valoraciones ──────────────────────────────────────────────────────────────
 
 def valorar_servicio(servicio_id, user_id, estrellas):
+    """Guarda la valoración UNA sola vez. Devuelve False si ya existía.
+
+    Antes era un upsert (ON CONFLICT DO UPDATE): al volver a entrar al
+    servicio se podía cambiar la nota cuantas veces se quisiera.
+    """
     conn = sqlite3.connect(DB)
     c = conn.cursor()
-    c.execute("""
-        INSERT INTO valoraciones_servicios (servicio_id, user_id, estrellas)
-        VALUES (?, ?, ?)
-        ON CONFLICT(servicio_id, user_id) DO UPDATE SET estrellas = excluded.estrellas
-    """, (servicio_id, user_id, estrellas))
-    conn.commit()
+    try:
+        c.execute("""
+            INSERT INTO valoraciones_servicios (servicio_id, user_id, estrellas)
+            VALUES (?, ?, ?)
+        """, (servicio_id, user_id, estrellas))
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False
+    finally:
+        conn.close()
+
+
+def valoracion_de(servicio_id, user_id):
+    """Estrellas que el usuario le dio al servicio, o None."""
+    conn = sqlite3.connect(DB)
+    r = conn.execute(
+        "SELECT estrellas FROM valoraciones_servicios "
+        "WHERE servicio_id = ? AND user_id = ?",
+        (servicio_id, user_id)).fetchone()
     conn.close()
+    return r[0] if r else None
+
+
+# Estados de orden en los que el cliente ya pagó el servicio.
+_ESTADOS_CONTRATADO = ("pago_confirmado", "en_camino", "entrega_reportada",
+                       "entregado")
+
+
+def contrato_servicio(servicio_id, user_id):
+    """True si el usuario contrató (y pagó) este servicio por OkVenta.
+
+    Solo quien lo contrató puede calificarlo: así las estrellas reflejan
+    trabajos reales y no se pueden inflar ni hundir desde afuera.
+    """
+    conn = sqlite3.connect(DB)
+    try:
+        r = conn.execute(f"""
+            SELECT 1 FROM ordenes
+            WHERE tipo = 'servicio' AND servicio_id = ? AND comprador_id = ?
+              AND estado IN ({",".join("?" * len(_ESTADOS_CONTRATADO))})
+            LIMIT 1
+        """, (servicio_id, user_id, *_ESTADOS_CONTRATADO)).fetchone()
+        return r is not None
+    except sqlite3.OperationalError:
+        return False
+    finally:
+        conn.close()
 
 
 # ── Util ──────────────────────────────────────────────────────────────────────

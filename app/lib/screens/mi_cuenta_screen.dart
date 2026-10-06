@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
@@ -17,6 +18,10 @@ import 'mis_publicaciones_screen.dart';
 import 'mis_servicios_screen.dart';
 import 'mis_ventas_screen.dart';
 import 'perfil_info_screen.dart';
+import 'subir_historia_screen.dart';
+import '../services/historias_service.dart';
+import '../widgets/avatar_historia.dart';
+import '../widgets/destacadas_fila.dart';
 
 class MiCuentaScreen extends StatefulWidget {
   const MiCuentaScreen({super.key});
@@ -49,6 +54,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
   void initState() {
     super.initState();
     cargarDatos();
+    HistoriasService.cargarActivos();
     _cargarBiometria();
   }
 
@@ -129,6 +135,32 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
     await cargarDatos();
   }
 
+  int _versionDestacadas = 0;
+
+  Future<void> _verMisHistorias() async {
+    final uid = _userId;
+    if (uid == null) return;
+    final hubo = await HistoriasService.abrir(context,
+        userId: uid, nombre: nombreMostrado, fotoUrl: _fotoUrl);
+    if (!mounted) return;
+    if (!hubo) {
+      await _nuevaHistoria();
+    } else {
+      HistoriasService.cargarActivos();
+      setState(() => _versionDestacadas++);
+    }
+  }
+
+  Future<void> _nuevaHistoria() async {
+    final uid = _userId;
+    if (uid == null) return;
+    final ok = await SubirHistoriaScreen.iniciar(context, uid);
+    if (ok && mounted) {
+      await HistoriasService.cargarActivos();
+      if (mounted) setState(() {});
+    }
+  }
+
   Widget _avatar({double size = 44}) {
     final inicial = nombreMostrado.isNotEmpty ? nombreMostrado[0].toUpperCase() : "U";
     // _fotoUrl viene del backend como ruta relativa (/uploads/...), hay que
@@ -148,13 +180,15 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
           width: size,
           height: size,
           child: tienefoto
-              ? Image.network(
-                  fotoCompleta,
-                  // Fuerza una carga nueva si cambia la URL (evita quedarse
-                  // con un estado de error en caché de una carga anterior).
+              // Con caché en disco y decodificada al tamaño en pantalla:
+              // antes era Image.network y se descargaba completa cada vez.
+              ? CachedNetworkImage(
+                  imageUrl: fotoCompleta,
                   key: ValueKey(fotoCompleta),
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Center(
+                  memCacheWidth: (size * 3).round(),
+                  fadeInDuration: const Duration(milliseconds: 120),
+                  errorWidget: (_, __, ___) => Center(
                     child: Text(
                       inicial,
                       style: TextStyle(
@@ -826,11 +860,45 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                     // Avatar grande centrado
                     Center(
                       child: Stack(
+                        clipBehavior: Clip.none,
                         children: [
-                          _avatar(size: 80),
+                          // Anillo de historia: brilla si tienes una vigente.
+                          // Toca la foto para ver tus historias; el "+" sube
+                          // una nueva.
+                          ValueListenableBuilder<Set<int>>(
+                            valueListenable: HistoriasService.activos,
+                            builder: (context, _, __) => AvatarHistoria(
+                              fotoUrl: _fotoUrl,
+                              nombre: nombreMostrado.isEmpty
+                                  ? 'U'
+                                  : nombreMostrado,
+                              tamano: 80,
+                              tieneHistoria: HistoriasService.tiene(_userId),
+                              onTap: _verMisHistorias,
+                            ),
+                          ),
                           Positioned(
-                            bottom: 0,
-                            right: 0,
+                            bottom: -2,
+                            right: -4,
+                            child: GestureDetector(
+                              onTap: _nuevaHistoria,
+                              child: Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE53935),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                      color: colors.background, width: 2.5),
+                                ),
+                                child: const Icon(Icons.add_rounded,
+                                    size: 18, color: Colors.white),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: -2,
+                            left: -4,
                             child: GestureDetector(
                               onTap: () => Navigator.push(
                                 context,
@@ -854,6 +922,16 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                     ),
 
                     const SizedBox(height: 20),
+
+                    if (_userId != null) ...[
+                      DestacadasFila(
+                        userId: _userId!,
+                        nombre: nombreMostrado,
+                        fotoUrl: _fotoUrl,
+                        version: _versionDestacadas,
+                      ),
+                      const SizedBox(height: 4),
+                    ],
 
                     // Card editar perfil
                     GestureDetector(

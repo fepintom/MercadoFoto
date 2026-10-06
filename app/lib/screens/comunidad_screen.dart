@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../services/api_service.dart';
+import '../services/contenido_oculto_service.dart';
+import '../services/favoritos_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/avatar_usuario.dart';
@@ -58,13 +60,94 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
   Map<String, dynamic>? _anclaElegida;
   Timer? _timer;
 
+  // ── @menciones y respuestas ──
+  /// Menciones elegidas en el autocompletar: handle → id de usuario.
+  final Map<String, int> _mencionesElegidas = {};
+  List<Map<String, dynamic>> _sugerencias = [];
+  Timer? _debounceMencion;
+  Map<String, dynamic>? _respondiendoA;
+
+  /// Lo que se dibuja: sin los mensajes ocultos ni los de bloqueados.
+  List<Map<String, dynamic>> _vista = [];
+
+  static final _reMencion =
+      RegExp(r'@[0-9A-Za-zÁÉÍÓÚÜÑáéíóúüñ_]+');
+
   int get _ultimoId =>
       _mensajes.isEmpty ? 0 : (_mensajes.last['id'] as num).toInt();
 
   @override
   void initState() {
     super.initState();
+    _ctrl.addListener(_detectarMencion);
+    ContenidoOcultoService.cargar().then((_) => _refrescar());
+    ContenidoOcultoService.mensajes.addListener(_refrescar);
+    ContenidoOcultoService.vendedores.addListener(_refrescar);
     _iniciar();
+  }
+
+  void _refrescar() {
+    if (mounted) setState(() {});
+  }
+
+  /// Si justo antes del cursor hay "@algo", busca usuarios para sugerir.
+  void _detectarMencion() {
+    final t = _ctrl.text;
+    final sel = _ctrl.selection;
+    final pos = sel.isValid ? sel.baseOffset : t.length;
+    if (pos < 0 || pos > t.length) return;
+    final m = RegExp(r'(^|\s)@([0-9A-Za-zÁÉÍÓÚÜÑáéíóúüñ_]{1,30})$')
+        .firstMatch(t.substring(0, pos));
+    _debounceMencion?.cancel();
+    if (m == null) {
+      if (_sugerencias.isNotEmpty) setState(() => _sugerencias = []);
+      return;
+    }
+    final q = m.group(2)!;
+    _debounceMencion = Timer(const Duration(milliseconds: 250), () async {
+      List<Map<String, dynamic>> res = [];
+      try {
+        res = await ApiService.buscarUsuariosComunidad(q, excluir: _miId);
+      } catch (_) {}
+      if (!mounted) return;
+      final bot = 'okventa'.startsWith(q.toLowerCase())
+          ? [<String, dynamic>{'bot': true, 'handle': 'okventa', 'nombre': 'OkVenta (bot)'}]
+          : <Map<String, dynamic>>[];
+      setState(() => _sugerencias = [...bot, ...res]);
+    });
+  }
+
+  void _elegirMencion(Map<String, dynamic> u) {
+    final t = _ctrl.text;
+    final pos = _ctrl.selection.isValid ? _ctrl.selection.baseOffset : t.length;
+    final antes = t.substring(0, pos);
+    final despues = t.substring(pos);
+    final i = antes.lastIndexOf('@');
+    if (i < 0) return;
+    final handle = (u['handle'] ?? '').toString();
+    final nuevo = '${antes.substring(0, i)}@$handle ';
+    _ctrl.value = TextEditingValue(
+      text: nuevo + despues,
+      selection: TextSelection.collapsed(offset: nuevo.length),
+    );
+    final id = (u['id'] as num?)?.toInt();
+    if (u['bot'] != true && id != null) _mencionesElegidas[handle] = id;
+    setState(() => _sugerencias = []);
+  }
+
+  /// Escribe "@Handle " en la caja (desde el menú de un mensaje).
+  void _mencionar(Map<String, dynamic> m) {
+    final handle = (m['handle'] ?? '').toString();
+    final id = (m['user_id'] as num?)?.toInt();
+    if (handle.isEmpty || id == null) return;
+    _mencionesElegidas[handle] = id;
+    final t = _ctrl.text;
+    final sep = t.isEmpty || t.endsWith(' ') ? '' : ' ';
+    _ctrl.value = TextEditingValue(
+      text: '$t$sep@$handle ',
+      selection: TextSelection.collapsed(offset: '$t$sep@$handle '.length),
+    );
+    _foco.requestFocus();
   }
 
   @override
@@ -83,6 +166,9 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
 
   @override
   void dispose() {
+    _debounceMencion?.cancel();
+    ContenidoOcultoService.mensajes.removeListener(_refrescar);
+    ContenidoOcultoService.vendedores.removeListener(_refrescar);
     _timer?.cancel();
     _ctrl.dispose();
     _scroll.dispose();
@@ -163,11 +249,18 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     if (_enviando || (texto.isEmpty && _anclaElegida == null)) return;
     setState(() => _enviando = true);
     try {
+      final menciones = _mencionesElegidas.entries
+          .where((e) => texto.contains('@${e.key}'))
+          .map((e) => e.value)
+          .toSet()
+          .toList();
       final msg = await ApiService.enviarMensajeComunidad(
         userId: _miId!,
         texto: texto,
         anclaTipo: _anclaElegida?['tipo'],
         anclaId: (_anclaElegida?['id'] as num?)?.toInt(),
+        menciones: menciones,
+        respondeA: (_respondiendoA?['id'] as num?)?.toInt(),
       );
       if (!mounted) return;
       HapticFeedback.lightImpact();
@@ -180,13 +273,15 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                   a['ancla_id'] == msg['ancla_id']))];
         }
         _anclaElegida = null;
+        _respondiendoA = null;
+        _mencionesElegidas.clear();
+        _sugerencias = [];
       });
       _alFinal();
-      // Si se etiquetó al bot, su respuesta llega en unos segundos: se
-      // pide antes del siguiente ciclo para que no parezca que no oyó.
-      if (texto.toLowerCase().contains('@okventa')) {
-        Future.delayed(const Duration(milliseconds: 1500), _traerNuevos);
-      }
+      // Si le habló al bot (o sigue una conversación con él), la respuesta
+      // llega en unos segundos: se pide antes del siguiente ciclo.
+      Future.delayed(const Duration(milliseconds: 1500), _traerNuevos);
+      Future.delayed(const Duration(milliseconds: 4000), _traerNuevos);
     } catch (e) {
       if (!mounted) return;
       final txt = e.toString();
@@ -287,12 +382,17 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                       _foco.unfocus();
                       if (_verEmojis) setState(() => _verEmojis = false);
                     },
-                    child: ListView.builder(
-                      controller: _scroll,
-                      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-                      itemCount: _mensajes.length,
-                      itemBuilder: (_, i) => _burbuja(i),
-                    ),
+                    child: Builder(builder: (_) {
+                      _vista = _mensajes
+                          .where((m) => !ContenidoOcultoService.mensajeOculto(m))
+                          .toList();
+                      return ListView.builder(
+                        controller: _scroll,
+                        padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+                        itemCount: _vista.length,
+                        itemBuilder: (_, i) => _burbuja(i),
+                      );
+                    }),
                   ),
           ),
           if (_verEmojis) _barraEmojis(),
@@ -409,10 +509,10 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
   }
 
   Widget _burbuja(int i) {
-    final m = _mensajes[i];
+    final m = _vista[i];
     final esBot = m['es_bot'] == true;
     final mio = !esBot && _miId != null && m['user_id'] == _miId;
-    final anterior = i > 0 ? _mensajes[i - 1] : null;
+    final anterior = i > 0 ? _vista[i - 1] : null;
     // Mensajes seguidos de la misma persona: el nombre y la foto solo en el
     // primero, como en cualquier chat.
     final mismoAutor = anterior != null &&
@@ -472,8 +572,10 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (m['responde_a'] != null) _cita(m, colorTexto),
               if ((m['texto'] ?? '').toString().isNotEmpty)
-                _textoConMenciones(m['texto'].toString(), colorTexto),
+                _textoConMenciones(m['texto'].toString(), colorTexto,
+                    (m['menciones'] as List?) ?? const []),
               if (m['ancla_tipo'] != null) ...[
                 if ((m['texto'] ?? '').toString().isNotEmpty)
                   const SizedBox(height: 6),
@@ -483,14 +585,28 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.only(top: 2, left: 4, right: 4),
-          child: Text(_hora(m['created_at']),
-              style: TextStyle(fontSize: 9, color: colors.grayMid)),
+          padding: const EdgeInsets.only(top: 1, left: 4, right: 0),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text(_hora(m['created_at']),
+                style: TextStyle(fontSize: 9, color: colors.textPrimary)),
+            // Menú del mensaje: guardar, responder, denunciar, ocultar...
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _menuMensaje(m),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                child: Icon(Icons.more_horiz_rounded,
+                    size: 16, color: colors.textPrimary),
+              ),
+            ),
+          ]),
         ),
       ],
     );
 
-    return Padding(
+    return GestureDetector(
+      onLongPress: () => _menuMensaje(m),
+      child: Padding(
       padding: EdgeInsets.only(top: mismoAutor ? 2 : 8),
       child: Row(
         mainAxisAlignment:
@@ -507,6 +623,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
             _columnaAvatar(m, esBot, mismoAutor, nombre),
           ],
         ],
+      ),
       ),
     );
   }
@@ -558,23 +675,266 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     );
   }
 
-  /// Resalta las @menciones (por ahora solo existe @okventa).
-  Widget _textoConMenciones(String texto, Color color) {
-    final re = RegExp(r'@\s?ok\s?venta', caseSensitive: false);
-    final spans = <TextSpan>[];
+  /// Resalta las @menciones. Las de usuarios reales (las que el servidor
+  /// confirmó) se pueden tocar y abren su perfil.
+  Widget _textoConMenciones(String texto, Color color, List menciones) {
+    final porHandle = <String, int>{
+      for (final x in menciones)
+        if (x is Map && x['handle'] != null && x['id'] is num)
+          x['handle'].toString().toLowerCase(): (x['id'] as num).toInt(),
+    };
+    final estilo = TextStyle(fontSize: 14, height: 1.3, color: color);
+    final spans = <InlineSpan>[];
     var i = 0;
-    for (final m in re.allMatches(texto)) {
+    for (final m in _reMencion.allMatches(texto)) {
       if (m.start > i) spans.add(TextSpan(text: texto.substring(i, m.start)));
-      spans.add(TextSpan(
-          text: m.group(0),
-          style: const TextStyle(fontWeight: FontWeight.w800)));
+      final token = m.group(0)!;
+      final handle = token.substring(1).toLowerCase();
+      final uid = porHandle[handle];
+      final esBot = handle == 'okventa';
+      final resaltado = TextStyle(
+          fontWeight: FontWeight.w800,
+          color: color,
+          decoration: uid != null ? TextDecoration.underline : null,
+          decorationColor: color);
+      if (uid != null) {
+        spans.add(WidgetSpan(
+          alignment: PlaceholderAlignment.baseline,
+          baseline: TextBaseline.alphabetic,
+          child: GestureDetector(
+            onTap: () => _abrirPerfil({'user_id': uid}, token.substring(1)),
+            child: Text(token, style: estilo.merge(resaltado)),
+          ),
+        ));
+      } else if (esBot || porHandle.isEmpty) {
+        spans.add(TextSpan(text: token, style: resaltado));
+      } else {
+        spans.add(TextSpan(text: token));
+      }
       i = m.end;
     }
     if (i < texto.length) spans.add(TextSpan(text: texto.substring(i)));
-    return Text.rich(
-      TextSpan(children: spans),
-      style: TextStyle(fontSize: 14, height: 1.3, color: color),
+    return Text.rich(TextSpan(children: spans), style: estilo);
+  }
+
+  /// Cita del mensaje al que se responde (una línea, arriba del texto).
+  Widget _cita(Map<String, dynamic> m, Color color) {
+    final orig = _mensajes.firstWhere((x) => x['id'] == m['responde_a'],
+        orElse: () => const <String, dynamic>{});
+    if (orig.isEmpty) return const SizedBox.shrink();
+    final quien = orig['es_bot'] == true
+        ? 'OkVenta'
+        : (orig['nombre'] ?? 'Usuario').toString().split(' ').first;
+    final texto = (orig['texto'] ?? '').toString().isNotEmpty
+        ? orig['texto'].toString()
+        : (orig['ancla_titulo'] ?? '📌').toString();
+    return Container(
+      margin: const EdgeInsets.only(bottom: 5),
+      padding: const EdgeInsets.fromLTRB(7, 4, 7, 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+        border: Border(left: BorderSide(color: color, width: 2.5)),
+      ),
+      child: Text('$quien: $texto',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 11.5, color: color)),
     );
+  }
+
+  // ── Menú ⋯ de cada mensaje ───────────────────────────────────────────────
+
+  Future<void> _menuMensaje(Map<String, dynamic> m) async {
+    final esBot = m['es_bot'] == true;
+    final autorId = (m['user_id'] as num?)?.toInt();
+    final mio = !esBot && _miId != null && autorId == _miId;
+    final id = (m['id'] as num?)?.toInt();
+    final nombre = esBot
+        ? 'OkVenta'
+        : (m['nombre'] ?? 'Usuario').toString().split(' ').first;
+    final anclaTipo = m['ancla_tipo']?.toString();
+    final anclaId = (m['ancla_id'] as num?)?.toInt();
+    if (id == null) return;
+
+    void aviso(String t, {SnackBarAction? accion}) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(
+            content: Text(t),
+            backgroundColor: colors.carbon,
+            behavior: SnackBarBehavior.floating,
+            action: accion));
+    }
+
+    Widget opcion(IconData i, String t, VoidCallback f, {bool rojo = false}) =>
+        ListTile(
+          dense: true,
+          leading: Icon(i, color: rojo ? colors.primary : colors.textPrimary),
+          title: Text(t,
+              style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                  color: rojo ? colors.primary : colors.textPrimary)),
+          onTap: f,
+        );
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        void cerrarY(VoidCallback f) {
+          Navigator.pop(ctx);
+          f();
+        }
+
+        final guardado = anclaTipo == 'servicio'
+            ? FavoritosService.esServicio(anclaId)
+            : FavoritosService.es(anclaId);
+        return SafeArea(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const SizedBox(height: 8),
+            Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: colors.divider,
+                    borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 6),
+            if (_miId != null)
+              opcion(Icons.reply_rounded, 'Responder',
+                  () => cerrarY(() {
+                        setState(() => _respondiendoA = m);
+                        _foco.requestFocus();
+                      })),
+            if (!mio && !esBot && _miId != null)
+              opcion(Icons.alternate_email_rounded, 'Mencionar a $nombre',
+                  () => cerrarY(() => _mencionar(m))),
+            if (!mio && !esBot && autorId != null)
+              opcion(Icons.person_outline_rounded, 'Ver perfil de $nombre',
+                  () => cerrarY(() => _abrirPerfil(m, nombre))),
+            if (anclaTipo != null && anclaId != null && !mio)
+              opcion(
+                  guardado
+                      ? Icons.bookmark_remove_outlined
+                      : Icons.bookmark_add_outlined,
+                  guardado ? 'Quitar de guardados' : 'Guardar publicación',
+                  () => cerrarY(() async {
+                        final uid = _miId;
+                        if (uid == null) {
+                          widget.onPedirLogin?.call();
+                          return;
+                        }
+                        final ahora = anclaTipo == 'servicio'
+                            ? await FavoritosService.alternarServicio(uid, anclaId)
+                            : await FavoritosService.alternar(uid, anclaId);
+                        if (mounted) {
+                          aviso(ahora ? 'Guardada en favoritos' : 'Quitada de favoritos');
+                        }
+                      })),
+            if (anclaTipo != null && anclaId != null && !mio)
+              opcion(Icons.visibility_off_outlined, 'No me interesa',
+                  () => cerrarY(() {
+                        if (anclaTipo == 'servicio') {
+                          ContenidoOcultoService.ocultarServicio(anclaId);
+                        } else {
+                          ContenidoOcultoService.ocultarPublicacion(anclaId);
+                        }
+                        ContenidoOcultoService.ocultarMensaje(id);
+                        aviso('No volverás a ver esta publicación');
+                      })),
+            opcion(Icons.delete_outline_rounded, 'Eliminar para mí',
+                () => cerrarY(() {
+                      ContenidoOcultoService.ocultarMensaje(id);
+                      aviso('Mensaje eliminado para ti',
+                          accion: SnackBarAction(
+                              label: 'Deshacer',
+                              textColor: Colors.white,
+                              onPressed: () =>
+                                  ContenidoOcultoService.mostrarMensaje(id)));
+                    })),
+            if (mio)
+              opcion(Icons.delete_forever_outlined, 'Eliminar para todos',
+                  () => cerrarY(() async {
+                        final ok = await ApiService.borrarMensajeComunidad(id, _miId!);
+                        if (!mounted) return;
+                        if (ok) {
+                          setState(() => _mensajes.removeWhere((x) => x['id'] == id));
+                        }
+                        aviso(ok ? 'Mensaje eliminado' : 'No se pudo eliminar');
+                      }),
+                  rojo: true),
+            if (!mio && !esBot)
+              opcion(Icons.flag_outlined, 'Denunciar mensaje',
+                  () => cerrarY(() => _denunciar(m)), rojo: true),
+            if (!mio && !esBot && autorId != null)
+              opcion(Icons.block_rounded, 'Bloquear a $nombre',
+                  () => cerrarY(() {
+                        ContenidoOcultoService.bloquearVendedor(autorId);
+                        aviso('Bloqueaste a $nombre: no verás sus mensajes ni publicaciones',
+                            accion: SnackBarAction(
+                                label: 'Deshacer',
+                                textColor: Colors.white,
+                                onPressed: () =>
+                                    ContenidoOcultoService.desbloquearVendedor(autorId)));
+                      }),
+                  rojo: true),
+            const SizedBox(height: 6),
+          ]),
+        );
+      },
+    );
+  }
+
+  Future<void> _denunciar(Map<String, dynamic> m) async {
+    final uid = _miId;
+    if (uid == null) {
+      widget.onPedirLogin?.call();
+      return;
+    }
+    const motivos = [
+      'Spam o publicidad engañosa',
+      'Acoso o insultos',
+      'Estafa o fraude',
+      'Contenido inapropiado',
+      'Otro motivo',
+    ];
+    final motivo = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: colors.surface,
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const SizedBox(height: 12),
+          Text('¿Por qué lo denuncias?',
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: colors.textPrimary)),
+          for (final x in motivos)
+            ListTile(
+              title: Text(x, style: TextStyle(color: colors.textPrimary)),
+              onTap: () => Navigator.pop(ctx, x),
+            ),
+        ]),
+      ),
+    );
+    if (motivo == null || !mounted) return;
+    try {
+      await ApiService.crearTicketAyuda(
+        userId: uid,
+        tipo: 'reporte',
+        numeroReferencia: 'Comunidad mensaje #${m['id']}',
+        detalle: 'Denuncia de mensaje de ${m['nombre'] ?? 'usuario'} '
+            '(id ${m['user_id']}): "${m['texto'] ?? ''}" — $motivo',
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Text('Gracias. El equipo de OkVenta lo va a revisar.'),
+        backgroundColor: colors.carbon,
+      ));
+    } catch (_) {}
   }
 
   Widget _tarjetaAncla(Map<String, dynamic> m) {
@@ -684,6 +1044,77 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Sugerencias de @menciones mientras se escribe.
+          if (_sugerencias.isNotEmpty)
+            SizedBox(
+              height: 40,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(8, 2, 8, 6),
+                itemCount: _sugerencias.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 6),
+                itemBuilder: (_, i) {
+                  final u = _sugerencias[i];
+                  final esBot = u['bot'] == true;
+                  final nombre = esBot
+                      ? 'OkVenta'
+                      : [u['nombre'], u['apellido']]
+                          .where((x) => x != null && '$x'.trim().isNotEmpty)
+                          .join(' ');
+                  return GestureDetector(
+                    onTap: () => _elegirMencion(u),
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(4, 2, 10, 2),
+                      decoration: BoxDecoration(
+                        color: colors.background,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: colors.divider),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        esBot
+                            ? _avatarBot()
+                            : AvatarUsuario(
+                                fotoUrl: u['foto_url'], nombre: nombre, tamano: 26),
+                        const SizedBox(width: 6),
+                        Text('@${u['handle']}',
+                            style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: colors.textPrimary)),
+                      ]),
+                    ),
+                  );
+                },
+              ),
+            ),
+          // Respondiendo a un mensaje.
+          if (_respondiendoA != null)
+            Container(
+              margin: const EdgeInsets.fromLTRB(6, 0, 6, 6),
+              padding: const EdgeInsets.fromLTRB(8, 5, 4, 5),
+              decoration: BoxDecoration(
+                color: colors.background,
+                borderRadius: BorderRadius.circular(10),
+                border: Border(left: BorderSide(color: colors.primary, width: 3)),
+              ),
+              child: Row(children: [
+                Icon(Icons.reply_rounded, size: 16, color: colors.primary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                      'Respondiendo a ${_respondiendoA!['es_bot'] == true ? 'OkVenta' : (_respondiendoA!['nombre'] ?? 'Usuario').toString().split(' ').first}: '
+                      '${(_respondiendoA!['texto'] ?? _respondiendoA!['ancla_titulo'] ?? '').toString()}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12, color: colors.textPrimary)),
+                ),
+                GestureDetector(
+                  onTap: () => setState(() => _respondiendoA = null),
+                  child: Icon(Icons.close_rounded,
+                      size: 18, color: colors.textPrimary),
+                ),
+              ]),
+            ),
           if (_anclaElegida != null)
             Container(
               margin: const EdgeInsets.fromLTRB(6, 0, 6, 6),
@@ -750,7 +1181,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                     onChanged: (_) => setState(() {}),
                     style: TextStyle(fontSize: 14, color: colors.textPrimary),
                     decoration: InputDecoration(
-                      hintText: 'Escribe a la comunidad…',
+                      hintText: 'Escribe… usa @ para mencionar',
                       hintStyle:
                           TextStyle(fontSize: 14, color: colors.grayMid),
                       counterText: '',

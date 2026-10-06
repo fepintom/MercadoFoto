@@ -1492,6 +1492,23 @@ class ApiService {
         jsonDecode(utf8.decode(r.bodyBytes)));
   }
 
+  /// Autocompletar de @menciones.
+  static Future<List<Map<String, dynamic>>> buscarUsuariosComunidad(
+      String q, {int? excluir}) async {
+    final uri = Uri.parse('$baseUrl/comunidad/usuarios').replace(
+        queryParameters: {'q': q, if (excluir != null) 'user_id': '$excluir'});
+    final r = await http.get(uri).timeout(const Duration(seconds: 10));
+    if (r.statusCode != 200) return [];
+    return List<Map<String, dynamic>>.from(jsonDecode(utf8.decode(r.bodyBytes)));
+  }
+
+  /// Borra un mensaje propio para todos.
+  static Future<bool> borrarMensajeComunidad(int mensajeId, int userId) async {
+    final r = await http.delete(
+        Uri.parse('$baseUrl/comunidad/mensajes/$mensajeId?user_id=$userId'));
+    return r.statusCode == 200;
+  }
+
   static Future<List<Map<String, dynamic>>> obtenerAncladosComunidad() async {
     final r = await http.get(Uri.parse('$baseUrl/comunidad/anclados'));
     if (r.statusCode != 200) return [];
@@ -1513,6 +1530,8 @@ class ApiService {
     String texto = '',
     String? anclaTipo,
     int? anclaId,
+    List<int>? menciones,
+    int? respondeA,
   }) async {
     Future<http.Response> intento() => http
         .post(
@@ -1523,6 +1542,8 @@ class ApiService {
             'texto': texto,
             if (anclaTipo != null) 'ancla_tipo': anclaTipo,
             if (anclaId != null) 'ancla_id': anclaId,
+            if (menciones != null && menciones.isNotEmpty) 'menciones': menciones,
+            if (respondeA != null) 'responde_a': respondeA,
           }),
         )
         .timeout(const Duration(seconds: 25));

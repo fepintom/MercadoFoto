@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../services/historias_service.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
@@ -15,6 +16,12 @@ import 'servicio_detalle_screen.dart';
 import '../widgets/banner_publicidad.dart';
 import '../widgets/barra_filtros.dart';
 import '../widgets/insignia.dart';
+import '../widgets/acciones_servicio.dart';
+import '../widgets/avatar_historia.dart';
+import '../services/favoritos_service.dart';
+import '../services/contenido_oculto_service.dart';
+import '../utils/format_utils.dart';
+import 'perfil_publico_screen.dart';
 import '../utils/regiones_chile.dart';
 import '../widgets/net_image.dart';
 class ServiciosScreen extends StatefulWidget {
@@ -61,6 +68,7 @@ class _ServiciosScreenState extends State<ServiciosScreen>
   }
 
   Future<void> _cargar() async {
+    HistoriasService.cargarActivos();
     try {
       final o = await ApiService.obtenerServicios(tipo: 'ofrezco');
       final b = await ApiService.obtenerServicios(tipo: 'busco');
@@ -229,15 +237,6 @@ const _kCategoriaIconos = <String, IconData>{
   'Otros':              Icons.more_horiz_rounded,
 };
 
-Color _hexColor(String? hex) {
-  if (hex == null || hex.isEmpty) return colors.primary;
-  try {
-    return Color(int.parse('FF${hex.replaceAll('#', '')}', radix: 16));
-  } catch (_) {
-    return colors.primary;
-  }
-}
-
 // ── Lista de servicios ────────────────────────────────────────────────────────
 
 class _ListaServicios extends StatefulWidget {
@@ -303,9 +302,25 @@ class _ListaServiciosState extends State<_ListaServicios> {
   /// Mientras se pide el GPS por primera vez.
   bool _cargandoUbicacion = true;
 
+  /// Para no mostrar "cotizar" en mis propios servicios y para los
+  /// favoritos.
+  int? _miUserId;
+
+  void _refiltrar() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
+    SessionService.obtenerUser().then((id) {
+      if (!mounted) return;
+      setState(() => _miUserId = id);
+      if (id != null) FavoritosService.cargarServicios(id);
+    });
+    ContenidoOcultoService.cargar().then((_) => _refiltrar());
+    ContenidoOcultoService.servicios.addListener(_refiltrar);
+    ContenidoOcultoService.vendedores.addListener(_refiltrar);
     final inicial = widget.busquedaInicial?.trim() ?? '';
     if (inicial.isNotEmpty) {
       _searchCtrl.text = inicial;
@@ -322,12 +337,17 @@ class _ListaServiciosState extends State<_ListaServicios> {
 
   @override
   void dispose() {
+    ContenidoOcultoService.servicios.removeListener(_refiltrar);
+    ContenidoOcultoService.vendedores.removeListener(_refiltrar);
     _searchCtrl.dispose();
     super.dispose();
   }
 
   List<Map<String, dynamic>> get _filtrados {
-    var lista = widget.servicios;
+    // "No me interesa" y proveedores bloqueados (menú ⋯ de la tarjeta).
+    var lista = widget.servicios
+        .where((s) => !ContenidoOcultoService.servicioOculto(s))
+        .toList();
     if (_categoriasSel.isNotEmpty) {
       lista = lista
           .where((s) => _categoriasSel.contains(s['categoria'] ?? 'Otros'))
@@ -770,42 +790,55 @@ class _ListaServiciosState extends State<_ListaServicios> {
   /// es lo que hace que el banner se vaya al desplazarse. Una ListView
   /// aparte tendría su propio scroll y el banner quedaría fijo.
   Widget _buildLista(List<Map<String, dynamic>> servicios) {
-    // Escucha las dos preferencias globales, así el cambio hecho desde el
-    // panel se refleja al instante en esta pestaña y en la otra.
+    // La misma tarjeta que OkMarket en las dos vistas: "lista" es una
+    // columna (foto apaisada) y "miniaturas" son 2 o 3 columnas. Cada fila
+    // mide lo que necesita su tarjeta más alta (sin espacio sobrante).
     return ValueListenableBuilder<bool>(
       valueListenable: VistaServicios.comoListaNotifier,
-      builder: (_, comoLista, __) {
-        if (comoLista) {
+      builder: (_, comoLista, __) => ValueListenableBuilder<int>(
+        valueListenable: VistaServicios.columnasNotifier,
+        builder: (_, cols, __) {
+          final columnas = comoLista ? 1 : cols;
+          const gap = 8.0;
           return SliverPadding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, _kPaddingInferior),
-            sliver: SliverList.separated(
-              itemCount: servicios.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (_, i) => _TarjetaServicio(servicio: servicios[i]),
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, _kPaddingInferior),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (_, fila) {
+                  final inicio = fila * columnas;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: gap),
+                    child: IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (var c = 0; c < columnas; c++) ...[
+                            if (c > 0) const SizedBox(width: gap),
+                            Expanded(
+                              child: inicio + c < servicios.length
+                                  ? _TarjetaServicioMarket(
+                                      servicio: servicios[inicio + c],
+                                      miUserId: _miUserId,
+                                      ancha: columnas == 1,
+                                      angosta: columnas >= 3,
+                                    )
+                                  : const SizedBox.shrink(),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                },
+                childCount: (servicios.length / columnas).ceil(),
+              ),
             ),
           );
-        }
-
-        return ValueListenableBuilder<int>(
-          valueListenable: VistaServicios.columnasNotifier,
-          builder: (_, columnas, __) => SliverPadding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, _kPaddingInferior),
-            sliver: SliverGrid.builder(
-              itemCount: servicios.length,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: columnas,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 0.72,
-              ),
-              itemBuilder: (_, i) =>
-                  _TarjetaServicioCompacta(servicio: servicios[i]),
-            ),
-          ),
-        );
-      },
+        },
+      ),
     );
   }
+
 }
 
 /// Altos del encabezado anclado: buscador + fila de filtros (su alto
@@ -901,404 +934,285 @@ class _PastillaPublicar extends StatelessWidget {
   }
 }
 
-// ── Tarjeta de servicio ───────────────────────────────────────────────────────
-
-class _TarjetaServicio extends StatelessWidget {
+// ── Tarjeta de servicio, con la misma estructura que OkMarket ────────────────
+//
+//   [foto proveedor] Nombre / comuna                         ⋯
+//   [        foto del servicio        ]  ♥ / compartir / cotizar
+//   Ofrezco · Categoría
+//   Título
+//   $ precio / modalidad      ★★★★☆ (n)   [insignia si es certificado]
+//
+// Sin botón "Ver detalle": toda la tarjeta abre el servicio.
+class _TarjetaServicioMarket extends StatelessWidget {
   final Map<String, dynamic> servicio;
-  const _TarjetaServicio({required this.servicio});
+  final int? miUserId;
+  final bool ancha; // una sola columna (vista de lista)
+  final bool angosta; // 3+ columnas
+
+  const _TarjetaServicioMarket({
+    required this.servicio,
+    required this.miUserId,
+    this.ancha = false,
+    this.angosta = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    const imgW = 63.0;
-    const imgH = 70.0;
-    final nombre    = '${servicio['nombre'] ?? ''} ${servicio['apellido'] ?? ''}'.trim();
-    final fotoUrl   = servicio['foto_url'] as String? ?? '';
-    final tipo      = servicio['tipo'] as String? ?? 'ofrezco';
-    final titulo    = servicio['titulo'] as String? ?? '';
-    final rating    = (servicio['rating'] as num?)?.toDouble() ?? 0.0;
-    final numVal    = servicio['num_valoraciones'] as int? ?? 0;
-    final modalidad = servicio['modalidad'] as String? ?? 'servicio';
-    final valor     = (servicio['valor'] as num?)?.toDouble() ?? 0;
-    final fotos     = servicio['fotos'] as List? ?? [];
-    final verificado = servicio['certificado_verificado'] as bool? ?? false;
-    final comunas   = servicio['comunas'] as String? ?? '';
-    final tipoColor = tipo == 'ofrezco' ? colors.primary : colors.warning;
-    final prefix    = tipo == 'ofrezco' ? 'Ofrezco' : 'Busco';
+    final s = servicio;
+    final nombre = AccionesServicio.nombreProveedor(s).isEmpty
+        ? 'Proveedor'
+        : AccionesServicio.nombreProveedor(s);
+    final fotoUrl = (s['foto_url'] ?? '').toString();
+    final fotos = s['fotos'] is List ? s['fotos'] as List : const [];
+    final tipo = (s['tipo'] ?? 'ofrezco').toString();
+    final esBusco = tipo == 'busco';
+    final tipoColor = esBusco ? colors.warning : colors.primary;
+    final titulo = (s['titulo'] ?? '').toString();
+    final categoria = (s['categoria'] ?? '').toString();
+    final valor = (s['valor'] as num?)?.toDouble() ?? 0;
+    final modalidad = s['modalidad'] == 'hora' ? 'hora' : 'servicio';
+    final rating = (s['rating'] as num?)?.toDouble() ?? 0;
+    final numVal = (s['num_valoraciones'] as num?)?.toInt() ?? 0;
+    final certificado = s['certificado_verificado'] == true ||
+        s['certificado_verificado'] == 1;
+    final comuna = (s['comunas'] ?? '').toString().split(',').first.trim();
+    final lugar = comuna.isNotEmpty
+        ? comuna
+        : (RegionesChile.regionDeItem(s) ?? '');
+    final provId = (s['user_id'] as num?)?.toInt();
+    final esMio = miUserId != null && provId == miUserId;
+    final tamBoton = angosta ? 26.0 : 30.0;
 
-    // El borde tiene que ser UNIFORME: Flutter ignora el borderRadius cuando
-    // los lados difieren y pinta esquinas rectas, que es lo que hacía que la
-    // franja roja se saliera de la tarjeta y chocara con la esquina redondeada
-    // de la foto. La franja va como hijo recortado por el clipBehavior.
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: colors.divider, width: 0.5),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2))
-        ],
-      ),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Franja de color según el tipo (ofrezco / busco).
-            Container(width: 4, color: tipoColor),
-
-            // Imagen del servicio o avatar del usuario. Va centrada: con
-            // `stretch` la fila le impondría la altura completa de la tarjeta
-            // y la deformaría.
-            Center(
-              child: fotos.isNotEmpty
-                  ? _media(fotos.first as String, imgW, imgH)
-                  : _avatar(fotoUrl, nombre, imgW, imgH),
-            ),
-
-            // Info
-            Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Nombre + badge
-                  Row(
-                    children: [
-                      // Avatar pequeño
-                      CircleAvatar(
-                        radius: 9,
-                        backgroundColor: colors.primary.withOpacity(0.15),
-                        backgroundImage: fotoUrl.isNotEmpty
-                            ? NetworkImage(
-                                '${ApiService.baseUrl}$fotoUrl')
-                            : null,
-                        child: fotoUrl.isEmpty
-                            ? Text(
-                                nombre.isNotEmpty
-                                    ? nombre[0].toUpperCase()
-                                    : 'U',
-                                style: TextStyle(
-                                    fontSize: 8,
-                                    color: colors.primary,
-                                    fontWeight: FontWeight.w700),
-                              )
-                            : null,
-                      ),
-                      const SizedBox(width: 5),
-                      Expanded(
-                        child: Text(nombre,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                fontSize: 10, color: colors.textPrimary)),
-                      ),
-                      if (verificado)
-                        const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Insignia.certificado(tamano: 18),
-                            SizedBox(width: 3),
-                            Text('Certificado',
-                                style: TextStyle(
-                                    fontSize: 9,
-                                    color: Insignia.dorado,
-                                    fontWeight: FontWeight.w800)),
-                          ],
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-
-                  // Título con prefijo "Ofrezco:" / "Busco:"
-                  RichText(
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    text: TextSpan(
-                      children: [
-                        TextSpan(
-                          text: '$prefix: ',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: tipoColor,
-                          ),
-                        ),
-                        TextSpan(
-                          text: titulo,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: colors.textPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-
-                  // Comunas
-                  if (comunas.isNotEmpty)
-                    Row(
-                      children: [
-                        Icon(Icons.location_on_outlined,
-                            size: 10, color: colors.grayMid),
-                        const SizedBox(width: 2),
-                        Expanded(
-                          child: Text(comunas,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                  fontSize: 10, color: colors.textPrimary)),
-                        ),
-                      ],
-                    ),
-
-                  const SizedBox(height: 4),
-
-                  // Precio + estrellas
-                  Row(
-                    children: [
-                      if (valor > 0)
-                        Text(
-                          '\$${valor.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]}.')} / $modalidad',
-                          style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: tipoColor),
-                        ),
-                      const Spacer(),
-                      _Estrellas(rating: rating, size: 10),
-                      const SizedBox(width: 2),
-                      Text('($numVal)',
-                          style: TextStyle(
-                              fontSize: 9, color: colors.textPrimary)),
-                    ],
-                  ),
-
-                  const SizedBox(height: 6),
-
-                  // Botón ver detalle
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ServicioDetalleScreen(
-                              servicio: servicio),
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: colors.primary,
-                        side: BorderSide(
-                            color: colors.primary, width: 1),
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                      ),
-                      child: const Text('Ver detalle',
-                          style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _media(String path, double w, double h) {
-    final url = '${ApiService.baseUrl}$path';
-    final isVideo = path.endsWith('.mp4') || path.endsWith('.mov');
-    return Stack(
-      children: [
-        NetImage(url, width: w, height: h, fit: BoxFit.cover),
-        if (isVideo)
-          Positioned.fill(
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                    color: Colors.black54, shape: BoxShape.circle),
-                child: const Icon(Icons.play_arrow,
-                    color: Colors.white, size: 20),
-              ),
-            ),
+    Widget etiqueta(String texto, Color color) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(4),
           ),
-      ],
-    );
-  }
+          child: Text(texto,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              softWrap: false,
+              style: TextStyle(
+                  fontSize: 10, fontWeight: FontWeight.w600, color: color)),
+        );
 
-  Widget _avatar(String fotoUrl, String nombre, double w, double h) {
-    if (fotoUrl.isNotEmpty) {
-      return NetImage(
-        '${ApiService.baseUrl}$fotoUrl',
-        width: w, height: h, fit: BoxFit.cover,
-      );
-    }
-    return _avatarPlaceholder(nombre, w, h);
-  }
+    Widget boton({
+      required IconData icono,
+      required VoidCallback onTap,
+      Color? fondo,
+      Color? color,
+    }) =>
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: Container(
+            width: tamBoton,
+            height: tamBoton,
+            decoration: BoxDecoration(
+              color: fondo ?? Colors.white.withValues(alpha: 0.95),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1)),
+              ],
+            ),
+            child: Icon(icono,
+                size: tamBoton * 0.55,
+                color: color ?? const Color(0xFF1B2A41)),
+          ),
+        );
 
-  Widget _avatarPlaceholder(String nombre, double w, double h) {
-    return Container(
-      width: w, height: h,
-      color: colors.primary.withOpacity(0.12),
-      child: Center(
-        child: Text(
-          nombre.isNotEmpty ? nombre[0].toUpperCase() : 'S',
-          style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              color: colors.primary),
-        ),
-      ),
-    );
-  }
-
-}
-
-// ── Tarjeta compacta (grilla, 2-3 columnas) — imagen arriba, info abajo ──────
-// Se activa cuando el control de tamaño reduce las publicaciones para ver
-// más a la vez, igual que la grilla del marketplace.
-
-class _TarjetaServicioCompacta extends StatelessWidget {
-  final Map<String, dynamic> servicio;
-  const _TarjetaServicioCompacta({required this.servicio});
-
-  @override
-  Widget build(BuildContext context) {
-    final nombre    = '${servicio['nombre'] ?? ''} ${servicio['apellido'] ?? ''}'.trim();
-    final fotoUrl   = servicio['foto_url'] as String? ?? '';
-    final tipo      = servicio['tipo'] as String? ?? 'ofrezco';
-    final titulo    = servicio['titulo'] as String? ?? '';
-    final rating    = (servicio['rating'] as num?)?.toDouble() ?? 0.0;
-    final numVal    = servicio['num_valoraciones'] as int? ?? 0;
-    final modalidad = servicio['modalidad'] as String? ?? 'servicio';
-    final valor     = (servicio['valor'] as num?)?.toDouble() ?? 0;
-    final fotos     = servicio['fotos'] as List? ?? [];
-    final verificado = servicio['certificado_verificado'] == true ||
-        servicio['certificado_verificado'] == 1;
-    final tipoColor = tipo == 'ofrezco' ? colors.primary : colors.warning;
-    final prefix    = tipo == 'ofrezco' ? 'Ofrezco' : 'Busco';
+    final foto = fotos.isNotEmpty
+        ? NetImage('${ApiService.baseUrl}${fotos.first}',
+            width: double.infinity, fit: BoxFit.cover)
+        : Container(
+            color: colors.primary.withValues(alpha: 0.10),
+            alignment: Alignment.center,
+            child: Icon(Icons.handyman_rounded,
+                size: 40, color: colors.primary.withValues(alpha: 0.6)),
+          );
 
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => ServicioDetalleScreen(servicio: servicio),
-        ),
+        MaterialPageRoute(builder: (_) => ServicioDetalleScreen(servicio: s)),
       ),
       child: Container(
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: colors.surface,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: colors.divider, width: 0.5),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 6,
-                offset: const Offset(0, 2))
-          ],
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Imagen/avatar — el ancho crece o se achica con las columnas
-            AspectRatio(
-              aspectRatio: 1.3,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  fotos.isNotEmpty
-                      ? NetImage('${ApiService.baseUrl}${fotos.first}',
-                          fit: BoxFit.cover)
-                      : (fotoUrl.isNotEmpty
-                          ? NetImage('${ApiService.baseUrl}$fotoUrl',
-                              fit: BoxFit.cover)
-                          : Container(
-                              color: colors.primary.withOpacity(0.12),
-                              child: Center(
-                                child: Text(
-                                  nombre.isNotEmpty
-                                      ? nombre[0].toUpperCase()
-                                      : 'S',
-                                  style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.w700,
-                                      color: colors.primary),
-                                ),
-                              ),
-                            )),
-                  if (verificado)
-                    const Positioned(
-                      right: 4, top: 4,
-                      child: Insignia.certificado(tamano: 26),
-                    ),
-                  Positioned(
-                    left: 0, top: 0,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 7, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: tipoColor,
-                        borderRadius: const BorderRadius.only(
-                            bottomRight: Radius.circular(10)),
-                      ),
-                      child: Text(prefix,
-                          style: const TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white)),
-                    ),
+            // Proveedor
+            Padding(
+              padding: const EdgeInsets.fromLTRB(6, 6, 0, 4),
+              child: Row(children: [
+                AvatarHistoria(
+                  fotoUrl: fotoUrl.isEmpty ? null : fotoUrl,
+                  nombre: nombre,
+                  tamano: angosta ? 26 : 30,
+                  tieneHistoria: s['tiene_historia'] == true,
+                  userId: provId,
+                  onTap: provId == null
+                      ? null
+                      : () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => PerfilPublicoScreen(
+                                    userId: provId, nombre: nombre)),
+                          ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        Flexible(
+                          child: Text(nombre,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: angosta ? 11 : 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: colors.textPrimary)),
+                        ),
+                        if (certificado) ...[
+                          const SizedBox(width: 3),
+                          Insignia.certificado(tamano: angosta ? 14 : 16),
+                        ],
+                      ]),
+                      if (lugar.isNotEmpty)
+                        Text(lugar,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontSize: angosta ? 9.5 : 10.5,
+                                color: colors.textPrimary)),
+                    ],
                   ),
+                ),
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => AccionesServicio.mostrarMenu(context, s),
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    child: Icon(Icons.more_horiz_rounded,
+                        size: 20, color: colors.textPrimary),
+                  ),
+                ),
+              ]),
+            ),
+            // Foto protagonista + acciones a la derecha
+            Stack(children: [
+              AspectRatio(aspectRatio: ancha ? 16 / 9 : 4 / 5, child: foto),
+              Positioned(
+                top: 4,
+                right: 4,
+                child: Column(children: [
+                  ValueListenableBuilder<Set<int>>(
+                    valueListenable: FavoritosService.idsServicios,
+                    builder: (_, __, ___) {
+                      final id = (s['id'] as num?)?.toInt();
+                      final fav = FavoritosService.esServicio(id);
+                      return boton(
+                        icono: fav
+                            ? Icons.favorite_rounded
+                            : Icons.favorite_border_rounded,
+                        fondo: fav ? colors.primary : null,
+                        color: fav ? Colors.white : null,
+                        onTap: () async {
+                          final uid = miUserId;
+                          if (uid == null || id == null) {
+                            ScaffoldMessenger.of(context)
+                              ..clearSnackBars()
+                              ..showSnackBar(SnackBar(
+                                content: const Text(
+                                    'Inicia sesión para guardar servicios'),
+                                backgroundColor: colors.carbon,
+                                behavior: SnackBarBehavior.floating,
+                              ));
+                            return;
+                          }
+                          await FavoritosService.alternarServicio(uid, id);
+                        },
+                      );
+                    },
+                  ),
+                  SizedBox(height: angosta ? 4 : 6),
+                  boton(
+                    icono: Icons.share_rounded,
+                    onTap: () => AccionesServicio.compartir(context, s),
+                  ),
+                  if (!esMio) ...[
+                    SizedBox(height: angosta ? 4 : 6),
+                    // Cotizar (en vez de un teléfono): abre el chat, donde
+                    // el proveedor manda la cotización y el pago va
+                    // protegido. Rojo para que sea la acción principal.
+                    boton(
+                      icono: Icons.request_quote_rounded,
+                      fondo: colors.primary,
+                      color: Colors.white,
+                      onTap: () => AccionesServicio.contactar(context, s),
+                    ),
+                  ],
                 ],
               ),
-            ),
+              ),
+            ]),
             Padding(
               padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(children: [
+                    etiqueta(esBusco ? 'Busco' : 'Ofrezco', tipoColor),
+                    if (categoria.isNotEmpty) ...[
+                      const SizedBox(width: 4),
+                      Flexible(child: etiqueta(categoria, colors.textPrimary)),
+                    ],
+                  ]),
+                  const SizedBox(height: 3),
                   Text(titulo,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 12.5,
+                          height: 1.2,
+                          fontWeight: FontWeight.w600,
                           color: colors.textPrimary)),
-                  const SizedBox(height: 4),
-                  if (valor > 0)
-                    Text(
-                      '\$${valor.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]}.')} / $modalidad',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: tipoColor),
+                  if (valor > 0) ...[
+                    const SizedBox(height: 3),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text('${formatPrecio(valor)} / $modalidad',
+                            maxLines: 1,
+                            style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: tipoColor)),
+                      ),
                     ),
+                  ],
                   const SizedBox(height: 3),
-                  Row(
-                    children: [
-                      _Estrellas(rating: rating, size: 9),
-                      const SizedBox(width: 2),
-                      Text('($numVal)',
-                          style: TextStyle(
-                              fontSize: 9, color: colors.textPrimary)),
-                    ],
-                  ),
+                  Row(children: [
+                    _Estrellas(rating: rating, size: 10),
+                    const SizedBox(width: 3),
+                    Text('($numVal)',
+                        style:
+                            TextStyle(fontSize: 10, color: colors.textPrimary)),
+                  ]),
                 ],
               ),
             ),
