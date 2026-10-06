@@ -36,6 +36,11 @@ class ChatServicioScreen extends StatefulWidget {
   final String nombreProveedor;
   final String nombreCliente;
 
+  /// Texto con el que abrir la caja de mensaje ya escrita (por ejemplo,
+  /// "Hola, quiero cotizar la instalación de …"). El usuario lo puede
+  /// editar antes de enviarlo.
+  final String? mensajeInicial;
+
   const ChatServicioScreen({
     super.key,
     required this.servicioId,
@@ -44,6 +49,7 @@ class ChatServicioScreen extends StatefulWidget {
     required this.tituloServicio,
     this.nombreProveedor = '',
     this.nombreCliente = '',
+    this.mensajeInicial,
   });
 
   @override
@@ -71,6 +77,9 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
   @override
   void initState() {
     super.initState();
+    if ((widget.mensajeInicial ?? '').isNotEmpty) {
+      _ctrl.text = widget.mensajeInicial!;
+    }
     _inicializar();
   }
 

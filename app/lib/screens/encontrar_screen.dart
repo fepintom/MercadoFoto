@@ -547,7 +547,7 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
               children: [
                 _interruptorCapa(
                   texto: 'Productos',
-                  icono: Icons.shopping_bag_outlined,
+                  icono: Icons.shopping_cart_outlined,
                   n: nProd,
                   activo: _verProductos,
                   color: colors.primary,
@@ -799,7 +799,7 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
       width: 30,
       height: 30,
       color: colors.background,
-      child: Icon(Icons.shopping_bag_outlined, size: 15, color: colors.primary),
+      child: Icon(Icons.shopping_cart_outlined, size: 15, color: colors.primary),
     );
     final instala = _si(p['instalacion_vendedor']);
     return GestureDetector(
@@ -1052,7 +1052,7 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _miniatura((p['imagen_url'] ?? '').toString(),
-                  Icons.shopping_bag_outlined),
+                  Icons.shopping_cart_outlined),
               const SizedBox(width: 10),
               Expanded(
                 child: Padding(

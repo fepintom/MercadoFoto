@@ -21,6 +21,11 @@ class ChatScreen extends StatefulWidget {
   final String nombreVendedor;
   final String nombreComprador;
 
+  /// Texto con el que abrir la caja de mensaje ya escrita (por ejemplo,
+  /// "Hola, quiero cotizar la instalación de …"). El usuario lo puede
+  /// editar antes de enviarlo.
+  final String? mensajeInicial;
+
   const ChatScreen({
     super.key,
     required this.publicacionId,
@@ -29,6 +34,7 @@ class ChatScreen extends StatefulWidget {
     required this.vendedorId,
     required this.nombreVendedor,
     this.nombreComprador = '',
+    this.mensajeInicial,
   });
 
   @override
@@ -53,6 +59,9 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    if ((widget.mensajeInicial ?? '').isNotEmpty) {
+      _controller.text = widget.mensajeInicial!;
+    }
     _titulo     = widget.tituloProducto;
     _imagenUrl  = widget.imagenUrl;
     _vendedorId = widget.vendedorId;

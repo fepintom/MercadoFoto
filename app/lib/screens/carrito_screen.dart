@@ -71,7 +71,7 @@ class CarritoScreen extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.shopping_bag_outlined,
+                      Icon(Icons.shopping_cart_outlined,
                           size: 48, color: colors.grayMid),
                       SizedBox(height: 12),
                       Text('Tu carro está vacío',
