@@ -1308,7 +1308,7 @@ class _BannerCarruselState extends State<_BannerCarrusel> {
     super.initState();
     _timer = Timer.periodic(_duracion, (_) {
       if (!mounted) return;
-      final siguiente = (_paginaActual + 1) % 4;
+      final siguiente = (_paginaActual + 1) % 5;
       _controller.animateToPage(
         siguiente,
         duration: const Duration(milliseconds: 600),
@@ -1328,25 +1328,30 @@ class _BannerCarruselState extends State<_BannerCarrusel> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Container(
-          margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-          height: 130,
-          child: PageView(
-            controller: _controller,
-            onPageChanged: (i) => setState(() => _paginaActual = i),
-            children: const [
-              _BannerImagen('assets/images/banner1.jpg'),
-              _BannerImagen('assets/images/banner2.jpg'),
-              _BannerImagen('assets/images/banner3.jpg'),
-              _BannerBlueExpress(),
-            ],
+        // Proporción de los banners (1600×640 = 2,5:1): se ven completos,
+        // sin franjas a los lados ni recortes.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          child: AspectRatio(
+            aspectRatio: 2.5,
+            child: PageView(
+              controller: _controller,
+              onPageChanged: (i) => setState(() => _paginaActual = i),
+              children: const [
+                _BannerImagen('assets/images/banner1.jpg'),
+                _BannerImagen('assets/images/banner2.jpg'),
+                _BannerImagen('assets/images/banner3.jpg'),
+                _BannerImagen('assets/images/banner4.jpg'),
+                _BannerImagen('assets/images/banner5.jpg'),
+              ],
+            ),
           ),
         ),
         // Indicadores de página
         const SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(4, (i) {
+          children: List.generate(5, (i) {
             final activo = i == _paginaActual;
             return AnimatedContainer(
               duration: const Duration(milliseconds: 300),

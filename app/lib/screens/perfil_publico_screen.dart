@@ -6,7 +6,10 @@ import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import 'catalogo_screen.dart' show VitrinaCatalogo;
 import 'producto_detalle_screen.dart';
+import '../services/historias_service.dart';
+import '../widgets/avatar_historia.dart';
 import '../widgets/avatar_usuario.dart';
+import '../widgets/destacadas_fila.dart';
 import '../widgets/net_image.dart';
 import '../widgets/reputacion_vendedor.dart';
 class PerfilPublicoScreen extends StatefulWidget {
@@ -38,6 +41,7 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
   @override
   void initState() {
     super.initState();
+    HistoriasService.cargarActivos();
     _nombre = widget.nombre;
     _cargar();
   }
@@ -175,7 +179,22 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
             child: Column(
               children: [
                 // Foto del vendedor; sin foto, la inicial.
-                AvatarUsuario(fotoUrl: _fotoUrl, nombre: _nombre, tamano: 80),
+                // Con historia vigente, el anillo brilla y al tocar se abre.
+                ValueListenableBuilder<Set<int>>(
+                  valueListenable: HistoriasService.activos,
+                  builder: (context, _, __) => AvatarHistoria(
+                    fotoUrl: _fotoUrl,
+                    nombre: _nombre,
+                    tamano: 80,
+                    tieneHistoria: HistoriasService.tiene(widget.userId),
+                    onTap: HistoriasService.tiene(widget.userId)
+                        ? () => HistoriasService.abrir(context,
+                            userId: widget.userId,
+                            nombre: _nombre,
+                            fotoUrl: _fotoUrl)
+                        : null,
+                  ),
+                ),
                 const SizedBox(height: 12),
 
                 // Nombre
@@ -199,6 +218,17 @@ class _PerfilPublicoScreenState extends State<PerfilPublicoScreen> {
                 ),
 
                 const SizedBox(height: 16),
+
+                // Historias destacadas (las que el vendedor marcó con ❤️).
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: DestacadasFila(
+                    userId: widget.userId,
+                    nombre: _nombre,
+                    fotoUrl: _fotoUrl,
+                  ),
+                ),
+                const SizedBox(height: 12),
 
                 // Badge cantidad publicaciones
                 Container(

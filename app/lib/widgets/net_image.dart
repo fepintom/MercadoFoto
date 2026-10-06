@@ -24,11 +24,15 @@ class NetImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Decodificar al tamaño en pantalla (x3 para pantallas retina): una foto
+    // de 4000 px mostrada en 100 px ya no ocupa memoria ni tiempo de más.
+    final w = width;
     final img = CachedNetworkImage(
       imageUrl: url,
       width: width,
       height: height,
       fit: fit,
+      memCacheWidth: (w != null && w.isFinite) ? (w * 3).round() : null,
       placeholder: (_, __) => Container(
         width: width,
         height: height,

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
@@ -308,10 +309,12 @@ class _MensajesScreenState extends State<MensajesScreen> {
           child: SizedBox(
             width: 52,
             height: 52,
-            child: Image.network(
-              fotoCompleta,
+            child: CachedNetworkImage(
+              imageUrl: fotoCompleta,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Center(
+              memCacheWidth: 156,
+              fadeInDuration: const Duration(milliseconds: 120),
+              errorWidget: (_, __, ___) => Center(
                 child: Text(
                   initial,
                   style: TextStyle(

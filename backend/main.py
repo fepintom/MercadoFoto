@@ -208,6 +208,8 @@ from database.servicios import (
     obtener_servicios_usuario_con_contactos,
     eliminar_servicio,
     valorar_servicio,
+    valoracion_de,
+    contrato_servicio,
     actualizar_certificado,
     actualizar_ubicacion,
     editar_servicio,
@@ -260,8 +262,11 @@ from routers.catalogos import router as catalogos_router
 from database.cotizaciones import init_cotizaciones_db
 from routers.cotizaciones import router as cotizaciones_router
 from database.comunidad import init_comunidad_db
+from services.imagenes import achicar_foto_perfil, optimizar_en_segundo_plano, optimizar_fotos_existentes
 from routers.comunidad import router as comunidad_router
 from routers.pagos_usuario import router as pagos_usuario_router
+from routers.historias import router as historias_router, init_historias_db
+from routers.favoritos_servicios import router as favoritos_servicios_router, init_favoritos_servicios_db
 from database.ordenes import (
     liberar_inicial as ordenes_liberar_inicial,
     liberar_retencion as ordenes_liberar_retencion,
@@ -436,6 +441,10 @@ init_verificacion_paquete_db()
 init_catalogos_db()
 init_cotizaciones_db()
 init_comunidad_db()
+init_favoritos_servicios_db()
+init_historias_db()
+# Achica una vez las fotos de perfil gigantes que ya estaban subidas.
+optimizar_en_segundo_plano()
 
 # --------------------------------------------------
 # CORS
@@ -449,6 +458,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.post("/admin/fotos_perfil/optimizar")
+def admin_optimizar_fotos(token: str):
+    if token != os.environ.get("ADMIN_TOKEN", "okventa-admin-2026"):
+        raise HTTPException(status_code=403, detail="Token inválido")
+    return optimizar_fotos_existentes()
+
+
 @app.get("/version")
 def version():
     return {"version": "2a56a1c", "build": "2026-07-13-v2"}
@@ -460,6 +476,8 @@ app.include_router(catalogos_router)
 app.include_router(cotizaciones_router)
 app.include_router(comunidad_router)
 app.include_router(pagos_usuario_router)
+app.include_router(historias_router)
+app.include_router(favoritos_servicios_router)
 
 # --------------------------------------------------
 # MODELOS
@@ -1710,12 +1728,17 @@ def marcar_principal(user_id: int, address_id: int):
 @app.post("/usuarios/{user_id}/foto")
 async def subir_foto_perfil(user_id: int, foto: UploadFile = File(...)):
     ext = os.path.splitext(foto.filename or "foto.jpg")[1] or ".jpg"
+    contenido = await foto.read()
+    # Se guarda achicada (máx. 640 px, JPEG): antes quedaba el original de la
+    # cámara y cada avatar de la app descargaba varios MB.
+    contenido, ext_nueva = achicar_foto_perfil(contenido)
+    if ext_nueva:
+        ext = ext_nueva
     # Nombre único (no perfil_{user_id}{ext} fijo): con nombre fijo la URL nunca
     # cambia entre subidas y el ImageCache de Flutter sigue sirviendo la foto
     # anterior aunque el archivo en disco ya se haya reemplazado.
     nombre = f"perfil_{user_id}_{secrets.token_hex(8)}{ext}"
     ruta = os.path.join(UPLOADS_DIR, nombre)
-    contenido = await foto.read()
     with open(ruta, "wb") as f:
         f.write(contenido)
     foto_url = f"/uploads/{nombre}"
@@ -2176,13 +2199,44 @@ def borrar_servicio(servicio_id: int, user_id: int):
 
 @app.post("/servicios/{servicio_id}/valorar")
 def valorar(servicio_id: int, body: dict):
+    """Califica un servicio. Reglas: solo quien lo contrató y pagó, nunca el
+    propio proveedor, y una sola vez (no se puede cambiar después)."""
     user_id  = body.get("user_id")
-    estrellas = int(body.get("estrellas", 5))
+    try:
+        estrellas = int(body.get("estrellas", 0))
+    except (TypeError, ValueError):
+        estrellas = 0
     if not user_id or not (1 <= estrellas <= 5):
         raise HTTPException(status_code=400, detail="Datos inválidos")
-    valorar_servicio(servicio_id, user_id, estrellas)
     srv = obtener_servicio_por_id(servicio_id)
-    return {"rating": srv["rating"], "num_valoraciones": srv["num_valoraciones"]}
+    if not srv:
+        raise HTTPException(status_code=404, detail="Servicio no encontrado")
+    if srv["user_id"] == user_id:
+        raise HTTPException(status_code=403,
+                            detail="No puedes calificar tu propio servicio")
+    if not contrato_servicio(servicio_id, user_id):
+        raise HTTPException(status_code=403,
+                            detail="Solo puedes calificar un servicio que contrataste")
+    if not valorar_servicio(servicio_id, user_id, estrellas):
+        raise HTTPException(status_code=409,
+                            detail="Ya calificaste este servicio")
+    srv = obtener_servicio_por_id(servicio_id)
+    return {"rating": srv["rating"], "num_valoraciones": srv["num_valoraciones"],
+            "mi_valoracion": estrellas}
+
+
+@app.get("/servicios/{servicio_id}/mi_valoracion")
+def mi_valoracion_servicio(servicio_id: int, user_id: int):
+    """Para la app: si mostrar las estrellas para calificar, o la nota ya dada."""
+    srv = obtener_servicio_por_id(servicio_id)
+    propio = bool(srv) and srv["user_id"] == user_id
+    ya = valoracion_de(servicio_id, user_id)
+    contrato = contrato_servicio(servicio_id, user_id)
+    return {
+        "contrato": contrato,
+        "estrellas": ya,
+        "puede_valorar": contrato and ya is None and not propio,
+    }
 
 
 # ── Certificado profesional ───────────────────────────────────────────────────

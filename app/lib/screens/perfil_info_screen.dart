@@ -133,7 +133,10 @@ class _PerfilInfoScreenState extends State<PerfilInfoScreen> {
     );
     if (source == null || !mounted) return;
 
-    final foto = await _picker.pickImage(source: source, imageQuality: 80);
+    // Se achica en el teléfono antes de subir: sube en segundos y no en
+    // minutos con datos móviles.
+    final foto = await _picker.pickImage(
+        source: source, imageQuality: 80, maxWidth: 1080, maxHeight: 1080);
     if (foto == null || !mounted) return;
 
     setState(() => _subiendoFoto = true);

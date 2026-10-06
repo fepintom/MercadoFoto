@@ -57,6 +57,56 @@ class FavoritosService {
   static void marcar(int publicacionId, bool favorito) =>
       _poner(publicacionId, favorito);
 
+  // ── Servicios (OkServicios) ─────────────────────────────────────────
+  // Igual que los productos, en su propio conjunto: los ids de servicios y
+  // de publicaciones son numeraciones distintas y podrían chocar.
+
+  static final ValueNotifier<Set<int>> idsServicios =
+      ValueNotifier<Set<int>>({});
+  static int? _servCargadoPara;
+
+  static bool esServicio(int? servicioId) =>
+      servicioId != null && idsServicios.value.contains(servicioId);
+
+  static Future<void> cargarServicios(int userId, {bool forzar = false}) async {
+    if (!forzar && _servCargadoPara == userId) return;
+    try {
+      final r = await http
+          .get(Uri.parse('${ApiService.baseUrl}/favoritos_servicios/$userId'))
+          .timeout(const Duration(seconds: 15));
+      if (r.statusCode != 200) return;
+      final lista = jsonDecode(utf8.decode(r.bodyBytes));
+      if (lista is List) {
+        idsServicios.value = {for (final x in lista) if (x is num) x.toInt()};
+        _servCargadoPara = userId;
+      }
+    } catch (_) {}
+  }
+
+  static Future<bool> alternarServicio(int userId, int servicioId) async {
+    final antes = esServicio(servicioId);
+    void poner(bool fav) {
+      final s = Set<int>.from(idsServicios.value);
+      fav ? s.add(servicioId) : s.remove(servicioId);
+      idsServicios.value = s;
+    }
+
+    poner(!antes);
+    try {
+      final uri = Uri.parse('${ApiService.baseUrl}/favorito_servicio').replace(
+          queryParameters: {
+            'user_id': '$userId',
+            'servicio_id': '$servicioId'
+          });
+      final r = antes ? await http.delete(uri) : await http.post(uri);
+      if (r.statusCode != 200) throw Exception('HTTP ${r.statusCode}');
+      return !antes;
+    } catch (_) {
+      poner(antes);
+      return antes;
+    }
+  }
+
   static void _poner(int id, bool fav) {
     final s = Set<int>.from(ids.value);
     fav ? s.add(id) : s.remove(id);

@@ -12,9 +12,14 @@ class ContenidoOcultoService {
 
   static const _kOcultas = 'oculto_publicaciones';
   static const _kBloqueados = 'oculto_vendedores';
+  static const _kServicios = 'oculto_servicios';
+  static const _kMensajes = 'oculto_mensajes';
 
   static final ValueNotifier<Set<int>> publicaciones = ValueNotifier({});
   static final ValueNotifier<Set<int>> vendedores = ValueNotifier({});
+  static final ValueNotifier<Set<int>> servicios = ValueNotifier({});
+  /// Mensajes de la Comunidad "eliminados para mí".
+  static final ValueNotifier<Set<int>> mensajes = ValueNotifier({});
   static bool _cargado = false;
 
   static Future<void> cargar() async {
@@ -23,6 +28,8 @@ class ContenidoOcultoService {
       final p = await SharedPreferences.getInstance();
       publicaciones.value = _leer(p, _kOcultas);
       vendedores.value = _leer(p, _kBloqueados);
+      servicios.value = _leer(p, _kServicios);
+      mensajes.value = _leer(p, _kMensajes);
       _cargado = true;
     } catch (_) {}
   }
@@ -35,6 +42,30 @@ class ContenidoOcultoService {
     return (id is int && publicaciones.value.contains(id)) ||
         (vend is int && vendedores.value.contains(vend));
   }
+
+  /// Servicio oculto ("No me interesa") o de un proveedor bloqueado.
+  static bool servicioOculto(Map s) {
+    final id = s['id'], prov = s['user_id'];
+    return (id is int && servicios.value.contains(id)) ||
+        (prov is int && vendedores.value.contains(prov));
+  }
+
+  /// Mensaje oculto para mí o de un usuario bloqueado.
+  static bool mensajeOculto(Map m) {
+    final id = m['id'], autor = m['user_id'];
+    return (id is int && mensajes.value.contains(id)) ||
+        (autor is int && vendedores.value.contains(autor));
+  }
+
+  static Future<void> ocultarMensaje(int id) =>
+      _agregar(mensajes, _kMensajes, id);
+  static Future<void> mostrarMensaje(int id) =>
+      _quitar(mensajes, _kMensajes, id);
+
+  static Future<void> ocultarServicio(int id) =>
+      _agregar(servicios, _kServicios, id);
+  static Future<void> mostrarServicio(int id) =>
+      _quitar(servicios, _kServicios, id);
 
   static Future<void> ocultarPublicacion(int id) =>
       _agregar(publicaciones, _kOcultas, id);
