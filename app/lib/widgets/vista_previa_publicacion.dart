@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'pastilla_etiqueta.dart';
 
 import '../theme/app_theme.dart';
 import 'descripcion_formato.dart';
@@ -130,53 +131,13 @@ class VistaPreviaPublicacion extends StatelessWidget {
                           spacing: 6,
                           runSpacing: 6,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: (esNuevo
-                                        ? colors.success
-                                        : colors.warning)
-                                    .withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(esNuevo ? 'Nuevo' : 'Usado',
-                                  style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: esNuevo
-                                          ? colors.success
-                                          : colors.warning,
-                                      shadows: const [
-                                        Shadow(
-                                            color: Colors.black26,
-                                            blurRadius: 1.5,
-                                            offset: Offset(0, 0.4)),
-                                      ])),
-                            ),
+                            PastillaEtiqueta.condicion(esNuevo, grande: true),
                             if (categoria.isNotEmpty)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: colors.primary.withOpacity(0.08),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                    subcategoria.isNotEmpty
-                                        ? '$categoria · $subcategoria'
-                                        : categoria,
-                                    style: TextStyle(
-                                        fontSize: 11,
-                                        color: colors.primary,
-                                        fontWeight: FontWeight.w500,
-                                        shadows: [
-                                          Shadow(
-                                              color: Colors.black26,
-                                              blurRadius: 1.5,
-                                              offset: Offset(0, 0.4)),
-                                        ])),
-                              ),
+                              PastillaEtiqueta.categoria(
+                                  subcategoria.isNotEmpty
+                                      ? '$categoria · $subcategoria'
+                                      : categoria,
+                                  grande: true),
                           ],
                         ),
                         const SizedBox(height: 12),

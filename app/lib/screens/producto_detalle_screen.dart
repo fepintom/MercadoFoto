@@ -25,6 +25,8 @@ import 'perfil_publico_screen.dart';
 import 'soporte_chat_screen.dart';
 import '../widgets/net_image.dart';
 import '../widgets/avatar_usuario.dart';
+import '../widgets/avatar_historia.dart';
+import '../widgets/pastilla_etiqueta.dart';
 import 'servicios_screen.dart';
 import '../widgets/descripcion_formato.dart';
 import '../widgets/reputacion_vendedor.dart';
@@ -1171,40 +1173,6 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     }
   }
 
-  // ── Fila de información adicional (solo lectura) ───────────────────────
-  // Etiqueta a la izquierda, valor a la derecha, separadas por una línea
-  // fina salvo en la última: la misma lista limpia que usa el resto de la app.
-  Widget _filaInfoAdicional(String label, String valor, {bool ultima = false}) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 9),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                flex: 4,
-                child: Text(label,
-                    style: TextStyle(fontSize: 13, color: colors.grayMid)),
-              ),
-              Expanded(
-                flex: 5,
-                child: Text(valor,
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: colors.textPrimary)),
-              ),
-            ],
-          ),
-        ),
-        if (!ultima)
-          Divider(height: 1, thickness: 0.5, color: colors.divider),
-      ],
-    );
-  }
-
   /// Hoja inferior para que el dueño edite la información adicional.
   /// Reemplaza a las filas desplegables con "+", que no seguían el patrón
   /// de ninguna otra pantalla de la app.
@@ -1433,12 +1401,28 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Medios de pago',
-            style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: colors.textSecondary)),
-        const SizedBox(height: 8),
+        Row(
+          children: [
+            Text('Medios de pago',
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: colors.textPrimary)),
+            const Spacer(),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _verMediosDePago,
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Text('Ver todos',
+                    style: TextStyle(
+                        fontSize: 12.5, color: colors.textPrimary)),
+                Icon(Icons.chevron_right_rounded,
+                    size: 18, color: colors.textPrimary),
+              ]),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -1450,6 +1434,86 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  /// "Ver todos": cómo se paga en OkVenta.
+  void _verMediosDePago() {
+    Widget fila(IconData icono, String titulo, String detalle) => Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icono, size: 22, color: colors.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(titulo,
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: colors.textPrimary)),
+                    const SizedBox(height: 2),
+                    Text(detalle,
+                        style: TextStyle(
+                            fontSize: 12.5,
+                            height: 1.35,
+                            color: colors.textPrimary)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                      color: colors.divider,
+                      borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text('Medios de pago',
+                  style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textPrimary)),
+              const SizedBox(height: 14),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                _tarjetaVisa(),
+                _tarjetaMastercard(),
+                _tarjetaMercadoPago(),
+                _tarjetaWebpay(),
+              ]),
+              const SizedBox(height: 18),
+              fila(Icons.credit_card_rounded, 'Tarjetas de crédito',
+                  'Visa, Mastercard y otras. Puedes pagar en cuotas según tu banco.'),
+              fila(Icons.account_balance_outlined, 'Débito y Webpay',
+                  'Pagas con tu tarjeta de débito o cuenta bancaria.'),
+              fila(Icons.account_balance_wallet_outlined, 'Mercado Pago',
+                  'Con el saldo de tu cuenta de Mercado Pago.'),
+              fila(Icons.verified_user_outlined, 'Siempre con Compra protegida',
+                  'El pago se hace dentro de OkVenta y el vendedor recibe el dinero solo cuando confirmas que te llegó.'),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -1720,6 +1784,24 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     );
   }
 
+  /// Un dato de la fila bajo el precio: ícono + texto.
+  Widget _datoFila(IconData icono, String texto,
+      {Color? color, bool fuerte = false}) {
+    final c = color ?? colors.textPrimary;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icono, size: 20, color: c),
+        const SizedBox(width: 6),
+        Text(texto,
+            style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: fuerte ? FontWeight.w700 : FontWeight.w600,
+                color: c)),
+      ],
+    );
+  }
+
   // ── BUILD ──────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
@@ -1881,284 +1963,219 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
 
             Padding(
               padding:
-                  const EdgeInsets.fromLTRB(14, 12, 14, 0),
+                  const EdgeInsets.fromLTRB(18, 14, 18, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Badges: condición + categoría + subcategoría
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: [
-                        // Condición
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: condicion == 'nuevo'
-                                ? colors.success.withOpacity(0.12)
-                                : colors.warning.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
+                  // ── Encabezado: pastillas a la izquierda, vendedor (foto
+                  // y nombre) arriba a la derecha.
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
                             children: [
-                              Icon(
-                                condicion == 'nuevo'
-                                    ? Icons.star_outline_rounded
-                                    : Icons.recycling_rounded,
-                                size: 11,
-                                color: condicion == 'nuevo'
-                                    ? colors.success
-                                    : colors.warning,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                condicion == 'nuevo' ? 'Nuevo' : 'Usado',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: condicion == 'nuevo'
-                                      ? colors.success
-                                      : colors.warning,
-                                  shadows: const [
-                                    Shadow(
-                                        color: Colors.black26,
-                                        blurRadius: 1.5,
-                                        offset: Offset(0, 0.4)),
-                                  ],
-                                ),
-                              ),
+                              PastillaEtiqueta.condicion(
+                                  condicion == 'nuevo',
+                                  grande: true),
+                              if (categoria != null &&
+                                  categoria.toString().isNotEmpty)
+                                PastillaEtiqueta.categoria(
+                                    categoria.toString(),
+                                    grande: true),
+                              // "Otros" no aporta nada como pastilla.
+                              if (subcategoria != null &&
+                                  subcategoria.toString().isNotEmpty &&
+                                  subcategoria.toString() != "Otros")
+                                PastillaEtiqueta(
+                                    texto: subcategoria.toString(),
+                                    fondo: PastillaEtiqueta.grisCategoria,
+                                    grande: true),
+                              if (!aceptaOfertas)
+                                const PastillaEtiqueta(
+                                    texto: 'Sin ofertas/canjes',
+                                    icono: Icons.handshake_outlined,
+                                    fondo: PastillaEtiqueta.grisCategoria,
+                                    grande: true),
                             ],
                           ),
                         ),
-                        // Categoría
-                        if (categoria != null &&
-                            categoria.toString().isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: colors.primary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              categoria.toString(),
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: colors.primary,
-                                shadows: [
-                                  Shadow(
-                                      color: Colors.black26,
-                                      blurRadius: 1.5,
-                                      offset: Offset(0, 0.4)),
-                                ],
-                              ),
-                            ),
-                          ),
-                        // Subcategoría — "Otros" no aporta nada como chip
-                        // (p.ej. bajo "General"), así que se oculta.
-                        if (subcategoria != null &&
-                            subcategoria.toString().isNotEmpty &&
-                            subcategoria.toString() != "Otros")
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: colors.background,
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                  color: colors.divider, width: 0.5),
-                            ),
-                            child: Text(
-                              subcategoria.toString(),
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: colors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        // No acepta ofertas
-                        if (!aceptaOfertas)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: colors.grayMid.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.handshake_outlined,
-                                    size: 11, color: colors.grayMid),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Sin ofertas/canjes',
-                                  style: TextStyle(
-                                      fontSize: 11,
-                                      color: colors.grayMid,
-                                      fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(width: 10),
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: ownerId != null
+                            ? () => _irAPerfilVendedor(
+                                context, ownerId!, vendedor)
+                            : null,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ConstrainedBox(
+                              constraints:
+                                  const BoxConstraints(maxWidth: 130),
+                              child: Text(
+                                vendedor,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: colors.textPrimary,
+                                  decoration: ownerId != null
+                                      ? TextDecoration.underline
+                                      : TextDecoration.none,
+                                  decorationColor: colors.textPrimary,
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
-                      ],
-                    ),
+                            if (ownerId != null)
+                              Icon(Icons.chevron_right_rounded,
+                                  size: 20, color: colors.textPrimary),
+                            const SizedBox(width: 6),
+                            // Con historia vigente el anillo brilla y la
+                            // abre; si no, va al perfil.
+                            AvatarHistoria(
+                              fotoUrl:
+                                  widget.producto['foto_vendedor']?.toString(),
+                              nombre: vendedor.toString(),
+                              tamano: 54,
+                              userId: ownerId,
+                              onTap: ownerId != null
+                                  ? () => _irAPerfilVendedor(
+                                      context, ownerId!, vendedor)
+                                  : null,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
+
+                  const SizedBox(height: 10),
 
                   // Título
                   Text(
                     titulo,
                     style: TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 24,
+                      height: 1.15,
+                      fontWeight: FontWeight.w800,
                       color: colors.textPrimary,
                     ),
                   ),
 
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
 
-                  // Vendedor — tappable si tiene user_id
-                  GestureDetector(
-                    onTap: ownerId != null
-                        ? () => _irAPerfilVendedor(
-                            context, ownerId!, vendedor)
-                        : null,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // La cara del vendedor junto a su nombre. Antes
-                        // había un ícono genérico: el comprador no sabía a
-                        // quién le compraba hasta abrir el chat.
-                        AvatarUsuario(
-                          fotoUrl: widget.producto['foto_vendedor']
-                              ?.toString(),
-                          nombre: vendedor.toString(),
-                          tamano: 22,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          vendedor,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: ownerId != null
-                                ? colors.textPrimary
-                                : colors.grayMid,
-                            decoration: ownerId != null
-                                ? TextDecoration.underline
-                                : TextDecoration.none,
-                            decorationColor: colors.textPrimary,
+                  // Reputación del vendedor: estrellas | resumen
+                  if (ownerId != null)
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => EvaluacionesVendedorScreen(
+                            vendedorId: ownerId!,
+                            nombreVendedor: vendedor,
                           ),
                         ),
-                        if (ownerId != null) ...[
-                          const SizedBox(width: 3),
-                          Icon(Icons.chevron_right_rounded,
-                              size: 14,
-                              color: colors.textPrimary.withOpacity(0.5)),
-                        ],
-                        if (ownerId != null) ...[
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: GestureDetector(
-                              onTap: () {
-                                final vendedorId =
-                                    widget.producto["user_id"] as int?;
-                                if (vendedorId == null) return;
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        EvaluacionesVendedorScreen(
-                                      vendedorId: vendedorId,
-                                      nombreVendedor: vendedor,
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: EstrellasResumen(
-                                promedio: _promedioVendedor,
-                                totalReviews: _totalReviewsVendedor,
+                      ),
+                      child: Row(
+                        children: [
+                          for (var i = 0; i < 5; i++)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 2),
+                              child: Icon(
+                                i < _promedioVendedor.round() &&
+                                        _totalReviewsVendedor > 0
+                                    ? Icons.star_rounded
+                                    : Icons.star_outline_rounded,
+                                size: 20,
+                                color: i < _promedioVendedor.round() &&
+                                        _totalReviewsVendedor > 0
+                                    ? const Color(0xFFFFB800)
+                                    : colors.textPrimary,
                               ),
                             ),
+                          Container(
+                            width: 1,
+                            height: 20,
+                            margin: const EdgeInsets.symmetric(horizontal: 10),
+                            color: colors.divider,
                           ),
-                        ],
-                      ],
-                    ),
-                  ),
-
-                  // Productos vendidos por el vendedor + stock disponible
-                  if ((ownerId != null && _productosVendidosVendedor > 0) ||
-                      widget.producto['stock'] != null) ...[
-                    const SizedBox(height: 4),
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        if (ownerId != null && _productosVendidosVendedor > 0)
-                          Text(
-                            '$_productosVendidosVendedor '
-                            '${_productosVendidosVendedor == 1 ? "producto vendido" : "productos vendidos"}',
-                            style: TextStyle(
-                                fontSize: 12, color: colors.grayMid),
-                          ),
-                        if (ownerId != null &&
-                            _productosVendidosVendedor > 0 &&
-                            widget.producto['stock'] != null)
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 6),
-                            child: Text('|',
+                          if (_totalReviewsVendedor == 0) ...[
+                            Icon(Icons.info_outline_rounded,
+                                size: 16, color: colors.textPrimary),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'El vendedor aún no ha recibido valoraciones.',
+                                maxLines: 2,
                                 style: TextStyle(
-                                    fontSize: 12, color: colors.divider)),
-                          ),
-                        if (widget.producto['stock'] != null)
-                          Text(
-                            'Stock: ${widget.producto['stock']}',
-                            style: TextStyle(
-                                fontSize: 12, color: colors.grayMid),
-                          ),
-                      ],
+                                    fontSize: 12.5,
+                                    color: colors.textPrimary),
+                              ),
+                            ),
+                          ] else ...[
+                            Text(_promedioVendedor.toStringAsFixed(1),
+                                style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    color: colors.textPrimary)),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                '$_totalReviewsVendedor '
+                                '${_totalReviewsVendedor == 1 ? 'valoración' : 'valoraciones'}',
+                                style: TextStyle(
+                                    fontSize: 12.5,
+                                    color: colors.textPrimary,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: colors.textPrimary),
+                              ),
+                            ),
+                            Icon(Icons.chevron_right_rounded,
+                                size: 18, color: colors.textPrimary),
+                          ],
+                        ],
+                      ),
                     ),
-                  ],
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 14),
 
-                  // Precio
+                  // Precio (+ el de antes tachado y la etiqueta de oferta)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                        horizontal: 18, vertical: 12),
                     decoration: BoxDecoration(
                       color: colors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                          color: colors.divider, width: 0.5),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: colors.divider, width: 0.5),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        // Flexible + FittedBox: con un precio largo y la
-                        // etiqueta al lado, el precio se achica en vez de
-                        // desbordar la pantalla.
                         Flexible(
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
                             child: Text(
                               formatPrecio(precio),
                               style: TextStyle(
-                                fontSize: 24,
-                                color: colors.primary,
-                                fontWeight: FontWeight.w800,
+                                fontSize: 34,
+                                color: colors.textPrimary,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.5,
                               ),
                             ),
                           ),
                         ),
-                        // Rebaja: el precio de antes tachado y la etiqueta.
                         if (EtiquetaOferta.de(widget.producto) > 0) ...[
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 12),
                           Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2167,7 +2184,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                                 formatPrecio(widget.producto['precio_original']),
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: colors.grayMid,
+                                  color: colors.textPrimary,
                                   decoration: TextDecoration.lineThrough,
                                 ),
                               ),
@@ -2181,45 +2198,47 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                     ),
                   ),
 
-                  if ((_vistas ?? 0) > 0) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.visibility_outlined,
-                            size: 15, color: colors.textPrimary),
-                        const SizedBox(width: 5),
-                        Text(
-                            '${VistasService.formato(_vistas!)} '
-                            '${_vistas == 1 ? 'visualización' : 'visualizaciones'}',
-                            style: TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w600,
-                                color: colors.textPrimary)),
-                      ],
-                    ),
-                  ],
+                  // Entrega | vendidos | vistas, separados por líneas.
+                  Builder(builder: (_) {
+                    final datos = <Widget>[
+                      if (_mensajeEntrega != null)
+                        _datoFila(Icons.bolt_rounded, _mensajeEntrega!,
+                            color: colors.success, fuerte: true),
+                      if (ownerId != null && _productosVendidosVendedor > 0)
+                        _datoFila(
+                            Icons.shopping_cart_outlined,
+                            '$_productosVendidosVendedor '
+                            '${_productosVendidosVendedor == 1 ? "producto vendido" : "productos vendidos"}'),
+                      if ((_vistas ?? 0) > 0)
+                        _datoFila(Icons.visibility_outlined,
+                            VistasService.formato(_vistas!)),
+                    ];
+                    if (datos.isEmpty) return const SizedBox(height: 4);
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        runSpacing: 8,
+                        children: [
+                          for (var i = 0; i < datos.length; i++) ...[
+                            if (i > 0)
+                              Container(
+                                width: 1,
+                                height: 22,
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 12),
+                                color: colors.divider,
+                              ),
+                            datos[i],
+                          ],
+                        ],
+                      ),
+                    );
+                  }),
 
-                  if (_mensajeEntrega != null) ...[
-                    const SizedBox(height: 10),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.bolt_rounded,
-                            size: 15, color: colors.success),
-                        const SizedBox(width: 5),
-                        Text(_mensajeEntrega!,
-                            style: TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w600,
-                                color: colors.success)),
-                      ],
-                    ),
-                  ],
-
-                  const SizedBox(height: 12),
-                  const Divider(height: 1, thickness: 0.5),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 14),
+                  Divider(height: 1, thickness: 0.5, color: colors.divider),
+                  const SizedBox(height: 14),
 
                   // Descripción, con sus negritas, viñetas y párrafos.
                   TextoDescripcion(
@@ -2231,41 +2250,49 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 20),
 
                   // Medios de pago aceptados
                   _mediosDePago(),
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 18),
 
-                  // Devolución gratis + Compra protegida
+                  // Devolución gratis | Compra protegida
                   Row(
                     children: [
                       Expanded(
                         child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
                           onTap: _mostrarDevolucionGratis,
                           child: Row(
                             children: [
-                              Icon(Icons.assignment_return_outlined,
-                                  size: 15, color: colors.grayMid),
-                              SizedBox(width: 5),
+                              Icon(Icons.local_shipping_outlined,
+                                  size: 20, color: colors.textPrimary),
+                              const SizedBox(width: 6),
                               Flexible(
                                 child: Text("Devolución gratis",
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                        fontSize: 12,
-                                        color: colors.textSecondary,
-                                        fontWeight: FontWeight.w500,
+                                        fontSize: 13,
+                                        color: colors.textPrimary,
+                                        fontWeight: FontWeight.w600,
                                         decoration:
                                             TextDecoration.underline,
                                         decorationColor:
-                                            colors.grayMid)),
+                                            colors.textPrimary)),
                               ),
-                              SizedBox(width: 2),
                               Icon(Icons.chevron_right_rounded,
-                                  size: 15, color: colors.grayMid),
+                                  size: 18, color: colors.textPrimary),
                             ],
                           ),
                         ),
+                      ),
+                      Container(
+                        width: 1,
+                        height: 22,
+                        margin: const EdgeInsets.symmetric(horizontal: 10),
+                        color: colors.divider,
                       ),
                       GestureDetector(
                         onTap: () => Navigator.push(
@@ -2277,17 +2304,17 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(Icons.verified_user_outlined,
-                                size: 15, color: colors.primary),
-                            SizedBox(width: 5),
+                                size: 20, color: colors.primary),
+                            const SizedBox(width: 6),
                             Text("Compra protegida",
                                 style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 13,
                                     color: colors.primary,
-                                    fontWeight: FontWeight.w600,
-                                    decoration: TextDecoration.underline)),
-                            SizedBox(width: 2),
+                                    fontWeight: FontWeight.w700,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: colors.primary)),
                             Icon(Icons.chevron_right_rounded,
-                                size: 15, color: colors.primary),
+                                size: 18, color: colors.primary),
                           ],
                         ),
                       ),
@@ -2311,10 +2338,15 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                         (widget.producto['sku']?.toString() ?? '').trim();
                     final stock = widget.producto['stock'];
 
+                    // Orden del diseño: SKU | Stock | Código universal.
                     final filas = <List<String>>[
-                      if (codigo.isNotEmpty) ['Código universal', codigo],
                       if (sku.isNotEmpty) ['SKU', sku],
-                      if (stock != null) ['Stock disponible', stock.toString()],
+                      if (stock != null)
+                        [
+                          'Stock',
+                          '$stock ${stock.toString() == '1' ? 'unidad' : 'unidades'}'
+                        ],
+                      if (codigo.isNotEmpty) ['Código universal (EAN)', codigo],
                     ];
 
                     // Sin datos y sin permiso de edición: no se muestra nada.
@@ -2322,11 +2354,11 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
 
                     return Container(
                       width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                      margin: const EdgeInsets.only(top: 16, bottom: 14),
+                      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
                       decoration: BoxDecoration(
                         color: colors.surface,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                         border:
                             Border.all(color: colors.divider, width: 0.5),
                       ),
@@ -2336,50 +2368,102 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                           Row(
                             children: [
                               Icon(Icons.info_outline_rounded,
-                                  size: 16, color: colors.grayMid),
-                              const SizedBox(width: 6),
+                                  size: 20, color: colors.textPrimary),
+                              const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   "Información adicional",
                                   style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w700,
                                     color: colors.textPrimary,
                                   ),
                                 ),
                               ),
                               if (esDueno)
                                 GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
                                   onTap: _abrirEditorInfoAdicional,
-                                  child: Padding(
-                                    padding:
-                                        const EdgeInsets.symmetric(vertical: 2),
-                                    child: Text(
-                                      filas.isEmpty ? "Agregar" : "Editar",
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: colors.primary,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        filas.isEmpty ? "Agregar" : "Editar",
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: colors.primary,
+                                        ),
                                       ),
-                                    ),
+                                      Icon(Icons.chevron_right_rounded,
+                                          size: 18, color: colors.primary),
+                                    ],
                                   ),
                                 ),
                             ],
                           ),
-                          if (filas.isEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 6),
-                              child: Text(
-                                "Agrega SKU, stock o código universal.",
-                                style: TextStyle(
-                                    fontSize: 12.5, color: colors.grayMid),
+                          if (filas.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            // Columnas separadas por líneas verticales.
+                            IntrinsicHeight(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  for (int i = 0; i < filas.length; i++) ...[
+                                    if (i > 0)
+                                      Container(
+                                        width: 1,
+                                        margin: const EdgeInsets.symmetric(
+                                            horizontal: 10),
+                                        color: colors.divider,
+                                      ),
+                                    Expanded(
+                                      // El código es más largo: más ancho.
+                                      flex: filas[i][0].startsWith('Código')
+                                          ? 5
+                                          : 3,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(filas[i][0],
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: colors.textPrimary
+                                                      .withValues(alpha: 0.7))),
+                                          const SizedBox(height: 3),
+                                          FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            alignment: Alignment.centerLeft,
+                                            child: Text(filas[i][1],
+                                                style: TextStyle(
+                                                    fontSize: 14.5,
+                                                    fontWeight:
+                                                        FontWeight.w700,
+                                                    color:
+                                                        colors.textPrimary)),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
-                            )
-                          else ...[
-                            const SizedBox(height: 4),
-                            for (int i = 0; i < filas.length; i++)
-                              _filaInfoAdicional(filas[i][0], filas[i][1],
-                                  ultima: i == filas.length - 1),
+                            ),
+                          ],
+                          if (esDueno) ...[
+                            const SizedBox(height: 12),
+                            Text(
+                              filas.isEmpty
+                                  ? "Agrega el SKU, stock o código universal."
+                                  : "Agrega o edita el SKU, stock o código universal.",
+                              style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: colors.textPrimary
+                                      .withValues(alpha: 0.7)),
+                            ),
                           ],
                         ],
                       ),
@@ -2634,13 +2718,16 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                               }
                             },
                             icon: const Icon(Icons.edit_outlined, size: 18),
-                            label: const Text("Editar publicación"),
+                            label: const Text("Editar publicación",
+                                style: TextStyle(
+                                    fontSize: 15.5,
+                                    fontWeight: FontWeight.w600)),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: colors.carbon,
                               foregroundColor: colors.textOnPrimary,
                               elevation: 0,
                               padding:
-                                  const EdgeInsets.symmetric(vertical: 11),
+                                  const EdgeInsets.symmetric(vertical: 15),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12)),
                             ),
@@ -2768,13 +2855,16 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                             },
                             icon: const Icon(Icons.delete_outline_rounded,
                                 size: 18),
-                            label: const Text("Eliminar publicación"),
+                            label: const Text("Eliminar publicación",
+                                style: TextStyle(
+                                    fontSize: 15.5,
+                                    fontWeight: FontWeight.w600)),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: colors.primary,
                               side: BorderSide(
                                   color: colors.primary, width: 1),
                               padding:
-                                  const EdgeInsets.symmetric(vertical: 11),
+                                  const EdgeInsets.symmetric(vertical: 15),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12)),
                             ),

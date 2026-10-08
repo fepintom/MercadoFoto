@@ -16,6 +16,7 @@ import 'okdelivery_pendientes_screen.dart';
 import 'servicio_detalle_screen.dart';
 import '../widgets/banner_publicidad.dart';
 import '../widgets/barra_filtros.dart';
+import '../widgets/pastilla_etiqueta.dart';
 import '../widgets/insignia.dart';
 import '../widgets/acciones_servicio.dart';
 import '../widgets/avatar_historia.dart';
@@ -1110,7 +1111,9 @@ class _TarjetaServicioMarket extends StatelessWidget {
                     etiqueta(esBusco ? 'Busco' : 'Ofrezco', tipoColor),
                     if (categoria.isNotEmpty) ...[
                       const SizedBox(width: 4),
-                      Flexible(child: etiqueta(categoria, colors.textPrimary)),
+                      Flexible(
+                          child: PastillaEtiqueta.categoria(categoria,
+                              conIcono: false)),
                     ],
                   ]),
                   const SizedBox(height: 3),
