@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../services/historias_service.dart';
+import '../services/vistas_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/format_utils.dart';
@@ -187,7 +188,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
 
   Future<void> _cargarColumnas() async {
     final prefs = await SharedPreferences.getInstance();
-    final v = prefs.getInt(_kColumnasPref) ?? 2;
+    final v = (prefs.getInt(_kColumnasPref) ?? 2).clamp(2, 4);
     if (mounted) setState(() => _columnas = v);
   }
 
@@ -232,10 +233,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                       size: 16, color: colors.grayMid),
                   Expanded(
                     child: Slider(
-                      value: _columnas.toDouble(),
-                      min: 1,
+                      // Mínimo 2 por fila: con 1 la tarjeta quedaba enorme
+                      // y con mucho blanco.
+                      value: _columnas.clamp(2, 4).toDouble(),
+                      min: 2,
                       max: 4,
-                      divisions: 3,
+                      divisions: 2,
                       activeColor: colors.primary,
                       onChanged: (v) {
                         setSheetState(() => _columnas = v.round());
@@ -908,7 +911,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           children: [
             // ── Vendedor: foto (anillo si tiene historia), nombre, ciudad, ⋯
             Padding(
-              padding: const EdgeInsets.fromLTRB(6, 6, 0, 4),
+              padding: const EdgeInsets.fromLTRB(5, 5, 0, 3),
               child: Row(
                 children: [
                   AvatarHistoria(
@@ -998,6 +1001,15 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     ],
                   ),
                 ),
+                // 👁 visualizaciones, abajo a la izquierda de la foto.
+                if (((item['vistas'] as num?) ?? 0) > 0)
+                  Positioned(
+                    left: 5,
+                    bottom: 5,
+                    child: EtiquetaVistas(
+                        vistas: (item['vistas'] as num).toInt(),
+                        tam: angosta ? 9 : 10),
+                  ),
                 if (distKm != null)
                   Positioned(
                     top: 5, left: 5,
@@ -1024,7 +1036,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
             // sobrante queda arriba del botón y los botones se alinean.
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 6, 8, 7),
+                padding: const EdgeInsets.fromLTRB(7, 5, 7, 6),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1159,7 +1171,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   /// Una fila de la grilla: las tarjetas comparten el alto de la más alta
   /// (IntrinsicHeight), así la fila queda pareja y sin aire de sobra.
   Widget _filaDeTarjetas(int fila) {
-    const gap = 8.0;
+    const gap = 6.0;
     final inicio = fila * _columnas;
     return Padding(
       padding: const EdgeInsets.only(bottom: gap),
@@ -1308,7 +1320,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                                 child: SizedBox(width: 16, height: 16,
                                   child: CircularProgressIndicator(strokeWidth: 2, color: colors.primary)),
                               )
-                            : Icon(Icons.search, size: 18, color: colors.grayMid),
+                            : Icon(Icons.search, size: 18, color: colorIconoPastilla()),
                         suffixIcon: _searchCtrl.text.isNotEmpty
                             ? GestureDetector(
                                 onTap: () { _searchCtrl.clear(); setState(() => cargarPublicaciones()); },
@@ -1528,7 +1540,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
         // ── Grid de productos (por filas, ajustada al contenido) ─────────────
         if (_filtradas.isNotEmpty)
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(10, 0, 10, 20),
+            padding: const EdgeInsets.fromLTRB(6, 0, 6, 16),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
                 (_, fila) => _filaDeTarjetas(fila),

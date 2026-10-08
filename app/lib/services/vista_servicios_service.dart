@@ -38,10 +38,10 @@ class VistaServicios {
       // defecto.
       // Por defecto, 2 columnas como OkMarket (antes era la lista).
       final colGuardadas = prefs.getInt(_kPrefColumnas) ?? 2;
-      final listaGuardada = prefs.getBool(_kPrefComoLista);
 
-      comoListaNotifier.value = listaGuardada ?? (colGuardadas == 1);
-      columnasNotifier.value = colGuardadas <= 1 ? 2 : colGuardadas.clamp(2, 3);
+      // Ya no hay vista de lista (1 por fila): mínimo 2 columnas.
+      comoListaNotifier.value = false;
+      columnasNotifier.value = colGuardadas <= 1 ? 2 : colGuardadas.clamp(2, 4);
     } catch (_) {
       // Primer uso o error de plataforma: quedan los valores por defecto.
     }
@@ -58,7 +58,7 @@ class VistaServicios {
   }
 
   static Future<void> setColumnas(int value) async {
-    final v = value.clamp(2, 3);
+    final v = value.clamp(2, 4);
     columnasNotifier.value = v;
     try {
       final prefs = await SharedPreferences.getInstance();

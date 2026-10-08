@@ -266,6 +266,7 @@ from services.imagenes import achicar_foto_perfil, optimizar_en_segundo_plano, o
 from routers.comunidad import router as comunidad_router
 from routers.pagos_usuario import router as pagos_usuario_router
 from routers.historias import router as historias_router, init_historias_db
+from routers.vistas import router as vistas_router, init_vistas_db, agregar_vistas
 from routers.favoritos_servicios import router as favoritos_servicios_router, init_favoritos_servicios_db
 from database.ordenes import (
     liberar_inicial as ordenes_liberar_inicial,
@@ -443,6 +444,7 @@ init_cotizaciones_db()
 init_comunidad_db()
 init_favoritos_servicios_db()
 init_historias_db()
+init_vistas_db()
 # Achica una vez las fotos de perfil gigantes que ya estaban subidas.
 optimizar_en_segundo_plano()
 
@@ -478,6 +480,7 @@ app.include_router(comunidad_router)
 app.include_router(pagos_usuario_router)
 app.include_router(historias_router)
 app.include_router(favoritos_servicios_router)
+app.include_router(vistas_router)
 
 # --------------------------------------------------
 # MODELOS
@@ -799,7 +802,7 @@ def listar_publicaciones(
                 if p.get("subcategoria", "").lower() == subcategoria.lower()
             ]
 
-        return publicaciones
+        return agregar_vistas(publicaciones, "producto")
 
     except Exception as e:
         print("ERROR EN /publicaciones:", repr(e))
@@ -1888,7 +1891,7 @@ def obtener_pub(publicacion_id: int):
     pub = obtener_publicacion_por_id(publicacion_id)
     if not pub:
         raise HTTPException(status_code=404, detail="Publicación no encontrada")
-    return pub
+    return agregar_vistas(pub, "producto")
 
 
 # --------------------------------------------------
@@ -2148,7 +2151,7 @@ def actualizar_ubicacion_endpoint(servicio_id: int, body: dict):
 
 @app.get("/servicios")
 def listar_servicios(tipo: str = None):
-    return obtener_servicios(tipo)
+    return agregar_vistas(obtener_servicios(tipo), "servicio")
 
 
 @app.get("/servicios/usuario/{user_id}")
@@ -2186,7 +2189,7 @@ def detalle_servicio(servicio_id: int):
     srv = obtener_servicio_por_id(servicio_id)
     if not srv:
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
-    return srv
+    return agregar_vistas(srv, "servicio")
 
 
 @app.delete("/servicios/{servicio_id}")

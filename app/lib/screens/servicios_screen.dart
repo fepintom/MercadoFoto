@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/historias_service.dart';
+import '../services/vistas_service.dart';
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
@@ -446,40 +447,6 @@ class _ListaServiciosState extends State<_ListaServicios> {
                 ),
               ),
               const SizedBox(height: 20),
-              Text('Cómo ver las publicaciones',
-                  style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: colors.textPrimary)),
-              const SizedBox(height: 4),
-              Text('Se aplica a todas las vistas de servicios',
-                  style: TextStyle(fontSize: 12, color: colors.textPrimary)),
-              const SizedBox(height: 12),
-              ValueListenableBuilder<bool>(
-                valueListenable: VistaServicios.comoListaNotifier,
-                builder: (_, comoLista, __) => Row(
-                  children: [
-                    Expanded(
-                      child: _opcionVista(
-                        icono: Icons.view_agenda_outlined,
-                        titulo: 'Como lista',
-                        seleccionado: comoLista,
-                        onTap: () => VistaServicios.setComoLista(true),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _opcionVista(
-                        icono: Icons.grid_view_rounded,
-                        titulo: 'Como miniaturas',
-                        seleccionado: !comoLista,
-                        onTap: () => VistaServicios.setComoLista(false),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
               // ── Tamaño: solo tiene sentido en la vista de miniaturas ─────
               ValueListenableBuilder<bool>(
                 valueListenable: VistaServicios.comoListaNotifier,
@@ -488,8 +455,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 16),
-                      Text('Tamaño de las miniaturas',
+                      Text('Tamaño de las publicaciones',
                           style: TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w700,
@@ -506,10 +472,11 @@ class _ListaServiciosState extends State<_ListaServicios> {
                                 size: 16, color: colors.grayMid),
                             Expanded(
                               child: Slider(
-                                value: columnas.toDouble(),
+                                // Mínimo 2 por fila (como OkMarket).
+                                value: columnas.clamp(2, 4).toDouble(),
                                 min: 2,
-                                max: 3,
-                                divisions: 1,
+                                max: 4,
+                                divisions: 2,
                                 activeColor: colors.primary,
                                 onChanged: (v) =>
                                     VistaServicios.setColumnas(v.round()),
@@ -576,48 +543,6 @@ class _ListaServiciosState extends State<_ListaServicios> {
   }
 
   /// Una de las dos opciones de vista ("Como lista" / "Como miniaturas").
-  Widget _opcionVista({
-    required IconData icono,
-    required String titulo,
-    required bool seleccionado,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
-        decoration: BoxDecoration(
-          color: seleccionado
-              ? colors.primary.withOpacity(0.08)
-              : colors.background,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: seleccionado ? colors.primary : colors.divider,
-            width: seleccionado ? 1.5 : 0.5,
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icono,
-                size: 22,
-                color: seleccionado ? colors.primary : colors.grayMid),
-            const SizedBox(height: 6),
-            Text(
-              titulo,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: seleccionado ? colors.primary : colors.textPrimary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final filtrados = _filtrados;
@@ -695,7 +620,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
                         ? 'Buscar servicios...'
                         : 'Buscar solicitudes...',
                     hintStyle: TextStyle(color: colors.grayMid, fontSize: 13),
-                    prefixIcon: Icon(Icons.search, size: 18, color: colors.grayMid),
+                    prefixIcon: Icon(Icons.search, size: 18, color: colorIconoPastilla()),
                     suffixIcon: _query.isNotEmpty
                         ? GestureDetector(
                             onTap: () {
@@ -798,10 +723,10 @@ class _ListaServiciosState extends State<_ListaServicios> {
       builder: (_, comoLista, __) => ValueListenableBuilder<int>(
         valueListenable: VistaServicios.columnasNotifier,
         builder: (_, cols, __) {
-          final columnas = comoLista ? 1 : cols;
-          const gap = 8.0;
+          final columnas = cols.clamp(2, 4);
+          const gap = 6.0;
           return SliverPadding(
-            padding: const EdgeInsets.fromLTRB(10, 10, 10, _kPaddingInferior),
+            padding: const EdgeInsets.fromLTRB(6, 6, 6, _kPaddingInferior),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
                 (_, fila) {
@@ -1114,6 +1039,14 @@ class _TarjetaServicioMarket extends StatelessWidget {
             // Foto protagonista + acciones a la derecha
             Stack(children: [
               AspectRatio(aspectRatio: ancha ? 16 / 9 : 4 / 5, child: foto),
+              if (((s['vistas'] as num?) ?? 0) > 0)
+                Positioned(
+                  left: 5,
+                  bottom: 5,
+                  child: EtiquetaVistas(
+                      vistas: (s['vistas'] as num).toInt(),
+                      tam: angosta ? 9 : 10),
+                ),
               Positioned(
                 top: 4,
                 right: 4,

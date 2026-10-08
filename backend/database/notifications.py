@@ -71,6 +71,40 @@ def marcar_leidas(user_id):
     conn.close()
 
 
+# Categorías para los filtros de la pestaña Notificaciones de la app.
+_VENTAS = {"oferta", "interes_compra", "review", "elegir_entrega",
+           "entrega_confirmada", "orden_cancelada", "fondos_liberados",
+           "disputa", "okdelivery_asignado", "okdelivery_observaciones"}
+_COMPRAS = {"oferta_respuesta", "precio", "en_camino", "entrega_reportada",
+            "recordatorio_confirmacion", "okdelivery_en_camino",
+            "venta_cancelada"}
+_PREGUNTAS = {"pregunta", "chat", "chat_servicio"}
+
+
+def _categoria(tipo, user_id, orden):
+    """compras | ventas | preguntas | comunidad | otros.
+
+    Si la notificación es de una orden, manda el rol real del usuario en esa
+    orden (comprador → compras, vendedor → ventas): así los tipos que llegan
+    a ambos lados (pagos de servicios, OkDelivery) quedan bien."""
+    tipo = tipo or ""
+    if tipo.startswith("comunidad"):
+        return "comunidad"
+    if tipo in _PREGUNTAS:
+        return "preguntas"
+    if orden:
+        comprador, vendedor = orden
+        if user_id == comprador:
+            return "compras"
+        if user_id == vendedor:
+            return "ventas"
+    if tipo in _VENTAS:
+        return "ventas"
+    if tipo in _COMPRAS:
+        return "compras"
+    return "otros"
+
+
 def obtener_notificaciones(user_id):
 
     conn = sqlite3.connect(DB)
@@ -82,10 +116,22 @@ def obtener_notificaciones(user_id):
         FROM notifications
         WHERE user_id = ?
         ORDER BY id DESC
-        LIMIT 50
+        LIMIT 100
     """, (user_id,))
 
     rows = cursor.fetchall()
+
+    ordenes = {}
+    ids = sorted({r[7] for r in rows if len(r) > 7 and r[7]})
+    if ids:
+        try:
+            marcas = ",".join("?" * len(ids))
+            for oid, comp, vend in cursor.execute(
+                    f"SELECT id, comprador_id, vendedor_id FROM ordenes "
+                    f"WHERE id IN ({marcas})", ids):
+                ordenes[oid] = (comp, vend)
+        except sqlite3.OperationalError:
+            pass
     conn.close()
 
     data = []
@@ -101,6 +147,7 @@ def obtener_notificaciones(user_id):
             "orden_id":       r[7] if len(r) > 7 else None,
             "servicio_id":    r[8] if len(r) > 8 else None,
             "cliente_id":     r[9] if len(r) > 9 else None,
+            "categoria":      _categoria(r[1], user_id, ordenes.get(r[7])),
         })
 
     return data

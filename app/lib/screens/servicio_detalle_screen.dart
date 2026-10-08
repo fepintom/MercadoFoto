@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../services/vistas_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -38,6 +39,9 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
     super.initState();
     _srv = Map<String, dynamic>.from(widget.servicio);
     _cargarUserId();
+    VistasService.contar('servicio', (_srv['id'] as num?)?.toInt()).then((n) {
+      if (n != null && mounted) setState(() => _srv['vistas'] = n);
+    });
   }
 
   Future<void> _cargarUserId() async {
@@ -598,6 +602,17 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: colors.textPrimary)),
+              if (((_srv['vistas'] as num?) ?? 0) > 0) ...[
+                const SizedBox(width: 10),
+                Icon(Icons.visibility_outlined,
+                    size: 15, color: colors.textPrimary),
+                const SizedBox(width: 3),
+                Text(VistasService.formato((_srv['vistas'] as num).toInt()),
+                    style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: colors.textPrimary)),
+              ],
               const Spacer(),
               if (numVal > 0) ...[
                 Text(

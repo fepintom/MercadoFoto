@@ -26,6 +26,7 @@ import 'chat_screen.dart';
 import 'oferta_screen.dart';
 import 'servicios_screen.dart';
 import 'comunidad_screen.dart';
+import 'notificaciones_screen.dart';
 import 'mis_direcciones_screen.dart';
 import '../widgets/registro_form_widget.dart';
 
@@ -46,8 +47,26 @@ class _HomeScreenState extends State<HomeScreen> {
   int _tab = 0;
 
   static const int _kTabOkMarket = 0;
+  static const int _kTabAlertas = 1;
   static const int _kTabOkServicios = 2;
   static const int _kTabComunidad = 3;
+  static const int _kTabEncontrar = 4;
+  static const int _kTabCuenta = 5;
+
+  /// Pestañas ya abiertas alguna vez. Las demás no se construyen hasta que
+  /// se visitan (el mapa y Mi OkVenta cargan datos al crearse).
+  final Set<int> _visitadas = {_kTabOkMarket};
+
+  /// Sube cada vez que se entra a Mi OkVenta: la pantalla se recrea y lee
+  /// los datos frescos (antes se abría encima y se recargaba al volver).
+  int _versionCuenta = 0;
+
+  /// Navegador de adentro: todo lo que se abre desde las pestañas se apila
+  /// aquí, así la barra de menú de abajo queda siempre visible.
+  final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
+
+  /// Contexto para navegar dentro del área de contenido (sobre la barra).
+  BuildContext get _ctxNav => _navKey.currentContext ?? context;
 
   // Códigos de los botones de la barra (no son pestañas: algunos abren
   // pantallas encima). 3 = Encontrar, 4 = Mi OkVenta, 1 = Alertas.
@@ -76,6 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    shellNavigatorKey = _navKey;
     _inicializar();
     _cargarPrefsUbicacion();
     _obtenerUbicacion();
@@ -83,6 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    if (identical(shellNavigatorKey, _navKey)) shellNavigatorKey = null;
     _notifTimer?.cancel();
     super.dispose();
   }
@@ -204,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen> {
           if (d == null) {
             // → editar
             await Navigator.push(
-              context,
+              _ctxNav,
               MaterialPageRoute(
                 builder: (_) => MisDireccionesScreen(
                     userId: userId!, mostrarBotonMarketplace: true),
@@ -352,65 +373,39 @@ class _HomeScreenState extends State<HomeScreen> {
   /// barra inferior.
   void _abrirVender() {
     Navigator.push(
-      context,
+      _ctxNav,
       MaterialPageRoute(builder: (_) => const vender.VenderScreen()),
     ).then((_) => _inicializar());
   }
 
+  /// Cambia de pestaña. Si había pantallas abiertas encima (un producto,
+  /// un chat…), se cierran: tocar el menú lleva a la raíz de esa sección.
+  void _irATab(int tab) {
+    _navKey.currentState?.popUntil((r) => r.isFirst);
+    if (_tab == _kTabCuenta && tab != _kTabCuenta) _inicializar();
+    setState(() {
+      if (tab == _kTabCuenta && _tab != _kTabCuenta) _versionCuenta++;
+      _tab = tab;
+      _visitadas.add(tab);
+    });
+  }
+
   void _onNavTap(int index) {
-    if (index == _kNavOkMarket) {
-      setState(() => _tab = _kTabOkMarket);
-      return;
-    }
-    if (index == _kNavOkServicios) {
-      setState(() => _tab = _kTabOkServicios);
-      return;
-    }
-    if (index == _kNavComunidad) {
-      setState(() => _tab = _kTabComunidad);
-      return;
-    }
+    if (index == _kNavOkMarket) return _irATab(_kTabOkMarket);
+    if (index == _kNavOkServicios) return _irATab(_kTabOkServicios);
+    if (index == _kNavComunidad) return _irATab(_kTabComunidad);
     if (index == 4) {
       // Mi OkVenta
       if (userId != null) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const MiCuentaScreen()),
-        ).then((_) => _inicializar());
+        _irATab(_kTabCuenta);
       } else {
         _abrirLoginModal();
       }
       return;
     }
-    if (index == 3) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const EncontrarScreen()),
-      );
-      return;
-    }
-    if (index == 1) {
-      _abrirNotificaciones();
-      if (mounted) setState(() => _notifCount = 0);
-      return;
-    }
-    setState(() => _tab = index);
-  }
-
-  void _abrirNotificaciones() {
-    if (userId == null) return;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: colors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => _NotificacionesSheet(userId: userId!),
-    ).then((_) {
-      // Marcar como leídas al cerrar
-      setState(() => _notifCount = 0);
-    });
+    if (index == 3) return _irATab(_kTabEncontrar);
+    if (index == 1) return _irATab(_kTabAlertas);
+    _irATab(index);
   }
 
   // ── HEADER ─────────────────────────────────────────────────────────────────
@@ -513,7 +508,7 @@ class _HomeScreenState extends State<HomeScreen> {
           if (userId != null)
             GestureDetector(
               onTap: () => Navigator.push(
-                context,
+                _ctxNav,
                 MaterialPageRoute(builder: (_) => const MensajesScreen()),
               ),
               child: Container(
@@ -556,12 +551,7 @@ class _HomeScreenState extends State<HomeScreen> {
             )
           else
             GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const MiCuentaScreen()),
-                ).then((_) => _inicializar());
-              },
+              onTap: () => _irATab(_kTabCuenta),
               child: Container(
                 width: 36,
                 height: 36,
@@ -660,9 +650,13 @@ class _HomeScreenState extends State<HomeScreen> {
               // OkServicios + OkMarket — CENTRO destacados
               _navDobleDestacado(),
               // Encontrar
-              Expanded(child: _navItem(3, Icons.explore_outlined, "Encontrar")),
+              Expanded(
+                  child: _navItem(3, Icons.explore_outlined, "Encontrar",
+                      seleccionado: _tab == _kTabEncontrar)),
               // Mi OkVenta
-              Expanded(child: _navItem(4, Icons.person_outline_rounded, "Mi OkVenta")),
+              Expanded(
+                  child: _navItem(4, Icons.person_outline_rounded, "Mi OkVenta",
+                      seleccionado: _tab == _kTabCuenta)),
             ],
           ),
         ),
@@ -939,178 +933,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildAlertas() {
-    if (userId == null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.notifications_off_outlined,
-                  size: 64, color: colors.grayMid),
-              const SizedBox(height: 20),
-              Text(
-                "Inicia sesión para ver\ntus alertas",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _abrirLoginModal,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.primary,
-                  foregroundColor: colors.textOnPrimary,
-                ),
-                child: const Text("Ingresar"),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Accesos rápidos
-          Text(
-            "Mis guardados",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: colors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _accesoRapido(
-                  icono: Icons.favorite_outline,
-                  label: "Favoritos",
-                  sublabel: "Productos que guardaste",
-                  color: colors.primary,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const FavoritosScreen()),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _accesoRapido(
-                  icono: Icons.explore_outlined,
-                  label: "Encontrar",
-                  sublabel: "Productos cerca de ti",
-                  color: colors.textPrimary,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const EncontrarScreen()),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          // Notificaciones
-          Text(
-            "Notificaciones",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: colors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Center(
-            child: Column(
-              children: [
-                Icon(Icons.notifications_outlined,
-                    size: 56, color: colors.grayMid.withOpacity(0.4)),
-                const SizedBox(height: 12),
-                Text(
-                  "Sin notificaciones",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: colors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  "Cuando tengas actividad, aparecerá aquí",
-                  style: TextStyle(fontSize: 13, color: colors.grayMid),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _accesoRapido({
-    required IconData icono,
-    required String label,
-    required String sublabel,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: colors.divider, width: 0.5),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icono, color: color, size: 20),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-                color: colors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              sublabel,
-              style: TextStyle(
-                  fontSize: 11, color: colors.grayMid),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   // ── CARRITO: navega a la pantalla dedicada (antes era un modal) ─────────
   void _mostrarCarrito() {
     Navigator.push(
-      context,
+      _ctxNav,
       MaterialPageRoute(builder: (_) => const CarritoScreen()),
     );
   }
@@ -1125,45 +951,106 @@ class _HomeScreenState extends State<HomeScreen> {
     return ValueListenableBuilder<bool>(
       valueListenable: ThemeService.isDarkNotifier,
       builder: (context, _, __) {
+        final teclado = MediaQuery.of(context).viewInsets.bottom > 0;
         return Scaffold(
           backgroundColor: colors.background,
+          // El teclado lo maneja cada pantalla de adentro (la raíz de las
+          // pestañas es un Scaffold propio); aquí solo se esconde la barra.
+          resizeToAvoidBottomInset: false,
           body: SafeArea(
             bottom: false,
             child: Column(
               children: [
-                _buildHeader(),
                 Expanded(
-                  child: IndexedStack(
-                    index: _tab,
-                    children: [
-                      _buildInicio(),
-                      const SizedBox.shrink(), // slot 1 reservado (notif abre como sheet)
-                      // Sin "const": para que el modo oscuro se redibuje en
-                      // vivo cuando se toca el ícono de ojo estando en esta
-                      // pestaña (un widget const idéntico se "saltea" en el
-                      // rebuild y quedaba con los colores del modo anterior).
-                      ServiciosScreen(),
-                      ComunidadScreen(
-                        activa: _tab == _kTabComunidad,
-                        onPedirLogin: _abrirLoginModal,
+                  // Navegador de adentro: productos, chats, perfiles, el
+                  // mapa… se abren aquí y la barra de abajo nunca se pierde.
+                  child: MediaQuery.removePadding(
+                    context: context,
+                    removeBottom: !teclado,
+                    child: NavigatorPopHandler(
+                      onPop: () => _navKey.currentState?.maybePop(),
+                      child: Navigator(
+                        key: _navKey,
+                        pages: [
+                          MaterialPage(
+                            key: const ValueKey('raiz'),
+                            child: _raiz(),
+                          ),
+                        ],
+                        onDidRemovePage: (_) {},
                       ),
-                    ],
+                    ),
                   ),
                 ),
                 // La barra de distancia ya no va aquí abajo: pegada al menú
                 // se tocaba sin querer con la palma al sostener el teléfono.
-                // Ahora viaja dentro del marketplace, debajo de las
-                // categorías, en el mismo lugar que en Servicios.
                 // Con el teclado abierto (escribiendo en la Comunidad o en
                 // un buscador) la barra se esconde: si no, sube pegada al
                 // teclado y le quita media pantalla al chat.
-                if (MediaQuery.of(context).viewInsets.bottom == 0)
-                  _buildBottomNav(),
+                if (!teclado) _buildBottomNav(),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  /// La raíz del navegador de adentro: encabezado (en las secciones de
+  /// publicaciones y Comunidad) + las pestañas.
+  Widget _raiz() {
+    final conEncabezado = _tab == _kTabOkMarket ||
+        _tab == _kTabOkServicios ||
+        _tab == _kTabComunidad;
+    Widget perezosa(int tab, Widget Function() crear) =>
+        _visitadas.contains(tab) ? crear() : const SizedBox.shrink();
+    return Scaffold(
+      backgroundColor: colors.background,
+      body: Column(
+        children: [
+          if (conEncabezado) _buildHeader(),
+          Expanded(
+            child: IndexedStack(
+              index: _tab,
+              children: [
+                _buildInicio(),
+                perezosa(
+                  _kTabAlertas,
+                  () => NotificacionesScreen(
+                    userId: userId,
+                    activa: _tab == _kTabAlertas,
+                    onLeidas: () {
+                      if (mounted && _notifCount != 0) {
+                        setState(() => _notifCount = 0);
+                      }
+                    },
+                    onPedirLogin: _abrirLoginModal,
+                    onIrAComunidad: () => _irATab(_kTabComunidad),
+                  ),
+                ),
+                // Sin "const": para que el modo oscuro se redibuje en
+                // vivo cuando se toca el ícono de ojo estando en esta
+                // pestaña (un widget const idéntico se "saltea" en el
+                // rebuild y quedaba con los colores del modo anterior).
+                ServiciosScreen(),
+                ComunidadScreen(
+                  activa: _tab == _kTabComunidad,
+                  onPedirLogin: _abrirLoginModal,
+                ),
+                perezosa(_kTabEncontrar,
+                    () => EncontrarScreen(esPestana: true)),
+                perezosa(
+                  _kTabCuenta,
+                  () => MiCuentaScreen(
+                    key: ValueKey('cuenta-$_versionCuenta'),
+                    esPestana: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1517,206 +1404,6 @@ class _BannerBlueExpress extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ── Panel de notificaciones ──────────────────────────────────────────────────
-class _NotificacionesSheet extends StatefulWidget {
-  final int userId;
-  const _NotificacionesSheet({required this.userId});
-
-  @override
-  State<_NotificacionesSheet> createState() => _NotificacionesSheetState();
-}
-
-class _NotificacionesSheetState extends State<_NotificacionesSheet> {
-  List<Map<String, dynamic>> _notifs = [];
-  bool _cargando = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _cargar();
-  }
-
-  Future<void> _cargar() async {
-    try {
-      final data = await ApiService.obtenerNotificaciones(widget.userId);
-      if (mounted) setState(() { _notifs = data; _cargando = false; });
-      // Abrir el panel cuenta como "visto": se marcan leídas en el servidor.
-      // En esta apertura aún se muestran resaltadas (los datos ya venían con
-      // leido=0); en la próxima apertura aparecerán sin color.
-      ApiService.marcarNotificacionesLeidas(widget.userId);
-    } catch (_) {
-      if (mounted) setState(() => _cargando = false);
-    }
-  }
-
-  IconData _icono(String tipo) {
-    switch (tipo) {
-      case 'oferta':     return Icons.monetization_on_outlined;
-      case 'pregunta':   return Icons.help_outline_rounded;
-      case 'chat':       return Icons.chat_bubble_outline_rounded;
-      case 'interes_compra': return Icons.favorite_outline;
-      case 'precio':     return Icons.sell_outlined;
-      case 'elegir_entrega': return Icons.payments_outlined;
-      case 'en_camino':  return Icons.local_shipping_outlined;
-      case 'entrega_confirmada': return Icons.check_circle_outline;
-      case 'disputa':    return Icons.warning_amber_rounded;
-      case 'review':     return Icons.star_outline_rounded;
-      default:           return Icons.notifications_outlined;
-    }
-  }
-
-  String _formatFecha(String? f) {
-    if (f == null) return '';
-    try {
-      final dt = DateTime.parse(f).toLocal();
-      final now = DateTime.now();
-      final diff = now.difference(dt);
-      if (diff.inMinutes < 60) return 'Hace ${diff.inMinutes} min';
-      if (diff.inHours < 24)   return 'Hace ${diff.inHours}h';
-      return '${dt.day}/${dt.month}';
-    } catch (_) { return ''; }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return DraggableScrollableSheet(
-      initialChildSize: 0.6,
-      minChildSize: 0.3,
-      maxChildSize: 0.92,
-      expand: false,
-      builder: (_, ctrl) => Column(
-        children: [
-          // Handle
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 10),
-            width: 40, height: 4,
-            decoration: BoxDecoration(
-              color: colors.divider,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            child: Row(
-              children: [
-                Icon(Icons.notifications_rounded, color: colors.primary),
-                SizedBox(width: 8),
-                Text('Notificaciones',
-                    style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: colors.textPrimary)),
-              ],
-            ),
-          ),
-          Divider(height: 0.5, color: colors.divider),
-          Expanded(
-            child: _cargando
-                ? Center(child: CircularProgressIndicator(color: colors.primary))
-                : _notifs.isEmpty
-                    ? Center(
-                        child: Text('Sin notificaciones aún',
-                            style: TextStyle(color: colors.grayMid)))
-                    : ListView.separated(
-                        controller: ctrl,
-                        itemCount: _notifs.length,
-                        separatorBuilder: (_, __) =>
-                            Divider(height: 0.5, color: colors.divider),
-                        itemBuilder: (_, i) {
-                          final n = _notifs[i];
-                          final leida = n['leido'] == 1 || n['leido'] == true;
-                          final pubId = n['publicacion_id'];
-                          return InkWell(
-                            onTap: () {
-                              final tipo = n['tipo'] ?? '';
-                              // Usamos el navigator raíz (no el de este bottom
-                              // sheet) porque al cerrar el sheet este context
-                              // se desmonta y la navegación quedaría sin
-                              // efecto — "tocar la notificación no hace nada".
-                              Navigator.pop(context);
-                              final navContext = rootContext;
-                              if (navContext == null || !navContext.mounted) return;
-                              if (tipo == 'oferta' && pubId != null) {
-                                // Caso especial: vista de oferta con monto extraído del mensaje.
-                                final msg = n['mensaje'] ?? '';
-                                final match = RegExp(r'\$([\d,]+)').firstMatch(msg);
-                                final montoStr = (match?.group(1) ?? '0').replaceAll(',', '');
-                                final monto = double.tryParse(montoStr) ?? 0.0;
-                                final remitenteId = n['remitente_id'] ?? 0;
-                                Navigator.push(
-                                  navContext,
-                                  MaterialPageRoute(
-                                    builder: (_) => OfertaScreen(
-                                      publicacionId: pubId,
-                                      compradorId:   remitenteId,
-                                      monto:         monto,
-                                      titulo:        '',
-                                      imagenUrl:     '',
-                                    ),
-                                  ),
-                                );
-                                return;
-                              }
-                              // Todo lo demás (chat, ofertas de respuesta, pagos,
-                              // entregas, okdelivery, disputas...) pasa por el
-                              // router central de notificaciones.
-                              NotificationRouter.abrir(navContext, n);
-                            },
-                            child: Container(
-                            color: leida ? Colors.transparent : colors.primary.withOpacity(0.05),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  width: 40, height: 40,
-                                  decoration: BoxDecoration(
-                                    color: colors.primary.withOpacity(0.1),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(_icono(n['tipo'] ?? ''),
-                                      color: colors.primary, size: 20),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(n['mensaje'] ?? '',
-                                          style: TextStyle(
-                                              fontSize: 14,
-                                              color: colors.textPrimary,
-                                              fontWeight: leida
-                                                  ? FontWeight.w400
-                                                  : FontWeight.w600)),
-                                      const SizedBox(height: 4),
-                                      Text(_formatFecha(n['fecha']),
-                                          style: TextStyle(
-                                              fontSize: 11,
-                                              color: colors.grayMid)),
-                                    ],
-                                  ),
-                                ),
-                                if (!leida)
-                                  Container(
-                                    width: 8, height: 8,
-                                    decoration: BoxDecoration(
-                                        color: colors.primary,
-                                        shape: BoxShape.circle),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          );
-                        },
-                      ),
-          ),
-        ],
       ),
     );
   }

@@ -81,6 +81,13 @@ class BarraFiltros extends StatelessWidget {
   /// Color de fondo de la franja.
   final Color? fondo;
 
+  /// false = sin el botón de distancia/zona (p. ej. Notificaciones, que solo
+  /// filtra por tipo).
+  final bool mostrarDistancia;
+
+  /// Texto del botón que despliega las categorías.
+  final String etiquetaCategorias;
+
   const BarraFiltros({
     super.key,
     required this.radioKm,
@@ -105,6 +112,8 @@ class BarraFiltros extends StatelessWidget {
     this.onPublicar,
     this.etiquetaPublicar = 'Publicar',
     this.fondo,
+    this.mostrarDistancia = true,
+    this.etiquetaCategorias = 'Categorías',
   });
 
   static const double altoFila = 46;
@@ -147,20 +156,14 @@ class BarraFiltros extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: ShaderMask(
-                    // Degradado a la derecha: avisa que la fila sigue y
-                    // que las pastillas no se cortan contra Publicar.
-                    shaderCallback: (r) => const LinearGradient(
-                      colors: [Colors.white, Colors.white, Colors.transparent],
-                      stops: [0, 0.9, 1],
-                    ).createShader(r),
-                    blendMode: BlendMode.dstIn,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.fromLTRB(12, 8, 16, 8),
-                      children: [
-                        _botonDistancia(),
-                        const SizedBox(width: 6),
+                  child: _FilaDesplazable(
+                    filtros: seleccionadas.length +
+                        (modoZona ? regiones.length : 0),
+                    children: [
+                        if (mostrarDistancia) ...[
+                          _botonDistancia(),
+                          const SizedBox(width: 6),
+                        ],
                         _botonCategorias(),
                         if (modoZona)
                           for (final r in regiones) ...[
@@ -181,8 +184,7 @@ class BarraFiltros extends StatelessWidget {
                             onQuitar: () => onQuitarCategoria(c),
                           ),
                         ],
-                      ],
-                    ),
+                    ],
                   ),
                 ),
                 if (onPublicar != null)
@@ -262,10 +264,13 @@ class BarraFiltros extends StatelessWidget {
 
   Widget _botonCategorias() {
     final abierto = panel == PanelFiltro.categorias;
+    final n = seleccionadas.length;
     return _PastillaBoton(
       icono: Icons.grid_view_rounded,
-      texto: 'Categorías',
-      activo: false,
+      // Con categorías puestas el botón queda en rojo y dice cuántas: así
+      // se nota que lo que se ve está filtrado.
+      texto: n == 0 ? etiquetaCategorias : '$etiquetaCategorias · $n',
+      activo: n > 0,
       abierto: abierto,
       flecha: true,
       onTap: () => _alternar(PanelFiltro.categorias),
@@ -624,11 +629,38 @@ class _PastillaQuitableState extends State<PastillaQuitable> {
   void dispose() {
     _entry?.remove();
     _entry = null;
+    _ayuda?.remove();
+    _ayuda = null;
     _drag.dispose();
     super.dispose();
   }
 
+  OverlayEntry? _ayuda;
+
+  /// Globo sobre la pastilla: "Arrastra para eliminar el filtro".
+  void _mostrarAyuda() {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    HapticFeedback.selectionClick();
+    _ayuda?.remove();
+    final pos = box.localToGlobal(Offset.zero);
+    final tam = box.size;
+    _ayuda = OverlayEntry(
+      builder: (_) => _GloboAyuda(
+        ancla: pos + Offset(tam.width / 2, 0),
+        texto: 'Arrastra para eliminar el filtro',
+        onFin: () {
+          _ayuda?.remove();
+          _ayuda = null;
+        },
+      ),
+    );
+    Overlay.of(context, rootOverlay: true).insert(_ayuda!);
+  }
+
   void _inicio(LongPressStartDetails d) {
+    _ayuda?.remove();
+    _ayuda = null;
     final box = context.findRenderObject() as RenderBox?;
     if (box == null) return;
     _origen = box.localToGlobal(Offset.zero);
@@ -680,16 +712,7 @@ class _PastillaQuitableState extends State<PastillaQuitable> {
   Widget build(BuildContext context) {
     return GestureDetector(
       // Un toque normal explica cómo se quita: si no, nadie lo adivina.
-      onTap: () {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(
-            content: const Text(
-                'Mantén presionada la categoría y arrástrala fuera para quitarla'),
-            backgroundColor: colors.carbon,
-            duration: const Duration(seconds: 2),
-          ));
-      },
+      onTap: _mostrarAyuda,
       child: RawGestureDetector(
         gestures: {
           LongPressGestureRecognizer:
@@ -841,6 +864,17 @@ class _PastillaFlotanteState extends State<_PastillaFlotante>
 
           return Stack(
             children: [
+              // Mientras se arrastra, un globo explica qué pasa al soltar.
+              if (_esfumar.value == 0 && !_volver.isAnimating)
+                _GloboAyuda.estatico(
+                  ancla: widget.origen +
+                      offset +
+                      Offset(widget.tam.width / 2, -6),
+                  texto: lejos
+                      ? 'Suelta para eliminar'
+                      : 'Arrastra para eliminar el filtro',
+                  rojo: lejos,
+                ),
               // Chispas del "puf".
               if (_esfumar.value > 0)
                 Positioned(
@@ -919,4 +953,284 @@ class _Chispas extends CustomPainter {
 
   @override
   bool shouldRepaint(_Chispas old) => old.progreso != progreso;
+}
+
+
+/// La fila de pastillas con scroll horizontal. Si hay filtros puestos que
+/// quedaron fuera de la vista (a la derecha), muestra en el borde un aviso
+/// rojo "‹ 2 filtros" que se mueve un poco para invitar a deslizar; al
+/// tocarlo desliza solo hasta los filtros. Al agregar un filtro también se
+/// desliza para que se vea cómo queda puesto.
+class _FilaDesplazable extends StatefulWidget {
+  final int filtros;
+  final List<Widget> children;
+  const _FilaDesplazable({required this.filtros, required this.children});
+
+  @override
+  State<_FilaDesplazable> createState() => _FilaDesplazableState();
+}
+
+class _FilaDesplazableState extends State<_FilaDesplazable>
+    with SingleTickerProviderStateMixin {
+  final _ctrl = ScrollController();
+  late final AnimationController _vaiven = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 900))
+    ..repeat(reverse: true);
+  bool _ocultos = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl.addListener(_revisar);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _revisar());
+  }
+
+  @override
+  void didUpdateWidget(covariant _FilaDesplazable old) {
+    super.didUpdateWidget(old);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (widget.filtros > old.filtros) {
+        _irAlFinal();
+      } else {
+        _revisar();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _vaiven.dispose();
+    super.dispose();
+  }
+
+  void _revisar() {
+    if (!mounted || !_ctrl.hasClients) return;
+    final p = _ctrl.position;
+    final ocultos = widget.filtros > 0 && p.maxScrollExtent - p.pixels > 24;
+    if (ocultos != _ocultos) setState(() => _ocultos = ocultos);
+  }
+
+  void _irAlFinal() {
+    if (!_ctrl.hasClients) return;
+    _ctrl
+        .animateTo(_ctrl.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 380),
+            curve: Curves.easeOutCubic)
+        .whenComplete(_revisar);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final n = widget.filtros;
+    return Stack(
+      alignment: Alignment.centerRight,
+      children: [
+        ShaderMask(
+          // Degradado a la derecha: avisa que la fila sigue y que las
+          // pastillas no se cortan contra Publicar.
+          shaderCallback: (r) => const LinearGradient(
+            colors: [Colors.white, Colors.white, Colors.transparent],
+            stops: [0, 0.9, 1],
+          ).createShader(r),
+          blendMode: BlendMode.dstIn,
+          child: NotificationListener<ScrollMetricsNotification>(
+            onNotification: (_) {
+              _revisar();
+              return false;
+            },
+            child: ListView(
+              controller: _ctrl,
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(12, 8, 16, 8),
+              children: widget.children,
+            ),
+          ),
+        ),
+        IgnorePointer(
+          ignoring: !_ocultos,
+          child: AnimatedOpacity(
+            opacity: _ocultos ? 1 : 0,
+            duration: const Duration(milliseconds: 200),
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                _irAlFinal();
+              },
+              child: Container(
+                margin: const EdgeInsets.only(right: 2),
+                height: 26,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  color: colors.primary,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.18),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  AnimatedBuilder(
+                    animation: _vaiven,
+                    builder: (_, child) => Transform.translate(
+                      offset: Offset(
+                          -3 * Curves.easeInOut.transform(_vaiven.value), 0),
+                      child: child,
+                    ),
+                    child: const Icon(Icons.chevron_left_rounded,
+                        size: 16, color: Colors.white),
+                  ),
+                  Text(n == 1 ? '1 filtro' : '$n filtros',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800)),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Globo de ayuda que apunta a una pastilla (sobre ella). Solo: aparece,
+/// dura ~2 s y se va. [_GloboAyuda.estatico] es la versión sin vida propia
+/// que acompaña a la pastilla mientras se arrastra.
+class _GloboAyuda extends StatefulWidget {
+  final Offset ancla;
+  final String texto;
+  final bool rojo;
+  final VoidCallback? onFin;
+  final bool _autonomo;
+
+  const _GloboAyuda({
+    required this.ancla,
+    required this.texto,
+    this.onFin,
+  })  : rojo = false,
+        _autonomo = true;
+
+  const _GloboAyuda.estatico({
+    required this.ancla,
+    required this.texto,
+    this.rojo = false,
+  })  : onFin = null,
+        _autonomo = false;
+
+  @override
+  State<_GloboAyuda> createState() => _GloboAyudaState();
+}
+
+class _GloboAyudaState extends State<_GloboAyuda>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _a = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 2200));
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget._autonomo) {
+      _a.forward().whenComplete(() => widget.onFin?.call());
+    } else {
+      _a.value = 0.5;
+    }
+  }
+
+  @override
+  void dispose() {
+    _a.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const ancho = 220.0;
+    final pantalla = MediaQuery.of(context).size.width;
+    final left =
+        (widget.ancla.dx - ancho / 2).clamp(8.0, pantalla - ancho - 8.0);
+    final fondo = widget.rojo ? colors.primary : const Color(0xFF1C1C1E);
+    return Positioned(
+      left: left,
+      top: widget.ancla.dy - 40,
+      width: ancho,
+      child: IgnorePointer(
+        child: AnimatedBuilder(
+          animation: _a,
+          builder: (_, child) {
+            final v = _a.value;
+            // Entra rápido (0–10 %), se queda, sale (85–100 %).
+            final o = v < 0.1
+                ? v / 0.1
+                : v > 0.85
+                    ? (1 - v) / 0.15
+                    : 1.0;
+            return Opacity(
+              opacity: o.clamp(0.0, 1.0),
+              child: Transform.translate(
+                  offset: Offset(0, 4 * (1 - o)), child: child),
+            );
+          },
+          child: Material(
+            type: MaterialType.transparency,
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: fondo,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(
+                      widget.rojo
+                          ? Icons.delete_outline_rounded
+                          : Icons.swipe_rounded,
+                      size: 14,
+                      color: Colors.white),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(widget.texto,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700)),
+                  ),
+                ]),
+              ),
+              CustomPaint(
+                size: const Size(12, 6),
+                painter: _Piquito(fondo),
+              ),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Piquito extends CustomPainter {
+  final Color color;
+  _Piquito(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..close();
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(covariant _Piquito old) => old.color != color;
 }

@@ -131,8 +131,7 @@ class _ChatScreenState extends State<ChatScreen> {
   /// además de sacarte de la conversación, dejaba a la vista la dirección
   /// interna del servidor.
   void _reproducirVideo(String url) {
-    Navigator.push(
-      context,
+    Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
         builder: (_) => VisorMediaScreen(url: url, esVideo: true),
       ),
