@@ -228,7 +228,7 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
           .map((m) => LatLng(
               (m['lat'] as num).toDouble(), (m['lng'] as num).toDouble()))
           .toList()
-        ..sort((a, b) => _dist(centro, a).compareTo(_dist(centro, b)));
+        ..sort((a, b) => _distCuadrada(centro, a).compareTo(_distCuadrada(centro, b)));
       puntos = [centro, ...cerca.take(12)];
     }
     if (puntos.length < 2) return;
@@ -244,7 +244,7 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
     });
   }
 
-  double _dist(LatLng a, LatLng b) {
+  double _distCuadrada(LatLng a, LatLng b) {
     final dx = (a.latitude - b.latitude);
     final dy = (a.longitude - b.longitude) * math.cos(a.latitude * math.pi / 180);
     return dx * dx + dy * dy;
