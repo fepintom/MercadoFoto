@@ -24,7 +24,9 @@ import '../widgets/avatar_historia.dart';
 import '../widgets/destacadas_fila.dart';
 
 class MiCuentaScreen extends StatefulWidget {
-  const MiCuentaScreen({super.key});
+  /// true = pestaña "Mi OkVenta" del menú: sin flecha de volver.
+  final bool esPestana;
+  const MiCuentaScreen({super.key, this.esPestana = false});
 
   @override
   State<MiCuentaScreen> createState() => _MiCuentaScreenState();
@@ -760,8 +762,9 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
   Future<void> _cerrarSesion() async {
     await AuthService.cerrarSesion(); // Firebase + Google + SharedPreferences
     if (!mounted) return;
-    Navigator.pushAndRemoveUntil(
-      context,
+    // En el navegador raíz: si no, el login quedaría dentro del área de
+    // contenido, con la barra de menú abajo.
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (_) => false,
     );
@@ -785,12 +788,14 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
               ),
               child: Row(
                 children: [
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Icon(Icons.arrow_back_ios_new_rounded,
-                        size: 20, color: colors.textPrimary),
-                  ),
-                  const SizedBox(width: 12),
+                  if (!widget.esPestana) ...[
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Icon(Icons.arrow_back_ios_new_rounded,
+                          size: 20, color: colors.textPrimary),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
                   // +30% igual que en el home (38 -> 49). Celular en modo
                   // claro, okventin en modo oscuro (sin fondo cuadrado).
                   ValueListenableBuilder<bool>(

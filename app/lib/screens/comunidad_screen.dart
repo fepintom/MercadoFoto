@@ -10,6 +10,7 @@ import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/avatar_usuario.dart';
 import '../widgets/net_image.dart';
+import '../widgets/top_vistos.dart';
 import 'perfil_publico_screen.dart';
 import 'producto_detalle_screen.dart';
 import 'servicio_detalle_screen.dart';
@@ -41,6 +42,8 @@ class ComunidadScreen extends StatefulWidget {
 }
 
 class _ComunidadScreenState extends State<ComunidadScreen> {
+  /// Sube cada vez que se vuelve a la pestaña: recarga "Lo más visto".
+  int _versionTop = 0;
   static const _kIntervalo = Duration(seconds: 4);
   static const _kEmojis = [
     '😀', '😂', '😍', '🥳', '😎', '🤔', '😅', '😢', '😡', '👍', '👏', '🙏',
@@ -79,6 +82,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
   @override
   void initState() {
     super.initState();
+    _foco.addListener(_cambioFoco);
     _ctrl.addListener(_detectarMencion);
     ContenidoOcultoService.cargar().then((_) => _refrescar());
     ContenidoOcultoService.mensajes.addListener(_refrescar);
@@ -150,11 +154,16 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     _foco.requestFocus();
   }
 
+  void _cambioFoco() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void didUpdateWidget(covariant ComunidadScreen old) {
     super.didUpdateWidget(old);
     if (widget.activa != old.activa) {
       if (widget.activa) {
+        _versionTop++;
         _refrescarSesion();
         _traerNuevos();
         _programar();
@@ -172,6 +181,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     _timer?.cancel();
     _ctrl.dispose();
     _scroll.dispose();
+    _foco.removeListener(_cambioFoco);
     _foco.dispose();
     super.dispose();
   }
@@ -373,6 +383,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
         children: [
           _encabezado(),
           if (_anclados.isNotEmpty) _franjaAnclados(),
+          // El chat ocupa la mitad de arriba (con su caja de texto).
           Expanded(
             child: _cargando
                 ? Center(
@@ -397,6 +408,12 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
           ),
           if (_verEmojis) _barraEmojis(),
           _cajaTexto(),
+          // Mitad de abajo: lo más visto de OkMarket. Con el teclado
+          // abierto se esconde para que el chat tenga espacio.
+          // (El foco del campo es la señal del teclado: aquí adentro el
+          // Scaffold ya descontó el teclado de MediaQuery.)
+          if (!_foco.hasFocus && !_verEmojis)
+            Expanded(child: TopVistos(version: _versionTop)),
         ],
       ),
     );

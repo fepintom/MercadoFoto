@@ -47,7 +47,12 @@ class EncontrarScreen extends StatefulWidget {
   /// (se llega así desde el botón de mapa de OkServicios).
   final bool soloServicios;
 
-  const EncontrarScreen({super.key, this.soloServicios = false});
+  /// true = es la pestaña "Encontrar" del menú (sin flecha de volver; la
+  /// barra de abajo sigue a la vista).
+  final bool esPestana;
+
+  const EncontrarScreen(
+      {super.key, this.soloServicios = false, this.esPestana = false});
 
   @override
   State<EncontrarScreen> createState() => _EncontrarScreenState();
@@ -164,6 +169,7 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
             servs.where((s) => s['lat'] is num && s['lng'] is num).toList();
         _cargando = false;
       });
+      _encuadrarInicial();
     } catch (e) {
       debugPrint('ERROR Encontrar: $e');
       if (mounted) {
@@ -192,7 +198,56 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
         } catch (_) {}
       }
       if (centrar) _mover(LatLng(c.lat, c.lng), 13.5);
+      _encuadrarInicial();
     }
+  }
+
+  bool _yaEncuadrado = false;
+
+  /// Al abrir, encuadra el mapa en lo que importa (una vez, cuando ya hay
+  /// datos y ubicación): con radio, el círculo completo; sin radio, tu
+  /// ubicación y lo más cercano. Así no aparece un mapa vacío o cortado.
+  void _encuadrarInicial() {
+    final yo = _yo;
+    if (_yaEncuadrado || _cargando || yo == null) return;
+    _yaEncuadrado = true;
+    final centro = LatLng(yo.lat, yo.lng);
+    List<LatLng> puntos;
+    if (_radioAplica) {
+      final dLat = _radioKm / 111.0;
+      final dLng = _radioKm / (111.0 * math.cos(yo.lat * math.pi / 180));
+      puntos = [
+        LatLng(yo.lat - dLat, yo.lng - dLng),
+        LatLng(yo.lat + dLat, yo.lng + dLng),
+      ];
+    } else {
+      final cerca = [
+        ..._productosVisibles,
+        ..._serviciosVisibles,
+      ]
+          .map((m) => LatLng(
+              (m['lat'] as num).toDouble(), (m['lng'] as num).toDouble()))
+          .toList()
+        ..sort((a, b) => _dist(centro, a).compareTo(_dist(centro, b)));
+      puntos = [centro, ...cerca.take(12)];
+    }
+    if (puntos.length < 2) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      try {
+        _mapCtrl.fitBounds(
+          LatLngBounds.fromPoints(puntos),
+          options: const FitBoundsOptions(
+              padding: EdgeInsets.fromLTRB(40, 60, 40, 60), maxZoom: 15),
+        );
+      } catch (_) {}
+    });
+  }
+
+  double _dist(LatLng a, LatLng b) {
+    final dx = (a.latitude - b.latitude);
+    final dy = (a.longitude - b.longitude) * math.cos(a.latitude * math.pi / 180);
+    return dx * dx + dy * dy;
   }
 
   void _mover(LatLng p, double zoom) {
@@ -468,11 +523,15 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
       appBar: AppBar(
         backgroundColor: colors.surface,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, size: 18, color: colors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
-        titleSpacing: 0,
+        automaticallyImplyLeading: false,
+        leading: widget.esPestana
+            ? null
+            : IconButton(
+                icon: Icon(Icons.arrow_back_ios,
+                    size: 18, color: colors.textPrimary),
+                onPressed: () => Navigator.pop(context),
+              ),
+        titleSpacing: widget.esPestana ? 16 : 0,
         title: Text('Encontrar',
             style: TextStyle(
                 fontSize: 17,
@@ -592,7 +651,7 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
                   hintText: 'Buscar en el mapa…',
                   hintStyle: TextStyle(color: colors.grayMid, fontSize: 13),
                   prefixIcon:
-                      Icon(Icons.search, size: 18, color: colors.grayMid),
+                      Icon(Icons.search, size: 18, color: colorIconoPastilla()),
                   suffixIcon: _query.isNotEmpty
                       ? GestureDetector(
                           onTap: () {

@@ -82,8 +82,7 @@ class _MisServiciosScreenState extends State<MisServiciosScreen>
                             if (Navigator.canPop(context)) {
                               Navigator.pop(context);
                             } else {
-                              Navigator.pushAndRemoveUntil(
-                                context,
+                              Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
                                 MaterialPageRoute(
                                     builder: (_) => const HomeScreen()),
                                 (r) => false,

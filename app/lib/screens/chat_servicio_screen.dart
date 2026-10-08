@@ -762,8 +762,7 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
               esMio ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
             GestureDetector(
-              onTap: () => Navigator.push(
-                context,
+              onTap: () => Navigator.of(context, rootNavigator: true).push(
                 MaterialPageRoute(
                   builder: (_) => VisorMediaScreen(
                     url: url,

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../services/vistas_service.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
@@ -57,6 +58,9 @@ class ProductoDetalleScreen extends StatefulWidget {
 
 class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   int? userId;
+  /// Visualizaciones (👁). Parte con lo que trajo el listado y se actualiza
+  /// al contar esta visita.
+  late int? _vistas = (widget.producto['vistas'] as num?)?.toInt();
   bool _esFavorito = false;
   bool _toggleandoFavorito = false;
   bool _comprando = false;
@@ -280,6 +284,10 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     _stockController   = TextEditingController(text: widget.producto['stock']?.toString() ?? '');
     _codigoController  = TextEditingController(text: widget.producto['codigo_universal']?.toString() ?? '');
     _cargarSesion();
+    VistasService.contar('producto', (widget.producto['id'] as num?)?.toInt())
+        .then((n) {
+      if (n != null && mounted) setState(() => _vistas = n);
+    });
     _cargarReputacionVendedor();
     _cargarRelacionados();
   }
@@ -511,7 +519,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   }
 
   void _verFotoCompleta(List<String> imagenes, int indiceInicial) {
-    Navigator.of(context).push(
+    Navigator.of(context, rootNavigator: true).push(
       PageRouteBuilder(
         opaque: false,
         barrierColor: Colors.black,
@@ -2172,6 +2180,25 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                       ],
                     ),
                   ),
+
+                  if ((_vistas ?? 0) > 0) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.visibility_outlined,
+                            size: 15, color: colors.textPrimary),
+                        const SizedBox(width: 5),
+                        Text(
+                            '${VistasService.formato(_vistas!)} '
+                            '${_vistas == 1 ? 'visualización' : 'visualizaciones'}',
+                            style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: colors.textPrimary)),
+                      ],
+                    ),
+                  ],
 
                   if (_mensajeEntrega != null) ...[
                     const SizedBox(height: 10),

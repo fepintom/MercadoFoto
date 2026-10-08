@@ -122,7 +122,7 @@ class HistoriasService {
     }
     final yo = await SessionService.obtenerUser();
     if (!context.mounted) return false;
-    await Navigator.of(context).push(PageRouteBuilder(
+    await Navigator.of(context, rootNavigator: true).push(PageRouteBuilder(
       opaque: true,
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (_, __, ___) => HistoriaViewerScreen(
