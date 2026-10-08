@@ -4,6 +4,12 @@ on:
   push:
     branches: [refactor/app-architecture-v1]
 
+# Si llegan dos ejecuciones para la misma rama (push repetido o evento
+# duplicado de GitHub), se cancela la anterior y sigue solo la última.
+concurrency:
+  group: ios-testflight-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: macos-latest

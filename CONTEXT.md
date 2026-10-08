@@ -119,6 +119,10 @@ Foto de perfil (nombre de archivo único), dirección manual como fallback, RUT 
 - **Visualizaciones** (`routers/vistas.py`, tabla `vistas_items`): POST /vistas?tipo=producto|servicio&item_id=&visitante= (1 por persona por día, el dueño no cuenta; anónimos con id local). `vistas` en GET /publicaciones, /publicaciones/{id}, /servicios, /servicios/{id}. GET /vistas/top_productos?limite=5&dias=30 (solo disponibles). App: `services/vistas_service.dart` (cuenta al abrir el detalle; `EtiquetaVistas` 👁 abajo a la izquierda de la foto en tarjetas; texto en el detalle). Comunidad: chat arriba y `widgets/top_vistos.dart` ("Lo más visto · top 5 del mes") en la mitad de abajo; se esconde con el teclado.
 - **Encontrar**: al abrir encuadra el mapa (con radio: el círculo; sin radio: tu ubicación + los 12 más cercanos).
 
+- **Detalle de producto rediseñado** (2026-10-08, según maqueta): arriba pastillas (izq.) y vendedor con nombre subrayado + foto grande con anillo de historia (der.); título grande; estrellas | resumen de valoraciones (abre evaluaciones); precio grande en recuadro (color de texto, ya no rojo); fila "⚡ Puedes recibirlo hoy | 🛒 N vendidos | 👁 N"; descripción; "Medios de pago" con "Ver todos" (hoja con tarjetas, débito/Webpay, Mercado Pago y Compra protegida); Devolución gratis | Compra protegida; Información adicional en columnas SKU | Stock | Código universal (EAN) con "Editar ›" y ayuda para el dueño; botones Editar/Eliminar más altos.
+- **Pastillas unificadas** (`widgets/pastilla_etiqueta.dart`): Usado rojo claro (antes naranjo), Nuevo verde claro, categoría gris, texto oscuro en ambos modos. Usadas en tarjetas de OkMarket, categoría de OkServicios, vista previa al publicar y detalle.
+- **TestFlight**: `concurrency` en el workflow cancela ejecuciones duplicadas de la misma rama.
+
 ## Sistema de diseño
 
 `app/lib/theme/app_theme.dart` — `AppColors.primary` = `#D62B2B` (rojo), `carbon`, `grayMid`, `background` = `#F2F2F7`, `surface` = blanco, `divider` = `#E0E0E5`. Nunca `Colors.blue/grey/red/white` hardcoded, siempre `AppColors.*`.

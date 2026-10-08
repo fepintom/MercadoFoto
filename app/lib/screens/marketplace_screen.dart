@@ -16,6 +16,7 @@ import '../services/session_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/barra_filtros.dart';
+import '../widgets/pastilla_etiqueta.dart';
 import '../widgets/acciones_producto.dart';
 import '../widgets/avatar_historia.dart';
 import '../widgets/etiqueta_oferta.dart';
@@ -883,20 +884,6 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     final vendedorId = (item['user_id'] as num?)?.toInt();
     final fotoVendedor = (item['foto_vendedor'] ?? '').toString();
 
-    Widget etiqueta(String texto, Color color) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(texto,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              softWrap: false,
-              style: TextStyle(
-                  fontSize: 10, fontWeight: FontWeight.w600, color: color)),
-        );
-
     return GestureDetector(
       onTap: () => _abrirDetalle(item),
       child: Container(
@@ -1042,14 +1029,14 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                   children: [
                     Row(
                       children: [
-                        etiqueta(esNuevo ? 'Nuevo' : 'Usado',
-                            esNuevo ? colors.success : colors.primary),
+                        PastillaEtiqueta.condicion(esNuevo, conIcono: false),
                         if (categoria != null &&
                             categoria.toString().isNotEmpty) ...[
                           const SizedBox(width: 4),
                           Flexible(
-                              child: etiqueta(
-                                  categoria.toString(), colors.textPrimary)),
+                              child: PastillaEtiqueta.categoria(
+                                  categoria.toString(),
+                                  conIcono: false)),
                         ],
                       ],
                     ),
