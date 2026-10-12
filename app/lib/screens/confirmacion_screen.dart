@@ -196,7 +196,7 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
       _precioActual = precioUsuario;
       precio.text   = precioUsuario.toInt().toString();
     }
-    final condicionGuardada = jsonData["condicion"]?.toString();
+    final condicionGuardada = jsonData["condicion"]?.toString() ?? "";
     if (condicionGuardada == 'nuevo' || condicionGuardada == 'usado') {
       _condicion = condicionGuardada;
     }
