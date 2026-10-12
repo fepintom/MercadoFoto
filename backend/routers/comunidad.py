@@ -44,6 +44,8 @@ class MensajeComunidad(BaseModel):
     ancla_id: Optional[int] = None
     menciones: Optional[List[int]] = None  # ids elegidos en el autocompletar
     responde_a: Optional[int] = None       # id del mensaje al que responde
+    lat: Optional[float] = None            # "Estoy aquí": ubicación compartida
+    lng: Optional[float] = None
 
 
 def _token_ok(token: str):
@@ -100,7 +102,8 @@ def _avisar_menciones(remitente: dict, mencionados: list, texto: str):
 @router.post("/comunidad/mensajes")
 def enviar(data: MensajeComunidad, tareas: BackgroundTasks):
     texto = (data.texto or "").strip()
-    if not texto and not data.ancla_tipo:
+    hay_ubicacion = data.lat is not None and data.lng is not None
+    if not texto and not data.ancla_tipo and not hay_ubicacion:
         raise HTTPException(400, "Mensaje vacío")
     if len(texto) > db.MAX_TEXTO:
         raise HTTPException(400, f"Máximo {db.MAX_TEXTO} caracteres")
@@ -133,8 +136,17 @@ def enviar(data: MensajeComunidad, tareas: BackgroundTasks):
     if responde_a and not db.obtener_mensaje(responde_a):
         responde_a = None
 
+    ubicacion = None
+    if hay_ubicacion:
+        if not (-90 <= data.lat <= 90 and -180 <= data.lng <= 180):
+            raise HTTPException(400, "Ubicación inválida")
+        # Redondeada (~100 m): sirve para "estoy por aquí" sin dar la
+        # dirección exacta de la casa a todo el chat.
+        ubicacion = {"lat": round(data.lat, 3), "lng": round(data.lng, 3)}
+
     msg = db.guardar_mensaje(data.user_id, texto, ancla=ancla,
-                             menciones=mencionados, responde_a=responde_a)
+                             menciones=mencionados, responde_a=responde_a,
+                             ubicacion=ubicacion)
     if mencionados:
         tareas.add_task(_avisar_menciones, msg, mencionados, texto)
     if bot.debe_responder(msg):

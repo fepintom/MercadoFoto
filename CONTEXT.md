@@ -130,6 +130,11 @@ Foto de perfil (nombre de archivo único), dirección manual como fallback, RUT 
 - **Comunidad**: arriba "🔥 Más vendidos · Top 5 del mes" (`widgets/mas_vendidos_franja.dart`, GET /vistas/mas_vendidos: órdenes pagadas del mes, se completa con los más vistos y entonces dice "Lo más visto") y "📌 Fijados" (comentarios fijados por el usuario desde ⋯ —locales— + productos/servicios anclados; "Ver todos"). Lupa para buscar en el chat. Fondo animado en pixel art (`widgets/fondo_pixel_okventin.dart`): Okventín camina por la ciudad en loop de 18 s, mira hacia arriba, salta y entrega un paquete; 12 cps, se pausa fuera de la pestaña. Las franjas se esconden al escribir.
 - Lupas de búsqueda en rojo (`colors.primary`).
 
+- **Dirección en un ícono** (2026-10-12): en el encabezado la dirección ya no ocupa el centro; un pin (rojo si hay dirección) abre una tarjeta flotante que "emerge" del ícono con la dirección actual, las otras para cambiar y botones Agregar / Editar (→ MisDirecciones).
+- **Comunidad con más pantalla para el chat**: sin título; barra fina con "🔥 TOP del mes" + ojo (esconde/muestra las tarjetitas, se recuerda) y "📌 Fijados N ▾" desplegable (parte cerrado; "Ver todos" al final de la fila). Caja de texto más grande (48 px, letra 15,5, emoji dentro) y un "+" con: Enviar mi ubicación, Anclar lo que vendes, Buscar en el chat.
+- **Ubicación en el chat**: hoja "Enviar mi ubicación" (`widgets/compartir_ubicacion.dart`) con mapa, sugerencias ("Estoy aquí, necesito…") y texto. En Comunidad se guarda redondeada (~100 m, columna `ubicacion` de `comunidad_mensajes`, campos `lat/lng` en POST); en privado, exacta. Se dibuja con `widgets/mapa_mini.dart` (toca → app de mapas).
+- **Mensajes privados** (`routers/privados.py`, tabla `mensajes_privados`; `services/privados_service.dart`; `screens/chat_privado_screen.dart`): tocar la foto o el nombre de alguien en Comunidad → "Enviar mensaje privado / Ver perfil / Mencionar". Notificación + push tipo `privado` (categoría Preguntas; el router abre el chat). En Mensajes aparece arriba la fila "Privados" con no leídos.
+
 ## Sistema de diseño
 
 `app/lib/theme/app_theme.dart` — `AppColors.primary` = `#D62B2B` (rojo), `carbon`, `grayMid`, `background` = `#F2F2F7`, `surface` = blanco, `divider` = `#E0E0E5`. Nunca `Colors.blue/grey/red/white` hardcoded, siempre `AppColors.*`.

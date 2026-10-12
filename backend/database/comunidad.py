@@ -69,6 +69,11 @@ def init_comunidad_db():
         conn.execute("ALTER TABLE comunidad_mensajes ADD COLUMN menciones TEXT")
     except sqlite3.OperationalError:
         pass
+    # Ubicación compartida: JSON {"lat": .., "lng": ..} (redondeada a ~100 m)
+    try:
+        conn.execute("ALTER TABLE comunidad_mensajes ADD COLUMN ubicacion TEXT")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
     conn.close()
 
@@ -77,7 +82,7 @@ _SELECT = """
     SELECT m.id, m.user_id, m.es_bot, m.texto,
            m.ancla_tipo, m.ancla_id, m.ancla_titulo, m.ancla_precio,
            m.ancla_imagen, m.responde_a, m.created_at, m.menciones,
-           u.nombre, u.apellido, u.foto_url
+           m.ubicacion, u.nombre, u.apellido, u.foto_url
     FROM comunidad_mensajes m
     LEFT JOIN users u ON u.id = m.user_id
 """
@@ -97,6 +102,10 @@ def _a_dict(r):
         d["menciones"] = json.loads(d.get("menciones") or "[]")
     except Exception:
         d["menciones"] = []
+    try:
+        d["ubicacion"] = json.loads(d["ubicacion"]) if d.get("ubicacion") else None
+    except Exception:
+        d["ubicacion"] = None
     d["handle"] = handle_de(d.get("nombre"), d.get("apellido"))
     if d["es_bot"]:
         d["nombre"] = "OkVenta"
@@ -106,20 +115,21 @@ def _a_dict(r):
 
 
 def guardar_mensaje(user_id, texto, es_bot=False, ancla=None, responde_a=None,
-                    menciones=None):
+                    menciones=None, ubicacion=None):
     """Guarda un mensaje y lo devuelve ya armado como lo lee la app."""
     ancla = ancla or {}
     conn = _conn()
     cur = conn.execute("""
         INSERT INTO comunidad_mensajes
             (user_id, es_bot, texto, ancla_tipo, ancla_id, ancla_titulo,
-             ancla_precio, ancla_imagen, responde_a, menciones)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ancla_precio, ancla_imagen, responde_a, menciones, ubicacion)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         user_id, 1 if es_bot else 0, (texto or "")[:MAX_TEXTO],
         ancla.get("tipo"), ancla.get("id"), ancla.get("titulo"),
         ancla.get("precio"), ancla.get("imagen"), responde_a,
         json.dumps(menciones or [], ensure_ascii=False),
+        json.dumps(ubicacion) if ubicacion else None,
     ))
     nuevo_id = cur.lastrowid
     conn.commit()

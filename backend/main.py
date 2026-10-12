@@ -267,6 +267,7 @@ from routers.comunidad import router as comunidad_router
 from routers.pagos_usuario import router as pagos_usuario_router
 from routers.historias import router as historias_router, init_historias_db
 from routers.vistas import router as vistas_router, init_vistas_db, agregar_vistas
+from routers.privados import router as privados_router, init_privados_db
 from routers.favoritos_servicios import router as favoritos_servicios_router, init_favoritos_servicios_db
 from database.ordenes import (
     liberar_inicial as ordenes_liberar_inicial,
@@ -445,6 +446,7 @@ init_comunidad_db()
 init_favoritos_servicios_db()
 init_historias_db()
 init_vistas_db()
+init_privados_db()
 # Achica una vez las fotos de perfil gigantes que ya estaban subidas.
 optimizar_en_segundo_plano()
 
@@ -481,6 +483,7 @@ app.include_router(pagos_usuario_router)
 app.include_router(historias_router)
 app.include_router(favoritos_servicios_router)
 app.include_router(vistas_router)
+app.include_router(privados_router)
 
 # --------------------------------------------------
 # MODELOS

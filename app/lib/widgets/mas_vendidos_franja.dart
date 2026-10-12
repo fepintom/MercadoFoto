@@ -13,7 +13,11 @@ import 'net_image.dart';
 /// el mes, el título pasa a "Lo más visto".
 class MasVendidosFranja extends StatefulWidget {
   final int version;
-  const MasVendidosFranja({super.key, this.version = 0});
+
+  /// Sin encabezado ni recuadro (el título lo pone quien la usa, p. ej. la
+  /// barra "🔥 TOP" de Comunidad): solo las tarjetitas, para ahorrar alto.
+  final bool compacta;
+  const MasVendidosFranja({super.key, this.version = 0, this.compacta = false});
 
   @override
   State<MasVendidosFranja> createState() => _MasVendidosFranjaState();
@@ -62,6 +66,39 @@ class _MasVendidosFranjaState extends State<MasVendidosFranja> {
     final items = _items;
     if (items == null || items.isEmpty) return const SizedBox.shrink();
     final porVentas = items.any((p) => p['origen'] == 'ventas');
+    final tarjetas = SizedBox(
+      height: 62,
+      child: LayoutBuilder(builder: (context, c) {
+        // ~2,6 tarjetas a la vista: se nota que hay más.
+        final ancho = (c.maxWidth - 16) / 2.6;
+        return ListView.separated(
+          controller: _scroll,
+          scrollDirection: Axis.horizontal,
+          padding: widget.compacta
+              ? const EdgeInsets.symmetric(horizontal: 12)
+              : EdgeInsets.zero,
+          itemCount: items.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          itemBuilder: (_, i) => _tarjeta(items[i], i + 1, ancho),
+        );
+      }),
+    );
+    if (widget.compacta) {
+      return Container(
+        padding: const EdgeInsets.only(bottom: 6),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              colors.surface,
+              colors.primary.withValues(alpha: 0.06),
+            ],
+          ),
+        ),
+        child: tarjetas,
+      );
+    }
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
@@ -114,20 +151,7 @@ class _MasVendidosFranjaState extends State<MasVendidosFranja> {
               ),
           ]),
           const SizedBox(height: 8),
-          SizedBox(
-            height: 62,
-            child: LayoutBuilder(builder: (context, c) {
-              // ~2,6 tarjetas a la vista: se nota que hay más.
-              final ancho = (c.maxWidth - 16) / 2.6;
-              return ListView.separated(
-                controller: _scroll,
-                scrollDirection: Axis.horizontal,
-                itemCount: items.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (_, i) => _tarjeta(items[i], i + 1, ancho),
-              );
-            }),
-          ),
+          tarjetas,
         ],
       ),
     );

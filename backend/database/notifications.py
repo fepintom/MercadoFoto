@@ -78,7 +78,7 @@ _VENTAS = {"oferta", "interes_compra", "review", "elegir_entrega",
 _COMPRAS = {"oferta_respuesta", "precio", "en_camino", "entrega_reportada",
             "recordatorio_confirmacion", "okdelivery_en_camino",
             "venta_cancelada"}
-_PREGUNTAS = {"pregunta", "chat", "chat_servicio"}
+_PREGUNTAS = {"pregunta", "chat", "chat_servicio", "privado"}
 
 
 def _categoria(tipo, user_id, orden):
