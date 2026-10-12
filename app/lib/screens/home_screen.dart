@@ -441,13 +441,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
           const SizedBox(width: 8),
 
-          // Dirección (centro, solo para usuarios registrados)
-          if (userId != null)
-            Expanded(child: _buildDireccionInline())
-          else
-            const Spacer(),
+          // La dirección ya no ocupa el centro: vive escondida en un ícono
+          // (a la derecha) y aparece al tocarlo.
+          const Spacer(),
 
-          const SizedBox(width: 4),
+          if (userId != null) ...[
+            Builder(builder: (ctx) => _iconoDireccion(ctx)),
+            const SizedBox(width: 8),
+          ],
 
           // El toggle de modo claro/oscuro se movió a Mi cuenta > MODO —
           // ya no vive como ícono en este header.
@@ -641,6 +642,224 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
         ],   // Row children
       ),     // Row
+    );
+  }
+
+  /// Ícono de dirección del encabezado: pin dentro de un círculo (rojo
+  /// suave si hay dirección elegida). Al tocarlo, la dirección "emerge"
+  /// desde el ícono en una tarjeta flotante.
+  Widget _iconoDireccion(BuildContext ctx) {
+    final hay = _direccionActual != null;
+    return GestureDetector(
+      onTap: () => _mostrarDireccionFlotante(ctx),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: hay ? colors.primary.withOpacity(0.1) : colors.background,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          hay ? Icons.location_on_rounded : Icons.add_location_alt_outlined,
+          size: 20,
+          color: hay ? colors.primary : colors.grayMid,
+        ),
+      ),
+    );
+  }
+
+  void _mostrarDireccionFlotante(BuildContext ctxIcono) {
+    if (userId == null) return;
+    final box = ctxIcono.findRenderObject() as RenderBox?;
+    final pantalla = MediaQuery.of(context).size;
+    final pos = box?.localToGlobal(Offset.zero) ?? Offset(pantalla.width - 60, 60);
+    final tam = box?.size ?? const Size(36, 36);
+    final ancho = pantalla.width - 24 < 300 ? pantalla.width - 24 : 300.0;
+    final left = (pos.dx + tam.width / 2 - ancho * 0.75)
+        .clamp(12.0, pantalla.width - ancho - 12);
+    final top = pos.dy + tam.height + 8;
+    // Punto del que "emerge" la tarjeta (el ícono), relativo a la tarjeta.
+    final origenX = ((pos.dx + tam.width / 2 - left) / ancho) * 2 - 1;
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Dirección',
+      barrierColor: Colors.black.withOpacity(0.25),
+      transitionDuration: const Duration(milliseconds: 220),
+      pageBuilder: (dctx, _, __) => Stack(children: [
+        Positioned(
+          left: left,
+          top: top,
+          width: ancho,
+          child: _tarjetaDireccion(dctx),
+        ),
+      ]),
+      transitionBuilder: (_, anim, __, child) {
+        final c = CurvedAnimation(parent: anim, curve: Curves.easeOutBack);
+        return FadeTransition(
+          opacity: anim,
+          child: ScaleTransition(
+            scale: c,
+            alignment: Alignment(origenX.clamp(-1.0, 1.0), -1),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _tarjetaDireccion(BuildContext dctx) {
+    final actual = _direccionActual;
+    final otras = _misDirections
+        .where((d) => actual == null || d['id'] != actual['id'])
+        .toList();
+
+    Future<void> editar() async {
+      Navigator.pop(dctx);
+      await Navigator.push(
+        _ctxNav,
+        MaterialPageRoute(
+          builder: (_) => MisDireccionesScreen(
+              userId: userId!, mostrarBotonMarketplace: true),
+        ),
+      );
+      _cargarDirecciones(userId!);
+    }
+
+    Future<void> elegir(Map<String, dynamic> d) async {
+      Navigator.pop(dctx);
+      final id = d['id'] as int;
+      try {
+        await ApiService.establecerPrincipal(userId!, id);
+      } catch (_) {}
+      if (!mounted) return;
+      setState(() => _direccionActual = d);
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(
+          content: Text('Dirección cambiada a: ${d['etiqueta']}'),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ));
+      _cargarDirecciones(userId!);
+    }
+
+    String linea(Map d) => [d['direccion'], d['comuna']]
+        .where((x) => x != null && '$x'.trim().isNotEmpty)
+        .join(', ');
+
+    return Material(
+      color: colors.surface,
+      elevation: 10,
+      shadowColor: Colors.black38,
+      borderRadius: BorderRadius.circular(18),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Entregar en',
+                style: TextStyle(fontSize: 12, color: colors.textPrimary)),
+            const SizedBox(height: 6),
+            if (actual == null)
+              Text('Aún no tienes una dirección',
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary))
+            else
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Icon(Icons.location_on_rounded,
+                    color: colors.primary, size: 22),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text((actual['etiqueta'] ?? 'Mi dirección').toString(),
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: colors.textPrimary)),
+                      Text(linea(actual),
+                          style: TextStyle(
+                              fontSize: 13, color: colors.textPrimary)),
+                    ],
+                  ),
+                ),
+              ]),
+            if (otras.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Divider(height: 1, color: colors.divider),
+              const SizedBox(height: 4),
+              Text('Cambiar a',
+                  style: TextStyle(fontSize: 12, color: colors.textPrimary)),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 170),
+                child: ListView(
+                  shrinkWrap: true,
+                  padding: EdgeInsets.zero,
+                  children: [
+                    for (final d in otras)
+                      InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () => elegir(d),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 7),
+                          child: Row(children: [
+                            Icon(Icons.place_outlined,
+                                size: 18, color: colors.textPrimary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                  '${d['etiqueta'] ?? 'Dirección'} · ${linea(d)}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      color: colors.textPrimary)),
+                            ),
+                          ]),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: editar,
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Agregar'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: colors.primary,
+                    side: BorderSide(color: colors.primary),
+                    shape: const StadiumBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: editar,
+                  icon: const Icon(Icons.edit_outlined, size: 17),
+                  label: const Text('Editar'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: const StadiumBorder(),
+                  ),
+                ),
+              ),
+            ]),
+          ],
+        ),
+      ),
     );
   }
 

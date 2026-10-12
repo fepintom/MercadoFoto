@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../services/api_service.dart';
+import '../services/privados_service.dart';
+import '../widgets/avatar_usuario.dart';
+import 'chat_privado_screen.dart';
 import '../services/session_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
@@ -18,6 +21,7 @@ class MensajesScreen extends StatefulWidget {
 
 class _MensajesScreenState extends State<MensajesScreen> {
   List<Map<String, dynamic>> _conversaciones = [];
+  List<Map<String, dynamic>> _privados = [];
   int? _userId;
   bool _cargando = true;
   Timer? _timer;
@@ -46,10 +50,13 @@ class _MensajesScreenState extends State<MensajesScreen> {
       return;
     }
     try {
+      final privados = PrivadosService.conversaciones(_userId!);
       final data = await ApiService.obtenerConversaciones(_userId!);
+      final priv = await privados;
       if (!mounted) return;
       setState(() {
         _conversaciones = data;
+        _privados = priv;
         _cargando = false;
       });
     } catch (e) {
@@ -137,7 +144,7 @@ class _MensajesScreenState extends State<MensajesScreen> {
       );
     }
 
-    if (_conversaciones.isEmpty) {
+    if (_conversaciones.isEmpty && _privados.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -168,10 +175,107 @@ class _MensajesScreenState extends State<MensajesScreen> {
       color: colors.primary,
       onRefresh: _cargar,
       child: ListView.separated(
-        itemCount: _conversaciones.length,
-        separatorBuilder: (_, __) =>
-            Divider(height: 0.5, color: colors.divider),
-        itemBuilder: (_, i) => _buildItem(_conversaciones[i]),
+        itemCount: _conversaciones.length + 1,
+        separatorBuilder: (_, i) => i == 0
+            ? const SizedBox.shrink()
+            : Divider(height: 0.5, color: colors.divider),
+        itemBuilder: (_, i) =>
+            i == 0 ? _privadosFranja() : _buildItem(_conversaciones[i - 1]),
+      ),
+    );
+  }
+
+  /// Mensajes privados (los que nacen tocando a alguien en Comunidad):
+  /// una fila de caras arriba, con el número de no leídos.
+  Widget _privadosFranja() {
+    if (_privados.isEmpty) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: colors.divider, width: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.mail_outline_rounded, size: 17, color: colors.primary),
+            const SizedBox(width: 6),
+            Text('Privados',
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: colors.textPrimary)),
+          ]),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 84,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _privados.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 14),
+              itemBuilder: (_, i) {
+                final p = _privados[i];
+                final nombre = (p['otro_nombre'] ?? 'Usuario').toString();
+                final n = (p['no_leidos'] as num?)?.toInt() ?? 0;
+                return GestureDetector(
+                  onTap: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChatPrivadoScreen(
+                          otroId: (p['otro_id'] as num).toInt(),
+                          nombre: nombre,
+                          fotoUrl: p['otro_foto']?.toString(),
+                        ),
+                      ),
+                    );
+                    _cargar();
+                  },
+                  child: SizedBox(
+                    width: 64,
+                    child: Column(children: [
+                      Stack(clipBehavior: Clip.none, children: [
+                        AvatarUsuario(
+                            fotoUrl: p['otro_foto']?.toString(),
+                            nombre: nombre,
+                            tamano: 54),
+                        if (n > 0)
+                          Positioned(
+                            right: -2,
+                            top: -2,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 5, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: colors.primary,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                    color: colors.surface, width: 1.5),
+                              ),
+                              child: Text('$n',
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800)),
+                            ),
+                          ),
+                      ]),
+                      const SizedBox(height: 4),
+                      Text(nombre.split(' ').first,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight:
+                                  n > 0 ? FontWeight.w800 : FontWeight.w500,
+                              color: colors.textPrimary)),
+                    ]),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

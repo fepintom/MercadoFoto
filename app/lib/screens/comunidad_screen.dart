@@ -14,6 +14,9 @@ import '../widgets/avatar_usuario.dart';
 import '../widgets/net_image.dart';
 import '../widgets/fondo_pixel_okventin.dart';
 import '../widgets/mas_vendidos_franja.dart';
+import '../widgets/compartir_ubicacion.dart';
+import '../widgets/mapa_mini.dart';
+import 'chat_privado_screen.dart';
 import 'perfil_publico_screen.dart';
 import 'producto_detalle_screen.dart';
 import 'servicio_detalle_screen.dart';
@@ -60,6 +63,12 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
   List<Map<String, dynamic>> _fijados = [];
   static const _kFijados = 'comunidad_fijados_v1';
 
+  /// "🔥 TOP" a la vista (el ojo lo esconde; se recuerda) y Fijados
+  /// desplegado o no (parte cerrado: el chat es lo importante).
+  bool _verTop = true;
+  bool _fijadosAbiertos = false;
+  static const _kVerTop = 'comunidad_ver_top';
+
   /// Búsqueda dentro del chat (lupa de la caja de texto).
   bool _buscando = false;
   final _busquedaCtrl = TextEditingController();
@@ -103,9 +112,19 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
   }
 
   // ── Fijados ────────────────────────────────────────────────────────────
+  Future<void> _alternarTop() async {
+    setState(() => _verTop = !_verTop);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kVerTop, _verTop);
+    } catch (_) {}
+  }
+
   Future<void> _cargarFijados() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      final ver = prefs.getBool(_kVerTop);
+      if (ver != null && mounted) setState(() => _verTop = ver);
       final raw = prefs.getString(_kFijados);
       if (raw == null) return;
       final l = (jsonDecode(raw) as List)
@@ -439,9 +458,13 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
       color: colors.background,
       child: Column(
         children: [
-          _encabezado(),
-          if (!escribiendo) MasVendidosFranja(version: _versionTop),
-          if (!escribiendo && hayFijados) _franjaFijados(),
+          // Sin título "Comunidad" (ya lo dice el menú): todo el alto posible
+          // para el chat. Una barra fina con 🔥 TOP (ojo para esconder) y
+          // 📌 Fijados (desplegable).
+          if (!escribiendo) _barraSuperior(hayFijados),
+          if (!escribiendo && _verTop)
+            MasVendidosFranja(version: _versionTop, compacta: true),
+          if (!escribiendo && hayFijados && _fijadosAbiertos) _franjaFijados(),
           if (_buscando) _barraBusqueda(),
           Expanded(
             child: _cargando
@@ -496,6 +519,84 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     );
   }
 
+  Widget _barraSuperior(bool hayFijados) {
+    final n = _itemsFijados.length;
+    return Container(
+      color: colors.surface,
+      padding: const EdgeInsets.fromLTRB(12, 6, 8, 6),
+      child: Row(children: [
+        // 🔥 TOP + ojo
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _alternarTop,
+          child: Row(children: [
+            Container(
+              padding: const EdgeInsets.fromLTRB(7, 3, 9, 3),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                    colors: [Color(0xFFFF6A00), Color(0xFFE53935)]),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.local_fire_department_rounded,
+                    color: Colors.white, size: 16),
+                SizedBox(width: 2),
+                Text('TOP',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.6)),
+              ]),
+            ),
+            const SizedBox(width: 6),
+            Text('del mes',
+                style: TextStyle(fontSize: 12, color: colors.textPrimary)),
+            const SizedBox(width: 6),
+            Icon(
+                _verTop
+                    ? Icons.visibility_rounded
+                    : Icons.visibility_off_rounded,
+                size: 19,
+                color: _verTop ? colors.textPrimary : colors.grayMid),
+          ]),
+        ),
+        const Spacer(),
+        if (hayFijados)
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => setState(() => _fijadosAbiertos = !_fijadosAbiertos),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
+              decoration: BoxDecoration(
+                color: _fijadosAbiertos
+                    ? colors.primary.withValues(alpha: 0.10)
+                    : colors.background,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                    color: colors.primary.withValues(alpha: 0.45), width: 1),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.push_pin_rounded, size: 15, color: colors.primary),
+                const SizedBox(width: 4),
+                Text('Fijados $n',
+                    style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        color: colors.textPrimary)),
+                AnimatedRotation(
+                  turns: _fijadosAbiertos ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(Icons.expand_more_rounded,
+                      size: 20, color: colors.textPrimary),
+                ),
+              ]),
+            ),
+          ),
+      ]),
+    );
+  }
+
   Widget _barraBusqueda() {
     return Container(
       color: colors.surface,
@@ -538,67 +639,45 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
   Widget _franjaFijados() {
     final items = _itemsFijados;
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 6, 12, 6),
-      padding: const EdgeInsets.fromLTRB(10, 8, 0, 10),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: colors.primary.withValues(alpha: 0.55), width: 1.2),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            Icon(Icons.push_pin_rounded, size: 20, color: colors.primary),
-            const SizedBox(width: 6),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Fijados',
-                    style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        color: colors.textPrimary)),
-                Container(
-                    width: 22,
-                    height: 2.5,
-                    margin: const EdgeInsets.only(top: 1),
-                    decoration: BoxDecoration(
-                        color: colors.primary,
-                        borderRadius: BorderRadius.circular(2))),
-              ],
-            ),
-            const Spacer(),
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _verTodosFijados,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 4, 10, 4),
-                child: Row(children: [
-                  Text('Ver todos',
-                      style: TextStyle(
-                          fontSize: 12.5, color: colors.textPrimary)),
-                  Icon(Icons.chevron_right_rounded,
-                      size: 18, color: colors.textPrimary),
-                ]),
-              ),
-            ),
-          ]),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 66,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.only(right: 10),
-              itemCount: items.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (_, i) => SizedBox(
-                  width: items[i]['_tipo'] == 'comentario' ? 210 : 180,
-                  child: _tarjetaFijado(items[i])),
-            ),
-          ),
-        ],
+      color: colors.surface,
+      padding: const EdgeInsets.fromLTRB(12, 0, 0, 8),
+      child: SizedBox(
+        height: 66,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.only(right: 12),
+          itemCount: items.length + 1,
+          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          itemBuilder: (_, i) {
+            if (i == items.length) {
+              return GestureDetector(
+                onTap: _verTodosFijados,
+                child: Container(
+                  width: 72,
+                  decoration: BoxDecoration(
+                    color: colors.background,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.divider, width: 0.6),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.list_rounded, color: colors.primary),
+                      Text('Ver todos',
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: colors.textPrimary)),
+                    ],
+                  ),
+                ),
+              );
+            }
+            return SizedBox(
+                width: items[i]['_tipo'] == 'comentario' ? 210 : 180,
+                child: _tarjetaFijado(items[i]));
+          },
+        ),
       ),
     );
   }
@@ -776,41 +855,6 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     );
   }
 
-  Widget _encabezado() {
-    return Container(
-      color: colors.surface,
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: colors.primary.withValues(alpha: 0.10),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.groups_outlined, size: 20, color: colors.primary),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Comunidad',
-                    style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: colors.textPrimary)),
-                Text('Conversa con todos · etiqueta a @okventa',
-                    style: TextStyle(fontSize: 11, color: colors.grayMid)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _burbuja(int i) {
     final m = _vista[i];
     final esBot = m['es_bot'] == true;
@@ -840,7 +884,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
       children: [
         if (!mismoAutor)
           GestureDetector(
-            onTap: esBot ? null : () => _abrirPerfil(m, nombre),
+            onTap: esBot ? null : () => _menuUsuario(m, nombre),
             child: Padding(
             padding: const EdgeInsets.only(left: 4, right: 4, bottom: 2),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -876,6 +920,25 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (m['responde_a'] != null) _cita(m, colorTexto),
+              if (m['ubicacion'] is Map) ...[
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.location_on_rounded, size: 15, color: colorTexto),
+                  const SizedBox(width: 3),
+                  Text('Estoy por aquí',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: colorTexto)),
+                ]),
+                const SizedBox(height: 5),
+                MapaMini(
+                    lat: ((m['ubicacion'] as Map)['lat'] as num).toDouble(),
+                    lng: ((m['ubicacion'] as Map)['lng'] as num).toDouble(),
+                    alto: 120,
+                    ancho: 230),
+                if ((m['texto'] ?? '').toString().isNotEmpty)
+                  const SizedBox(height: 6),
+              ],
               if ((m['texto'] ?? '').toString().isNotEmpty)
                 _textoConMenciones(m['texto'].toString(), colorTexto,
                     (m['menciones'] as List?) ?? const []),
@@ -944,12 +1007,152 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
               child: esBot
                   ? _avatarBot()
                   : GestureDetector(
-                      onTap: () => _abrirPerfil(m, nombre),
+                      onTap: () => _menuUsuario(m, nombre),
                       child: AvatarUsuario(
                           fotoUrl: m['foto_url'], nombre: nombre, tamano: 28),
                     ),
             ),
     );
+  }
+
+  /// Tocar a alguien: mensaje privado, perfil o mencionar.
+  void _menuUsuario(Map<String, dynamic> m, String nombre) {
+    final uid = (m['user_id'] as num?)?.toInt();
+    if (uid == null) return;
+    final n = nombre.isEmpty ? 'Usuario' : nombre;
+    final primero = n.split(' ').first;
+    final esYo = uid == _miId;
+    _foco.unfocus();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        Widget op(IconData i, String t, VoidCallback f) => ListTile(
+              leading: Icon(i, color: colors.textPrimary),
+              title: Text(t,
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary)),
+              onTap: () {
+                Navigator.pop(ctx);
+                f();
+              },
+            );
+        return SafeArea(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const SizedBox(height: 14),
+            AvatarUsuario(
+                fotoUrl: m['foto_url']?.toString(), nombre: n, tamano: 58),
+            const SizedBox(height: 8),
+            Text(n,
+                style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: colors.textPrimary)),
+            if ((m['handle'] ?? '').toString().isNotEmpty)
+              Text('@${m['handle']}',
+                  style: TextStyle(fontSize: 12.5, color: colors.grayMid)),
+            const SizedBox(height: 8),
+            if (!esYo)
+              op(Icons.mail_outline_rounded, 'Enviar mensaje privado a $primero',
+                  () => _abrirPrivado(uid, n, m['foto_url']?.toString())),
+            op(Icons.person_outline_rounded, 'Ver perfil',
+                () => _abrirPerfil(m, nombre)),
+            if (!esYo && _miId != null)
+              op(Icons.alternate_email_rounded, 'Mencionar en el chat',
+                  () => _mencionar(m)),
+            const SizedBox(height: 6),
+          ]),
+        );
+      },
+    );
+  }
+
+  void _abrirPrivado(int uid, String nombre, String? foto) {
+    if (_miId == null) {
+      widget.onPedirLogin?.call();
+      return;
+    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            ChatPrivadoScreen(otroId: uid, nombre: nombre, fotoUrl: foto),
+      ),
+    );
+  }
+
+  /// "+" de la caja de texto: más opciones sin quitarle espacio al texto.
+  void _masOpciones() {
+    _foco.unfocus();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        Widget op(IconData i, String t, String d, VoidCallback f) => ListTile(
+              leading: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                    color: colors.primary.withValues(alpha: 0.10),
+                    shape: BoxShape.circle),
+                child: Icon(i, color: colors.primary),
+              ),
+              title: Text(t,
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary)),
+              subtitle: Text(d,
+                  style: TextStyle(fontSize: 12, color: colors.textPrimary)),
+              onTap: () {
+                Navigator.pop(ctx);
+                f();
+              },
+            );
+        return SafeArea(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const SizedBox(height: 10),
+            op(Icons.location_on_outlined, 'Enviar mi ubicación',
+                '"Estoy aquí, necesito…" (aproximada)', _enviarUbicacion),
+            op(Icons.push_pin_outlined, 'Anclar lo que vendes',
+                'Un producto o servicio tuyo en el mensaje', _elegirAncla),
+            op(Icons.search_rounded, 'Buscar en el chat',
+                'Encuentra un mensaje', () => setState(() => _buscando = true)),
+            const SizedBox(height: 6),
+          ]),
+        );
+      },
+    );
+  }
+
+  Future<void> _enviarUbicacion() async {
+    if (_miId == null) {
+      widget.onPedirLogin?.call();
+      return;
+    }
+    final u = await pedirUbicacionCompartida(context);
+    if (u == null || !mounted) return;
+    setState(() => _enviando = true);
+    try {
+      final msg = await ApiService.enviarMensajeComunidad(
+          userId: _miId!, texto: u.texto, lat: u.lat, lng: u.lng);
+      if (!mounted) return;
+      setState(() {
+        if (!_mensajes.any((x) => x['id'] == msg['id'])) _mensajes.add(msg);
+      });
+      _alFinal();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('No se pudo enviar la ubicación')));
+      }
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
   }
 
   void _abrirPerfil(Map<String, dynamic> m, String nombre) {
@@ -1455,61 +1658,65 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
               ]),
             ),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+              // "+": ubicación, anclar, buscar (así la pastilla es más ancha)
               IconButton(
-                onPressed: _elegirAncla,
-                tooltip: 'Anclar lo que vendes',
-                icon: Icon(Icons.push_pin_outlined,
-                    size: 21, color: colors.grayMid),
-                visualDensity: VisualDensity.compact,
-              ),
-              IconButton(
-                onPressed: () => setState(() => _verEmojis = !_verEmojis),
-                icon: Icon(
-                    _verEmojis
-                        ? Icons.keyboard_alt_outlined
-                        : Icons.emoji_emotions_outlined,
-                    size: 21,
-                    color: _verEmojis ? colors.primary : colors.grayMid),
-                visualDensity: VisualDensity.compact,
-              ),
-              IconButton(
-                onPressed: () => setState(() {
-                  _buscando = !_buscando;
-                  if (!_buscando) _busquedaCtrl.clear();
-                }),
-                tooltip: 'Buscar en el chat',
-                icon: Icon(Icons.search_rounded,
-                    size: 21,
-                    color: _buscando ? colors.primary : colors.grayMid),
+                onPressed: _masOpciones,
+                tooltip: 'Más opciones',
+                icon: Icon(Icons.add_circle_outline_rounded,
+                    size: 26, color: colors.primary),
                 visualDensity: VisualDensity.compact,
               ),
               Expanded(
                 child: Container(
+                  constraints: const BoxConstraints(minHeight: 48),
                   decoration: BoxDecoration(
                     color: colors.background,
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(26),
                     border: Border.all(color: colors.divider),
                   ),
-                  child: TextField(
-                    controller: _ctrl,
-                    focusNode: _foco,
-                    minLines: 1,
-                    maxLines: 4,
-                    maxLength: 500,
-                    textCapitalization: TextCapitalization.sentences,
-                    onChanged: (_) => setState(() {}),
-                    style: TextStyle(fontSize: 14, color: colors.textPrimary),
-                    decoration: InputDecoration(
-                      hintText: 'Escribe… usa @ para mencionar',
-                      hintStyle:
-                          TextStyle(fontSize: 14, color: colors.grayMid),
-                      counterText: '',
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
-                    ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _ctrl,
+                          focusNode: _foco,
+                          minLines: 1,
+                          maxLines: 5,
+                          maxLength: 500,
+                          textCapitalization: TextCapitalization.sentences,
+                          onChanged: (_) => setState(() {}),
+                          style: TextStyle(
+                              fontSize: 15.5, color: colors.textPrimary),
+                          decoration: InputDecoration(
+                            hintText: 'Escribe… usa @ para mencionar',
+                            hintStyle: TextStyle(
+                                fontSize: 15, color: colors.grayMid),
+                            counterText: '',
+                            border: InputBorder.none,
+                            isDense: true,
+                            contentPadding:
+                                const EdgeInsets.fromLTRB(16, 14, 4, 14),
+                          ),
+                        ),
+                      ),
+                      // Emojis dentro de la pastilla
+                      IconButton(
+                        onPressed: () =>
+                            setState(() => _verEmojis = !_verEmojis),
+                        icon: Icon(
+                            _verEmojis
+                                ? Icons.keyboard_alt_outlined
+                                : Icons.emoji_emotions_outlined,
+                            size: 22,
+                            color: _verEmojis
+                                ? colors.primary
+                                : colors.grayMid),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -1518,8 +1725,8 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                 onTap: puedeEnviar ? _enviar : null,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
-                  width: 40,
-                  height: 40,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
                     color: puedeEnviar ? colors.primary : colors.divider,
                     shape: BoxShape.circle,
@@ -1531,7 +1738,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                               strokeWidth: 2, color: Colors.white),
                         )
                       : const Icon(Icons.send_rounded,
-                          size: 18, color: Colors.white),
+                          size: 21, color: Colors.white),
                 ),
               ),
               const SizedBox(width: 2),

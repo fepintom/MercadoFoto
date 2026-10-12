@@ -1532,6 +1532,8 @@ class ApiService {
     int? anclaId,
     List<int>? menciones,
     int? respondeA,
+    double? lat,
+    double? lng,
   }) async {
     Future<http.Response> intento() => http
         .post(
@@ -1544,6 +1546,7 @@ class ApiService {
             if (anclaId != null) 'ancla_id': anclaId,
             if (menciones != null && menciones.isNotEmpty) 'menciones': menciones,
             if (respondeA != null) 'responde_a': respondeA,
+            if (lat != null && lng != null) ...{'lat': lat, 'lng': lng},
           }),
         )
         .timeout(const Duration(seconds: 25));
