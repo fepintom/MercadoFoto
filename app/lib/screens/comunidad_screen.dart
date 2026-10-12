@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/api_service.dart';
 import '../services/contenido_oculto_service.dart';
@@ -10,7 +12,8 @@ import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/avatar_usuario.dart';
 import '../widgets/net_image.dart';
-import '../widgets/top_vistos.dart';
+import '../widgets/fondo_pixel_okventin.dart';
+import '../widgets/mas_vendidos_franja.dart';
 import 'perfil_publico_screen.dart';
 import 'producto_detalle_screen.dart';
 import 'servicio_detalle_screen.dart';
@@ -52,6 +55,14 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
 
   final _mensajes = <Map<String, dynamic>>[];
   List<Map<String, dynamic>> _anclados = [];
+
+  /// Comentarios que el usuario fijó (solo en su teléfono).
+  List<Map<String, dynamic>> _fijados = [];
+  static const _kFijados = 'comunidad_fijados_v1';
+
+  /// Búsqueda dentro del chat (lupa de la caja de texto).
+  bool _buscando = false;
+  final _busquedaCtrl = TextEditingController();
   final _ctrl = TextEditingController();
   final _scroll = ScrollController();
   final _foco = FocusNode();
@@ -87,7 +98,49 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     ContenidoOcultoService.cargar().then((_) => _refrescar());
     ContenidoOcultoService.mensajes.addListener(_refrescar);
     ContenidoOcultoService.vendedores.addListener(_refrescar);
+    _cargarFijados();
     _iniciar();
+  }
+
+  // ── Fijados ────────────────────────────────────────────────────────────
+  Future<void> _cargarFijados() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kFijados);
+      if (raw == null) return;
+      final l = (jsonDecode(raw) as List)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+      if (mounted) setState(() => _fijados = l);
+    } catch (_) {}
+  }
+
+  bool _estaFijado(int? id) =>
+      id != null && _fijados.any((f) => f['id'] == id);
+
+  Future<void> _alternarFijado(Map<String, dynamic> m) async {
+    final id = (m['id'] as num?)?.toInt();
+    if (id == null) return;
+    setState(() {
+      if (_estaFijado(id)) {
+        _fijados = _fijados.where((f) => f['id'] != id).toList();
+      } else {
+        _fijados = [
+          {
+            'id': id,
+            'nombre': m['es_bot'] == true ? 'OkVenta' : (m['nombre'] ?? 'Usuario'),
+            'foto_url': m['foto_url'],
+            'texto': (m['texto'] ?? m['ancla_titulo'] ?? '').toString(),
+            'es_bot': m['es_bot'] == true,
+          },
+          ..._fijados,
+        ].take(20).toList();
+      }
+    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kFijados, jsonEncode(_fijados));
+    } catch (_) {}
   }
 
   void _refrescar() {
@@ -181,6 +234,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     _timer?.cancel();
     _ctrl.dispose();
     _scroll.dispose();
+    _busquedaCtrl.dispose();
     _foco.removeListener(_cambioFoco);
     _foco.dispose();
     super.dispose();
@@ -377,13 +431,18 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Escribiendo: se esconden las franjas de arriba para darle espacio al
+    // chat (el teclado ya ocupa media pantalla).
+    final escribiendo = _foco.hasFocus;
+    final hayFijados = _fijados.isNotEmpty || _anclados.isNotEmpty;
     return Container(
       color: colors.background,
       child: Column(
         children: [
           _encabezado(),
-          if (_anclados.isNotEmpty) _franjaAnclados(),
-          // El chat ocupa la mitad de arriba (con su caja de texto).
+          if (!escribiendo) MasVendidosFranja(version: _versionTop),
+          if (!escribiendo && hayFijados) _franjaFijados(),
+          if (_buscando) _barraBusqueda(),
           Expanded(
             child: _cargando
                 ? Center(
@@ -393,28 +452,326 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                       _foco.unfocus();
                       if (_verEmojis) setState(() => _verEmojis = false);
                     },
-                    child: Builder(builder: (_) {
-                      _vista = _mensajes
-                          .where((m) => !ContenidoOcultoService.mensajeOculto(m))
-                          .toList();
-                      return ListView.builder(
-                        controller: _scroll,
-                        padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-                        itemCount: _vista.length,
-                        itemBuilder: (_, i) => _burbuja(i),
-                      );
-                    }),
+                    child: Stack(
+                      children: [
+                        // Okventín caminando en pixel art, detrás del chat.
+                        Positioned.fill(
+                          child: FondoPixelOkventin(activo: widget.activa),
+                        ),
+                        Builder(builder: (_) {
+                          final q = _busquedaCtrl.text.trim().toLowerCase();
+                          _vista = _mensajes
+                              .where((m) =>
+                                  !ContenidoOcultoService.mensajeOculto(m))
+                              .where((m) =>
+                                  !_buscando ||
+                                  q.isEmpty ||
+                                  '${m['texto'] ?? ''} ${m['ancla_titulo'] ?? ''} ${m['nombre'] ?? ''}'
+                                      .toLowerCase()
+                                      .contains(q))
+                              .toList();
+                          if (_buscando && q.isNotEmpty && _vista.isEmpty) {
+                            return Center(
+                              child: Text('Sin mensajes con "$q"',
+                                  style: TextStyle(
+                                      color: colors.textPrimary,
+                                      fontWeight: FontWeight.w600)),
+                            );
+                          }
+                          return ListView.builder(
+                            controller: _scroll,
+                            padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+                            itemCount: _vista.length,
+                            itemBuilder: (_, i) => _burbuja(i),
+                          );
+                        }),
+                      ],
+                    ),
                   ),
           ),
           if (_verEmojis) _barraEmojis(),
           _cajaTexto(),
-          // Mitad de abajo: lo más visto de OkMarket. Con el teclado
-          // abierto se esconde para que el chat tenga espacio.
-          // (El foco del campo es la señal del teclado: aquí adentro el
-          // Scaffold ya descontó el teclado de MediaQuery.)
-          if (!_foco.hasFocus && !_verEmojis)
-            Expanded(child: TopVistos(version: _versionTop)),
         ],
+      ),
+    );
+  }
+
+  Widget _barraBusqueda() {
+    return Container(
+      color: colors.surface,
+      padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
+      child: Row(children: [
+        Icon(Icons.search_rounded, size: 20, color: colors.primary),
+        const SizedBox(width: 8),
+        Expanded(
+          child: TextField(
+            controller: _busquedaCtrl,
+            autofocus: true,
+            onChanged: (_) => setState(() {}),
+            style: TextStyle(fontSize: 14, color: colors.textPrimary),
+            decoration: InputDecoration(
+              isDense: true,
+              border: InputBorder.none,
+              hintText: 'Buscar en la conversación…',
+              hintStyle: TextStyle(color: colors.grayMid),
+            ),
+          ),
+        ),
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          icon: Icon(Icons.close_rounded, color: colors.textPrimary),
+          onPressed: () => setState(() {
+            _buscando = false;
+            _busquedaCtrl.clear();
+          }),
+        ),
+      ]),
+    );
+  }
+
+  // ── Fijados: comentarios fijados + lo que la gente ancló ───────────────
+  List<Map<String, dynamic>> get _itemsFijados => [
+        for (final f in _fijados) {...f, '_tipo': 'comentario'},
+        for (final a in _anclados) {...a, '_tipo': 'ancla'},
+      ];
+
+  Widget _franjaFijados() {
+    final items = _itemsFijados;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+      padding: const EdgeInsets.fromLTRB(10, 8, 0, 10),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+            color: colors.primary.withValues(alpha: 0.55), width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.push_pin_rounded, size: 20, color: colors.primary),
+            const SizedBox(width: 6),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Fijados',
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: colors.textPrimary)),
+                Container(
+                    width: 22,
+                    height: 2.5,
+                    margin: const EdgeInsets.only(top: 1),
+                    decoration: BoxDecoration(
+                        color: colors.primary,
+                        borderRadius: BorderRadius.circular(2))),
+              ],
+            ),
+            const Spacer(),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _verTodosFijados,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 4, 10, 4),
+                child: Row(children: [
+                  Text('Ver todos',
+                      style: TextStyle(
+                          fontSize: 12.5, color: colors.textPrimary)),
+                  Icon(Icons.chevron_right_rounded,
+                      size: 18, color: colors.textPrimary),
+                ]),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 66,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.only(right: 10),
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (_, i) => SizedBox(
+                  width: items[i]['_tipo'] == 'comentario' ? 210 : 180,
+                  child: _tarjetaFijado(items[i])),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _abrirFijado(Map<String, dynamic> f) {
+    if (f['_tipo'] == 'ancla') {
+      _abrirAncla(f['ancla_tipo'], (f['ancla_id'] as num?)?.toInt());
+      return;
+    }
+    // Comentario: se busca en el chat y se lleva hasta él.
+    final i = _vista.indexWhere((m) => m['id'] == f['id']);
+    if (i >= 0 && _scroll.hasClients) {
+      final pos = (_scroll.position.maxScrollExtent * i /
+              (_vista.length - 1).clamp(1, 1 << 30))
+          .clamp(0.0, _scroll.position.maxScrollExtent);
+      _scroll.animateTo(pos,
+          duration: const Duration(milliseconds: 400), curve: Curves.easeOut);
+    }
+  }
+
+  Widget _tarjetaFijado(Map<String, dynamic> f) {
+    final comentario = f['_tipo'] == 'comentario';
+    return GestureDetector(
+      onTap: () => _abrirFijado(f),
+      onLongPress: comentario ? () => _alternarFijado(f) : null,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(6, 6, 4, 6),
+        decoration: BoxDecoration(
+          color: colors.background,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colors.divider, width: 0.6),
+        ),
+        child: Row(children: [
+          Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Icon(Icons.push_pin_rounded, size: 14, color: colors.primary),
+              if (comentario)
+                f['es_bot'] == true
+                    ? _avatarBot()
+                    : AvatarUsuario(
+                        fotoUrl: f['foto_url']?.toString(),
+                        nombre: (f['nombre'] ?? 'U').toString(),
+                        tamano: 26),
+            ],
+          ),
+          const SizedBox(width: 6),
+          if (!comentario) ...[
+            _miniatura(f['ancla_imagen'], 46, f['ancla_tipo'] == 'servicio'),
+            const SizedBox(width: 8),
+          ],
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: comentario
+                  ? [
+                      Row(children: [
+                        Icon(Icons.chat_bubble_outline_rounded,
+                            size: 13, color: colors.textPrimary),
+                        const SizedBox(width: 4),
+                        Text('Comentario',
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: colors.textPrimary)),
+                      ]),
+                      Text((f['nombre'] ?? '').toString(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 10.5, color: colors.grayMid)),
+                      Text((f['texto'] ?? '').toString(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 12, color: colors.textPrimary)),
+                    ]
+                  : [
+                      Text(
+                          f['ancla_tipo'] == 'servicio'
+                              ? 'Servicio'
+                              : 'Producto',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: colors.textPrimary)),
+                      Text((f['ancla_titulo'] ?? '').toString(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 11, color: colors.textPrimary)),
+                      if (f['ancla_precio'] != null)
+                        Text(_precio(f['ancla_precio']),
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                                color: colors.primary)),
+                    ],
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded,
+              size: 18, color: colors.textPrimary),
+        ]),
+      ),
+    );
+  }
+
+  void _verTodosFijados() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.7),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                          color: colors.divider,
+                          borderRadius: BorderRadius.circular(2))),
+                ),
+                const SizedBox(height: 12),
+                Row(children: [
+                  Icon(Icons.push_pin_rounded, color: colors.primary),
+                  const SizedBox(width: 6),
+                  Text('Fijados',
+                      style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                          color: colors.textPrimary)),
+                ]),
+                const SizedBox(height: 4),
+                Text(
+                    'Fija un comentario desde su menú ⋯. Mantén presionado '
+                    'un comentario fijado para quitarlo.',
+                    style: TextStyle(fontSize: 12, color: colors.textPrimary)),
+                const SizedBox(height: 10),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: _itemsFijados.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, i) {
+                      final f = _itemsFijados[i];
+                      return SizedBox(
+                        height: 66,
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            _abrirFijado(f);
+                          },
+                          child: AbsorbPointer(child: _tarjetaFijado(f)),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -450,77 +807,6 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _franjaAnclados() {
-    return Container(
-      color: colors.surface,
-      height: 64,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(12, 4, 12, 10),
-        itemCount: _anclados.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (_, i) {
-          final a = _anclados[i];
-          return GestureDetector(
-            onTap: () =>
-                _abrirAncla(a['ancla_tipo'], (a['ancla_id'] as num?)?.toInt()),
-            child: Container(
-              width: 190,
-              padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
-                color: colors.background,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colors.divider, width: 0.5),
-              ),
-              child: Row(
-                children: [
-                  _miniatura(a['ancla_imagen'], 40,
-                      a['ancla_tipo'] == 'servicio'),
-                  const SizedBox(width: 7),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(children: [
-                          Icon(Icons.push_pin_rounded,
-                              size: 10, color: colors.primary),
-                          const SizedBox(width: 3),
-                          Expanded(
-                            child: Text(
-                              a['ancla_tipo'] == 'servicio'
-                                  ? 'Servicio'
-                                  : 'Producto',
-                              style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w700,
-                                  color: colors.primary),
-                            ),
-                          ),
-                        ]),
-                        Text(a['ancla_titulo'] ?? '',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: colors.textPrimary)),
-                        if (a['ancla_precio'] != null)
-                          Text(_precio(a['ancla_precio']),
-                              style: TextStyle(
-                                  fontSize: 11, color: colors.textSecondary)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
       ),
     );
   }
@@ -826,6 +1112,12 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                         setState(() => _respondiendoA = m);
                         _foco.requestFocus();
                       })),
+            opcion(
+                _estaFijado(id)
+                    ? Icons.push_pin_rounded
+                    : Icons.push_pin_outlined,
+                _estaFijado(id) ? 'Quitar de fijados' : 'Fijar comentario',
+                () => cerrarY(() => _alternarFijado(m))),
             if (!mio && !esBot && _miId != null)
               opcion(Icons.alternate_email_rounded, 'Mencionar a $nombre',
                   () => cerrarY(() => _mencionar(m))),
@@ -1179,6 +1471,17 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                         : Icons.emoji_emotions_outlined,
                     size: 21,
                     color: _verEmojis ? colors.primary : colors.grayMid),
+                visualDensity: VisualDensity.compact,
+              ),
+              IconButton(
+                onPressed: () => setState(() {
+                  _buscando = !_buscando;
+                  if (!_buscando) _busquedaCtrl.clear();
+                }),
+                tooltip: 'Buscar en el chat',
+                icon: Icon(Icons.search_rounded,
+                    size: 21,
+                    color: _buscando ? colors.primary : colors.grayMid),
                 visualDensity: VisualDensity.compact,
               ),
               Expanded(

@@ -1784,6 +1784,36 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     );
   }
 
+  /// Botón redondo sobre la foto (volver, ayuda, favorito, compartir…).
+  Widget _botonFoto(IconData icono, VoidCallback onTap,
+      {Color? color, String? tooltip, bool cargando = false}) {
+    final boton = GestureDetector(
+      onTap: cargando ? null : onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.82),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 4,
+                offset: const Offset(0, 1)),
+          ],
+        ),
+        child: cargando
+            ? Padding(
+                padding: const EdgeInsets.all(11),
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: colors.primary),
+              )
+            : Icon(icono, size: 22, color: color ?? const Color(0xFF1C1C1E)),
+      ),
+    );
+    return tooltip == null ? boton : Tooltip(message: tooltip, child: boton);
+  }
+
   /// Un dato de la fila bajo el precio: ícono + texto.
   Widget _datoFila(IconData icono, String texto,
       {Color? color, bool fuerte = false}) {
@@ -1828,74 +1858,23 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
 
     return Scaffold(
       backgroundColor: colors.background,
-      appBar: AppBar(
-        title: Text(
-          "Detalle del producto",
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
-          ),
-        ),
-        backgroundColor: colors.surface,
-        elevation: 0,
-        iconTheme: IconThemeData(color: colors.textPrimary),
-        actions: [
-          // Ayuda: agente de soporte
-          IconButton(
-            icon: Icon(Icons.help_outline_rounded,
-                color: colors.textPrimary),
-            tooltip: 'Ayuda',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (_) => const SoporteChatScreen()),
-              );
-            },
-          ),
-          // Botón favorito
-          _toggleandoFavorito
-              ? Padding(
-                  padding: EdgeInsets.all(12),
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: colors.primary),
-                  ),
-                )
-              : IconButton(
-                  icon: Icon(
-                    _esFavorito ? Icons.favorite : Icons.favorite_border,
-                    color: _esFavorito ? colors.primary : colors.textPrimary,
-                  ),
-                  onPressed: _toggleFavorito,
-                  tooltip: _esFavorito ? "Quitar de favoritos" : "Guardar",
-                ),
-          IconButton(
-            icon: Icon(Icons.share_outlined, color: colors.textPrimary),
-            onPressed: _abrirCompartir,
-            tooltip: "Compartir",
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(0.5),
-          child: Container(color: colors.divider, height: 0.5),
-        ),
-      ),
-      body: SingleChildScrollView(
+      body: SafeArea(
+        bottom: false,
+        child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Galería de imágenes ─────────────────────────────────
+            // ── Galería de imágenes (con los botones encima, como en la
+            // maqueta: volver a la izquierda; ayuda, favorito, compartir y
+            // OkServicios a la derecha) ────────────────────────────────
+            Stack(children: [
             if (imagenes.length > 1)
               Column(
                 children: [
                   Stack(
                     children: [
                       AspectRatio(
-                        aspectRatio: 4 / 3,
+                        aspectRatio: 1,
                         child: PageView.builder(
                           controller: _imgPageController,
                           itemCount: imagenes.length,
@@ -1904,7 +1883,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                           itemBuilder: (ctx, i) => GestureDetector(
                             onTap: () => _verFotoCompleta(imagenes, i),
                             child: ColoredBox(
-                              color: Colors.white,
+                              color: const Color(0xFFE9E9EE),
                               child: NetImage(
                                 "${ApiService.baseUrl}${imagenes[i]}",
                                 fit: BoxFit.contain,
@@ -1947,9 +1926,9 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                   GestureDetector(
                     onTap: () => _verFotoCompleta(imagenes, 0),
                     child: AspectRatio(
-                      aspectRatio: 4 / 3,
+                      aspectRatio: 1,
                       child: ColoredBox(
-                        color: Colors.white,
+                        color: const Color(0xFFE9E9EE),
                         child: NetImage(
                           "${ApiService.baseUrl}${imagenes.isNotEmpty ? imagenes[0] : ''}",
                           fit: BoxFit.contain,
@@ -1960,6 +1939,56 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                   _tallaPaqueteBadge(dimensiones, esInvitado, esDueno: esDueno),
                 ],
               ),
+              Positioned(
+                top: 6,
+                left: 6,
+                child: _botonFoto(Icons.arrow_back_ios_new_rounded,
+                    () => Navigator.maybePop(context),
+                    tooltip: 'Volver'),
+              ),
+              Positioned(
+                top: 6,
+                right: 6,
+                child: Column(children: [
+                  _botonFoto(Icons.help_outline_rounded, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const SoporteChatScreen()),
+                    );
+                  }, tooltip: 'Ayuda'),
+                  const SizedBox(height: 8),
+                  _toggleandoFavorito
+                      ? _botonFoto(Icons.favorite_border, () {},
+                          cargando: true)
+                      : _botonFoto(
+                          _esFavorito
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          _toggleFavorito,
+                          color: _esFavorito ? colors.primary : null,
+                          tooltip: _esFavorito
+                              ? 'Quitar de favoritos'
+                              : 'Guardar'),
+                  const SizedBox(height: 8),
+                  _botonFoto(Icons.share_outlined, _abrirCompartir,
+                      tooltip: 'Compartir'),
+                  const SizedBox(height: 8),
+                  // OkServicios: buscar quién lo instale / repare.
+                  _botonFoto(Icons.handyman_outlined, () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ServiciosScreen(
+                            busquedaInicial:
+                                (widget.producto['categoria'] ?? '')
+                                    .toString()),
+                      ),
+                    );
+                  }, tooltip: 'Buscar técnico en OkServicios'),
+                ]),
+              ),
+            ]),
 
             Padding(
               padding:
@@ -2883,6 +2912,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
             _productosRelacionados(),
           ],
         ),
+      ),
       ),
     );
   }

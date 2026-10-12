@@ -13,22 +13,27 @@ _JPEG_Q     = 72    # calidad JPEG (balance tamaño/calidad)
 
 
 def quitar_fondo(image_bytes):
+    """Foto subida → foto de publicación OkVenta: sin fondo, sobre gris de
+    estudio y con la marca de agua "OK Venta App" (services/marca_agua.py).
+    Si quitar el fondo falla, se usa la foto tal cual (con fondo y marca)."""
+    from services.marca_agua import componer_jpeg
 
     # 1) abrir imagen original y reducir tamaño antes de procesar
-    input_image = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+    input_image = Image.open(io.BytesIO(image_bytes))
+    try:
+        from PIL import ImageOps
+        input_image = ImageOps.exif_transpose(input_image)
+    except Exception:
+        pass
+    input_image = input_image.convert("RGBA")
     input_image.thumbnail((_MAX_SIDE, _MAX_SIDE), Image.LANCZOS)
 
     # 2) remover fondo
-    output_image = remove(input_image)
+    try:
+        output_image = remove(input_image)
+    except Exception as e:
+        print("rembg falló, se usa la foto original:", repr(e))
+        output_image = input_image
 
-    # 3) fondo blanco del mismo tamaño que el producto procesado
-    fondo = Image.new("RGBA", output_image.size, (255, 255, 255, 255))
-
-    # 4) pegar producto sobre el fondo
-    fondo.paste(output_image, (0, 0), mask=output_image)
-
-    # 6) guardar como JPEG (mucho más liviano que PNG)
-    buffer = io.BytesIO()
-    fondo.convert("RGB").save(buffer, format="JPEG", quality=_JPEG_Q, optimize=True)
-
-    return buffer.getvalue()
+    # 3) lienzo gris + sombra + marca de agua → JPEG
+    return componer_jpeg(output_image, calidad=_JPEG_Q + 8)

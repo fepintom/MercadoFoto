@@ -63,6 +63,23 @@ class VistasService {
     }
   }
 
+  /// Más vendidos del mes (si hay pocos, se completa con los más vistos;
+  /// cada uno trae `origen`: 'ventas' | 'vistas').
+  static Future<List<Map<String, dynamic>>> masVendidos({int limite = 5}) async {
+    try {
+      final r = await http
+          .get(Uri.parse(
+              '${ApiService.baseUrl}/vistas/mas_vendidos?limite=$limite'))
+          .timeout(const Duration(seconds: 10));
+      if (r.statusCode != 200) return [];
+      return (jsonDecode(r.body) as List)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
   /// "1,2 mil" en vez de 1200, para que quepa en la tarjeta.
   static String formato(int n) {
     if (n < 1000) return '$n';

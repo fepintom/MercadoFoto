@@ -27,6 +27,8 @@ import 'oferta_screen.dart';
 import 'servicios_screen.dart';
 import 'comunidad_screen.dart';
 import 'notificaciones_screen.dart';
+import 'borradores_screen.dart';
+import '../services/borradores_service.dart';
 import 'mis_direcciones_screen.dart';
 import '../widgets/registro_form_widget.dart';
 
@@ -96,6 +98,11 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     shellNavigatorKey = _navKey;
+    BorradoresService.cargar();
+    BorradoresService.abrirLista = (ctx) => Navigator.push(
+          ctx,
+          MaterialPageRoute(builder: (_) => const BorradoresScreen()),
+        );
     _inicializar();
     _cargarPrefsUbicacion();
     _obtenerUbicacion();
@@ -444,6 +451,65 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // El toggle de modo claro/oscuro se movió a Mi cuenta > MODO —
           // ya no vive como ícono en este header.
+
+          // Borradores: publicaciones sin terminar (el número avisa cuántas).
+          ValueListenableBuilder<List<Borrador>>(
+            valueListenable: BorradoresService.lista,
+            builder: (_, borradores, __) {
+              final n = borradores.length;
+              return GestureDetector(
+                onTap: _abrirBorradores,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: n > 0
+                            ? colors.primary.withOpacity(0.1)
+                            : colors.background,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.edit_note_rounded,
+                        size: 22,
+                        color: n > 0 ? colors.primary : colors.grayMid,
+                      ),
+                    ),
+                    if (n > 0)
+                      Positioned(
+                        right: -2,
+                        top: -2,
+                        child: Container(
+                          constraints:
+                              const BoxConstraints(minWidth: 16, minHeight: 16),
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          decoration: BoxDecoration(
+                            color: colors.primary,
+                            borderRadius: BorderRadius.circular(8),
+                            border:
+                                Border.all(color: colors.surface, width: 1.5),
+                          ),
+                          child: Center(
+                            child: Text(
+                              n > 9 ? '9+' : '$n',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(width: 8),
 
           // Carrito
           ValueListenableBuilder<List<Map<String, dynamic>>>(
@@ -934,6 +1000,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ── CARRITO: navega a la pantalla dedicada (antes era un modal) ─────────
+  void _abrirBorradores() {
+    Navigator.push(
+      _ctxNav,
+      MaterialPageRoute(builder: (_) => const BorradoresScreen()),
+    );
+  }
+
   void _mostrarCarrito() {
     Navigator.push(
       _ctxNav,

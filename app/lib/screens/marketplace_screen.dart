@@ -1307,7 +1307,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                                 child: SizedBox(width: 16, height: 16,
                                   child: CircularProgressIndicator(strokeWidth: 2, color: colors.primary)),
                               )
-                            : Icon(Icons.search, size: 18, color: colorIconoPastilla()),
+                            : Icon(Icons.search_rounded, size: 21, color: colors.primary),
                         suffixIcon: _searchCtrl.text.isNotEmpty
                             ? GestureDetector(
                                 onTap: () { _searchCtrl.clear(); setState(() => cargarPublicaciones()); },

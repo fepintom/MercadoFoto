@@ -621,7 +621,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
                         ? 'Buscar servicios...'
                         : 'Buscar solicitudes...',
                     hintStyle: TextStyle(color: colors.grayMid, fontSize: 13),
-                    prefixIcon: Icon(Icons.search, size: 18, color: colorIconoPastilla()),
+                    prefixIcon: Icon(Icons.search_rounded, size: 21, color: colors.primary),
                     suffixIcon: _query.isNotEmpty
                         ? GestureDetector(
                             onTap: () {

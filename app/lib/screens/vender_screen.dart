@@ -1,13 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/space_invaders_widget.dart';
+import '../services/borradores_service.dart';
+import '../widgets/espera_publicacion.dart';
 import 'confirmacion_screen.dart';
 import 'venta_manual_screen.dart';
 
@@ -24,7 +24,6 @@ class _VenderScreenState extends State<VenderScreen> {
   // 'selector' | 'automatica'
   String _estado = 'selector';
   bool _loading = false;
-  String _loadingMsg = "Analizando imagen con IA...";
   bool _usuarioRegistrado = false;
 
   @override
@@ -39,66 +38,62 @@ class _VenderScreenState extends State<VenderScreen> {
   }
 
   // ── Análisis de imagen ────────────────────────────────────────────────
+  TareaAnalisis? _tarea;
+
   Future<void> _analizarImagen(File imagen) async {
     // Bug fix: si veníamos de una pantalla con un campo de texto enfocado,
-    // el teclado se quedaba pegado y el juego no ocupaba toda la pantalla.
+    // el teclado se quedaba pegado y la espera no ocupaba toda la pantalla.
     FocusScope.of(context).unfocus();
+    final tarea = BorradoresService.analizar(imagen);
     setState(() {
       _loading = true;
-      _loadingMsg = "Analizando imagen con IA...";
+      _tarea = tarea;
     });
 
     try {
-      var request = http.MultipartRequest(
-        "POST",
-        Uri.parse("${ApiService.baseUrl}/analizar"),
-      );
-      request.files
-          .add(await http.MultipartFile.fromPath("file", imagen.path));
-
-      // Actualizar mensaje mientras espera
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted && _loading) {
-          setState(() => _loadingMsg = "Generando título y descripción...");
-        }
-      });
-      Future.delayed(const Duration(seconds: 5), () {
-        if (mounted && _loading) {
-          setState(() => _loadingMsg = "Casi listo...");
-        }
-      });
-
-      final response = await request.send();
-      final respStr = await response.stream.bytesToString();
-
-      if (!mounted) return;
+      final respStr = await tarea.resultado;
+      // Si el usuario se fue a mirar OkMarket, el resultado ya quedó en
+      // Borradores (lo maneja la tarea).
+      if (!mounted || tarea.enSegundoPlano) return;
       setState(() => _loading = false);
-
-      if (response.statusCode == 200) {
-        Navigator.push(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) =>
-                ConfirmacionScreen(data: respStr, imagen: imagen),
-            transitionsBuilder: (_, animation, __, child) => SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, -1), // entra desde arriba
-                end: Offset.zero,
-              ).animate(CurvedAnimation(
-                  parent: animation, curve: Curves.easeOutCubic)),
-              child: child,
-            ),
-            transitionDuration: const Duration(milliseconds: 380),
+      Navigator.push(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (_, __, ___) =>
+              ConfirmacionScreen(data: respStr, imagen: imagen),
+          transitionsBuilder: (_, animation, __, child) => SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, -1), // entra desde arriba
+              end: Offset.zero,
+            ).animate(CurvedAnimation(
+                parent: animation, curve: Curves.easeOutCubic)),
+            child: child,
           ),
-        );
-      } else {
-        _mostrarError("No se pudo analizar la imagen. Intenta de nuevo.");
-      }
+          transitionDuration: const Duration(milliseconds: 380),
+        ),
+      );
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || tarea.enSegundoPlano) return;
       setState(() => _loading = false);
-      _mostrarError("Error de conexión. Verifica tu red.");
+      _mostrarError("No se pudo analizar la imagen. Intenta de nuevo.");
     }
+  }
+
+  /// "Desliza hacia arriba para seguir mirando": la IA sigue trabajando y
+  /// el resultado queda en Borradores.
+  void _seguirMirando() {
+    final t = _tarea;
+    if (t == null) return;
+    t.mandarAlFondo();
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(
+        content: Text(
+            'Seguimos analizando tu foto. Te avisamos y queda en Borradores.'),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 3),
+      ));
+    Navigator.of(context).popUntil((r) => r.isFirst);
   }
 
   Future<void> _abrirCamara() async {
@@ -184,90 +179,13 @@ class _VenderScreenState extends State<VenderScreen> {
     );
   }
 
-  // ── PANTALLA DE CARGA CON SPACE INVADERS ─────────────────────────────
+  // ── PANTALLA DE ESPERA: jugar | esperar | seguir mirando ───────────────
   Widget _buildLoadingConJuego() {
-    return Column(
-      children: [
-        // Header de carga
-        Container(
-          color: colors.surface,
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 14),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: colors.primary.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(8),
-                      child: CircularProgressIndicator(
-                        color: colors.primary,
-                        strokeWidth: 2.5,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _loadingMsg,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: colors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          "Esto puede tardar unos segundos · ¡Juega mientras!",
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: colors.grayMid,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const Divider(height: 1, thickness: 0.5),
-
-        // Juego Space Invaders
-        const Expanded(child: SpaceInvadersWidget()),
-
-        // Badge IA
-        Container(
-          color: colors.surface,
-          padding:
-              const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.auto_awesome_rounded,
-                  size: 13, color: colors.primary),
-              const SizedBox(width: 6),
-              Text(
-                "Impulsado por IA — GPT-4o Vision",
-                style: TextStyle(
-                  fontSize: 12,
-                  color: colors.primary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+    return EsperaPublicacion(
+      etapa: 'analizar',
+      titulo: 'Analizando tu foto con IA…',
+      textoDeslizar: 'Tu publicación te esperará en Borradores',
+      onSeguirMirando: _seguirMirando,
     );
   }
 

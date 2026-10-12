@@ -1,15 +1,22 @@
 import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
-/// Space Invaders mini-game para la pantalla de espera de análisis IA.
-/// Implementado con CustomPainter + Ticker. Sin dependencias externas.
-/// Los colores aquí son intencionalmente retro/arcade, no colors.
-class SpaceInvadersWidget extends StatefulWidget {
-  const SpaceInvadersWidget({super.key});
+/// OkVenta Invaders: Okventín (la bolsa de OkVenta, vista desde arriba)
+/// defiende el mercado de las ofertas falsas disparando ✓ de "compra
+/// verificada". Enemigos: cajas truchas, etiquetas de precio falsas y
+/// bichos de spam. Juego propio (formas y temática nuevas), hecho con
+/// CustomPainter + Ticker, sin dependencias.
+const Color _fondo = Color(0xFF1B1F2A);
+const Color _rojo = Color(0xFFE53935);
+const Color _verde = Color(0xFF34C759);
+
+class OkVentaInvaders extends StatefulWidget {
+  const OkVentaInvaders({super.key});
 
   @override
-  State<SpaceInvadersWidget> createState() => _SpaceInvadersWidgetState();
+  State<OkVentaInvaders> createState() => _OkVentaInvadersState();
 }
 
 // ── Constantes del juego (coordenadas lógicas) ─────────────────────────────
@@ -38,7 +45,7 @@ class _Bullet {
 }
 
 // ── Estado ─────────────────────────────────────────────────────────────────
-class _SpaceInvadersWidgetState extends State<SpaceInvadersWidget>
+class _OkVentaInvadersState extends State<OkVentaInvaders>
     with SingleTickerProviderStateMixin {
   late Ticker _ticker;
   Duration _prev = Duration.zero;
@@ -213,7 +220,7 @@ class _SpaceInvadersWidgetState extends State<SpaceInvadersWidget>
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFF080818),
+      color: _fondo,
       child: Column(
         children: [
           // Barra score / vidas
@@ -223,12 +230,12 @@ class _SpaceInvadersWidgetState extends State<SpaceInvadersWidget>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'SCORE  $_score',
+                  'FRAUDES DETENIDOS  $_score',
                   style: const TextStyle(
-                    color: Color(0xFF00FF88),
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.5,
+                    color: Colors.white,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
                   ),
                 ),
                 Row(
@@ -237,11 +244,11 @@ class _SpaceInvadersWidgetState extends State<SpaceInvadersWidget>
                     (i) => Padding(
                       padding: const EdgeInsets.only(left: 4),
                       child: Icon(
-                        Icons.favorite,
-                        size: 13,
+                        Icons.shopping_bag_rounded,
+                        size: 14,
                         color: i < _lives
-                            ? const Color(0xFFFF4444)
-                            : const Color(0xFF2A2A3A),
+                            ? _rojo
+                            : Colors.white24,
                       ),
                     ),
                   ),
@@ -255,7 +262,7 @@ class _SpaceInvadersWidgetState extends State<SpaceInvadersWidget>
             child: LayoutBuilder(builder: (ctx, cns) {
               return CustomPaint(
                 size: Size(cns.maxWidth, cns.maxHeight),
-                painter: _GamePainter(
+                painter: _PintorInvaders(
                   px: _px,
                   invaders: _invaders,
                   pBullets: _pBullets,
@@ -274,11 +281,11 @@ class _SpaceInvadersWidgetState extends State<SpaceInvadersWidget>
             Padding(
               padding: const EdgeInsets.only(top: 6, bottom: 2),
               child: Text(
-                _win ? '¡GANASTE!  +$_score PTS' : 'GAME OVER',
+                _win
+                    ? '¡MERCADO SEGURO!  +$_score'
+                    : 'TE GANARON LAS OFERTAS FALSAS',
                 style: TextStyle(
-                  color: _win
-                      ? const Color(0xFF00FF88)
-                      : const Color(0xFFFF4444),
+                  color: _win ? _verde : _rojo,
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.5,
@@ -303,13 +310,13 @@ class _SpaceInvadersWidgetState extends State<SpaceInvadersWidget>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFF00FF88)),
+              color: _rojo,
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Text(
               'JUGAR DE NUEVO',
               style: TextStyle(
-                color: Color(0xFF00FF88),
+                color: Colors.white,
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.5,
@@ -354,11 +361,11 @@ class _SpaceInvadersWidgetState extends State<SpaceInvadersWidget>
         width: 56,
         height: 42,
         decoration: BoxDecoration(
-          color: const Color(0xFF00FF88).withOpacity(0.08),
-          border: Border.all(color: const Color(0xFF00FF88).withOpacity(0.4)),
+          color: _verde.withOpacity(0.08),
+          border: Border.all(color: _verde.withOpacity(0.4)),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, color: const Color(0xFF00FF88), size: 28),
+        child: Icon(icon, color: _verde, size: 28),
       ),
     );
   }
@@ -370,13 +377,13 @@ class _SpaceInvadersWidgetState extends State<SpaceInvadersWidget>
         width: 62,
         height: 42,
         decoration: BoxDecoration(
-          color: const Color(0xFFFF4444).withOpacity(0.12),
-          border: Border.all(color: const Color(0xFFFF4444).withOpacity(0.5)),
+          color: _rojo.withOpacity(0.12),
+          border: Border.all(color: _rojo.withOpacity(0.5)),
           borderRadius: BorderRadius.circular(10),
         ),
         child: const Icon(
           Icons.keyboard_arrow_up_rounded,
-          color: Color(0xFFFF4444),
+          color: _rojo,
           size: 26,
         ),
       ),
@@ -384,15 +391,15 @@ class _SpaceInvadersWidgetState extends State<SpaceInvadersWidget>
   }
 }
 
-// ── CustomPainter ─────────────────────────────────────────────────────────
-class _GamePainter extends CustomPainter {
+// ── Pintor (vista desde arriba) ─────────────────────────────────────────────
+class _PintorInvaders extends CustomPainter {
   final double px;
   final List<_Inv> invaders;
   final List<_Bullet> pBullets, eBullets;
   final double sx, sy;
   final bool over, win;
 
-  const _GamePainter({
+  const _PintorInvaders({
     required this.px,
     required this.invaders,
     required this.pBullets,
@@ -403,131 +410,211 @@ class _GamePainter extends CustomPainter {
     required this.win,
   });
 
-  static const _green = Color(0xFF00FF88);
-  static const _red = Color(0xFFFF4444);
-  static const _orange = Color(0xFFFF8800);
-  static const _yellow = Color(0xFFFFDD00);
-  static const _cyan = Color(0xFF00FFEE);
+  // Caja trucha: cartón visto desde arriba, cinta en cruz y un "?" rojo.
+  void _caja(Canvas c, Rect r) {
+    final rr = RRect.fromRectAndRadius(r, Radius.circular(r.width * 0.08));
+    c.drawRRect(rr, Paint()..color = const Color(0xFFC08A4E));
+    c.drawRRect(
+        rr,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2
+          ..color = const Color(0xFF7A5228));
+    final cinta = Paint()..color = const Color(0xFFE8D2A8);
+    c.drawRect(
+        Rect.fromCenter(
+            center: r.center, width: r.width, height: r.height * 0.2),
+        cinta);
+    c.drawRect(
+        Rect.fromCenter(
+            center: r.center, width: r.width * 0.2, height: r.height),
+        cinta);
+    final p = Paint()
+      ..color = _rojo
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = max(1.6, r.width * 0.09)
+      ..strokeCap = StrokeCap.round;
+    final q = Path()
+      ..moveTo(r.left + r.width * 0.36, r.top + r.height * 0.32)
+      ..quadraticBezierTo(r.left + r.width * 0.5, r.top + r.height * 0.05,
+          r.left + r.width * 0.64, r.top + r.height * 0.32)
+      ..quadraticBezierTo(r.left + r.width * 0.66, r.top + r.height * 0.48,
+          r.left + r.width * 0.5, r.top + r.height * 0.58);
+    c.drawPath(q, p);
+    c.drawCircle(Offset(r.center.dx, r.top + r.height * 0.84),
+        r.width * 0.05, Paint()..color = _rojo);
+  }
 
-  // Partes del invasor definidas como fracciones de (0..1 × 0..1) del bbox
-  // [left, top, right, bottom]
-  static const _parts0 = [
-    [0.30, 0.00, 0.70, 0.35], // cabeza
-    [0.05, 0.20, 0.95, 0.60], // cuerpo
-    [0.00, 0.35, 0.18, 0.65], // brazo izq
-    [0.82, 0.35, 1.00, 0.65], // brazo der
-    [0.18, 0.60, 0.40, 1.00], // pata izq
-    [0.60, 0.60, 0.82, 1.00], // pata der
-  ];
-  static const _parts1 = [
-    [0.20, 0.00, 0.80, 0.40],
-    [0.00, 0.25, 0.15, 0.60],
-    [0.85, 0.25, 1.00, 0.60],
-    [0.10, 0.40, 0.90, 0.78],
-    [0.10, 0.78, 0.35, 1.00],
-    [0.65, 0.78, 0.90, 1.00],
-  ];
-  static const _parts2 = [
-    [0.12, 0.00, 0.88, 0.45],
-    [0.00, 0.20, 0.22, 0.68],
-    [0.78, 0.20, 1.00, 0.68],
-    [0.18, 0.45, 0.82, 0.82],
-    [0.18, 0.82, 0.42, 1.00],
-    [0.58, 0.82, 0.82, 1.00],
-  ];
+  // Etiqueta de precio falsa: amarilla, con su hoyito y tachada.
+  void _etiqueta(Canvas c, Rect r) {
+    final path = Path()
+      ..moveTo(r.left + r.width * 0.28, r.top)
+      ..lineTo(r.right, r.top)
+      ..lineTo(r.right, r.bottom)
+      ..lineTo(r.left + r.width * 0.28, r.bottom)
+      ..lineTo(r.left, r.center.dy)
+      ..close();
+    c.drawPath(path, Paint()..color = const Color(0xFFFFC93C));
+    c.drawCircle(Offset(r.left + r.width * 0.24, r.center.dy),
+        r.height * 0.12, Paint()..color = _fondo);
+    final x = Paint()
+      ..color = _rojo
+      ..strokeWidth = max(1.6, r.height * 0.13)
+      ..strokeCap = StrokeCap.round;
+    c.drawLine(Offset(r.left + r.width * 0.45, r.top + r.height * 0.22),
+        Offset(r.right - r.width * 0.12, r.bottom - r.height * 0.22), x);
+    c.drawLine(Offset(r.right - r.width * 0.12, r.top + r.height * 0.22),
+        Offset(r.left + r.width * 0.45, r.bottom - r.height * 0.22), x);
+  }
+
+  // Bicho de spam visto desde arriba: caparazón morado, patitas y antenas.
+  void _bicho(Canvas c, Rect r) {
+    final patas = Paint()
+      ..color = const Color(0xFF3A2A55)
+      ..strokeWidth = max(1.0, r.width * 0.05)
+      ..strokeCap = StrokeCap.round;
+    for (final f in [0.3, 0.5, 0.7]) {
+      final y = r.top + r.height * f;
+      c.drawLine(Offset(r.left + r.width * 0.2, y), Offset(r.left, y + 2), patas);
+      c.drawLine(Offset(r.right - r.width * 0.2, y), Offset(r.right, y + 2), patas);
+    }
+    c.drawLine(Offset(r.center.dx - 2, r.top + r.height * 0.15),
+        Offset(r.left + r.width * 0.25, r.top - 3), patas);
+    c.drawLine(Offset(r.center.dx + 2, r.top + r.height * 0.15),
+        Offset(r.right - r.width * 0.25, r.top - 3), patas);
+    final cuerpo = Rect.fromLTRB(r.left + r.width * 0.18, r.top + r.height * 0.1,
+        r.right - r.width * 0.18, r.bottom);
+    c.drawOval(cuerpo, Paint()..color = const Color(0xFF8E5BD8));
+    c.drawLine(Offset(cuerpo.center.dx, cuerpo.top + 2),
+        Offset(cuerpo.center.dx, cuerpo.bottom - 1),
+        Paint()
+          ..color = const Color(0xFF5B3696)
+          ..strokeWidth = 1.2);
+    final ojo = Paint()..color = Colors.white;
+    c.drawCircle(Offset(cuerpo.center.dx - cuerpo.width * 0.2, cuerpo.top + cuerpo.height * 0.28),
+        cuerpo.width * 0.1, ojo);
+    c.drawCircle(Offset(cuerpo.center.dx + cuerpo.width * 0.2, cuerpo.top + cuerpo.height * 0.28),
+        cuerpo.width * 0.1, ojo);
+  }
 
   void _drawInvader(Canvas c, _Inv inv) {
-    final color = inv.type == 0 ? _red : inv.type == 1 ? _orange : _yellow;
-    final p = Paint()..color = color;
-    final iw = _iW * sx;
-    final ih = _iH * sy;
-    final ox = inv.x * sx;
-    final oy = inv.y * sy;
-    final parts = inv.type == 0 ? _parts0 : inv.type == 1 ? _parts1 : _parts2;
-    for (final r in parts) {
-      c.drawRect(
-        Rect.fromLTWH(
-          ox + r[0] * iw,
-          oy + r[1] * ih,
-          (r[2] - r[0]) * iw,
-          (r[3] - r[1]) * ih,
-        ),
-        p,
-      );
+    final r = Rect.fromLTWH(inv.x * sx, inv.y * sy, _iW * sx, _iH * sy);
+    switch (inv.type) {
+      case 0:
+        _bicho(c, r);
+        break;
+      case 1:
+        _etiqueta(c, r);
+        break;
+      default:
+        _caja(c, r);
     }
   }
 
+  // Okventín visto desde arriba: la bolsa blanca abierta (adentro oscuro),
+  // costado rojo, las dos manillas rojas y las zapatillas asomando.
   void _drawPlayer(Canvas c) {
-    final p = Paint()..color = _green;
-    final ox = px * sx;
-    final oy = _pY * sy;
     final w = _pW * sx;
-    final h = _pH * sy;
-    // Cuerpo
-    c.drawRect(Rect.fromLTWH(ox + w * 0.08, oy + h * 0.3, w * 0.84, h * 0.7), p);
-    // Cañón
-    c.drawRect(Rect.fromLTWH(ox + w * 0.40, oy, w * 0.20, h * 0.5), p);
-    // Patas
-    c.drawRect(Rect.fromLTWH(ox, oy + h * 0.65, w * 0.14, h * 0.35), p);
-    c.drawRect(Rect.fromLTWH(ox + w * 0.86, oy + h * 0.65, w * 0.14, h * 0.35), p);
+    final h = (_pH + 10) * sy;
+    final ox = px * sx;
+    final oy = (_pY - 10) * sy;
+    final zap = Paint()..color = _rojo;
+    // zapatillas (delante, apuntando hacia arriba)
+    c.drawRRect(
+        RRect.fromRectAndRadius(
+            Rect.fromLTWH(ox + w * 0.18, oy - h * 0.12, w * 0.2, h * 0.3),
+            Radius.circular(w * 0.1)),
+        zap);
+    c.drawRRect(
+        RRect.fromRectAndRadius(
+            Rect.fromLTWH(ox + w * 0.62, oy - h * 0.12, w * 0.2, h * 0.3),
+            Radius.circular(w * 0.1)),
+        zap);
+    final cuerpo = RRect.fromRectAndRadius(
+        Rect.fromLTWH(ox, oy + h * 0.08, w, h * 0.84), Radius.circular(w * 0.12));
+    c.drawRRect(cuerpo, Paint()..color = Colors.white);
+    // costado rojo
+    c.drawRRect(
+        RRect.fromRectAndCorners(Rect.fromLTWH(ox, oy + h * 0.08, w * 0.16, h * 0.84),
+            topLeft: Radius.circular(w * 0.12), bottomLeft: Radius.circular(w * 0.12)),
+        Paint()..color = const Color(0xFFC62828));
+    // boca de la bolsa (adentro)
+    c.drawRRect(
+        RRect.fromRectAndRadius(
+            Rect.fromLTWH(ox + w * 0.22, oy + h * 0.28, w * 0.66, h * 0.44),
+            Radius.circular(w * 0.06)),
+        Paint()..color = const Color(0xFF3A3A40));
+    // manillas
+    final man = Paint()
+      ..color = _rojo
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = max(2.0, w * 0.07)
+      ..strokeCap = StrokeCap.round;
+    c.drawArc(Rect.fromLTWH(ox + w * 0.26, oy + h * 0.1, w * 0.58, h * 0.5), pi, pi,
+        false, man);
+    c.drawArc(Rect.fromLTWH(ox + w * 0.26, oy + h * 0.42, w * 0.58, h * 0.5), 0, pi,
+        false, man);
+  }
+
+  // ✓ de compra verificada (disparo de Okventín)
+  void _check(Canvas c, Offset p) {
+    final paint = Paint()
+      ..color = _verde
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.6
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    final path = Path()
+      ..moveTo(p.dx - 4, p.dy + 3)
+      ..lineTo(p.dx - 1, p.dy + 6)
+      ..lineTo(p.dx + 5, p.dy - 2);
+    c.drawPath(path, paint);
   }
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Fondo
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()..color = const Color(0xFF080818),
-    );
-
-    // Estrellas estáticas
-    final sp = Paint()..color = const Color(0xFFFFFFFF).withOpacity(0.3);
-    for (int i = 0; i < 45; i++) {
-      canvas.drawCircle(
-        Offset((i * 71 + 13) % size.width, (i * 53 + 7) % size.height),
-        (i % 4 == 0) ? 1.5 : 0.7,
-        sp,
-      );
+    // Piso de bodega visto desde arriba: baldosas.
+    canvas.drawRect(Offset.zero & size, Paint()..color = _fondo);
+    final linea = Paint()
+      ..color = Colors.white.withValues(alpha: 0.05)
+      ..strokeWidth = 1;
+    final paso = size.width / 8;
+    for (double x = 0; x <= size.width; x += paso) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), linea);
+    }
+    for (double y = 0; y <= size.height; y += paso) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), linea);
     }
 
     if (over || win) return;
 
-    // Línea de suelo
+    // Línea roja de la tienda (lo que hay que defender)
     canvas.drawLine(
       Offset(0, (_pY + _pH + 8) * sy),
       Offset(size.width, (_pY + _pH + 8) * sy),
       Paint()
-        ..color = _green.withOpacity(0.25)
-        ..strokeWidth = 1,
+        ..color = _rojo.withValues(alpha: 0.45)
+        ..strokeWidth = 2,
     );
 
-    // Invasores
     for (final inv in invaders.where((i) => i.alive)) {
       _drawInvader(canvas, inv);
     }
-
-    // Jugador
     _drawPlayer(canvas);
 
-    // Balas del jugador
-    final pbp = Paint()..color = _cyan;
     for (final b in pBullets) {
-      canvas.drawRect(
-        Rect.fromLTWH(b.x * sx - _bW / 2, b.y * sy, _bW, _pbH * sy),
-        pbp,
-      );
+      _check(canvas, Offset(b.x * sx, b.y * sy));
     }
-
-    // Balas enemigas
-    final ebp = Paint()..color = _red.withOpacity(0.85);
+    final spam = Paint()..color = const Color(0xFFFF6B9A);
     for (final b in eBullets) {
-      canvas.drawRect(
-        Rect.fromLTWH(b.x * sx - _bW / 2, b.y * sy, _bW, _ebH * sy),
-        ebp,
-      );
+      canvas.drawRRect(
+          RRect.fromRectAndRadius(
+              Rect.fromLTWH(b.x * sx - 2.5, b.y * sy, 5, _ebH * sy),
+              const Radius.circular(3)),
+          spam);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _GamePainter old) => true;
+  bool shouldRepaint(covariant _PintorInvaders old) => true;
 }

@@ -12,7 +12,8 @@ import '../services/session_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/descripcion_formato.dart';
-import '../widgets/space_invaders_widget.dart';
+import '../services/borradores_service.dart';
+import '../widgets/espera_publicacion.dart';
 import '../widgets/invitacion_servicio_instalacion.dart';
 import '../widgets/selector_instalacion.dart';
 import '../widgets/tipo_publicacion_selector.dart';
@@ -84,10 +85,19 @@ class ConfirmacionScreen extends StatefulWidget {
   final String data;
   final File imagen;
 
+  /// Fotos adicionales (al retomar un borrador).
+  final List<File> imagenesExtra;
+
+  /// Si se abrió desde Borradores: al publicar se borra; al salir se
+  /// actualiza con lo editado.
+  final String? borradorId;
+
   const ConfirmacionScreen({
     super.key,
     required this.data,
     required this.imagen,
+    this.imagenesExtra = const [],
+    this.borradorId,
   });
 
   @override
@@ -161,7 +171,7 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
   @override
   void initState() {
     super.initState();
-    _imagenes      = [widget.imagen];
+    _imagenes      = [widget.imagen, ...widget.imagenesExtra];
     _pageController = PageController();
 
     final jsonData   = jsonDecode(widget.data);
@@ -180,6 +190,16 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
       _precioActual = _precioMin;
       precio.text   = _precioMin.toInt().toString();
     }
+    // Borrador retomado: el precio que había escrito el usuario.
+    final precioUsuario = (jsonData["precio_usuario"] as num?)?.toDouble();
+    if (precioUsuario != null && precioUsuario > 0) {
+      _precioActual = precioUsuario;
+      precio.text   = precioUsuario.toInt().toString();
+    }
+    final condicionGuardada = jsonData["condicion"]?.toString();
+    if (condicionGuardada == 'nuevo' || condicionGuardada == 'usado') {
+      _condicion = condicionGuardada;
+    }
 
     // Auto-detectar talla desde las dimensiones generadas por IA
     final dimIA = jsonData["dimensiones"] ?? "";
@@ -188,6 +208,10 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
 
   @override
   void dispose() {
+    // Salió sin publicar: queda en Borradores (o se actualiza el borrador).
+    if (!_publicado && !_publicando) {
+      _guardarComoBorrador(_datosEditados(), aviso: true);
+    }
     _pageController.dispose();
     titulo.dispose();
     descripcion.dispose();
@@ -464,6 +488,59 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
     );
   }
 
+  // ── Borradores ────────────────────────────────────────────────────────
+  bool _publicado = false;
+
+  /// Lo que el usuario tiene en pantalla, en el mismo formato que /analizar
+  /// (para retomarlo desde Borradores tal como lo dejó).
+  String _datosEditados() {
+    Map<String, dynamic> base;
+    try {
+      base = Map<String, dynamic>.from(jsonDecode(widget.data) as Map);
+    } catch (_) {
+      base = {};
+    }
+    base['titulo'] = titulo.text.trim();
+    base['descripcion'] = descripcion.text.trim();
+    base['categoria'] = _categoria;
+    base['subcategoria'] = _subcategoria;
+    base['condicion'] = _condicion;
+    final p = double.tryParse(precio.text.trim());
+    if (p != null && p > 0) base['precio_usuario'] = p;
+    return jsonEncode(base);
+  }
+
+  Future<void> _guardarComoBorrador(String datos, {bool aviso = false}) async {
+    final id = widget.borradorId;
+    if (id != null) {
+      final b = BorradoresService.lista.value.where((x) => x.id == id);
+      if (b.isNotEmpty) {
+        b.first.data = datos;
+        b.first.estado = 'listo';
+        await BorradoresService.actualizar(b.first);
+        return;
+      }
+    }
+    await BorradoresService.crear(
+        data: datos, imagenes: List<File>.from(_imagenes));
+    if (aviso) {
+      BorradoresService.avisar('Guardamos tu publicación en Borradores');
+    }
+  }
+
+  /// Desliza hacia arriba mientras se publica: se sigue publicando en
+  /// segundo plano y se avisa al terminar.
+  void _seguirMirando() {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(
+        content: Text('Seguimos publicando. Te avisamos cuando esté listo.'),
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(seconds: 3),
+      ));
+    Navigator.of(context).popUntil((r) => r.isFirst);
+  }
+
   // ── Publicar ──────────────────────────────────────────────────────────
   Future<void> publicar() async {
     if (precio.text.trim().isEmpty) {
@@ -490,6 +567,12 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
     if (!mounted) return;
 
     setState(() => _publicando = true);
+    final inicio = DateTime.now();
+    // Por si el usuario se va a mirar OkMarket: lo editado, ya leído (los
+    // controladores se liberan al cerrar la pantalla).
+    final datosEditados = _datosEditados();
+    final instalacionPropia = _requiereInstalacion && _instalacionVendedor;
+    final tituloProducto = titulo.text.trim();
 
     try {
       final request = http.MultipartRequest(
@@ -562,10 +645,21 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
         throw Exception("Error al publicar");
       }
 
-      if (!mounted) return;
+      _publicado = true;
+      BorradoresService.registrarDuracion(
+          'publicar', DateTime.now().difference(inicio));
+      if (widget.borradorId != null) {
+        BorradoresService.borrar(widget.borradorId!);
+      }
+      if (!mounted) {
+        // Se publicó mientras el usuario miraba OkMarket.
+        BorradoresService.avisar('✅ "$tituloProducto" ya está publicado',
+            conVer: false);
+        return;
+      }
       // Si dijo que él instala, se le ofrece publicarlo en Servicios.
       // Va después de publicar, no antes: ya terminó lo que vino a hacer.
-      if (_requiereInstalacion && _instalacionVendedor) {
+      if (instalacionPropia) {
         await ofrecerPublicarInstalacion(
           context,
           tituloProducto: titulo.text.trim(),
@@ -580,7 +674,13 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
       );
     } catch (e) {
       debugPrint("ERROR PUBLICAR: $e");
-      if (!mounted) return;
+      if (!mounted) {
+        // Falló en segundo plano: no se pierde, queda en Borradores.
+        await _guardarComoBorrador(datosEditados);
+        BorradoresService.avisar(
+            'No se pudo publicar "$tituloProducto". Quedó en Borradores');
+        return;
+      }
       setState(() => _publicando = false);
       _snack("Error al publicar el producto");
     }
@@ -1562,60 +1662,13 @@ class _ConfirmacionScreenState extends State<ConfirmacionScreen> {
   }
 
   // ── Build principal ───────────────────────────────────────────────────
-  // ── Pantalla de espera con Space Invaders ─────────────────────────────────
+  // ── Pantalla de espera: jugar | esperar | seguir mirando ───────────────
   Widget _buildPublicando() {
-    return Column(
-      children: [
-        // Header mensaje
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-          color: colors.surface,
-          child: Column(
-            children: [
-              Text(
-                "Publicando tu producto…",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: colors.textPrimary,
-                ),
-              ),
-              SizedBox(height: 4),
-              Text(
-                "Mientras suben las fotos, ¡juega un poco!",
-                style: TextStyle(fontSize: 13, color: colors.grayMid),
-              ),
-            ],
-          ),
-        ),
-        const Divider(height: 1, thickness: 0.5),
-        // Juego
-        const Expanded(child: SpaceInvadersWidget()),
-        // Badge inferior
-        Container(
-          color: colors.surface,
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: colors.primary,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                "Subiendo imágenes al servidor…",
-                style: TextStyle(fontSize: 12, color: colors.grayMid),
-              ),
-            ],
-          ),
-        ),
-      ],
+    return EsperaPublicacion(
+      etapa: 'publicar',
+      titulo: 'Publicando tu producto…',
+      textoDeslizar: 'Seguimos publicando y te avisamos al terminar',
+      onSeguirMirando: _seguirMirando,
     );
   }
 
