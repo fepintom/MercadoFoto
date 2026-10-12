@@ -651,7 +651,7 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
                   hintText: 'Buscar en el mapa…',
                   hintStyle: TextStyle(color: colors.grayMid, fontSize: 13),
                   prefixIcon:
-                      Icon(Icons.search, size: 18, color: colorIconoPastilla()),
+                      Icon(Icons.search_rounded, size: 21, color: colors.primary),
                   suffixIcon: _query.isNotEmpty
                       ? GestureDetector(
                           onTap: () {

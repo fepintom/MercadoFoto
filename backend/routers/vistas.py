@@ -10,6 +10,11 @@ suma vistas a sí mismo.
   POST /vistas?tipo=producto|servicio&item_id=&visitante=   cuenta una vista
   GET  /vistas/top_productos?limite=5&dias=30               los más vistos
                                                              (disponibles)
+  GET  /vistas/mas_vendidos?limite=5&dias=30                 los más vendidos
+                                                             del mes; si hay
+                                                             menos de 5, se
+                                                             completa con los
+                                                             más vistos
 `conteos(tipo)` lo usa main.py para agregar "vistas" a los listados.
 """
 import sqlite3
@@ -136,4 +141,57 @@ def top_productos(limite: int = 5, dias: int = 30):
         pub["vistas"] = total.get(item_id, n)
         pub["vistas_periodo"] = n
         salida.append(pub)
+    return salida
+
+
+_ESTADOS_PAGADOS = ("pago_confirmado", "en_camino", "entrega_reportada",
+                    "entregado")
+
+
+@router.get("/vistas/mas_vendidos")
+def mas_vendidos(limite: int = 5, dias: int = 30):
+    """Más vendidos del mes (órdenes pagadas, sin las de prueba). Cada
+    producto trae `ventas_periodo` y `origen` ('ventas' o 'vistas' cuando se
+    completa con los más vistos)."""
+    from database.publicaciones import obtener_publicacion_por_id
+
+    limite = max(1, min(limite, 20))
+    conn = sqlite3.connect(DB)
+    marcas = ",".join("?" * len(_ESTADOS_PAGADOS))
+    try:
+        rows = conn.execute(f"""
+            SELECT o.publicacion_id, COUNT(*) AS n
+            FROM ordenes o
+            JOIN publicaciones p ON p.id = o.publicacion_id
+            WHERE o.tipo = 'producto'
+              AND o.estado IN ({marcas})
+              AND COALESCE(o.es_test, 0) = 0
+              AND o.created_at >= datetime('now', ?)
+            GROUP BY o.publicacion_id
+            ORDER BY n DESC, MAX(o.id) DESC
+            LIMIT ?
+        """, (*_ESTADOS_PAGADOS, f"-{max(1, dias)} days", limite)).fetchall()
+    except sqlite3.OperationalError:
+        rows = []
+    conn.close()
+    vistas = conteos("producto")
+    salida, ids = [], set()
+    for pid, n in rows:
+        pub = obtener_publicacion_por_id(pid)
+        if not pub:
+            continue
+        pub["vistas"] = vistas.get(pid, 0)
+        pub["ventas_periodo"] = n
+        pub["origen"] = "ventas"
+        salida.append(pub)
+        ids.add(pid)
+    if len(salida) < limite:
+        for pub in top_productos(limite=limite + len(ids), dias=dias):
+            if pub["id"] in ids:
+                continue
+            pub["ventas_periodo"] = 0
+            pub["origen"] = "vistas"
+            salida.append(pub)
+            if len(salida) >= limite:
+                break
     return salida

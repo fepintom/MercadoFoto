@@ -10,7 +10,8 @@ import '../services/session_service.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/descripcion_formato.dart';
-import '../widgets/space_invaders_widget.dart';
+import '../services/borradores_service.dart';
+import '../widgets/espera_publicacion.dart';
 import '../widgets/invitacion_servicio_instalacion.dart';
 import '../widgets/selector_instalacion.dart';
 import '../widgets/tipo_publicacion_selector.dart';
@@ -173,6 +174,8 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
     }
 
     setState(() => _publicando = true);
+    final inicio = DateTime.now();
+    final tituloProducto = _titulo.text.trim();
 
     try {
       final request = http.MultipartRequest(
@@ -233,7 +236,19 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
       final response = await request.send();
       final respStr = await response.stream.bytesToString();
 
-      if (!mounted) return;
+      if (response.statusCode == 200) {
+        BorradoresService.registrarDuracion(
+            'publicar', DateTime.now().difference(inicio));
+      }
+      if (!mounted) {
+        // El usuario siguió mirando OkMarket mientras se publicaba.
+        BorradoresService.avisar(
+            response.statusCode == 200
+                ? '✅ "$tituloProducto" ya está publicado'
+                : 'No se pudo publicar "$tituloProducto". Inténtalo de nuevo',
+            conVer: false);
+        return;
+      }
       setState(() => _publicando = false);
 
       if (response.statusCode == 200) {
@@ -256,7 +271,12 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
         _snack("Error al publicar. Intenta de nuevo.");
       }
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        BorradoresService.avisar(
+            'No se pudo publicar "$tituloProducto". Revisa tu conexión',
+            conVer: false);
+        return;
+      }
       setState(() => _publicando = false);
       _snack("Error de conexión. Verifica tu red.");
     }
@@ -275,57 +295,23 @@ class _VentaManualScreenState extends State<VentaManualScreen> {
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
-  // ── Pantalla de espera con Space Invaders ─────────────────────────────────
+  // ── Pantalla de espera: jugar | esperar | seguir mirando ───────────────
   Widget _buildPublicando() {
-    return Column(
-      children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-          color: colors.surface,
-          child: Column(
-            children: [
-              Text(
-                "Publicando tu producto…",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: colors.textPrimary,
-                ),
-              ),
-              SizedBox(height: 4),
-              Text(
-                "Mientras suben las fotos, ¡juega un poco!",
-                style: TextStyle(fontSize: 13, color: colors.grayMid),
-              ),
-            ],
-          ),
-        ),
-        const Divider(height: 1, thickness: 0.5),
-        const Expanded(child: SpaceInvadersWidget()),
-        Container(
-          color: colors.surface,
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: colors.primary,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                "Procesando y subiendo imágenes…",
-                style: TextStyle(fontSize: 12, color: colors.grayMid),
-              ),
-            ],
-          ),
-        ),
-      ],
+    return EsperaPublicacion(
+      etapa: 'publicar',
+      titulo: 'Publicando tu producto…',
+      textoDeslizar: 'Seguimos publicando y te avisamos al terminar',
+      onSeguirMirando: () {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(const SnackBar(
+            content:
+                Text('Seguimos publicando. Te avisamos cuando esté listo.'),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 3),
+          ));
+        Navigator.of(context).popUntil((r) => r.isFirst);
+      },
     );
   }
 
