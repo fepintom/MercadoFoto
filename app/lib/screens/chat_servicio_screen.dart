@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'cotizacion_editor_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -309,103 +310,26 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
   // ── Cotización ────────────────────────────────────────────────────────────
 
   Future<void> _abrirFormularioCotizacion() async {
-    // El cliente viene dado por el hilo, no hay que deducirlo de quién
-    // escribió último: el proveedor cotiza siempre a la persona con la que
-    // está conversando.
-    final clienteId = widget.clienteId;
-
-    final empresaCtrl = TextEditingController(text: widget.tituloServicio);
-    final servicioCtrl = TextEditingController();
-    final montoCtrl = TextEditingController();
-    final detalleCtrl = TextEditingController();
-
-    final enviar = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: colors.surface,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(
-            20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 28),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                      color: colors.divider,
-                      borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text('Enviar cotización',
-                  style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                      color: colors.textPrimary)),
-              const SizedBox(height: 4),
-              Text('Se envía como PDF al chat, con el formato de OkVenta.',
-                  style: TextStyle(fontSize: 12, color: colors.grayMid)),
-              const SizedBox(height: 16),
-              _campo('Nombre de empresa', empresaCtrl),
-              const SizedBox(height: 12),
-              _campo('Servicio cotizado', servicioCtrl),
-              const SizedBox(height: 12),
-              _campo('Monto del servicio', montoCtrl,
-                  teclado: TextInputType.number),
-              const SizedBox(height: 12),
-              _campo('Detalle', detalleCtrl, lineas: 4),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('Enviar cotización'),
-                ),
-              ),
-            ],
-          ),
+    // Editor completo (ítems, descuento, condiciones, PDF con Okventín). El
+    // cliente viene dado por el hilo: se cotiza a la persona del chat.
+    final enviada = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CotizacionEditorScreen(
+          servicioId: widget.servicioId,
+          proveedorId: widget.proveedorId,
+          clienteId: widget.clienteId,
+          empresa: widget.nombreProveedor.isNotEmpty
+              ? widget.nombreProveedor
+              : widget.tituloServicio,
+          clienteNombre: widget.nombreCliente,
         ),
       ),
     );
-
-    if (enviar != true || _userId == null) return;
-
-    final monto = double.tryParse(
-        montoCtrl.text.replaceAll(RegExp(r'[^\d]'), ''));
-    if (servicioCtrl.text.trim().isEmpty || monto == null || monto <= 0) {
-      _aviso('Falta el servicio o el monto.', error: true);
-      return;
-    }
-
-    try {
-      await ApiService.enviarCotizacion(
-        servicioId: widget.servicioId,
-        proveedorId: widget.proveedorId,
-        clienteId: clienteId,
-        servicioCotizado: servicioCtrl.text.trim(),
-        monto: monto,
-        detalle: detalleCtrl.text.trim(),
-        empresa: empresaCtrl.text.trim(),
-      );
+    if (enviada == true) {
       await _cargar();
       _alFinal();
       _aviso('Cotización enviada');
-    } catch (e) {
-      _aviso('$e'.replaceFirst('Exception: ', ''), error: true);
     }
   }
 

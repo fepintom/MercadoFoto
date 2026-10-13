@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' show FontFeature;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,6 +10,7 @@ import '../services/api_service.dart';
 import '../services/contenido_oculto_service.dart';
 import '../services/favoritos_service.dart';
 import '../services/session_service.dart';
+import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/avatar_usuario.dart';
 import '../widgets/net_image.dart';
@@ -69,9 +71,15 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
   bool _fijadosAbiertos = false;
   static const _kVerTop = 'comunidad_ver_top';
 
-  /// Búsqueda dentro del chat (lupa de la caja de texto).
+  /// Buscar en el chat, como Ctrl+F: no esconde mensajes, resalta lo que
+  /// coincide y se recorre con ▲▼ ("3/12"). Cada palabra confirmada queda
+  /// como pastilla a la derecha del campo (p. ej. "@fernando" + "parrilla").
   bool _buscando = false;
   final _busquedaCtrl = TextEditingController();
+  final List<String> _terminos = [];
+  List<_Coincidencia> _hits = const [];
+  int _hitActual = -1;
+  final Map<int, GlobalKey> _llaves = {};
   final _ctrl = TextEditingController();
   final _scroll = ScrollController();
   final _foco = FocusNode();
@@ -462,9 +470,10 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
           // para el chat. Una barra fina con 🔥 TOP (ojo para esconder) y
           // 📌 Fijados (desplegable).
           if (!escribiendo) _barraSuperior(hayFijados),
-          if (!escribiendo && _verTop)
+          if (!escribiendo && !_buscando && _verTop)
             MasVendidosFranja(version: _versionTop, compacta: true),
-          if (!escribiendo && hayFijados && _fijadosAbiertos) _franjaFijados(),
+          if (!escribiendo && !_buscando && hayFijados && _fijadosAbiertos)
+            _franjaFijados(),
           if (_buscando) _barraBusqueda(),
           Expanded(
             child: _cargando
@@ -482,24 +491,13 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                           child: FondoPixelOkventin(activo: widget.activa),
                         ),
                         Builder(builder: (_) {
-                          final q = _busquedaCtrl.text.trim().toLowerCase();
                           _vista = _mensajes
                               .where((m) =>
                                   !ContenidoOcultoService.mensajeOculto(m))
-                              .where((m) =>
-                                  !_buscando ||
-                                  q.isEmpty ||
-                                  '${m['texto'] ?? ''} ${m['ancla_titulo'] ?? ''} ${m['nombre'] ?? ''}'
-                                      .toLowerCase()
-                                      .contains(q))
                               .toList();
-                          if (_buscando && q.isNotEmpty && _vista.isEmpty) {
-                            return Center(
-                              child: Text('Sin mensajes con "$q"',
-                                  style: TextStyle(
-                                      color: colors.textPrimary,
-                                      fontWeight: FontWeight.w600)),
-                            );
+                          _hits = _calcularHits();
+                          if (_hitActual >= _hits.length) {
+                            _hitActual = _hits.length - 1;
                           }
                           return ListView.builder(
                             controller: _scroll,
@@ -561,7 +559,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                 color: _verTop ? colors.textPrimary : colors.grayMid),
           ]),
         ),
-        const Spacer(),
+        const SizedBox(width: 8),
         if (hayFijados)
           GestureDetector(
             behavior: HitTestBehavior.opaque,
@@ -593,41 +591,312 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
               ]),
             ),
           ),
+        const Spacer(),
+        // Buscar en el chat / filtrar por @mención (Ctrl+F)
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => _buscando
+              ? _cerrarBusqueda()
+              : setState(() => _buscando = true),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(8, 4, 10, 4),
+            decoration: BoxDecoration(
+              color: _buscando
+                  ? colors.primary.withValues(alpha: 0.10)
+                  : colors.background,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: colors.divider),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.search_rounded, size: 16, color: colors.primary),
+              const SizedBox(width: 3),
+              Text('@',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      color: colors.textPrimary)),
+            ]),
+          ),
+        ),
       ]),
     );
   }
 
+  // ── Buscar en el chat (Ctrl+F) ─────────────────────────────────────────
+
+  /// Minúsculas y sin tildes, letra por letra (mismo largo que el original,
+  /// así las posiciones sirven para resaltar).
+  static String _norm(String t) {
+    const de = 'áàäâéèëêíìïîóòöôúùüûñÁÀÄÂÉÈËÊÍÌÏÎÓÒÖÔÚÙÜÛÑ';
+    const a = 'aaaaeeeeiiiioooouuuunaaaaeeeeiiiioooouuuun';
+    final b = StringBuffer();
+    for (final ch in t.split('')) {
+      final i = de.indexOf(ch);
+      b.write(i >= 0 ? a[i] : ch.toLowerCase());
+    }
+    return b.toString();
+  }
+
+  List<String> get _terminosActivos {
+    final vivo = _busquedaCtrl.text.trim();
+    return [
+      ..._terminos,
+      if (vivo.isNotEmpty && !_terminos.contains(vivo)) vivo,
+    ].map(_norm).where((t) => t.isNotEmpty).toList();
+  }
+
+  /// Todas las apariciones de los términos, en orden del chat.
+  List<_Coincidencia> _calcularHits() {
+    if (!_buscando) return const [];
+    final ts = _terminosActivos;
+    if (ts.isEmpty) return const [];
+    final out = <_Coincidencia>[];
+    for (final m in _vista) {
+      final id = (m['id'] as num?)?.toInt();
+      if (id == null) continue;
+      for (final r in _rangos(_norm((m['texto'] ?? '').toString()), ts)) {
+        out.add(_Coincidencia(id, r.start));
+      }
+    }
+    return out;
+  }
+
+  /// Rangos [inicio, fin) donde aparece algún término (sin superponerse).
+  static List<TextRange> _rangos(String textoNorm, List<String> ts) {
+    final r = <TextRange>[];
+    for (final t in ts) {
+      var i = textoNorm.indexOf(t);
+      while (i >= 0) {
+        r.add(TextRange(start: i, end: i + t.length));
+        i = textoNorm.indexOf(t, i + t.length);
+      }
+    }
+    r.sort((x, y) => x.start.compareTo(y.start));
+    final limpio = <TextRange>[];
+    for (final x in r) {
+      if (limpio.isNotEmpty && x.start < limpio.last.end) continue;
+      limpio.add(x);
+    }
+    return limpio;
+  }
+
+  void _agregarTermino() {
+    final t = _busquedaCtrl.text.trim();
+    if (t.isEmpty) return;
+    setState(() {
+      if (!_terminos.contains(t)) _terminos.add(t);
+      _busquedaCtrl.clear();
+      _hitActual = -1;
+    });
+    _irAlUltimoHit();
+  }
+
+  void _irAlUltimoHit() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _hits.isEmpty) return;
+      setState(() => _hitActual = _hits.length - 1);
+      _irAHit();
+    });
+  }
+
+  void _moverHit(int paso) {
+    if (_hits.isEmpty) return;
+    HapticFeedback.selectionClick();
+    setState(() {
+      _hitActual = ((_hitActual < 0 ? _hits.length : _hitActual) + paso) %
+          _hits.length;
+    });
+    _irAHit();
+  }
+
+  /// Lleva el chat hasta el mensaje de la coincidencia actual.
+  void _irAHit() {
+    if (_hitActual < 0 || _hitActual >= _hits.length) return;
+    final id = _hits[_hitActual].mensajeId;
+    final idx = _vista.indexWhere((m) => m['id'] == id);
+    if (idx < 0) return;
+    final llave = _llaves[id];
+    if (llave?.currentContext != null) {
+      Scrollable.ensureVisible(llave!.currentContext!,
+          alignment: 0.4, duration: const Duration(milliseconds: 250));
+      return;
+    }
+    // No está construido: se salta a la zona aproximada y luego se ajusta.
+    if (_scroll.hasClients && _vista.length > 1) {
+      _scroll.jumpTo(_scroll.position.maxScrollExtent * idx / (_vista.length - 1));
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final c = _llaves[id]?.currentContext;
+      if (c != null) {
+        Scrollable.ensureVisible(c,
+            alignment: 0.4, duration: const Duration(milliseconds: 200));
+      }
+    });
+  }
+
+  void _cerrarBusqueda() => setState(() {
+        _buscando = false;
+        _busquedaCtrl.clear();
+        _terminos.clear();
+        _hitActual = -1;
+      });
+
   Widget _barraBusqueda() {
+    final total = _hits.length;
+    final hayTerminos = _terminosActivos.isNotEmpty;
+    Widget flecha(IconData i, int paso) => SizedBox(
+          width: 32,
+          height: 32,
+          child: IconButton(
+            padding: EdgeInsets.zero,
+            onPressed: total == 0 ? null : () => _moverHit(paso),
+            icon: Icon(i,
+                size: 22,
+                color: total == 0 ? colors.grayMid : colors.textPrimary),
+          ),
+        );
     return Container(
       color: colors.surface,
-      padding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
+      padding: const EdgeInsets.fromLTRB(10, 4, 4, 6),
       child: Row(children: [
-        Icon(Icons.search_rounded, size: 20, color: colors.primary),
-        const SizedBox(width: 8),
         Expanded(
-          child: TextField(
-            controller: _busquedaCtrl,
-            autofocus: true,
-            onChanged: (_) => setState(() {}),
-            style: TextStyle(fontSize: 14, color: colors.textPrimary),
-            decoration: InputDecoration(
-              isDense: true,
-              border: InputBorder.none,
-              hintText: 'Buscar en la conversación…',
-              hintStyle: TextStyle(color: colors.grayMid),
-            ),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            reverse: true,
+            child: Row(children: [
+              // El campo (pastilla) y, a su derecha, las palabras ya puestas.
+              Container(
+                width: 150,
+                height: 34,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: colors.background,
+                  borderRadius: BorderRadius.circular(17),
+                  border: Border.all(color: colors.primary.withValues(alpha: 0.5)),
+                ),
+                child: Row(children: [
+                  Icon(Icons.search_rounded, size: 17, color: colors.primary),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: TextField(
+                      controller: _busquedaCtrl,
+                      autofocus: true,
+                      textInputAction: TextInputAction.search,
+                      onChanged: (_) {
+                        setState(() => _hitActual = -1);
+                        _irAlUltimoHit();
+                      },
+                      onSubmitted: (_) => _agregarTermino(),
+                      style: TextStyle(fontSize: 13.5, color: colors.textPrimary),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        border: InputBorder.none,
+                        hintText: 'Buscar o @nombre',
+                        hintStyle:
+                            TextStyle(fontSize: 13, color: colors.grayMid),
+                      ),
+                    ),
+                  ),
+                ]),
+              ),
+              for (final t in _terminos) ...[
+                const SizedBox(width: 6),
+                Container(
+                  height: 30,
+                  padding: const EdgeInsets.fromLTRB(10, 0, 4, 0),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFE08A),
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text(t,
+                        style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1C1C1E))),
+                    GestureDetector(
+                      onTap: () => setState(() {
+                        _terminos.remove(t);
+                        _hitActual = -1;
+                      }),
+                      child: const Padding(
+                        padding: EdgeInsets.all(3),
+                        child: Icon(Icons.close_rounded,
+                            size: 15, color: Color(0xFF1C1C1E)),
+                      ),
+                    ),
+                  ]),
+                ),
+              ],
+            ]),
           ),
         ),
-        IconButton(
-          visualDensity: VisualDensity.compact,
-          icon: Icon(Icons.close_rounded, color: colors.textPrimary),
-          onPressed: () => setState(() {
-            _buscando = false;
-            _busquedaCtrl.clear();
-          }),
+        const SizedBox(width: 6),
+        Text(
+            !hayTerminos
+                ? ''
+                : total == 0
+                    ? '0/0'
+                    : '${_hitActual < 0 ? total : _hitActual + 1}/$total',
+            style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w800,
+                fontFeatures: const [FontFeature.tabularFigures()],
+                color: total == 0 && hayTerminos
+                    ? colors.primary
+                    : colors.textPrimary)),
+        flecha(Icons.keyboard_arrow_up_rounded, -1),
+        flecha(Icons.keyboard_arrow_down_rounded, 1),
+        SizedBox(
+          width: 32,
+          height: 32,
+          child: IconButton(
+            padding: EdgeInsets.zero,
+            icon: Icon(Icons.close_rounded, size: 20, color: colors.textPrimary),
+            onPressed: _cerrarBusqueda,
+          ),
         ),
       ]),
     );
+  }
+
+  /// Texto con las coincidencias de la búsqueda resaltadas (amarillo; la
+  /// actual en naranjo). [idMsg] y [desplaz] ubican cada trozo en el
+  /// mensaje para saber cuál es la coincidencia actual.
+  List<InlineSpan> _resaltar(String trozo, int? idMsg, int desplaz,
+      {TextStyle? estilo}) {
+    final ts = _buscando ? _terminosActivos : const <String>[];
+    if (ts.isEmpty || idMsg == null) {
+      return [TextSpan(text: trozo, style: estilo)];
+    }
+    final actual = (_hitActual >= 0 && _hitActual < _hits.length)
+        ? _hits[_hitActual]
+        : null;
+    final out = <InlineSpan>[];
+    var i = 0;
+    for (final r in _rangos(_norm(trozo), ts)) {
+      if (r.start > i) {
+        out.add(TextSpan(text: trozo.substring(i, r.start), style: estilo));
+      }
+      final esActual = actual != null &&
+          actual.mensajeId == idMsg &&
+          actual.inicio == desplaz + r.start;
+      out.add(TextSpan(
+        text: trozo.substring(r.start, r.end),
+        style: (estilo ?? const TextStyle()).copyWith(
+          backgroundColor:
+              esActual ? const Color(0xFFFF9F0A) : const Color(0xFFFFE08A),
+          color: const Color(0xFF1C1C1E),
+          decoration: TextDecoration.underline,
+          decorationColor: const Color(0xFF1C1C1E),
+        ),
+      ));
+      i = r.end;
+    }
+    if (i < trozo.length) {
+      out.add(TextSpan(text: trozo.substring(i), style: estilo));
+    }
+    return out;
   }
 
   // ── Fijados: comentarios fijados + lo que la gente ancló ───────────────
@@ -871,10 +1140,14 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
             .where((x) => x != null && '$x'.trim().isNotEmpty)
             .join(' ');
 
+    // Lo mío en rojo; en modo oscuro uno más apagado (el rojo vivo
+    // encandilaba sobre negro), del tono del botón de Comunidad.
     final fondo = esBot
         ? colors.carbon
         : mio
-            ? colors.primary
+            ? (ThemeService.isDarkMode
+                ? const Color(0xFFA3302D)
+                : colors.primary)
             : colors.surface;
     final colorTexto = (esBot || mio) ? Colors.white : colors.textPrimary;
 
@@ -941,7 +1214,8 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
               ],
               if ((m['texto'] ?? '').toString().isNotEmpty)
                 _textoConMenciones(m['texto'].toString(), colorTexto,
-                    (m['menciones'] as List?) ?? const []),
+                    (m['menciones'] as List?) ?? const [],
+                    idMsg: (m['id'] as num?)?.toInt()),
               if (m['ancla_tipo'] != null) ...[
                 if ((m['texto'] ?? '').toString().isNotEmpty)
                   const SizedBox(height: 6),
@@ -970,7 +1244,11 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
       ],
     );
 
+    final idMsg = (m['id'] as num?)?.toInt();
     return GestureDetector(
+      key: idMsg == null
+          ? null
+          : _llaves.putIfAbsent(idMsg, () => GlobalKey()),
       onLongPress: () => _menuMensaje(m),
       child: Padding(
       padding: EdgeInsets.only(top: mismoAutor ? 2 : 8),
@@ -1183,7 +1461,8 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
 
   /// Resalta las @menciones. Las de usuarios reales (las que el servidor
   /// confirmó) se pueden tocar y abren su perfil.
-  Widget _textoConMenciones(String texto, Color color, List menciones) {
+  Widget _textoConMenciones(String texto, Color color, List menciones,
+      {int? idMsg}) {
     final porHandle = <String, int>{
       for (final x in menciones)
         if (x is Map && x['handle'] != null && x['id'] is num)
@@ -1193,7 +1472,9 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     final spans = <InlineSpan>[];
     var i = 0;
     for (final m in _reMencion.allMatches(texto)) {
-      if (m.start > i) spans.add(TextSpan(text: texto.substring(i, m.start)));
+      if (m.start > i) {
+        spans.addAll(_resaltar(texto.substring(i, m.start), idMsg, i));
+      }
       final token = m.group(0)!;
       final handle = token.substring(1).toLowerCase();
       final uid = porHandle[handle];
@@ -1209,17 +1490,23 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
           baseline: TextBaseline.alphabetic,
           child: GestureDetector(
             onTap: () => _abrirPerfil({'user_id': uid}, token.substring(1)),
-            child: Text(token, style: estilo.merge(resaltado)),
+            child: Text.rich(
+                TextSpan(
+                    children: _resaltar(token, idMsg, m.start,
+                        estilo: estilo.merge(resaltado))),
+                style: estilo.merge(resaltado)),
           ),
         ));
       } else if (esBot || porHandle.isEmpty) {
-        spans.add(TextSpan(text: token, style: resaltado));
+        spans.addAll(_resaltar(token, idMsg, m.start, estilo: resaltado));
       } else {
-        spans.add(TextSpan(text: token));
+        spans.addAll(_resaltar(token, idMsg, m.start));
       }
       i = m.end;
     }
-    if (i < texto.length) spans.add(TextSpan(text: texto.substring(i)));
+    if (i < texto.length) {
+      spans.addAll(_resaltar(texto.substring(i), idMsg, i));
+    }
     return Text.rich(TextSpan(children: spans), style: estilo);
   }
 
@@ -1939,4 +2226,11 @@ class _SelectorAnclaState extends State<_SelectorAncla> {
       trailing: Icon(Icons.push_pin_outlined, size: 18, color: colors.primary),
     );
   }
+}
+
+/// Una aparición de lo buscado: en qué mensaje y en qué posición del texto.
+class _Coincidencia {
+  final int mensajeId;
+  final int inicio;
+  const _Coincidencia(this.mensajeId, this.inicio);
 }

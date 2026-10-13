@@ -15,6 +15,10 @@ import 'barra_radio_km.dart';
 Color colorIconoPastilla() =>
     ThemeService.isDarkMode ? Colors.white : colors.primarySuave;
 
+/// Rojo de los íconos de categoría (en ambos modos: dan el mensaje visual).
+Color colorIconoCategoria() =>
+    ThemeService.isDarkMode ? const Color(0xFFFF5A55) : colors.primary;
+
 /// Qué panel está desplegado bajo la fila de filtros.
 enum PanelFiltro { ninguno, distancia, categorias }
 
@@ -27,9 +31,9 @@ class OpcionCategoria {
 
 /// La fila de filtros de OkMarket y OkServicios, en un solo lugar.
 ///
-///   [◎ Filtro de búsqueda] [Categorías ▼] [Biobío] [Hogar] ...  [+ Publicar]
+///   [◎ Radio de búsqueda] [Categorías ▼] [Biobío] [Hogar] ...  [+ Publicar]
 ///
-/// - "Filtro de búsqueda" y "Categorías" despliegan su panel debajo.
+/// - "Radio de búsqueda" y "Categorías" despliegan su panel debajo.
 ///   El filtro tiene dos modos: "Cerca de mí" (radio en km desde el GPS) y
 ///   "Por zona" (una o varias regiones, para buscar lejos de donde uno
 ///   está; p. ej. comprarle algo a un pariente que vive en otra región).
@@ -120,7 +124,7 @@ class BarraFiltros extends StatelessWidget {
   static const double altoModos = 40;
   static const double altoPanelDistancia = 50;
   static const double altoPanelRegiones = 44;
-  static const double altoPanelCategorias = 44;
+  static const double altoPanelCategorias = 86;
   static const double altoExtra = 36;
 
   /// Alto total según lo desplegado. Lo necesita el SliverPersistentHeader.
@@ -181,6 +185,7 @@ class BarraFiltros extends StatelessWidget {
                             key: ValueKey('cat-$c'),
                             etiqueta: c,
                             icono: _icono(c),
+                            soloIcono: true,
                             onQuitar: () => onQuitarCategoria(c),
                           ),
                         ],
@@ -238,7 +243,7 @@ class BarraFiltros extends StatelessWidget {
       return _PastillaBoton(
         icono: Icons.map_outlined,
         texto: !activo
-            ? 'Filtro de búsqueda'
+            ? 'Radio de búsqueda'
             : regiones.length == 1
                 ? 'Zona'
                 : '${regiones.length} regiones',
@@ -251,7 +256,7 @@ class BarraFiltros extends StatelessWidget {
     final encendido = distanciaActiva && !sinGps;
     final texto = encendido
         ? BarraRadioKm.formatRadio(radioKm)
-        : 'Filtro de búsqueda';
+        : 'Radio de búsqueda';
     return _PastillaBoton(
       icono: Icons.near_me_rounded,
       texto: texto,
@@ -420,58 +425,83 @@ class BarraFiltros extends StatelessWidget {
 
   // ── Panel de categorías: una sola línea que se desliza ─────────────────
 
+  /// Las categorías como íconos redondos con su nombre abajo (se
+  /// reconocen sin leer). Las elegidas quedan rellenas en rojo con ✓;
+  /// tocarlas de nuevo las quita.
   Widget _carruselCategorias() {
-    final disponibles =
-        categorias.where((c) => !seleccionadas.contains(c.nombre)).toList();
     return Container(
       height: altoPanelCategorias,
       decoration: BoxDecoration(
         border: Border(top: BorderSide(color: colors.divider, width: 0.5)),
       ),
-      child: disponibles.isEmpty
-          ? Center(
-              child: Text('Todas las categorías están en el filtro',
-                  style: TextStyle(fontSize: 12, color: colors.textPrimary)))
-          : ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(12, 7, 6, 7),
-              itemCount: disponibles.length,
-              itemBuilder: (_, i) {
-                final c = disponibles[i];
-                return Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      onAgregarCategoria(c.nombre);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+        itemCount: categorias.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (_, i) {
+          final c = categorias[i];
+          final elegida = seleccionadas.contains(c.nombre);
+          return GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              elegida
+                  ? onQuitarCategoria(c.nombre)
+                  : onAgregarCategoria(c.nombre);
+            },
+            child: SizedBox(
+              width: 66,
+              child: Column(
+                children: [
+                  Stack(clipBehavior: Clip.none, children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 160),
+                      width: 50,
+                      height: 50,
                       decoration: BoxDecoration(
-                        color: colors.background,
-                        borderRadius: BorderRadius.circular(16),
+                        color: elegida
+                            ? colors.primary
+                            : (ThemeService.isDarkMode
+                                ? const Color(0xFF2C2C2E)
+                                : const Color(0xFFEDEDF0)),
+                        shape: BoxShape.circle,
                       ),
-                      alignment: Alignment.center,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(c.icono, size: 13, color: colorIconoPastilla()),
-                          const SizedBox(width: 5),
-                          Text(c.nombre,
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: colors.textPrimary)),
-                          const SizedBox(width: 3),
-                          Icon(Icons.add_rounded,
-                              size: 13, color: colorIconoPastilla()),
-                        ],
-                      ),
+                      child: Icon(c.icono,
+                          size: 25,
+                          color: elegida ? Colors.white : colorIconoCategoria()),
                     ),
-                  ),
-                );
-              },
+                    if (elegida)
+                      Positioned(
+                        right: -2,
+                        top: -2,
+                        child: Container(
+                          width: 18,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: colors.primary, width: 1.5),
+                          ),
+                          child: Icon(Icons.check_rounded,
+                              size: 12, color: colors.primary),
+                        ),
+                      ),
+                  ]),
+                  const SizedBox(height: 4),
+                  Text(c.nombre,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: elegida ? FontWeight.w800 : FontWeight.w500,
+                          color: colors.textPrimary)),
+                ],
+              ),
             ),
+          );
+        },
+      ),
     );
   }
 }
@@ -603,6 +633,10 @@ class PastillaQuitable extends StatefulWidget {
   final IconData icono;
   final VoidCallback onQuitar;
 
+  /// Solo el ícono (círculo rojo), sin texto: las categorías se reconocen
+  /// por su dibujo. Al tocarla, el globo dice cuál es.
+  final bool soloIcono;
+
   /// Distancia desde el punto de partida a la que soltar ya la quita.
   final double distanciaQuitar;
 
@@ -611,6 +645,7 @@ class PastillaQuitable extends StatefulWidget {
     required this.etiqueta,
     required this.icono,
     required this.onQuitar,
+    this.soloIcono = false,
     this.distanciaQuitar = 44,
   });
 
@@ -648,7 +683,9 @@ class _PastillaQuitableState extends State<PastillaQuitable> {
     _ayuda = OverlayEntry(
       builder: (_) => _GloboAyuda(
         ancla: pos + Offset(tam.width / 2, 0),
-        texto: 'Arrastra para eliminar el filtro',
+        texto: widget.soloIcono
+            ? '${widget.etiqueta} · arrastra para quitar'
+            : 'Arrastra para eliminar el filtro',
         onFin: () {
           _ayuda?.remove();
           _ayuda = null;
@@ -673,7 +710,10 @@ class _PastillaQuitableState extends State<PastillaQuitable> {
         tam: _tam,
         estado: _drag,
         distanciaQuitar: widget.distanciaQuitar,
-        pastilla: _Pastilla(etiqueta: widget.etiqueta, icono: widget.icono),
+        pastilla: _Pastilla(
+            etiqueta: widget.etiqueta,
+            icono: widget.icono,
+            soloIcono: widget.soloIcono),
         onFin: _finAnimacion,
       ),
     );
@@ -727,7 +767,10 @@ class _PastillaQuitableState extends State<PastillaQuitable> {
         },
         child: Opacity(
           opacity: _oculta ? 0 : 1,
-          child: _Pastilla(etiqueta: widget.etiqueta, icono: widget.icono),
+          child: _Pastilla(
+              etiqueta: widget.etiqueta,
+              icono: widget.icono,
+              soloIcono: widget.soloIcono),
         ),
       ),
     );
@@ -745,10 +788,29 @@ class _EstadoArrastre {
 class _Pastilla extends StatelessWidget {
   final String etiqueta;
   final IconData icono;
-  const _Pastilla({required this.etiqueta, required this.icono});
+  final bool soloIcono;
+  const _Pastilla(
+      {required this.etiqueta, required this.icono, this.soloIcono = false});
 
   @override
   Widget build(BuildContext context) {
+    if (soloIcono) {
+      return Container(
+        width: 30,
+        height: 30,
+        decoration: BoxDecoration(
+          color: colors.primary,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+                color: colors.primary.withValues(alpha: 0.3),
+                blurRadius: 4,
+                offset: const Offset(0, 1)),
+          ],
+        ),
+        child: Icon(icono, size: 17, color: Colors.white),
+      );
+    }
     return Container(
       height: 30,
       padding: const EdgeInsets.symmetric(horizontal: 11),

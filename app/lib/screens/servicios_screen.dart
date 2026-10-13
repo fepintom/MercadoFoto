@@ -17,6 +17,7 @@ import 'servicio_detalle_screen.dart';
 import '../widgets/banner_publicidad.dart';
 import '../widgets/barra_filtros.dart';
 import '../widgets/pastilla_etiqueta.dart';
+import '../widgets/fila_resultado.dart';
 import '../widgets/insignia.dart';
 import '../widgets/acciones_servicio.dart';
 import '../widgets/avatar_historia.dart';
@@ -724,6 +725,47 @@ class _ListaServiciosState extends State<_ListaServicios> {
       builder: (_, comoLista, __) => ValueListenableBuilder<int>(
         valueListenable: VistaServicios.columnasNotifier,
         builder: (_, cols, __) {
+          // Buscando por texto: filas (nombre completo), como OkMarket.
+          if (_query.isNotEmpty) {
+            return SliverPadding(
+              padding: const EdgeInsets.fromLTRB(6, 6, 6, _kPaddingInferior),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (_, i) {
+                    final s = servicios[i];
+                    final fotos =
+                        s['fotos'] is List ? s['fotos'] as List : const [];
+                    final valor = (s['valor'] as num?)?.toDouble() ?? 0;
+                    final modalidad =
+                        s['modalidad'] == 'hora' ? 'hora' : 'servicio';
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: FilaResultado(
+                        imagenUrl:
+                            fotos.isNotEmpty ? fotos.first.toString() : null,
+                        iconoSinFoto: Icons.handyman_rounded,
+                        titulo: (s['titulo'] ?? '').toString(),
+                        precio: valor > 0
+                            ? '${formatPrecio(valor)} / $modalidad'
+                            : 'A cotizar',
+                        colorPrecio: colors.primary,
+                        categoria: s['categoria']?.toString(),
+                        lugar: (s['comuna'] ?? s['region'])?.toString(),
+                        vistas: (s['vistas'] as num?)?.toInt() ?? 0,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  ServicioDetalleScreen(servicio: s)),
+                        ),
+                      ),
+                    );
+                  },
+                  childCount: servicios.length,
+                ),
+              ),
+            );
+          }
           final columnas = cols.clamp(2, 4);
           const gap = 6.0;
           return SliverPadding(

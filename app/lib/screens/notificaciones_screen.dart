@@ -55,6 +55,24 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
   bool _cargando = true;
   bool _error = false;
   final List<String> _filtros = [];
+  final _buscar = TextEditingController();
+
+  @override
+  void dispose() {
+    _buscar.dispose();
+    super.dispose();
+  }
+
+  static String _norm(String t) {
+    const de = 'áàäâéèëêíìïîóòöôúùüûñ';
+    const a = 'aaaaeeeeiiiioooouuuun';
+    final b = StringBuffer();
+    for (final ch in t.toLowerCase().split('')) {
+      final i = de.indexOf(ch);
+      b.write(i >= 0 ? a[i] : ch);
+    }
+    return b.toString();
+  }
   PanelFiltro _panel = PanelFiltro.ninguno;
 
   @override
@@ -102,11 +120,21 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
   }
 
   List<Map<String, dynamic>> get _visibles {
-    if (_filtros.isEmpty) return _notifs;
-    final claves = _filtros.map((f) => _kClave[f]).toSet();
-    return _notifs
-        .where((n) => claves.contains((n['categoria'] ?? 'otros').toString()))
+    // Palabras clave: todas deben aparecer (sin tildes ni mayúsculas).
+    final palabras = _norm(_buscar.text)
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
         .toList();
+    final claves = _filtros.map((f) => _kClave[f]).toSet();
+    return _notifs.where((n) {
+      if (claves.isNotEmpty &&
+          !claves.contains((n['categoria'] ?? 'otros').toString())) {
+        return false;
+      }
+      if (palabras.isEmpty) return true;
+      final t = _norm((n['mensaje'] ?? '').toString());
+      return palabras.every(t.contains);
+    }).toList();
   }
 
   // ── Apariencia ──────────────────────────────────────────────────────────
@@ -281,6 +309,42 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
               ),
             ]),
           ),
+          // Buscar por palabra clave
+          Container(
+            color: colors.surface,
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 2),
+            child: TextField(
+              controller: _buscar,
+              onChanged: (_) => setState(() {}),
+              textInputAction: TextInputAction.search,
+              style: TextStyle(fontSize: 14, color: colors.textPrimary),
+              decoration: InputDecoration(
+                isDense: true,
+                hintText: 'Buscar por palabra clave…',
+                hintStyle: TextStyle(color: colors.grayMid),
+                prefixIcon: Icon(Icons.search_rounded,
+                    size: 21, color: colors.primary),
+                suffixIcon: _buscar.text.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: Icon(Icons.close_rounded,
+                            size: 18, color: colors.textPrimary),
+                        onPressed: () => setState(_buscar.clear),
+                      ),
+                filled: true,
+                fillColor: colors.background,
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  borderSide: BorderSide(color: colors.divider),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  borderSide: BorderSide(color: colors.divider),
+                ),
+              ),
+            ),
+          ),
           BarraFiltros(
             mostrarDistancia: false,
             etiquetaCategorias: 'Filtrar',
@@ -316,12 +380,15 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
         onRefresh: _cargar,
         child: ListView(children: [
           const SizedBox(height: 80),
-          _filtros.isEmpty
+          _filtros.isEmpty && _buscar.text.trim().isEmpty
               ? _vacio(Icons.notifications_none_rounded, 'Sin notificaciones aún',
                   'Cuando tengas actividad, aparecerá aquí')
-              : _vacio(Icons.filter_alt_off_outlined,
-                  'Nada en ${_filtros.join(' y ').toLowerCase()}',
-                  'Quita un filtro arrastrándolo fuera'),
+              : _vacio(
+                  Icons.filter_alt_off_outlined,
+                  _buscar.text.trim().isNotEmpty
+                      ? 'Nada con "${_buscar.text.trim()}"'
+                      : 'Nada en ${_filtros.join(' y ').toLowerCase()}',
+                  'Cambia la búsqueda o quita un filtro'),
         ]),
       );
     }
