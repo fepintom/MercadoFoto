@@ -269,6 +269,7 @@ from routers.historias import router as historias_router, init_historias_db
 from routers.vistas import router as vistas_router, init_vistas_db, agregar_vistas
 from routers.privados import router as privados_router, init_privados_db
 from routers.favoritos_servicios import router as favoritos_servicios_router, init_favoritos_servicios_db
+from routers.fotos_estilo import router as fotos_estilo_router, init_fotos_estilo_db, lanzar_en_segundo_plano as fotos_estilo_auto
 from database.ordenes import (
     liberar_inicial as ordenes_liberar_inicial,
     liberar_retencion as ordenes_liberar_retencion,
@@ -444,6 +445,8 @@ init_catalogos_db()
 init_cotizaciones_db()
 init_comunidad_db()
 init_favoritos_servicios_db()
+init_fotos_estilo_db()
+fotos_estilo_auto()
 init_historias_db()
 init_vistas_db()
 init_privados_db()
@@ -484,6 +487,7 @@ app.include_router(historias_router)
 app.include_router(favoritos_servicios_router)
 app.include_router(vistas_router)
 app.include_router(privados_router)
+app.include_router(fotos_estilo_router)
 
 # --------------------------------------------------
 # MODELOS

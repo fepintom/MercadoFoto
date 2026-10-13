@@ -758,6 +758,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
                               builder: (_) =>
                                   ServicioDetalleScreen(servicio: s)),
                         ),
+                        iconos: _iconosFila(s),
                       ),
                     );
                   },
@@ -807,6 +808,53 @@ class _ListaServiciosState extends State<_ListaServicios> {
     );
   }
 
+
+  /// Corazón, compartir y cotizar bajo la categoría y la ubicación, igual
+  /// que en la tarjeta de la grilla.
+  List<Widget> _iconosFila(Map<String, dynamic> s) {
+    final id = (s['id'] as num?)?.toInt();
+    final provId = (s['user_id'] as num?)?.toInt();
+    final esMio = _miUserId != null && provId == _miUserId;
+    return [
+      ValueListenableBuilder<Set<int>>(
+        valueListenable: FavoritosService.idsServicios,
+        builder: (_, __, ___) {
+          final fav = FavoritosService.esServicio(id);
+          return FilaResultado.circulo(
+            icono:
+                fav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+            fondo: fav ? colors.primary : null,
+            color: fav ? Colors.white : null,
+            onTap: () async {
+              final uid = _miUserId;
+              if (uid == null || id == null) {
+                ScaffoldMessenger.of(context)
+                  ..clearSnackBars()
+                  ..showSnackBar(SnackBar(
+                    content: const Text('Inicia sesión para guardar servicios'),
+                    backgroundColor: colors.carbon,
+                    behavior: SnackBarBehavior.floating,
+                  ));
+                return;
+              }
+              await FavoritosService.alternarServicio(uid, id);
+            },
+          );
+        },
+      ),
+      FilaResultado.circulo(
+        icono: Icons.share_rounded,
+        onTap: () => AccionesServicio.compartir(context, s),
+      ),
+      if (!esMio)
+        FilaResultado.circulo(
+          icono: Icons.request_quote_rounded,
+          fondo: colors.primary,
+          color: Colors.white,
+          onTap: () => AccionesServicio.contactar(context, s),
+        ),
+    ];
+  }
 }
 
 /// Altos del encabezado anclado: buscador + fila de filtros (su alto

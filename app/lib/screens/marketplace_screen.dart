@@ -1183,6 +1183,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
 
   /// Un resultado de búsqueda como fila (nombre completo).
   Widget _filaBusqueda(Map<String, dynamic> item) {
+    final bool esMio = _miUserId != null && item['user_id'] == _miUserId;
+    final stock = item['stock'];
+    final bool agotado = (item['estado'] ?? 'disponible') != 'disponible' ||
+        (stock is num && stock <= 0);
     return FilaResultado(
       imagenUrl: (item['imagen_url'] ?? '').toString(),
       titulo: (item['titulo'] ?? '').toString(),
@@ -1194,7 +1198,24 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           ?.toString(),
       vistas: (item['vistas'] as num?)?.toInt() ?? 0,
       onTap: () => _abrirDetalle(item),
-      accion: _botonFavorito(item, 32),
+      iconos: [
+        _botonFavorito(item, 32),
+        if (!esMio && !agotado) _botonCarro(item, 32),
+        if (!esMio && AccionesProducto.requiereInstalacion(item))
+          Builder(
+            builder: (bctx) => _botonRedondo(
+              icono: Icons.handyman_rounded,
+              tam: 32,
+              color: colors.primary,
+              onTap: () => AccionesProducto.mostrarAvisoInstalacion(bctx, item),
+            ),
+          ),
+        _botonRedondo(
+          icono: Icons.share_rounded,
+          tam: 32,
+          onTap: () => AccionesProducto.compartir(context, item),
+        ),
+      ],
     );
   }
 

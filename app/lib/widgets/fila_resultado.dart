@@ -22,6 +22,10 @@ class FilaResultado extends StatelessWidget {
   final VoidCallback onTap;
   final Widget? accion;
 
+  /// Botones redondos (corazón, carro, instalación…) bajo la categoría y
+  /// la ubicación, como en la tarjeta de la grilla.
+  final List<Widget> iconos;
+
   const FilaResultado({
     super.key,
     required this.imagenUrl,
@@ -35,7 +39,39 @@ class FilaResultado extends StatelessWidget {
     this.lugar,
     this.vistas = 0,
     this.accion,
+    this.iconos = const [],
   });
+
+  /// Botón redondo blanco (o de color) para la fila de [iconos].
+  static Widget circulo({
+    required IconData icono,
+    required VoidCallback onTap,
+    double tam = 32,
+    Color? fondo,
+    Color? color,
+  }) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        width: tam,
+        height: tam,
+        decoration: BoxDecoration(
+          color: fondo ?? Colors.white,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 3,
+                offset: const Offset(0, 1)),
+          ],
+        ),
+        child: Icon(icono,
+            size: tam * 0.55, color: color ?? const Color(0xFF1B2A41)),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -129,6 +165,15 @@ class FilaResultado extends StatelessWidget {
                           ]),
                       ],
                     ),
+                    if (iconos.isNotEmpty) ...[
+                      const SizedBox(height: 7),
+                      Row(children: [
+                        for (var i = 0; i < iconos.length; i++) ...[
+                          if (i > 0) const SizedBox(width: 8),
+                          iconos[i],
+                        ],
+                      ]),
+                    ],
                   ],
                 ),
               ),

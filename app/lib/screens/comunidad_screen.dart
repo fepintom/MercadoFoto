@@ -296,7 +296,11 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     _timer = Timer.periodic(_kIntervalo, (_) => _traerNuevos());
   }
 
+  int _vueltas = 0;
+
   Future<void> _traerNuevos() async {
+    // Cada 4 vueltas revisa si taparon algún mensaje ya cargado.
+    if (++_vueltas % 4 == 0) _revisarCensurados();
     try {
       final nuevos =
           await ApiService.obtenerMensajesComunidad(despuesDe: _ultimoId);
@@ -313,6 +317,32 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
       }
       // Si el usuario está leyendo más arriba, no se lo lleva de un tirón.
       if (estabaAbajo) _alFinal();
+    } catch (_) {}
+  }
+
+  /// Deja un mensaje como censurado (sin su contenido).
+  void _tapar(Map<String, dynamic> m) {
+    m['censurado'] = true;
+    m['texto'] = '';
+    m['ubicacion'] = null;
+    m['menciones'] = const [];
+    m['ancla_tipo'] = null;
+  }
+
+  /// Tapa los mensajes que alguien denunció mientras estaban en pantalla.
+  Future<void> _revisarCensurados() async {
+    try {
+      final ids = await ApiService.obtenerCensuradosComunidad();
+      if (!mounted || ids.isEmpty) return;
+      var cambio = false;
+      for (final m in _mensajes) {
+        final id = (m['id'] as num?)?.toInt();
+        if (id != null && ids.contains(id) && m['censurado'] != true) {
+          _tapar(m);
+          cambio = true;
+        }
+      }
+      if (cambio) setState(() {});
     } catch (_) {}
   }
 
@@ -488,7 +518,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                         Positioned.fill(
                           child: FondoPixelOkventin(
                               activo: widget.activa,
-                              opacidad: ThemeService.isDarkMode ? 0.32 : 0.55),
+                              opacidad: ThemeService.isDarkMode ? 0.45 : 0.6),
                         ),
                         Builder(builder: (_) {
                           _vista = _mensajes
@@ -1150,12 +1180,16 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
         ? (oscuro ? const Color(0xFFFF8A80) : const Color(0xFFFFB4AB))
         : _colorDeUsuario((m['user_id'] as num?)?.toInt() ?? 0);
 
+    final censurado = m['censurado'] == true;
+    // Burbujas compactas (como WhatsApp): dejan ver el fondo animado.
     final contenido = Container(
       constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75),
-      padding: const EdgeInsets.fromLTRB(11, 7, 9, 5),
+          maxWidth: MediaQuery.of(context).size.width * 0.68),
+      padding: const EdgeInsets.fromLTRB(9, 5, 8, 3),
       decoration: BoxDecoration(
-        color: fondo,
+        color: censurado
+            ? (oscuro ? const Color(0xFF26272B) : const Color(0xFFE9E9EC))
+            : fondo,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(!mio && !mismoAutor ? 4 : 14),
           topRight: Radius.circular(mio && !mismoAutor ? 4 : 14),
@@ -1190,7 +1224,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                            fontSize: 14.5,
+                            fontSize: 13.5,
                             fontWeight: FontWeight.w700,
                             color: colorNombre)),
                   ),
@@ -1201,8 +1235,9 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                 ]),
               ),
             ),
-          if (m['responde_a'] != null) _cita(m, colorTexto),
-          if (m['ubicacion'] is Map) ...[
+          if (censurado) _mascaraCensura(oscuro),
+          if (!censurado && m['responde_a'] != null) _cita(m, colorTexto),
+          if (!censurado && m['ubicacion'] is Map) ...[
             Row(mainAxisSize: MainAxisSize.min, children: [
               Icon(Icons.location_on_rounded, size: 15, color: colorTexto),
               const SizedBox(width: 3),
@@ -1221,11 +1256,11 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
             if ((m['texto'] ?? '').toString().isNotEmpty)
               const SizedBox(height: 6),
           ],
-          if ((m['texto'] ?? '').toString().isNotEmpty)
+          if (!censurado && (m['texto'] ?? '').toString().isNotEmpty)
             _textoConMenciones(m['texto'].toString(), colorTexto,
                 (m['menciones'] as List?) ?? const [],
                 idMsg: (m['id'] as num?)?.toInt()),
-          if (m['ancla_tipo'] != null) ...[
+          if (!censurado && m['ancla_tipo'] != null) ...[
             if ((m['texto'] ?? '').toString().isNotEmpty)
               const SizedBox(height: 6),
             _tarjetaAncla(m),
@@ -1237,11 +1272,11 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
               behavior: HitTestBehavior.opaque,
               onTap: () => _menuMensaje(m),
               child: Padding(
-                padding: const EdgeInsets.only(top: 2, left: 12),
+                padding: const EdgeInsets.only(top: 1, left: 10),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Text(_hora(m['created_at']),
-                      style: TextStyle(fontSize: 11, color: colorHora)),
-                  Icon(Icons.expand_more_rounded, size: 16, color: colorHora),
+                      style: TextStyle(fontSize: 10, color: colorHora)),
+                  Icon(Icons.expand_more_rounded, size: 14, color: colorHora),
                 ]),
               ),
             ),
@@ -1257,7 +1292,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
           : _llaves.putIfAbsent(idMsg, () => GlobalKey()),
       onLongPress: () => _menuMensaje(m),
       child: Padding(
-      padding: EdgeInsets.only(top: mismoAutor ? 2 : 8),
+      padding: EdgeInsets.only(top: mismoAutor ? 2 : 6),
       child: Row(
         mainAxisAlignment:
             mio ? MainAxisAlignment.end : MainAxisAlignment.start,
@@ -1278,22 +1313,60 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     );
   }
 
+  /// Lo que queda de un mensaje denunciado: una máscara con el aviso.
+  Widget _mascaraCensura(bool oscuro) {
+    final c = oscuro ? Colors.white70 : const Color(0xFF55565C);
+    return Padding(
+      padding: const EdgeInsets.only(top: 1, bottom: 1),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 1),
+            child: Icon(Icons.block_rounded, size: 16, color: c),
+          ),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Censurado',
+                    style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        fontStyle: FontStyle.italic,
+                        color: c)),
+                const SizedBox(height: 2),
+                Text(
+                    'El equipo de OkVenta revisará este mensaje y '
+                    'contactará al vendedor.',
+                    style: TextStyle(
+                        fontSize: 12, height: 1.3, color: c)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Foto del autor (solo en el primer mensaje de cada tanda). Tocarla
   /// abre su perfil, igual que tocar el nombre.
   Widget _columnaAvatar(
       Map<String, dynamic> m, bool esBot, bool mismoAutor, String nombre) {
     return SizedBox(
-      width: 30,
+      width: 28,
       child: mismoAutor
           ? null
           : Padding(
-              padding: const EdgeInsets.only(top: 16),
+              padding: const EdgeInsets.only(top: 2),
               child: esBot
                   ? _avatarBot()
                   : GestureDetector(
                       onTap: () => _menuUsuario(m, nombre),
                       child: AvatarUsuario(
-                          fotoUrl: m['foto_url'], nombre: nombre, tamano: 28),
+                          fotoUrl: m['foto_url'], nombre: nombre, tamano: 26),
                     ),
             ),
     );
@@ -1475,7 +1548,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
         if (x is Map && x['handle'] != null && x['id'] is num)
           x['handle'].toString().toLowerCase(): (x['id'] as num).toInt(),
     };
-    final estilo = TextStyle(fontSize: 15.5, height: 1.3, color: color);
+    final estilo = TextStyle(fontSize: 14, height: 1.25, color: color);
     final spans = <InlineSpan>[];
     var i = 0;
     for (final m in _reMencion.allMatches(texto)) {
@@ -1527,9 +1600,11 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
         : [orig['nombre'], orig['apellido']]
             .where((x) => x != null && '$x'.trim().isNotEmpty)
             .join(' ');
-    final texto = (orig['texto'] ?? '').toString().isNotEmpty
-        ? orig['texto'].toString()
-        : (orig['ancla_titulo'] ?? '📌').toString();
+    final texto = orig['censurado'] == true
+        ? '🚫 Censurado'
+        : (orig['texto'] ?? '').toString().isNotEmpty
+            ? orig['texto'].toString()
+            : (orig['ancla_titulo'] ?? '📌').toString();
     final colorQuien = orig['es_bot'] == true
         ? const Color(0xFFFF8A80)
         : _colorDeUsuario((orig['user_id'] as num?)?.toInt() ?? 0);
@@ -1561,7 +1636,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                          fontSize: 13.5,
+                          fontSize: 12.5,
                           fontWeight: FontWeight.w700,
                           color: colorQuien)),
                   const SizedBox(height: 1),
@@ -1569,7 +1644,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                          fontSize: 13, color: color.withValues(alpha: 0.75))),
+                          fontSize: 12.5, color: color.withValues(alpha: 0.75))),
                 ],
               ),
             ),
@@ -1780,6 +1855,13 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
       ),
     );
     if (motivo == null || !mounted) return;
+    // Se tapa al tiro (aquí y, en el servidor, para todos).
+    final idMsg = (m['id'] as num?)?.toInt();
+    setState(() => _tapar(m));
+    if (idMsg != null) {
+      ApiService.denunciarMensajeComunidad(idMsg, uid, motivo)
+          .catchError((_) => false);
+    }
     try {
       await ApiService.crearTicketAyuda(
         userId: uid,
@@ -1790,7 +1872,8 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text('Gracias. El equipo de OkVenta lo va a revisar.'),
+        content: const Text(
+            'Mensaje censurado. El equipo de OkVenta lo revisará.'),
         backgroundColor: colors.carbon,
       ));
     } catch (_) {}

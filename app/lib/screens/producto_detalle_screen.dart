@@ -1973,19 +1973,22 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                   const SizedBox(height: 8),
                   _botonFoto(Icons.share_outlined, _abrirCompartir,
                       tooltip: 'Compartir'),
-                  const SizedBox(height: 8),
-                  // OkServicios: buscar quién lo instale / repare.
-                  _botonFoto(Icons.handyman_outlined, () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ServiciosScreen(
-                            busquedaInicial:
-                                (widget.producto['categoria'] ?? '')
-                                    .toString()),
-                      ),
-                    );
-                  }, tooltip: 'Buscar técnico en OkServicios'),
+                  // Instalación: solo en productos que la necesitan. Al
+                  // tocarlo flota el aviso (cotizar con el vendedor o
+                  // elegir a otra persona en OkServicios).
+                  if (AccionesProducto.requiereInstalacion(
+                      widget.producto)) ...[
+                    const SizedBox(height: 8),
+                    Builder(
+                      builder: (bctx) => _botonFoto(
+                          Icons.handyman_outlined,
+                          () => AccionesProducto.mostrarAvisoInstalacion(
+                              bctx,
+                              Map<String, dynamic>.from(widget.producto)),
+                          color: colors.primary,
+                          tooltip: 'Requiere instalación'),
+                    ),
+                  ],
                 ]),
               ),
             ]),

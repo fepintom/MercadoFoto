@@ -128,7 +128,9 @@ def top_productos(limite: int = 5, dias: int = 30):
           AND v.dia >= date('now', ?)
           AND COALESCE(p.estado, 'disponible') = 'disponible'
         GROUP BY v.item_id
-        ORDER BY n DESC, v.item_id DESC
+        -- Empate de vistas: primero el que llegó antes a ese número (su
+        -- última vista del período es la más antigua).
+        ORDER BY n DESC, MAX(v.created_at) ASC, MAX(v.rowid) ASC
         LIMIT ?
     """, (f"-{max(1, dias)} days", limite)).fetchall()
     conn.close()

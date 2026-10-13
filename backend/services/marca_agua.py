@@ -6,8 +6,8 @@ Foto de publicación con el estilo OkVenta:
   1. el producto ya sin fondo (rembg) se recorta a su contorno,
   2. se centra en un lienzo cuadrado gris claro de estudio (degradado suave
      + sombra elíptica bajo el producto),
-  3. se le pone la marca de agua "OK Venta App": texto diagonal repetido muy
-     tenue + el logo grande al centro, semitransparente.
+  3. el sello de agua "OK Venta App" (texto diagonal repetido, tenue) va en
+     el FONDO, detrás del producto: nada tapa el producto.
 
 Así todas las fotos se ven parejas y no se pueden reutilizar en otra
 plataforma sin que se note de dónde salieron.
@@ -58,7 +58,7 @@ def _texto_diagonal(lado: int) -> Image.Image:
         desfase = (paso_x // 2) * (fila % 2)
         for x in range(-paso_x, grande, paso_x):
             d.text((x + desfase, y), TEXTO_MARCA, font=f,
-                   fill=(150, 150, 158, 70))
+                   fill=(150, 150, 158, 52))
     capa = capa.rotate(28, resample=Image.BICUBIC)
     o = (grande - lado) // 2
     return capa.crop((o, o, o + lado, o + lado))
@@ -103,15 +103,17 @@ def componer(producto_rgba: Image.Image, lado: int = LADO) -> Image.Image:
     if caja:
         img = img.crop(caja)
     w, h = img.size
-    # El producto ocupa ~78 % del lado mayor (aire alrededor, como estudio).
-    escala = (lado * 0.78) / max(w, h, 1)
+    # El producto ocupa ~86 % del lado mayor: grande y centrado, con un
+    # poco de aire alrededor (como estudio).
+    escala = (lado * 0.86) / max(w, h, 1)
     img = img.resize((max(1, int(w * escala)), max(1, int(h * escala))),
                      Image.LANCZOS)
     w, h = img.size
 
-    lienzo = _fondo(lado)
+    # Fondo gris + sello de agua (detrás del producto).
+    lienzo = Image.alpha_composite(_fondo(lado), _texto_diagonal(lado))
     x = (lado - w) // 2
-    y = (lado - h) // 2 + lado // 50
+    y = (lado - h) // 2
 
     # Sombra suave bajo el producto.
     sombra = Image.new("RGBA", (lado, lado), (0, 0, 0, 0))
@@ -125,8 +127,6 @@ def componer(producto_rgba: Image.Image, lado: int = LADO) -> Image.Image:
     lienzo = Image.alpha_composite(lienzo, sombra)
 
     lienzo.alpha_composite(img, (x, y))
-    lienzo = Image.alpha_composite(lienzo, _texto_diagonal(lado))
-    lienzo = Image.alpha_composite(lienzo, _logo_central(lado))
     return lienzo.convert("RGB")
 
 

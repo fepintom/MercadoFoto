@@ -165,3 +165,11 @@ Foto de perfil (nombre de archivo único), dirección manual como fallback, RUT 
 - Activar OkVenta Delivery (`okDeliveryDisponible = true`) cuando haya equipo de repartidores
 - Payout automático a vendedores (hoy es coordinación manual)
 - Migrar tiles de mapa de OpenStreetMap a un proveedor con SLA para producción a escala
+
+### Ajustes 13-oct
+- **Fotos**: el sello "OK Venta App" va en el fondo gris, detrás del producto (ya no hay logo encima). Producto al 86 % y centrado. `routers/fotos_estilo.py` pasa solas todas las fotos existentes al estilo nuevo (90 s después de arrancar, idempotente vía tabla `fotos_rehechas`; `FOTOS_ESTILO_AUTO=0` lo apaga; estado en `/admin/fotos/rehacer/estado?token=`).
+- **Denuncias en Comunidad**: denunciar tapa el mensaje para todos (`censurado`), el servidor ya no entrega su contenido; el equipo lo ve en `/admin/comunidad/censurados` y puede restaurarlo.
+- **Lo más buscado**: top 10 por vistas (empate: el que llegó primero a esas vistas), con llamita animada y el puesto.
+- **Instalación**: el botón 🔧 del detalle solo aparece si el producto requiere instalación; abre el aviso flotante (cotizar con el vendedor / elegir a otra persona en OkServicios).
+- **Filtros redondos**: `FilaConGuia` (flechas ‹ ›, borde que se desvanece y barrita de posición); etiquetas largas se achican o van en 2 líneas.
+- **Resultados en filas**: corazón, carro, instalación y compartir en círculos bajo categoría/ubicación.
