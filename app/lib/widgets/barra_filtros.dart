@@ -120,7 +120,7 @@ class BarraFiltros extends StatelessWidget {
     this.etiquetaCategorias = 'Categorías',
   });
 
-  static const double altoFila = 46;
+  static const double altoFila = 84;
   static const double altoModos = 40;
   static const double altoPanelDistancia = 50;
   static const double altoPanelRegiones = 44;
@@ -130,16 +130,14 @@ class BarraFiltros extends StatelessWidget {
   /// Alto total según lo desplegado. Lo necesita el SliverPersistentHeader.
   static double alto(PanelFiltro panel,
       {bool conExtra = false, bool modoZona = false, bool conZona = true}) {
-    switch (panel) {
-      case PanelFiltro.distancia:
-        return altoFila +
-            (conZona ? altoModos : 0) +
-            (modoZona ? altoPanelRegiones : altoPanelDistancia);
-      case PanelFiltro.categorias:
-        return altoFila + altoPanelCategorias + (conExtra ? altoExtra : 0);
-      case PanelFiltro.ninguno:
-        return altoFila;
+    // Las categorías ya no se esconden en un panel: están siempre en la
+    // fila de botones redondos. Solo el radio despliega algo debajo.
+    var h = altoFila + (conExtra ? altoExtra : 0);
+    if (panel == PanelFiltro.distancia) {
+      h += (conZona ? altoModos : 0) +
+          (modoZona ? altoPanelRegiones : altoPanelDistancia);
     }
+    return h;
   }
 
   void _alternar(PanelFiltro p) {
@@ -155,48 +153,67 @@ class BarraFiltros extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Una sola fila de botones redondos, coherente en toda la app:
+          //   (◎ Radio)  (🚗)(📱)(🛋)…  categorías  …   (＋ Publicar)
+          // Las categorías elegidas van primero, rellenas en rojo.
           SizedBox(
             height: altoFila,
             child: Row(
               children: [
                 Expanded(
-                  child: _FilaDesplazable(
-                    filtros: seleccionadas.length +
-                        (modoZona ? regiones.length : 0),
-                    children: [
+                  child: ShaderMask(
+                    shaderCallback: (r) => const LinearGradient(
+                      colors: [Colors.white, Colors.white, Colors.transparent],
+                      stops: [0, 0.92, 1],
+                    ).createShader(r),
+                    blendMode: BlendMode.dstIn,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.fromLTRB(10, 8, 14, 4),
+                      children: [
                         if (mostrarDistancia) ...[
-                          _botonDistancia(),
-                          const SizedBox(width: 6),
-                        ],
-                        _botonCategorias(),
-                        if (modoZona)
-                          for (final r in regiones) ...[
-                            const SizedBox(width: 6),
-                            PastillaQuitable(
-                              key: ValueKey('reg-$r'),
-                              etiqueta: r,
-                              icono: Icons.place_outlined,
-                              onQuitar: () => onQuitarRegion?.call(r),
-                            ),
-                          ],
-                        for (final c in seleccionadas) ...[
-                          const SizedBox(width: 6),
-                          PastillaQuitable(
-                            key: ValueKey('cat-$c'),
-                            etiqueta: c,
-                            icono: _icono(c),
-                            soloIcono: true,
-                            onQuitar: () => onQuitarCategoria(c),
+                          _circuloRadio(),
+                          Container(
+                            width: 1,
+                            margin: const EdgeInsets.fromLTRB(6, 8, 6, 26),
+                            color: colors.divider,
                           ),
                         ],
-                    ],
+                        for (final c in [
+                          ...categorias
+                              .where((c) => seleccionadas.contains(c.nombre)),
+                          ...categorias
+                              .where((c) => !seleccionadas.contains(c.nombre)),
+                        ])
+                          _BotonRedondo(
+                            icono: c.icono,
+                            etiqueta: c.nombre,
+                            activo: seleccionadas.contains(c.nombre),
+                            marcaCheck: true,
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              seleccionadas.contains(c.nombre)
+                                  ? onQuitarCategoria(c.nombre)
+                                  : onAgregarCategoria(c.nombre);
+                            },
+                          ),
+                      ],
+                    ),
                   ),
                 ),
                 if (onPublicar != null)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(4, 8, 12, 8),
-                    child: _BotonPublicar(
-                        etiqueta: etiquetaPublicar, onTap: onPublicar!),
+                    padding: const EdgeInsets.fromLTRB(2, 8, 10, 4),
+                    child: _BotonRedondo(
+                      icono: Icons.add_rounded,
+                      etiqueta: etiquetaPublicar,
+                      activo: true,
+                      grande: true,
+                      onTap: () {
+                        HapticFeedback.mediumImpact();
+                        onPublicar!();
+                      },
+                    ),
                   ),
               ],
             ),
@@ -214,18 +231,17 @@ class BarraFiltros extends StatelessWidget {
   Widget _panelDesplegado() {
     switch (panel) {
       case PanelFiltro.distancia:
-        return _panelFiltro();
+        return Column(mainAxisSize: MainAxisSize.min, children: [
+          _panelFiltro(),
+          if (extraCategorias != null)
+            SizedBox(height: altoExtra, child: extraCategorias),
+        ]);
       case PanelFiltro.categorias:
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _carruselCategorias(),
-            if (extraCategorias != null)
-              SizedBox(height: altoExtra, child: extraCategorias),
-          ],
-        );
       case PanelFiltro.ninguno:
-        return const SizedBox(width: double.infinity);
+        // Subcategorías de la categoría elegida (si hay), siempre a la vista.
+        return extraCategorias != null
+            ? SizedBox(height: altoExtra, child: extraCategorias)
+            : const SizedBox(width: double.infinity);
     }
   }
 
@@ -235,6 +251,35 @@ class BarraFiltros extends StatelessWidget {
       .icono;
 
   // ── Botones de la fila ──────────────────────────────────────────────────
+
+  /// "Radio de búsqueda" como botón redondo: rojo cuando filtra; abajo dice
+  /// el radio ("50 km"), la zona o "Radio".
+  Widget _circuloRadio() {
+    final abierto = panel == PanelFiltro.distancia;
+    final String etiqueta;
+    final bool activo;
+    final IconData icono;
+    if (modoZona) {
+      activo = regiones.isNotEmpty;
+      icono = Icons.map_outlined;
+      etiqueta = !activo
+          ? 'Zona'
+          : regiones.length == 1
+              ? regiones.first
+              : '${regiones.length} regiones';
+    } else {
+      activo = distanciaActiva && !sinGps;
+      icono = Icons.near_me_rounded;
+      etiqueta = activo ? BarraRadioKm.formatRadio(radioKm) : 'Radio';
+    }
+    return _BotonRedondo(
+      icono: icono,
+      etiqueta: etiqueta,
+      activo: activo,
+      abierto: abierto,
+      onTap: () => _alternar(PanelFiltro.distancia),
+    );
+  }
 
   Widget _botonDistancia() {
     final abierto = panel == PanelFiltro.distancia;
@@ -1295,4 +1340,96 @@ class _Piquito extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _Piquito old) => old.color != color;
+}
+
+
+/// Botón redondo con ícono y nombre abajo: categorías, radio de búsqueda y
+/// publicar usan el mismo, para que la fila se lea de un vistazo.
+class _BotonRedondo extends StatelessWidget {
+  final IconData icono;
+  final String etiqueta;
+  final bool activo;
+  final bool abierto;
+  final bool grande;
+  final bool marcaCheck;
+  final VoidCallback onTap;
+
+  const _BotonRedondo({
+    required this.icono,
+    required this.etiqueta,
+    required this.onTap,
+    this.activo = false,
+    this.abierto = false,
+    this.grande = false,
+    this.marcaCheck = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fondoInactivo = ThemeService.isDarkMode
+        ? const Color(0xFF2C2C2E)
+        : const Color(0xFFEDEDF0);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: SizedBox(
+        width: 64,
+        child: Column(
+          children: [
+            Stack(clipBehavior: Clip.none, children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: activo ? colors.primary : fondoInactivo,
+                  shape: BoxShape.circle,
+                  border: abierto
+                      ? Border.all(color: colors.primary, width: 2)
+                      : null,
+                  boxShadow: grande
+                      ? [
+                          BoxShadow(
+                              color: colors.primary.withValues(alpha: 0.35),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3)),
+                        ]
+                      : null,
+                ),
+                child: Icon(icono,
+                    size: grande ? 30 : 24,
+                    color: activo ? Colors.white : colorIconoCategoria()),
+              ),
+              if (activo && marcaCheck)
+                Positioned(
+                  right: -2,
+                  top: -2,
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: colors.primary, width: 1.5),
+                    ),
+                    child: Icon(Icons.check_rounded,
+                        size: 12, color: colors.primary),
+                  ),
+                ),
+            ]),
+            const SizedBox(height: 4),
+            Text(etiqueta,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight:
+                        activo || grande ? FontWeight.w800 : FontWeight.w500,
+                    color: grande ? colors.primary : colors.textPrimary)),
+          ],
+        ),
+      ),
+    );
+  }
 }
