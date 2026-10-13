@@ -38,6 +38,12 @@ def init_cotizaciones_db():
         respondido_en     TIMESTAMP
     )
     """)
+    # Detalle estructurado (ítems, descuento, impuestos, condiciones...) como
+    # JSON: lo arma el editor de cotizaciones de la app.
+    try:
+        c.execute("ALTER TABLE cotizaciones ADD COLUMN datos TEXT")
+    except sqlite3.OperationalError:
+        pass
     c.execute("CREATE INDEX IF NOT EXISTS idx_cotiz_servicio ON cotizaciones(servicio_id)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_cotiz_cliente ON cotizaciones(cliente_id)")
     conn.commit()
@@ -50,16 +56,17 @@ def _dict(cursor, row):
 
 def crear_cotizacion(servicio_id: int, proveedor_id: int, cliente_id: int,
                      empresa: str, servicio_cotizado: str, monto: float,
-                     detalle: str) -> int:
+                     detalle: str, datos: str = None) -> int:
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("""
         INSERT INTO cotizaciones
             (servicio_id, proveedor_id, cliente_id, empresa,
-             servicio_cotizado, monto, detalle)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+             servicio_cotizado, monto, detalle, datos)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (servicio_id, proveedor_id, cliente_id, (empresa or "").strip(),
-          servicio_cotizado.strip(), float(monto), (detalle or "").strip()))
+          servicio_cotizado.strip(), float(monto), (detalle or "").strip(),
+          datos))
     cid = c.lastrowid
     conn.commit()
     conn.close()

@@ -21,6 +21,8 @@ Autorización: como en el resto del proyecto no hay JWT, se recibe el
 user_id y se compara contra el dueño de la fila. Acá va obligatorio para
 que no se pueda saltar omitiéndolo.
 """
+import json
+
 from fastapi import APIRouter, Form, HTTPException
 
 from database import cotizaciones as db
@@ -63,7 +65,36 @@ def enviar_cotizacion(
     monto: float = Form(...),
     detalle: str = Form(""),
     empresa: str = Form(""),
+    datos: str = Form(""),
 ):
+    """`datos` (opcional, JSON del editor de la app): ítems [{nombre,
+    cantidad, precio}], descuento, impuestos, valida_hasta, entrega,
+    forma_pago, observaciones, cliente_nombre. Si viene, el monto se calcula
+    aquí con los ítems (no se confía en el que manda el teléfono)."""
+    datos_json = None
+    if datos.strip():
+        try:
+            d = json.loads(datos)
+            items = [
+                {"nombre": str(i.get("nombre", "")).strip()[:120],
+                 "cantidad": max(1, int(i.get("cantidad", 1))),
+                 "precio": max(0.0, float(i.get("precio", 0)))}
+                for i in (d.get("items") or []) if str(i.get("nombre", "")).strip()
+            ][:30]
+        except Exception:
+            raise HTTPException(status_code=400, detail="Detalle de la cotización inválido")
+        if not items:
+            raise HTTPException(status_code=400, detail="Agrega al menos un ítem")
+        subtotal = sum(i["cantidad"] * i["precio"] for i in items)
+        descuento = min(max(0.0, float(d.get("descuento") or 0)), subtotal)
+        impuestos = max(0.0, float(d.get("impuestos") or 0))
+        monto = round(subtotal - descuento + impuestos, 0)
+        servicio_cotizado = ", ".join(i["nombre"] for i in items)[:200]
+        detalle = str(d.get("observaciones") or detalle or "")[:2000]
+        d.update({"items": items, "subtotal": subtotal,
+                  "descuento": descuento, "impuestos": impuestos,
+                  "total": monto})
+        datos_json = json.dumps(d, ensure_ascii=False)
     servicio = obtener_servicio_por_id(servicio_id)
     if not servicio:
         raise HTTPException(status_code=404, detail="Servicio no encontrado")
@@ -84,6 +115,7 @@ def enviar_cotizacion(
         servicio_cotizado=servicio_cotizado,
         monto=monto,
         detalle=detalle,
+        datos=datos_json,
     )
     cotizacion = db.obtener_cotizacion(cotizacion_id)
 

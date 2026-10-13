@@ -1196,10 +1196,12 @@ class ApiService {
     required double monto,
     String detalle = '',
     String empresa = '',
+    String? datos,
   }) async {
     final res = await http.post(
       Uri.parse('$baseUrl/cotizaciones'),
       body: {
+        if (datos != null) 'datos': datos,
         'servicio_id': servicioId.toString(),
         'proveedor_id': proveedorId.toString(),
         'cliente_id': clienteId.toString(),

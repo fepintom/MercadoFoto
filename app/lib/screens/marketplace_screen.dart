@@ -17,6 +17,7 @@ import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/barra_filtros.dart';
 import '../widgets/pastilla_etiqueta.dart';
+import '../widgets/fila_resultado.dart';
 import '../widgets/acciones_producto.dart';
 import '../widgets/avatar_historia.dart';
 import '../widgets/etiqueta_oferta.dart';
@@ -1180,6 +1181,23 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     );
   }
 
+  /// Un resultado de búsqueda como fila (nombre completo).
+  Widget _filaBusqueda(Map<String, dynamic> item) {
+    return FilaResultado(
+      imagenUrl: (item['imagen_url'] ?? '').toString(),
+      titulo: (item['titulo'] ?? '').toString(),
+      precio: formatPrecio(item['precio']),
+      colorPrecio: colors.primary,
+      esNuevo: (item['condicion'] ?? 'nuevo') == 'nuevo',
+      categoria: item['categoria']?.toString(),
+      lugar: (item['ciudad_vendedor'] ?? RegionesChile.regionDeItem(item))
+          ?.toString(),
+      vistas: (item['vistas'] as num?)?.toInt() ?? 0,
+      onTap: () => _abrirDetalle(item),
+      accion: _botonFavorito(item, 32),
+    );
+  }
+
   /// Corazón de favoritos: blanco con contorno; marcado, círculo rojo con
   /// corazón blanco.
   Widget _botonFavorito(Map<String, dynamic> item, double tam) {
@@ -1528,12 +1546,24 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
         if (_filtradas.isNotEmpty)
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(6, 0, 6, 16),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (_, fila) => _filaDeTarjetas(fila),
-                childCount: (_filtradas.length / _columnas).ceil(),
-              ),
-            ),
+            // Buscando por texto: resultados en filas, para leer el nombre
+            // completo. Sin texto: la grilla de miniaturas de siempre.
+            sliver: _searchCtrl.text.trim().isNotEmpty
+                ? SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (_, i) => Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: _filaBusqueda(_filtradas[i]),
+                      ),
+                      childCount: _filtradas.length,
+                    ),
+                  )
+                : SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (_, fila) => _filaDeTarjetas(fila),
+                      childCount: (_filtradas.length / _columnas).ceil(),
+                    ),
+                  ),
           ),
       ],
     );
