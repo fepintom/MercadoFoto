@@ -70,7 +70,7 @@ class _MasVendidosFranjaState extends State<MasVendidosFranja> {
       height: 62,
       child: LayoutBuilder(builder: (context, c) {
         // ~2,6 tarjetas a la vista: se nota que hay más.
-        final ancho = (c.maxWidth - 16) / 2.6;
+        final ancho = (c.maxWidth - 16) / (widget.compacta ? 3.1 : 2.6);
         return ListView.separated(
           controller: _scroll,
           scrollDirection: Axis.horizontal,
@@ -85,17 +85,8 @@ class _MasVendidosFranjaState extends State<MasVendidosFranja> {
     );
     if (widget.compacta) {
       return Container(
-        padding: const EdgeInsets.only(bottom: 6),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              colors.surface,
-              colors.primary.withValues(alpha: 0.06),
-            ],
-          ),
-        ),
+        padding: const EdgeInsets.only(top: 8, bottom: 8),
+        color: colors.background,
         child: tarjetas,
       );
     }
@@ -159,6 +150,52 @@ class _MasVendidosFranjaState extends State<MasVendidosFranja> {
 
   Widget _tarjeta(Map<String, dynamic> p, int puesto, double ancho) {
     final img = (p['imagen_url'] ?? '').toString();
+    if (widget.compacta) {
+      // Como la maqueta: foto y precio, nada más.
+      return GestureDetector(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => ProductoDetalleScreen(producto: p)),
+        ).then((_) => _cargar()),
+        child: Container(
+          width: ancho,
+          padding: const EdgeInsets.fromLTRB(8, 6, 10, 6),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2)),
+            ],
+          ),
+          child: Row(children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: NetImage(
+                img.startsWith('http') ? img : '${ApiService.baseUrl}$img',
+                width: 44,
+                height: 50,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const Spacer(),
+            Flexible(
+              flex: 4,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(formatPrecio(p['precio']),
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: colors.primary)),
+              ),
+            ),
+          ]),
+        ),
+      );
+    }
     return GestureDetector(
       onTap: () => Navigator.push(
         context,

@@ -75,7 +75,6 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
   /// coincide y se recorre con ▲▼ ("3/12"). Cada palabra confirmada queda
   /// como pastilla a la derecha del campo (p. ej. "@fernando" + "parrilla").
   bool _buscando = false;
-  final _busquedaCtrl = TextEditingController();
   final List<String> _terminos = [];
   List<_Coincidencia> _hits = const [];
   int _hitActual = -1;
@@ -261,7 +260,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     _timer?.cancel();
     _ctrl.dispose();
     _scroll.dispose();
-    _busquedaCtrl.dispose();
+    _scrollChips.dispose();
     _foco.removeListener(_cambioFoco);
     _foco.dispose();
     super.dispose();
@@ -470,11 +469,10 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
           // para el chat. Una barra fina con 🔥 TOP (ojo para esconder) y
           // 📌 Fijados (desplegable).
           if (!escribiendo) _barraSuperior(hayFijados),
-          if (!escribiendo && !_buscando && _verTop)
+          if (!escribiendo && _verTop)
             MasVendidosFranja(version: _versionTop, compacta: true),
-          if (!escribiendo && !_buscando && hayFijados && _fijadosAbiertos)
+          if (!escribiendo && hayFijados && _fijadosAbiertos)
             _franjaFijados(),
-          if (_buscando) _barraBusqueda(),
           Expanded(
             child: _cargando
                 ? Center(
@@ -488,7 +486,9 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                       children: [
                         // Okventín caminando en pixel art, detrás del chat.
                         Positioned.fill(
-                          child: FondoPixelOkventin(activo: widget.activa),
+                          child: FondoPixelOkventin(
+                              activo: widget.activa,
+                              opacidad: ThemeService.isDarkMode ? 0.32 : 0.55),
                         ),
                         Builder(builder: (_) {
                           _vista = _mensajes
@@ -506,6 +506,13 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                             itemBuilder: (_, i) => _burbuja(i),
                           );
                         }),
+                        // Contador x/n con ▲▼ (como Ctrl+F), flotando.
+                        if (_buscando)
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: _contadorFlotante(),
+                          ),
                       ],
                     ),
                   ),
@@ -517,108 +524,218 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     );
   }
 
+  final _scrollChips = ScrollController();
+
+  /// Fila de pastillas como la maqueta:
+  ///   [🔥 Lo más buscado] [📌 Fijados] [👤 @fernando ⊗] [🔍] ›
+  /// Tocar "Lo más buscado" o "Fijados" muestra/esconde su franja.
   Widget _barraSuperior(bool hayFijados) {
-    final n = _itemsFijados.length;
-    return Container(
-      color: colors.surface,
-      padding: const EdgeInsets.fromLTRB(12, 6, 8, 6),
-      child: Row(children: [
-        // 🔥 TOP + ojo
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: _alternarTop,
-          child: Row(children: [
-            Container(
-              padding: const EdgeInsets.fromLTRB(7, 3, 9, 3),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                    colors: [Color(0xFFFF6A00), Color(0xFFE53935)]),
-                borderRadius: BorderRadius.circular(12),
+    Widget chip({
+      required IconData icono,
+      required String texto,
+      required bool activo,
+      VoidCallback? onTap,
+      VoidCallback? onQuitar,
+      GlobalKey? llave,
+    }) {
+      return GestureDetector(
+        key: llave,
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          height: 38,
+          padding: EdgeInsets.fromLTRB(12, 0, onQuitar != null ? 6 : 14, 0),
+          decoration: BoxDecoration(
+            color: activo
+                ? colors.primary.withValues(alpha: 0.12)
+                : colors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: activo
+                    ? colors.primary.withValues(alpha: 0.5)
+                    : colors.divider,
+                width: 1),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(icono, size: 19, color: colors.primary),
+            const SizedBox(width: 6),
+            Text(texto,
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: activo ? FontWeight.w800 : FontWeight.w600,
+                    color: activo ? colors.primary : colors.textPrimary)),
+            if (onQuitar != null) ...[
+              const SizedBox(width: 6),
+              GestureDetector(
+                onTap: onQuitar,
+                child: Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                      color: colors.primary, shape: BoxShape.circle),
+                  child: const Icon(Icons.close_rounded,
+                      size: 14, color: Colors.white),
+                ),
               ),
-              child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.local_fire_department_rounded,
-                    color: Colors.white, size: 16),
-                SizedBox(width: 2),
-                Text('TOP',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.6)),
-              ]),
-            ),
-            const SizedBox(width: 6),
-            Text('del mes',
-                style: TextStyle(fontSize: 12, color: colors.textPrimary)),
-            const SizedBox(width: 6),
-            Icon(
-                _verTop
-                    ? Icons.visibility_rounded
-                    : Icons.visibility_off_rounded,
-                size: 19,
-                color: _verTop ? colors.textPrimary : colors.grayMid),
+            ],
           ]),
         ),
-        const SizedBox(width: 8),
-        if (hayFijados)
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => setState(() => _fijadosAbiertos = !_fijadosAbiertos),
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
-              decoration: BoxDecoration(
-                color: _fijadosAbiertos
-                    ? colors.primary.withValues(alpha: 0.10)
-                    : colors.background,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                    color: colors.primary.withValues(alpha: 0.45), width: 1),
+      );
+    }
+
+    final llaveLupa = GlobalKey();
+    return Container(
+      color: colors.surface,
+      height: 52,
+      child: Row(children: [
+        Expanded(
+          child: ListView(
+            controller: _scrollChips,
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(12, 7, 8, 7),
+            children: [
+              chip(
+                  icono: Icons.local_fire_department_rounded,
+                  texto: 'Lo más buscado',
+                  activo: _verTop,
+                  onTap: _alternarTop),
+              if (hayFijados) ...[
+                const SizedBox(width: 8),
+                chip(
+                    icono: Icons.push_pin_rounded,
+                    texto: 'Fijados',
+                    activo: _fijadosAbiertos,
+                    onTap: () =>
+                        setState(() => _fijadosAbiertos = !_fijadosAbiertos)),
+              ],
+              for (final t in _terminos) ...[
+                const SizedBox(width: 8),
+                chip(
+                    icono: t.startsWith('@')
+                        ? Icons.person_outline_rounded
+                        : Icons.search_rounded,
+                    texto: t,
+                    activo: false,
+                    onTap: () => _irAlUltimoHit(),
+                    onQuitar: () => setState(() {
+                          _terminos.remove(t);
+                          _buscando = _terminos.isNotEmpty;
+                          _hitActual = -1;
+                        })),
+              ],
+              const SizedBox(width: 8),
+              Builder(
+                builder: (ctx) => chip(
+                    llave: llaveLupa,
+                    icono: Icons.search_rounded,
+                    texto: _terminos.isEmpty ? '@' : '+',
+                    activo: false,
+                    onTap: () => _abrirNubeBusqueda(ctx)),
               ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.push_pin_rounded, size: 15, color: colors.primary),
-                const SizedBox(width: 4),
-                Text('Fijados $n',
-                    style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w800,
-                        color: colors.textPrimary)),
-                AnimatedRotation(
-                  turns: _fijadosAbiertos ? 0.5 : 0,
-                  duration: const Duration(milliseconds: 200),
-                  child: Icon(Icons.expand_more_rounded,
-                      size: 20, color: colors.textPrimary),
-                ),
-              ]),
-            ),
+            ],
           ),
-        const Spacer(),
-        // Buscar en el chat / filtrar por @mención (Ctrl+F)
+        ),
         GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => _buscando
-              ? _cerrarBusqueda()
-              : setState(() => _buscando = true),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(8, 4, 10, 4),
-            decoration: BoxDecoration(
-              color: _buscando
-                  ? colors.primary.withValues(alpha: 0.10)
-                  : colors.background,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: colors.divider),
-            ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.search_rounded, size: 16, color: colors.primary),
-              const SizedBox(width: 3),
-              Text('@',
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      color: colors.textPrimary)),
-            ]),
+          onTap: () {
+            if (!_scrollChips.hasClients) return;
+            final p = _scrollChips.position;
+            _scrollChips.animateTo(
+                (p.pixels + 160).clamp(0.0, p.maxScrollExtent),
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOut);
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(2, 0, 8, 0),
+            child: Icon(Icons.chevron_right_rounded,
+                size: 26, color: colors.textPrimary),
           ),
         ),
       ]),
+    );
+  }
+
+  /// Nube flotante para buscar / filtrar por @usuario: sale desde la lupa
+  /// (como los avisos de OkMarket), con sugerencias de personas al
+  /// escribir "@".
+  Future<void> _abrirNubeBusqueda(BuildContext ancla) async {
+    final box = ancla.findRenderObject() as RenderBox?;
+    final pantalla = MediaQuery.of(context).size;
+    final pos = box?.localToGlobal(Offset.zero) ??
+        Offset(pantalla.width / 2, 120);
+    final tam = box?.size ?? const Size(40, 38);
+    final ancho = pantalla.width - 24 < 320 ? pantalla.width - 24 : 320.0;
+    final left = (pos.dx + tam.width / 2 - ancho / 2)
+        .clamp(12.0, pantalla.width - ancho - 12);
+    final top = pos.dy + tam.height + 6;
+    final flechaX = (pos.dx + tam.width / 2 - left).clamp(18.0, ancho - 18);
+
+    final t = await showGeneralDialog<String>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Buscar',
+      barrierColor: Colors.black.withValues(alpha: 0.2),
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (dctx, _, __) => Stack(children: [
+        Positioned(
+          left: left,
+          top: top,
+          width: ancho,
+          child: _NubeBusqueda(flechaX: flechaX, miId: _miId),
+        ),
+      ]),
+      transitionBuilder: (_, anim, __, child) => FadeTransition(
+        opacity: anim,
+        child: ScaleTransition(
+          scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+          alignment: Alignment((flechaX / ancho) * 2 - 1, -1),
+          child: child,
+        ),
+      ),
+    );
+    final termino = (t ?? '').trim();
+    if (termino.isEmpty || !mounted) return;
+    _agregarTermino(termino);
+  }
+
+  Widget _contadorFlotante() {
+    final total = _hits.length;
+    Widget flecha(IconData i, int paso) => GestureDetector(
+          onTap: total == 0 ? null : () => _moverHit(paso),
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: Icon(i,
+                size: 22,
+                color: total == 0 ? Colors.white38 : Colors.white),
+          ),
+        );
+    return Material(
+      color: const Color(0xE61C1C1E),
+      borderRadius: BorderRadius.circular(18),
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 2, 4, 2),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Text(
+              total == 0
+                  ? '0/0'
+                  : '${_hitActual < 0 ? total : _hitActual + 1}/$total',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  fontFeatures: [FontFeature.tabularFigures()])),
+          const SizedBox(width: 4),
+          flecha(Icons.keyboard_arrow_up_rounded, -1),
+          flecha(Icons.keyboard_arrow_down_rounded, 1),
+          GestureDetector(
+            onTap: _cerrarBusqueda,
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(Icons.close_rounded, size: 18, color: Colors.white70),
+            ),
+          ),
+        ]),
+      ),
     );
   }
 
@@ -637,13 +754,8 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     return b.toString();
   }
 
-  List<String> get _terminosActivos {
-    final vivo = _busquedaCtrl.text.trim();
-    return [
-      ..._terminos,
-      if (vivo.isNotEmpty && !_terminos.contains(vivo)) vivo,
-    ].map(_norm).where((t) => t.isNotEmpty).toList();
-  }
+  List<String> get _terminosActivos =>
+      _terminos.map(_norm).where((t) => t.isNotEmpty).toList();
 
   /// Todas las apariciones de los términos, en orden del chat.
   List<_Coincidencia> _calcularHits() {
@@ -680,12 +792,11 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     return limpio;
   }
 
-  void _agregarTermino() {
-    final t = _busquedaCtrl.text.trim();
+  void _agregarTermino(String t) {
     if (t.isEmpty) return;
     setState(() {
       if (!_terminos.contains(t)) _terminos.add(t);
-      _busquedaCtrl.clear();
+      _buscando = true;
       _hitActual = -1;
     });
     _irAlUltimoHit();
@@ -736,129 +847,9 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
 
   void _cerrarBusqueda() => setState(() {
         _buscando = false;
-        _busquedaCtrl.clear();
         _terminos.clear();
         _hitActual = -1;
       });
-
-  Widget _barraBusqueda() {
-    final total = _hits.length;
-    final hayTerminos = _terminosActivos.isNotEmpty;
-    Widget flecha(IconData i, int paso) => SizedBox(
-          width: 32,
-          height: 32,
-          child: IconButton(
-            padding: EdgeInsets.zero,
-            onPressed: total == 0 ? null : () => _moverHit(paso),
-            icon: Icon(i,
-                size: 22,
-                color: total == 0 ? colors.grayMid : colors.textPrimary),
-          ),
-        );
-    return Container(
-      color: colors.surface,
-      padding: const EdgeInsets.fromLTRB(10, 4, 4, 6),
-      child: Row(children: [
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            reverse: true,
-            child: Row(children: [
-              // El campo (pastilla) y, a su derecha, las palabras ya puestas.
-              Container(
-                width: 150,
-                height: 34,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  color: colors.background,
-                  borderRadius: BorderRadius.circular(17),
-                  border: Border.all(color: colors.primary.withValues(alpha: 0.5)),
-                ),
-                child: Row(children: [
-                  Icon(Icons.search_rounded, size: 17, color: colors.primary),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: TextField(
-                      controller: _busquedaCtrl,
-                      autofocus: true,
-                      textInputAction: TextInputAction.search,
-                      onChanged: (_) {
-                        setState(() => _hitActual = -1);
-                        _irAlUltimoHit();
-                      },
-                      onSubmitted: (_) => _agregarTermino(),
-                      style: TextStyle(fontSize: 13.5, color: colors.textPrimary),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        border: InputBorder.none,
-                        hintText: 'Buscar o @nombre',
-                        hintStyle:
-                            TextStyle(fontSize: 13, color: colors.grayMid),
-                      ),
-                    ),
-                  ),
-                ]),
-              ),
-              for (final t in _terminos) ...[
-                const SizedBox(width: 6),
-                Container(
-                  height: 30,
-                  padding: const EdgeInsets.fromLTRB(10, 0, 4, 0),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFE08A),
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Text(t,
-                        style: const TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1C1C1E))),
-                    GestureDetector(
-                      onTap: () => setState(() {
-                        _terminos.remove(t);
-                        _hitActual = -1;
-                      }),
-                      child: const Padding(
-                        padding: EdgeInsets.all(3),
-                        child: Icon(Icons.close_rounded,
-                            size: 15, color: Color(0xFF1C1C1E)),
-                      ),
-                    ),
-                  ]),
-                ),
-              ],
-            ]),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-            !hayTerminos
-                ? ''
-                : total == 0
-                    ? '0/0'
-                    : '${_hitActual < 0 ? total : _hitActual + 1}/$total',
-            style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w800,
-                fontFeatures: const [FontFeature.tabularFigures()],
-                color: total == 0 && hayTerminos
-                    ? colors.primary
-                    : colors.textPrimary)),
-        flecha(Icons.keyboard_arrow_up_rounded, -1),
-        flecha(Icons.keyboard_arrow_down_rounded, 1),
-        SizedBox(
-          width: 32,
-          height: 32,
-          child: IconButton(
-            padding: EdgeInsets.zero,
-            icon: Icon(Icons.close_rounded, size: 20, color: colors.textPrimary),
-            onPressed: _cerrarBusqueda,
-          ),
-        ),
-      ]),
-    );
-  }
 
   /// Texto con las coincidencias de la búsqueda resaltadas (amarillo; la
   /// actual en naranjo). [idMsg] y [desplaz] ubican cada trozo en el
@@ -1140,108 +1131,123 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
             .where((x) => x != null && '$x'.trim().isNotEmpty)
             .join(' ');
 
-    // Lo mío en rojo; en modo oscuro uno más apagado (el rojo vivo
-    // encandilaba sobre negro), del tono del botón de Comunidad.
+    // Colores como WhatsApp: cada persona con su color de nombre; el
+    // nombre va DENTRO de la burbuja, del mismo tamaño que el texto, y la
+    // hora abajo a la derecha. En modo oscuro las burbujas son gris
+    // claro-oscuro (se separan del fondo negro) y las mías un rojo apagado.
+    final oscuro = ThemeService.isDarkMode;
     final fondo = esBot
-        ? colors.carbon
+        ? (oscuro ? const Color(0xFF3A3A3C) : colors.carbon)
         : mio
-            ? (ThemeService.isDarkMode
-                ? const Color(0xFFA3302D)
-                : colors.primary)
-            : colors.surface;
-    final colorTexto = (esBot || mio) ? Colors.white : colors.textPrimary;
+            ? (oscuro ? const Color(0xFFA3302D) : colors.primary)
+            : (oscuro ? const Color(0xFF2F323A) : colors.surface);
+    final colorTexto =
+        (esBot || mio) ? Colors.white : (oscuro ? Colors.white : colors.textPrimary);
+    final colorHora = (esBot || mio)
+        ? Colors.white.withValues(alpha: 0.75)
+        : (oscuro ? Colors.white60 : colors.textPrimary.withValues(alpha: 0.55));
+    final colorNombre = esBot
+        ? (oscuro ? const Color(0xFFFF8A80) : const Color(0xFFFFB4AB))
+        : _colorDeUsuario((m['user_id'] as num?)?.toInt() ?? 0);
 
-    final contenido = Column(
-      crossAxisAlignment:
-          mio ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-      children: [
-        if (!mismoAutor)
-          GestureDetector(
-            onTap: esBot ? null : () => _menuUsuario(m, nombre),
-            child: Padding(
-            padding: const EdgeInsets.only(left: 4, right: 4, bottom: 2),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Text(nombre.isEmpty ? 'Usuario' : nombre,
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: esBot ? colors.primary : colors.textSecondary)),
-              if (esBot) ...[
-                const SizedBox(width: 3),
-                Icon(Icons.verified_rounded, size: 12, color: colors.primary),
-              ],
-            ]),
-          ),
-          ),
-        Container(
-          constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.72),
-          padding: const EdgeInsets.fromLTRB(11, 8, 11, 8),
-          decoration: BoxDecoration(
-            color: fondo,
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(16),
-              topRight: const Radius.circular(16),
-              bottomLeft: Radius.circular(mio ? 16 : 4),
-              bottomRight: Radius.circular(mio ? 4 : 16),
-            ),
-            border: (esBot || mio)
-                ? null
-                : Border.all(color: colors.divider, width: 0.5),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (m['responde_a'] != null) _cita(m, colorTexto),
-              if (m['ubicacion'] is Map) ...[
-                Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.location_on_rounded, size: 15, color: colorTexto),
-                  const SizedBox(width: 3),
-                  Text('Estoy por aquí',
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: colorTexto)),
-                ]),
-                const SizedBox(height: 5),
-                MapaMini(
-                    lat: ((m['ubicacion'] as Map)['lat'] as num).toDouble(),
-                    lng: ((m['ubicacion'] as Map)['lng'] as num).toDouble(),
-                    alto: 120,
-                    ancho: 230),
-                if ((m['texto'] ?? '').toString().isNotEmpty)
-                  const SizedBox(height: 6),
-              ],
-              if ((m['texto'] ?? '').toString().isNotEmpty)
-                _textoConMenciones(m['texto'].toString(), colorTexto,
-                    (m['menciones'] as List?) ?? const [],
-                    idMsg: (m['id'] as num?)?.toInt()),
-              if (m['ancla_tipo'] != null) ...[
-                if ((m['texto'] ?? '').toString().isNotEmpty)
-                  const SizedBox(height: 6),
-                _tarjetaAncla(m),
-              ],
-            ],
-          ),
+    final contenido = Container(
+      constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.75),
+      padding: const EdgeInsets.fromLTRB(11, 7, 9, 5),
+      decoration: BoxDecoration(
+        color: fondo,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(!mio && !mismoAutor ? 4 : 14),
+          topRight: Radius.circular(mio && !mismoAutor ? 4 : 14),
+          bottomLeft: const Radius.circular(14),
+          bottomRight: const Radius.circular(14),
         ),
-        Padding(
-          padding: const EdgeInsets.only(top: 1, left: 4, right: 0),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Text(_hora(m['created_at']),
-                style: TextStyle(fontSize: 9, color: colors.textPrimary)),
-            // Menú del mensaje: guardar, responder, denunciar, ocultar...
+        border: (esBot || mio)
+            ? null
+            : Border.all(
+                color: oscuro ? const Color(0xFF444852) : colors.divider,
+                width: 0.6),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: oscuro ? 0.35 : 0.06),
+              blurRadius: 2,
+              offset: const Offset(0, 1)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Nombre de color, en la burbuja (solo el primero de la tanda y
+          // nunca en lo mío, como WhatsApp).
+          if (!mio && !mismoAutor)
             GestureDetector(
+              onTap: esBot ? null : () => _menuUsuario(m, nombre),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Flexible(
+                    child: Text(nombre.isEmpty ? 'Usuario' : nombre,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w700,
+                            color: colorNombre)),
+                  ),
+                  if (esBot) ...[
+                    const SizedBox(width: 3),
+                    Icon(Icons.verified_rounded, size: 14, color: colorNombre),
+                  ],
+                ]),
+              ),
+            ),
+          if (m['responde_a'] != null) _cita(m, colorTexto),
+          if (m['ubicacion'] is Map) ...[
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.location_on_rounded, size: 15, color: colorTexto),
+              const SizedBox(width: 3),
+              Text('Estoy por aquí',
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: colorTexto)),
+            ]),
+            const SizedBox(height: 5),
+            MapaMini(
+                lat: ((m['ubicacion'] as Map)['lat'] as num).toDouble(),
+                lng: ((m['ubicacion'] as Map)['lng'] as num).toDouble(),
+                alto: 120,
+                ancho: 230),
+            if ((m['texto'] ?? '').toString().isNotEmpty)
+              const SizedBox(height: 6),
+          ],
+          if ((m['texto'] ?? '').toString().isNotEmpty)
+            _textoConMenciones(m['texto'].toString(), colorTexto,
+                (m['menciones'] as List?) ?? const [],
+                idMsg: (m['id'] as num?)?.toInt()),
+          if (m['ancla_tipo'] != null) ...[
+            if ((m['texto'] ?? '').toString().isNotEmpty)
+              const SizedBox(height: 6),
+            _tarjetaAncla(m),
+          ],
+          // Hora abajo a la derecha (y el ⌄ del menú), dentro de la burbuja.
+          Align(
+            alignment: Alignment.centerRight,
+            child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () => _menuMensaje(m),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                child: Icon(Icons.more_horiz_rounded,
-                    size: 16, color: colors.textPrimary),
+                padding: const EdgeInsets.only(top: 2, left: 12),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(_hora(m['created_at']),
+                      style: TextStyle(fontSize: 11, color: colorHora)),
+                  Icon(Icons.expand_more_rounded, size: 16, color: colorHora),
+                ]),
               ),
             ),
-          ]),
-        ),
-      ],
+          ),
+        ],
+      ),
     );
 
     final idMsg = (m['id'] as num?)?.toInt();
@@ -1399,7 +1405,8 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
             op(Icons.push_pin_outlined, 'Anclar lo que vendes',
                 'Un producto o servicio tuyo en el mensaje', _elegirAncla),
             op(Icons.search_rounded, 'Buscar en el chat',
-                'Encuentra un mensaje', () => setState(() => _buscando = true)),
+                'Encuentra un mensaje o filtra por @persona',
+                () => _abrirNubeBusqueda(context)),
             const SizedBox(height: 6),
           ]),
         );
@@ -1468,7 +1475,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
         if (x is Map && x['handle'] != null && x['id'] is num)
           x['handle'].toString().toLowerCase(): (x['id'] as num).toInt(),
     };
-    final estilo = TextStyle(fontSize: 14, height: 1.3, color: color);
+    final estilo = TextStyle(fontSize: 15.5, height: 1.3, color: color);
     final spans = <InlineSpan>[];
     var i = 0;
     for (final m in _reMencion.allMatches(texto)) {
@@ -1517,23 +1524,76 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     if (orig.isEmpty) return const SizedBox.shrink();
     final quien = orig['es_bot'] == true
         ? 'OkVenta'
-        : (orig['nombre'] ?? 'Usuario').toString().split(' ').first;
+        : [orig['nombre'], orig['apellido']]
+            .where((x) => x != null && '$x'.trim().isNotEmpty)
+            .join(' ');
     final texto = (orig['texto'] ?? '').toString().isNotEmpty
         ? orig['texto'].toString()
         : (orig['ancla_titulo'] ?? '📌').toString();
+    final colorQuien = orig['es_bot'] == true
+        ? const Color(0xFFFF8A80)
+        : _colorDeUsuario((orig['user_id'] as num?)?.toInt() ?? 0);
+    // Cita como WhatsApp: fondo un poco más oscuro, barra del color de quien
+    // escribió el original, su nombre en ese color y el texto en gris.
     return Container(
-      margin: const EdgeInsets.only(bottom: 5),
-      padding: const EdgeInsets.fromLTRB(7, 4, 7, 4),
+      margin: const EdgeInsets.only(bottom: 5, top: 2),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6),
-        border: Border(left: BorderSide(color: color, width: 2.5)),
+        color: Colors.black.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: Text('$quien: $texto',
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontSize: 11.5, color: color)),
+      child: IntrinsicHeight(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Container(
+            width: 4,
+            decoration: BoxDecoration(
+              color: colorQuien,
+              borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(8), bottomLeft: Radius.circular(8)),
+            ),
+          ),
+          Flexible(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 5, 8, 6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(quien.isEmpty ? 'Usuario' : quien,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: colorQuien)),
+                  const SizedBox(height: 1),
+                  Text(texto,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 13, color: color.withValues(alpha: 0.75))),
+                ],
+              ),
+            ),
+          ),
+        ]),
+      ),
     );
+  }
+
+  /// Color fijo de cada persona (como WhatsApp). En modo oscuro tonos
+  /// claros; en claro, más intensos para leerse sobre blanco.
+  Color _colorDeUsuario(int id) {
+    const claros = [
+      Color(0xFFF48FB1), Color(0xFFFFAB91), Color(0xFF81D4FA),
+      Color(0xFFA5D6A7), Color(0xFFCE93D8), Color(0xFFFFCC80),
+      Color(0xFF80CBC4), Color(0xFFB39DDB),
+    ];
+    const intensos = [
+      Color(0xFFD81B60), Color(0xFFE65100), Color(0xFF0277BD),
+      Color(0xFF2E7D32), Color(0xFF8E24AA), Color(0xFFB26A00),
+      Color(0xFF00796B), Color(0xFF5E35B1),
+    ];
+    final lista = ThemeService.isDarkMode ? claros : intensos;
+    return lista[id.abs() % lista.length];
   }
 
   // ── Menú ⋯ de cada mensaje ───────────────────────────────────────────────
@@ -2233,4 +2293,149 @@ class _Coincidencia {
   final int mensajeId;
   final int inicio;
   const _Coincidencia(this.mensajeId, this.inicio);
+}
+
+/// La nube flotante de búsqueda: campo + sugerencias de @personas. Devuelve
+/// (con Navigator.pop) lo que se va a buscar.
+class _NubeBusqueda extends StatefulWidget {
+  final double flechaX;
+  final int? miId;
+  const _NubeBusqueda({required this.flechaX, this.miId});
+
+  @override
+  State<_NubeBusqueda> createState() => _NubeBusquedaState();
+}
+
+class _NubeBusquedaState extends State<_NubeBusqueda> {
+  final _ctrl = TextEditingController();
+  List<Map<String, dynamic>> _gente = [];
+  Timer? _espera;
+
+  @override
+  void dispose() {
+    _espera?.cancel();
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _cambio(String v) {
+    setState(() {});
+    _espera?.cancel();
+    if (!v.startsWith('@') || v.length < 2) {
+      if (_gente.isNotEmpty) setState(() => _gente = []);
+      return;
+    }
+    _espera = Timer(const Duration(milliseconds: 250), () async {
+      try {
+        final l = await ApiService.buscarUsuariosComunidad(v.substring(1),
+            excluir: widget.miId);
+        if (mounted) setState(() => _gente = l.take(5).toList());
+      } catch (_) {}
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(left: widget.flechaX - 8),
+            child: CustomPaint(
+                size: const Size(16, 8), painter: _PiquitoArriba(colors.surface)),
+          ),
+          Container(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6)),
+              ],
+            ),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Row(children: [
+                Icon(Icons.search_rounded, color: colors.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _ctrl,
+                    autofocus: true,
+                    onChanged: _cambio,
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: (v) => Navigator.pop(context, v.trim()),
+                    style: TextStyle(fontSize: 15, color: colors.textPrimary),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      border: InputBorder.none,
+                      hintText: 'Buscar palabra o @persona',
+                      hintStyle: TextStyle(color: colors.grayMid),
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context, _ctrl.text.trim()),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(
+                        color: colors.primary,
+                        borderRadius: BorderRadius.circular(14)),
+                    child: const Text('Buscar',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800)),
+                  ),
+                ),
+              ]),
+              for (final u in _gente)
+                InkWell(
+                  onTap: () => Navigator.pop(context, '@${u['handle']}'),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(children: [
+                      AvatarUsuario(
+                          fotoUrl: u['foto_url']?.toString(),
+                          nombre: '${u['nombre'] ?? ''}',
+                          tamano: 30),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text('@${u['handle']}',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: colors.textPrimary)),
+                      ),
+                    ]),
+                  ),
+                ),
+            ]),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PiquitoArriba extends CustomPainter {
+  final Color color;
+  _PiquitoArriba(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Path()
+      ..moveTo(0, size.height)
+      ..lineTo(size.width / 2, 0)
+      ..lineTo(size.width, size.height)
+      ..close();
+    canvas.drawPath(p, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(covariant _PiquitoArriba old) => old.color != color;
 }
