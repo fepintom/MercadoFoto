@@ -5,6 +5,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'fila_con_guia.dart';
+
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/regiones_chile.dart';
@@ -120,7 +122,7 @@ class BarraFiltros extends StatelessWidget {
     this.etiquetaCategorias = 'Categorías',
   });
 
-  static const double altoFila = 84;
+  static const double altoFila = 98;
   static const double altoModos = 40;
   static const double altoPanelDistancia = 50;
   static const double altoPanelRegiones = 44;
@@ -161,21 +163,17 @@ class BarraFiltros extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: ShaderMask(
-                    shaderCallback: (r) => const LinearGradient(
-                      colors: [Colors.white, Colors.white, Colors.transparent],
-                      stops: [0, 0.92, 1],
-                    ).createShader(r),
-                    blendMode: BlendMode.dstIn,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.fromLTRB(10, 8, 14, 4),
+                  // Con flechitas ‹ › y una barrita de posición: así se
+                  // sabe hacia dónde se puede deslizar.
+                  child: FilaConGuia(
+                      padding: const EdgeInsets.fromLTRB(10, 8, 14, 6),
+                      centroFlechas: 32,
                       children: [
                         if (mostrarDistancia) ...[
                           _circuloRadio(),
                           Container(
                             width: 1,
-                            margin: const EdgeInsets.fromLTRB(6, 8, 6, 26),
+                            margin: const EdgeInsets.fromLTRB(4, 8, 4, 34),
                             color: colors.divider,
                           ),
                         ],
@@ -198,7 +196,6 @@ class BarraFiltros extends StatelessWidget {
                             },
                           ),
                       ],
-                    ),
                   ),
                 ),
                 if (onPublicar != null)
@@ -1369,11 +1366,18 @@ class _BotonRedondo extends StatelessWidget {
     final fondoInactivo = ThemeService.isDarkMode
         ? const Color(0xFF2C2C2E)
         : const Color(0xFFEDEDF0);
+    final estilo = TextStyle(
+        fontSize: 10.5,
+        height: 1.1,
+        letterSpacing: -0.2,
+        fontWeight: activo || grande ? FontWeight.w800 : FontWeight.w500,
+        color: grande ? colors.primary : colors.textPrimary);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: SizedBox(
-        width: 64,
+      child: Container(
+        width: 70,
+        padding: const EdgeInsets.symmetric(horizontal: 2),
         child: Column(
           children: [
             Stack(clipBehavior: Clip.none, children: [
@@ -1418,15 +1422,23 @@ class _BotonRedondo extends StatelessWidget {
                 ),
             ]),
             const SizedBox(height: 4),
-            Text(etiqueta,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 11,
-                    fontWeight:
-                        activo || grande ? FontWeight.w800 : FontWeight.w500,
-                    color: grande ? colors.primary : colors.textPrimary)),
+            // Nombres largos sin que se pisen con el vecino: si es una
+            // sola palabra ("Electrodomésticos") se achica para caber en
+            // una línea; si son varias, usa hasta 2 líneas.
+            if (!etiqueta.trim().contains(' '))
+              SizedBox(
+                width: double.infinity,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(etiqueta, maxLines: 1, style: estilo),
+                ),
+              )
+            else
+              Text(etiqueta,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: estilo),
           ],
         ),
       ),

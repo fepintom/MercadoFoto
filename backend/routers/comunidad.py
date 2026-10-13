@@ -154,6 +154,41 @@ def enviar(data: MensajeComunidad, tareas: BackgroundTasks):
     return msg
 
 
+class DenunciaComunidad(BaseModel):
+    user_id: int
+    motivo: Optional[str] = None
+
+
+@router.post("/comunidad/mensajes/{mensaje_id}/denunciar")
+def denunciar(mensaje_id: int, data: DenunciaComunidad):
+    """Un mensaje denunciado se tapa al tiro para todos ("Censurado") y
+    queda para que el equipo de OkVenta lo revise."""
+    if not db.usuario_existe(data.user_id):
+        raise HTTPException(403, "Inicia sesión para denunciar")
+    if not db.censurar_mensaje(mensaje_id, data.user_id, data.motivo):
+        raise HTTPException(404, "Mensaje no encontrado")
+    return {"ok": True, "censurado": True}
+
+
+@router.get("/comunidad/censurados")
+def censurados():
+    return db.ids_censurados()
+
+
+@router.get("/admin/comunidad/censurados")
+def admin_censurados(token: str):
+    _token_ok(token)
+    return db.censurados_para_revisar()
+
+
+@router.post("/admin/comunidad/mensajes/{mensaje_id}/restaurar")
+def admin_restaurar(mensaje_id: int, token: str):
+    _token_ok(token)
+    if not db.restaurar_mensaje(mensaje_id):
+        raise HTTPException(404, "Mensaje no encontrado")
+    return {"ok": True}
+
+
 @router.delete("/comunidad/mensajes/{mensaje_id}")
 def borrar(mensaje_id: int, user_id: int):
     if not db.eliminar_mensaje(mensaje_id, user_id):

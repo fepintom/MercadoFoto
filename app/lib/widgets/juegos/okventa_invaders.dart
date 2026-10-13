@@ -3,8 +3,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
-/// OkVenta Invaders: Okventín (la bolsa de OkVenta, vista desde arriba)
-/// defiende el mercado de las ofertas falsas disparando ✓ de "compra
+/// OkVenta Invaders: Okventín (la bolsa de OkVenta, de frente, mirando
+/// la pantalla; levanta el brazo para disparar) defiende el mercado de las ofertas falsas disparando ✓ de "compra
 /// verificada". Enemigos: cajas truchas, etiquetas de precio falsas y
 /// bichos de spam. Juego propio (formas y temática nuevas), hecho con
 /// CustomPainter + Ticker, sin dependencias.
@@ -69,6 +69,10 @@ class _OkVentaInvadersState extends State<OkVentaInvaders>
   bool _moveL = false;
   bool _moveR = false;
 
+  // Brazo arriba un ratito después de cada disparo, y el paso al caminar.
+  double _brazoT = 0;
+  double _pasoT = 0;
+
   final _rng = Random();
 
   @override
@@ -120,6 +124,8 @@ class _OkVentaInvadersState extends State<OkVentaInvaders>
       // Mover jugador
       if (_moveL) _px = (_px - 140 * dt).clamp(0, _gW - _pW);
       if (_moveR) _px = (_px + 140 * dt).clamp(0, _gW - _pW);
+      if (_brazoT > 0) _brazoT = max(0.0, _brazoT - dt);
+      if (_moveL || _moveR) _pasoT += dt;
 
       // Balas del jugador (suben)
       for (final b in _pBullets) b.y -= 260 * dt;
@@ -190,7 +196,7 @@ class _OkVentaInvadersState extends State<OkVentaInvaders>
       for (final b in List.of(_eBullets)) {
         if (b.x >= _px &&
             b.x <= _px + _pW &&
-            b.y >= _pY - 4 &&
+            b.y >= _pY - 16 &&
             b.y <= _pY + _pH) {
           _eBullets.remove(b);
           _lives--;
@@ -207,7 +213,9 @@ class _OkVentaInvadersState extends State<OkVentaInvaders>
 
   void _fire() {
     if (_over || _win || _pBullets.length >= 2) return;
-    _pBullets.add(_Bullet(x: _px + _pW / 2, y: _pY - _pH));
+    // Sale de la mano levantada (lado derecho de Okventín).
+    _pBullets.add(_Bullet(x: _px + 31, y: _pY - 22));
+    _brazoT = 0.22;
   }
 
   @override
@@ -271,6 +279,9 @@ class _OkVentaInvadersState extends State<OkVentaInvaders>
                   sy: cns.maxHeight / _gH,
                   over: _over,
                   win: _win,
+                  brazoArriba: _brazoT > 0,
+                  paso: ((_pasoT * 8).floor() % 2) == 0 &&
+                      (_moveL || _moveR),
                 ),
               );
             }),
@@ -398,8 +409,12 @@ class _PintorInvaders extends CustomPainter {
   final List<_Bullet> pBullets, eBullets;
   final double sx, sy;
   final bool over, win;
+  final bool brazoArriba;
+  final bool paso;
 
   const _PintorInvaders({
+    this.brazoArriba = false,
+    this.paso = false,
     required this.px,
     required this.invaders,
     required this.pBullets,
@@ -511,49 +526,101 @@ class _PintorInvaders extends CustomPainter {
     }
   }
 
-  // Okventín visto desde arriba: la bolsa blanca abierta (adentro oscuro),
-  // costado rojo, las dos manillas rojas y las zapatillas asomando.
+  // Okventín de frente (como en el fondo de Comunidad): la bolsa blanca
+  // con el costado rojo, las manillas arriba, ojitos, sonrisa y "OK";
+  // brazos negros con guantes blancos y zapatillas rojas. Al disparar
+  // levanta el brazo derecho y el ✓ sale de su mano.
   void _drawPlayer(Canvas c) {
-    final w = _pW * sx;
-    final h = (_pH + 10) * sy;
-    final ox = px * sx;
-    final oy = (_pY - 10) * sy;
-    final zap = Paint()..color = _rojo;
-    // zapatillas (delante, apuntando hacia arriba)
-    c.drawRRect(
-        RRect.fromRectAndRadius(
-            Rect.fromLTWH(ox + w * 0.18, oy - h * 0.12, w * 0.2, h * 0.3),
-            Radius.circular(w * 0.1)),
-        zap);
-    c.drawRRect(
-        RRect.fromRectAndRadius(
-            Rect.fromLTWH(ox + w * 0.62, oy - h * 0.12, w * 0.2, h * 0.3),
-            Radius.circular(w * 0.1)),
-        zap);
-    final cuerpo = RRect.fromRectAndRadius(
-        Rect.fromLTWH(ox, oy + h * 0.08, w, h * 0.84), Radius.circular(w * 0.12));
-    c.drawRRect(cuerpo, Paint()..color = Colors.white);
-    // costado rojo
-    c.drawRRect(
-        RRect.fromRectAndCorners(Rect.fromLTWH(ox, oy + h * 0.08, w * 0.16, h * 0.84),
-            topLeft: Radius.circular(w * 0.12), bottomLeft: Radius.circular(w * 0.12)),
-        Paint()..color = const Color(0xFFC62828));
-    // boca de la bolsa (adentro)
-    c.drawRRect(
-        RRect.fromRectAndRadius(
-            Rect.fromLTWH(ox + w * 0.22, oy + h * 0.28, w * 0.66, h * 0.44),
-            Radius.circular(w * 0.06)),
-        Paint()..color = const Color(0xFF3A3A40));
-    // manillas
+    final bx = px;
+    final by = _pY - 18; // caja lógica de 36 × 38
+    Offset o(double x, double y) => Offset((bx + x) * sx, (by + y) * sy);
+    Rect r(double x, double y, double w, double h) =>
+        Rect.fromLTWH((bx + x) * sx, (by + y) * sy, w * sx, h * sy);
+    final k = min(sx, sy);
+    final negro = Paint()
+      ..color = const Color(0xFF1C1C1E)
+      ..strokeWidth = max(1.6, 1.7 * k)
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    final blanco = Paint()..color = Colors.white;
+
+    // Piernas y zapatillas (alternan al caminar)
+    final dy = paso ? 1.2 : 0.0;
+    c.drawLine(o(14, 27), o(14, 32 - dy), negro);
+    c.drawLine(o(22, 27), o(22, 32 + dy - 1.2), negro);
+    for (final z in [Offset(11.2, 31.5 - dy), Offset(19.2, 30.3 + dy)]) {
+      c.drawRRect(
+          RRect.fromRectAndRadius(r(z.dx, z.dy, 5.6, 3.2), Radius.circular(1.6 * k)),
+          Paint()..color = _rojo);
+      c.drawLine(o(z.dx + 0.6, z.dy + 2.7), o(z.dx + 5, z.dy + 2.7),
+          Paint()
+            ..color = Colors.white
+            ..strokeWidth = max(0.8, 0.8 * k));
+    }
+
+    // Manillas rojas
     final man = Paint()
       ..color = _rojo
       ..style = PaintingStyle.stroke
-      ..strokeWidth = max(2.0, w * 0.07)
+      ..strokeWidth = max(1.8, 2 * k)
       ..strokeCap = StrokeCap.round;
-    c.drawArc(Rect.fromLTWH(ox + w * 0.26, oy + h * 0.1, w * 0.58, h * 0.5), pi, pi,
-        false, man);
-    c.drawArc(Rect.fromLTWH(ox + w * 0.26, oy + h * 0.42, w * 0.58, h * 0.5), 0, pi,
-        false, man);
+    c.drawArc(r(13, 2.5, 10, 11), pi, pi, false, man);
+
+    // Bolsa (cuerpo) con su costado rojo y una sombrita a la derecha
+    final cuerpo = RRect.fromRectAndRadius(r(8, 8, 20, 20), Radius.circular(3 * k));
+    c.drawRRect(cuerpo.shift(Offset(1.2 * sx, 1.2 * sy)),
+        Paint()..color = Colors.black.withValues(alpha: 0.35));
+    c.drawRRect(cuerpo, blanco);
+    c.drawRRect(
+        RRect.fromRectAndCorners(r(8, 8, 3.6, 20),
+            topLeft: Radius.circular(3 * k), bottomLeft: Radius.circular(3 * k)),
+        Paint()..color = const Color(0xFFC62828));
+
+    // Cara: ojos (miran arriba al disparar) y sonrisa
+    final ojoY = brazoArriba ? 13.2 : 14.2;
+    final ojo = Paint()..color = const Color(0xFF1C1C1E);
+    c.drawOval(r(14.6, ojoY, 2, 2.6), ojo);
+    c.drawOval(r(20.6, ojoY, 2, 2.6), ojo);
+    final boca = Path()
+      ..moveTo((bx + 15.2) * sx, (by + 19) * sy)
+      ..quadraticBezierTo((bx + 18.6) * sx, (by + (brazoArriba ? 22.6 : 21.6)) * sy,
+          (bx + 22) * sx, (by + 19) * sy);
+    c.drawPath(
+        boca,
+        Paint()
+          ..color = const Color(0xFF1C1C1E)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = max(1.1, 1.2 * k)
+          ..strokeCap = StrokeCap.round);
+
+    // "OK" rojo en la panza
+    final tp = TextPainter(
+      text: TextSpan(
+          text: 'OK',
+          style: TextStyle(
+              color: _rojo,
+              fontSize: 5.2 * k,
+              fontWeight: FontWeight.w900,
+              height: 1)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(c, o(18.6, 23.2) - Offset(tp.width / 2, 0));
+
+    // Brazo izquierdo (abajo, relajado)
+    c.drawLine(o(8.4, 17), o(4.5, 23 + (paso ? 0.8 : 0)), negro);
+    c.drawCircle(o(4.2, 24 + (paso ? 0.8 : 0)), 1.9 * k, blanco);
+
+    // Brazo derecho: abajo, o arriba disparando
+    if (brazoArriba) {
+      c.drawLine(o(27.6, 14), o(31, 4.5), negro);
+      c.drawCircle(o(31.2, 3.4), 2.1 * k, blanco);
+      // destello verde en la mano
+      c.drawCircle(o(31.2, 1.2), 3.4 * k,
+          Paint()..color = _verde.withValues(alpha: 0.35));
+    } else {
+      c.drawLine(o(27.6, 17), o(31.5, 23 - (paso ? 0.8 : 0)), negro);
+      c.drawCircle(o(31.8, 24 - (paso ? 0.8 : 0)), 1.9 * k, blanco);
+    }
   }
 
   // ✓ de compra verificada (disparo de Okventín)

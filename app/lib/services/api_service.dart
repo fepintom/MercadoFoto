@@ -1504,6 +1504,29 @@ class ApiService {
     return List<Map<String, dynamic>>.from(jsonDecode(utf8.decode(r.bodyBytes)));
   }
 
+  /// Denuncia un mensaje: queda tapado ("Censurado") para todos.
+  static Future<bool> denunciarMensajeComunidad(
+      int mensajeId, int userId, String motivo) async {
+    final r = await http.post(
+      Uri.parse('$baseUrl/comunidad/mensajes/$mensajeId/denunciar'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'user_id': userId, 'motivo': motivo}),
+    );
+    return r.statusCode == 200;
+  }
+
+  /// Ids de mensajes censurados (para tapar los que ya están en pantalla).
+  static Future<Set<int>> obtenerCensuradosComunidad() async {
+    final r = await http
+        .get(Uri.parse('$baseUrl/comunidad/censurados'))
+        .timeout(const Duration(seconds: 10));
+    if (r.statusCode != 200) return {};
+    return (jsonDecode(r.body) as List)
+        .whereType<num>()
+        .map((e) => e.toInt())
+        .toSet();
+  }
+
   /// Borra un mensaje propio para todos.
   static Future<bool> borrarMensajeComunidad(int mensajeId, int userId) async {
     final r = await http.delete(

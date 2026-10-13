@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../screens/producto_detalle_screen.dart';
@@ -23,8 +25,13 @@ class MasVendidosFranja extends StatefulWidget {
   State<MasVendidosFranja> createState() => _MasVendidosFranjaState();
 }
 
-class _MasVendidosFranjaState extends State<MasVendidosFranja> {
+class _MasVendidosFranjaState extends State<MasVendidosFranja>
+    with SingleTickerProviderStateMixin {
   List<Map<String, dynamic>>? _items;
+  // Llamitas que flamean en la esquina de cada tarjeta (versión compacta).
+  late final AnimationController _llama = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 1400))
+    ..repeat();
   final _scroll = ScrollController();
   int _pagina = 0;
 
@@ -50,14 +57,19 @@ class _MasVendidosFranjaState extends State<MasVendidosFranja> {
 
   @override
   void dispose() {
+    _llama.dispose();
     _scroll.dispose();
     super.dispose();
   }
 
-  int get _paginas => ((_items?.length ?? 0) / 2).ceil().clamp(1, 5);
+  int get _paginas => ((_items?.length ?? 0) / 2).ceil().clamp(1, 10);
 
   Future<void> _cargar() async {
-    final l = await VistasService.masVendidos(limite: 5);
+    // "Lo más buscado" de Comunidad: los 10 más vistos (empates: el que
+    // llegó primero a esas vistas). La franja grande sigue con ventas.
+    final l = widget.compacta
+        ? await VistasService.topProductos(limite: 10)
+        : await VistasService.masVendidos(limite: 5);
     if (mounted) setState(() => _items = l);
   }
 
@@ -148,6 +160,57 @@ class _MasVendidosFranjaState extends State<MasVendidosFranja> {
     );
   }
 
+  /// Llamita que flamea con el puesto adentro (1 al 10). Cada una con su
+  /// propio desfase, para que no se muevan todas iguales.
+  Widget _llamita(int puesto) {
+    final fase = puesto * 0.37;
+    return AnimatedBuilder(
+      animation: _llama,
+      builder: (_, child) {
+        final t = (_llama.value + fase) * 2 * math.pi;
+        final escala = 1 + 0.07 * math.sin(t * 2) + 0.03 * math.sin(t * 5);
+        final giro = 0.06 * math.sin(t * 3);
+        return Transform.rotate(
+          angle: giro,
+          alignment: Alignment.bottomCenter,
+          child: Transform.scale(
+            scale: escala,
+            alignment: Alignment.bottomCenter,
+            child: child,
+          ),
+        );
+      },
+      child: SizedBox(
+        width: 26,
+        height: 28,
+        child: Stack(alignment: Alignment.center, children: [
+          ShaderMask(
+            blendMode: BlendMode.srcIn,
+            shaderCallback: (r) => const LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              colors: [Color(0xFFD32F2F), Color(0xFFFF6D00), Color(0xFFFFC107)],
+              stops: [0.15, 0.6, 1],
+            ).createShader(r),
+            child: const Icon(Icons.local_fire_department_rounded, size: 28),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 9),
+            child: Text('$puesto',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10.5,
+                    height: 1,
+                    fontWeight: FontWeight.w900,
+                    shadows: [
+                      Shadow(color: Color(0x88000000), blurRadius: 2),
+                    ])),
+          ),
+        ]),
+      ),
+    );
+  }
+
   Widget _tarjeta(Map<String, dynamic> p, int puesto, double ancho) {
     final img = (p['imagen_url'] ?? '').toString();
     if (widget.compacta) {
@@ -159,7 +222,7 @@ class _MasVendidosFranjaState extends State<MasVendidosFranja> {
         ).then((_) => _cargar()),
         child: Container(
           width: ancho,
-          padding: const EdgeInsets.fromLTRB(8, 6, 10, 6),
+          padding: const EdgeInsets.fromLTRB(8, 7, 10, 5),
           decoration: BoxDecoration(
             color: colors.surface,
             borderRadius: BorderRadius.circular(14),
@@ -171,15 +234,21 @@ class _MasVendidosFranjaState extends State<MasVendidosFranja> {
             ],
           ),
           child: Row(children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: NetImage(
-                img.startsWith('http') ? img : '${ApiService.baseUrl}$img',
-                width: 44,
-                height: 50,
-                fit: BoxFit.cover,
+            Stack(clipBehavior: Clip.none, children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: NetImage(
+                    img.startsWith('http') ? img : '${ApiService.baseUrl}$img',
+                    width: 44,
+                    height: 50,
+                    fit: BoxFit.cover,
+                  ),
+                ),
               ),
-            ),
+              Positioned(left: -6, top: -6, child: _llamita(puesto)),
+            ]),
             const Spacer(),
             Flexible(
               flex: 4,

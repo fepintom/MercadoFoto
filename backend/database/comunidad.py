@@ -74,6 +74,13 @@ def init_comunidad_db():
         conn.execute("ALTER TABLE comunidad_mensajes ADD COLUMN ubicacion TEXT")
     except sqlite3.OperationalError:
         pass
+    # Denunciado: se oculta para todos hasta que el equipo lo revise.
+    for col in ("censurado INTEGER DEFAULT 0", "censura_motivo TEXT",
+                "censura_por INTEGER"):
+        try:
+            conn.execute(f"ALTER TABLE comunidad_mensajes ADD COLUMN {col}")
+        except sqlite3.OperationalError:
+            pass
     conn.commit()
     conn.close()
 
@@ -82,7 +89,7 @@ _SELECT = """
     SELECT m.id, m.user_id, m.es_bot, m.texto,
            m.ancla_tipo, m.ancla_id, m.ancla_titulo, m.ancla_precio,
            m.ancla_imagen, m.responde_a, m.created_at, m.menciones,
-           m.ubicacion, u.nombre, u.apellido, u.foto_url
+           m.ubicacion, m.censurado, u.nombre, u.apellido, u.foto_url
     FROM comunidad_mensajes m
     LEFT JOIN users u ON u.id = m.user_id
 """
@@ -107,6 +114,16 @@ def _a_dict(r):
     except Exception:
         d["ubicacion"] = None
     d["handle"] = handle_de(d.get("nombre"), d.get("apellido"))
+    # Denunciado: el contenido no sale del servidor (queda guardado para
+    # que el equipo lo revise), la app dibuja la máscara "Censurado".
+    d["censurado"] = bool(d.get("censurado"))
+    if d["censurado"]:
+        d["texto"] = ""
+        d["menciones"] = []
+        d["ubicacion"] = None
+        for k in ("ancla_tipo", "ancla_id", "ancla_titulo", "ancla_precio",
+                  "ancla_imagen"):
+            d[k] = None
     if d["es_bot"]:
         d["nombre"] = "OkVenta"
         d["apellido"] = None
@@ -168,6 +185,7 @@ def obtener_anclados(dias=7, limite=10):
         WHERE m.id IN (
             SELECT MAX(id) FROM comunidad_mensajes
             WHERE ancla_tipo IS NOT NULL
+              AND COALESCE(censurado, 0) = 0
               AND created_at >= datetime('now', ?)
             GROUP BY ancla_tipo, ancla_id
         )
@@ -318,3 +336,52 @@ def ultimos_con_usuario(user_id, limite=10):
     """, (user_id, user_id, limite)).fetchall()
     conn.close()
     return [_a_dict(f) for f in reversed(filas)]
+
+
+def censurar_mensaje(mensaje_id, por_user_id=None, motivo=None):
+    """Oculta un mensaje denunciado (para todos). Devuelve True si existía.
+    Los mensajes del bot no se censuran."""
+    conn = _conn()
+    cur = conn.execute("""
+        UPDATE comunidad_mensajes
+        SET censurado = 1, censura_motivo = ?, censura_por = ?
+        WHERE id = ? AND es_bot = 0
+    """, ((motivo or "")[:200], por_user_id, mensaje_id))
+    conn.commit()
+    conn.close()
+    return cur.rowcount > 0
+
+
+def restaurar_mensaje(mensaje_id):
+    """El equipo revisó y el mensaje estaba bien: vuelve a verse."""
+    conn = _conn()
+    cur = conn.execute(
+        "UPDATE comunidad_mensajes SET censurado = 0 WHERE id = ?",
+        (mensaje_id,))
+    conn.commit()
+    conn.close()
+    return cur.rowcount > 0
+
+
+def ids_censurados(limite=300):
+    """Ids de los últimos mensajes censurados: la app los consulta para
+    tapar los que ya tenía cargados."""
+    conn = _conn()
+    rows = conn.execute(
+        "SELECT id FROM comunidad_mensajes WHERE censurado = 1 "
+        "ORDER BY id DESC LIMIT ?", (limite,)).fetchall()
+    conn.close()
+    return [r[0] for r in rows]
+
+
+def censurados_para_revisar(limite=100):
+    """Para el panel del equipo: el mensaje original con quién lo escribió."""
+    conn = _conn()
+    rows = conn.execute("""
+        SELECT m.id, m.user_id, m.texto, m.censura_motivo, m.censura_por,
+               m.created_at, u.nombre, u.apellido, u.email
+        FROM comunidad_mensajes m LEFT JOIN users u ON u.id = m.user_id
+        WHERE m.censurado = 1 ORDER BY m.id DESC LIMIT ?
+    """, (limite,)).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]

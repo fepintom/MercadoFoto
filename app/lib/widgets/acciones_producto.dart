@@ -7,6 +7,7 @@ import '../screens/chat_screen.dart';
 import '../screens/chat_servicio_screen.dart';
 import '../screens/evaluaciones_vendedor_screen.dart';
 import '../screens/perfil_publico_screen.dart';
+import '../screens/servicios_screen.dart';
 import '../services/api_service.dart';
 import '../services/cart_service.dart';
 import '../services/contenido_oculto_service.dart';
@@ -25,6 +26,12 @@ class AccionesProducto {
 
   static bool ofreceInstalacion(Map p) =>
       p['instalacion_vendedor'] == true || p['instalacion_vendedor'] == 1;
+
+  /// El producto necesita instalación (la haga el vendedor u otra persona).
+  static bool requiereInstalacion(Map p) =>
+      ofreceInstalacion(p) ||
+      p['requiere_instalacion'] == true ||
+      p['requiere_instalacion'] == 1;
 
   static String _titulo(Map p) => (p['titulo'] ?? 'Producto').toString();
   static String _vendedor(Map p) =>
@@ -224,7 +231,9 @@ class AccionesProducto {
   /// Aviso flotante que nace desde el enlace "Ofrece instalación"
   /// ([origen] es el contexto del enlace).
   static Future<void> mostrarAvisoInstalacion(
-      BuildContext origen, Map<String, dynamic> p) {
+      BuildContext origen, Map<String, dynamic> p,
+      {bool conCarro = true}) {
+    final ofrece = ofreceInstalacion(p);
     final box = origen.findRenderObject() as RenderBox?;
     final pantalla = MediaQuery.of(origen).size;
     final pos = box?.localToGlobal(Offset.zero) ?? Offset.zero;
@@ -278,18 +287,28 @@ class AccionesProducto {
                   Icon(Icons.handyman_rounded,
                       size: 18, color: colors.textPrimary),
                   const SizedBox(width: 6),
-                  Text('Instalación disponible',
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: colors.textPrimary)),
+                  Expanded(
+                    child: Text(
+                        ofrece
+                            ? 'Instalación disponible'
+                            : 'Requiere instalación',
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: colors.textPrimary)),
+                  ),
                 ]),
                 const SizedBox(height: 8),
-                Text('El vendedor de este producto ofrece la instalación.',
+                Text(
+                    ofrece
+                        ? 'El vendedor de este producto ofrece la instalación.'
+                        : 'Este producto necesita instalación. Puedes '
+                            'cotizarla con el vendedor o elegir a otra '
+                            'persona que la haga.',
                     style: estilo),
                 const SizedBox(height: 8),
                 Text.rich(TextSpan(style: estilo, children: [
-                  const TextSpan(text: 'Si quieres cotizar el servicio, '),
+                  const TextSpan(text: 'Cotizar con el vendedor: '),
                   WidgetSpan(
                     alignment: PlaceholderAlignment.baseline,
                     baseline: TextBaseline.alphabetic,
@@ -302,17 +321,36 @@ class AccionesProducto {
                 ])),
                 const SizedBox(height: 6),
                 Text.rich(TextSpan(style: estilo, children: [
-                  const TextSpan(text: 'Para comprar sin instalación, '),
+                  const TextSpan(text: 'Elegir a otra persona en OkServicios: '),
                   WidgetSpan(
                     alignment: PlaceholderAlignment.baseline,
                     baseline: TextBaseline.alphabetic,
                     child: enlace('pincha aquí', () {
                       Navigator.pop(ctx);
-                      meterAlCarro(origen, p);
+                      Navigator.of(origen).push(MaterialPageRoute(
+                        builder: (_) => ServiciosScreen(
+                            busquedaInicial:
+                                (p['categoria'] ?? '').toString()),
+                      ));
                     }),
                   ),
                   const TextSpan(text: '.'),
                 ])),
+                if (conCarro) ...[
+                  const SizedBox(height: 6),
+                  Text.rich(TextSpan(style: estilo, children: [
+                    const TextSpan(text: 'Para comprar sin instalación, '),
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.baseline,
+                      baseline: TextBaseline.alphabetic,
+                      child: enlace('pincha aquí', () {
+                        Navigator.pop(ctx);
+                        meterAlCarro(origen, p);
+                      }),
+                    ),
+                    const TextSpan(text: '.'),
+                  ])),
+                ],
               ],
             ),
           ),
