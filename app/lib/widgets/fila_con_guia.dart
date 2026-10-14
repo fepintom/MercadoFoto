@@ -160,11 +160,25 @@ class _FilaConGuiaState extends State<FilaConGuia> {
               WidgetsBinding.instance.addPostFrameCallback((_) => _revisar());
               return false;
             },
-            child: ListView(
-              controller: _ctrl,
-              scrollDirection: Axis.horizontal,
-              padding: widget.padding,
-              children: widget.children,
+            // Si los botones caben, quedan centrados; si son más, se
+            // llenan hacia los lados y la fila se desliza.
+            child: LayoutBuilder(
+              builder: (_, c) => SingleChildScrollView(
+                controller: _ctrl,
+                scrollDirection: Axis.horizontal,
+                padding: widget.padding,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                      minWidth: (c.maxWidth - widget.padding.horizontal)
+                          .clamp(0.0, double.infinity)
+                          .toDouble()),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: widget.children,
+                  ),
+                ),
+              ),
             ),
           ),
         ),

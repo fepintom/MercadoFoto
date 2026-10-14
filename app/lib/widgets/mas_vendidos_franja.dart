@@ -1,9 +1,8 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../screens/producto_detalle_screen.dart';
 import '../services/api_service.dart';
+import '../services/theme_service.dart';
 import '../services/vistas_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
@@ -25,13 +24,8 @@ class MasVendidosFranja extends StatefulWidget {
   State<MasVendidosFranja> createState() => _MasVendidosFranjaState();
 }
 
-class _MasVendidosFranjaState extends State<MasVendidosFranja>
-    with SingleTickerProviderStateMixin {
+class _MasVendidosFranjaState extends State<MasVendidosFranja> {
   List<Map<String, dynamic>>? _items;
-  // Llamitas que flamean en la esquina de cada tarjeta (versión compacta).
-  late final AnimationController _llama = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1400))
-    ..repeat();
   final _scroll = ScrollController();
   int _pagina = 0;
 
@@ -57,7 +51,6 @@ class _MasVendidosFranjaState extends State<MasVendidosFranja>
 
   @override
   void dispose() {
-    _llama.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -79,7 +72,7 @@ class _MasVendidosFranjaState extends State<MasVendidosFranja>
     if (items == null || items.isEmpty) return const SizedBox.shrink();
     final porVentas = items.any((p) => p['origen'] == 'ventas');
     final tarjetas = SizedBox(
-      height: 62,
+      height: widget.compacta ? 66 : 62,
       child: LayoutBuilder(builder: (context, c) {
         // ~2,6 tarjetas a la vista: se nota que hay más.
         final ancho = (c.maxWidth - 16) / (widget.compacta ? 3.1 : 2.6);
@@ -160,61 +153,12 @@ class _MasVendidosFranjaState extends State<MasVendidosFranja>
     );
   }
 
-  /// Llamita que flamea con el puesto adentro (1 al 10). Cada una con su
-  /// propio desfase, para que no se muevan todas iguales.
-  Widget _llamita(int puesto) {
-    final fase = puesto * 0.37;
-    return AnimatedBuilder(
-      animation: _llama,
-      builder: (_, child) {
-        final t = (_llama.value + fase) * 2 * math.pi;
-        final escala = 1 + 0.07 * math.sin(t * 2) + 0.03 * math.sin(t * 5);
-        final giro = 0.06 * math.sin(t * 3);
-        return Transform.rotate(
-          angle: giro,
-          alignment: Alignment.bottomCenter,
-          child: Transform.scale(
-            scale: escala,
-            alignment: Alignment.bottomCenter,
-            child: child,
-          ),
-        );
-      },
-      child: SizedBox(
-        width: 26,
-        height: 28,
-        child: Stack(alignment: Alignment.center, children: [
-          ShaderMask(
-            blendMode: BlendMode.srcIn,
-            shaderCallback: (r) => const LinearGradient(
-              begin: Alignment.bottomCenter,
-              end: Alignment.topCenter,
-              colors: [Color(0xFFD32F2F), Color(0xFFFF6D00), Color(0xFFFFC107)],
-              stops: [0.15, 0.6, 1],
-            ).createShader(r),
-            child: const Icon(Icons.local_fire_department_rounded, size: 28),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 9),
-            child: Text('$puesto',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10.5,
-                    height: 1,
-                    fontWeight: FontWeight.w900,
-                    shadows: [
-                      Shadow(color: Color(0x88000000), blurRadius: 2),
-                    ])),
-          ),
-        ]),
-      ),
-    );
-  }
-
   Widget _tarjeta(Map<String, dynamic> p, int puesto, double ancho) {
     final img = (p['imagen_url'] ?? '').toString();
     if (widget.compacta) {
-      // Como la maqueta: foto y precio, nada más.
+      // Como la maqueta: foto en su recuadro, nombre y precio en pastilla
+      // roja suave. En modo oscuro la tarjeta es gris con borde.
+      final oscuro = ThemeService.isDarkMode;
       return GestureDetector(
         onTap: () => Navigator.push(
           context,
@@ -222,43 +166,72 @@ class _MasVendidosFranjaState extends State<MasVendidosFranja>
         ).then((_) => _cargar()),
         child: Container(
           width: ancho,
-          padding: const EdgeInsets.fromLTRB(8, 7, 10, 5),
+          padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: colors.surface,
-            borderRadius: BorderRadius.circular(14),
+            color: oscuro ? const Color(0xFF25272C) : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+                color: oscuro ? const Color(0xFF3A3D44) : const Color(0xFFEDEDF0),
+                width: 0.8),
             boxShadow: [
               BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
+                  color: Colors.black.withValues(alpha: oscuro ? 0.3 : 0.06),
                   blurRadius: 6,
                   offset: const Offset(0, 2)),
             ],
           ),
           child: Row(children: [
-            Stack(clipBehavior: Clip.none, children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 6),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: NetImage(
-                    img.startsWith('http') ? img : '${ApiService.baseUrl}$img',
-                    width: 44,
-                    height: 50,
-                    fit: BoxFit.cover,
-                  ),
-                ),
+            Container(
+              width: 44,
+              height: 54,
+              decoration: BoxDecoration(
+                color: oscuro ? const Color(0xFF34363C) : const Color(0xFFF0F0F3),
+                borderRadius: BorderRadius.circular(8),
               ),
-              Positioned(left: -6, top: -6, child: _llamita(puesto)),
-            ]),
-            const Spacer(),
-            Flexible(
-              flex: 4,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(formatPrecio(p['precio']),
-                    style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        color: colors.primary)),
+              clipBehavior: Clip.antiAlias,
+              child: NetImage(
+                img.startsWith('http') ? img : '${ApiService.baseUrl}$img',
+                width: 44,
+                height: 54,
+                fit: BoxFit.cover,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text((p['titulo'] ?? '').toString(),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 11.5,
+                          height: 1.15,
+                          fontWeight: FontWeight.w700,
+                          color: oscuro ? Colors.white : const Color(0xFF1C1C1E))),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: colors.primary
+                          .withValues(alpha: oscuro ? 0.22 : 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(formatPrecio(p['precio']),
+                          maxLines: 1,
+                          style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w900,
+                              color: oscuro
+                                  ? const Color(0xFFFF6B63)
+                                  : colors.primary)),
+                    ),
+                  ),
+                ],
               ),
             ),
           ]),
