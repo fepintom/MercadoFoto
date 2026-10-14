@@ -12,6 +12,17 @@ import '../theme/app_theme.dart';
 import '../utils/regiones_chile.dart';
 import 'barra_radio_km.dart';
 
+/// Nombre corto para mostrar en los botones redondos (el valor real de la
+/// categoría no cambia: es el que se guarda y se filtra).
+String etiquetaCategoria(String nombre) {
+  switch (nombre) {
+    case 'Electrodomésticos':
+      return 'Electrohogar';
+    default:
+      return nombre;
+  }
+}
+
 /// Color de los íconos y flechas de las pastillas: el rojo de "Publicar"
 /// en modo claro y blanco en modo oscuro (el gris se perdía en ambos).
 Color colorIconoPastilla() =>
@@ -185,7 +196,7 @@ class BarraFiltros extends StatelessWidget {
                         ])
                           _BotonRedondo(
                             icono: c.icono,
-                            etiqueta: c.nombre,
+                            etiqueta: etiquetaCategoria(c.nombre),
                             activo: seleccionadas.contains(c.nombre),
                             marcaCheck: true,
                             onTap: () {
@@ -266,8 +277,9 @@ class BarraFiltros extends StatelessWidget {
               : '${regiones.length} regiones';
     } else {
       activo = distanciaActiva && !sinGps;
-      icono = Icons.near_me_rounded;
-      etiqueta = activo ? BarraRadioKm.formatRadio(radioKm) : 'Radio';
+      // Radar: "qué hay cerca de mí". Abajo dice "Cerca" o el radio activo.
+      icono = Icons.radar_rounded;
+      etiqueta = activo ? BarraRadioKm.formatRadio(radioKm) : 'Cerca';
     }
     return _BotonRedondo(
       icono: icono,

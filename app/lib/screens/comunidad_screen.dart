@@ -1166,18 +1166,24 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     // hora abajo a la derecha. En modo oscuro las burbujas son gris
     // claro-oscuro (se separan del fondo negro) y las mías un rojo apagado.
     final oscuro = ThemeService.isDarkMode;
+    // Como la maqueta: los demás en blanco (gris en modo oscuro), OkVenta
+    // en negro, lo mío en verde suave; nombres de color.
     final fondo = esBot
-        ? (oscuro ? const Color(0xFF3A3A3C) : colors.carbon)
+        ? (oscuro ? const Color(0xFF17181B) : const Color(0xFF1F1F22))
         : mio
-            ? (oscuro ? const Color(0xFFA3302D) : colors.primary)
-            : (oscuro ? const Color(0xFF2F323A) : colors.surface);
-    final colorTexto =
-        (esBot || mio) ? Colors.white : (oscuro ? Colors.white : colors.textPrimary);
-    final colorHora = (esBot || mio)
-        ? Colors.white.withValues(alpha: 0.75)
-        : (oscuro ? Colors.white60 : colors.textPrimary.withValues(alpha: 0.55));
+            ? (oscuro ? const Color(0xFF1E4A2B) : const Color(0xFFDDF6D2))
+            : (oscuro ? const Color(0xFF25272C) : Colors.white);
+    final borde = esBot
+        ? (oscuro ? const Color(0xFF34363C) : null)
+        : mio
+            ? (oscuro ? const Color(0xFF2E7A45) : const Color(0xFFC3E8B5))
+            : (oscuro ? const Color(0xFF3A3D44) : const Color(0xFFE6E6EA));
+    final colorTexto = esBot || oscuro ? Colors.white : const Color(0xFF1C1C1E);
+    final colorHora = esBot || oscuro
+        ? Colors.white.withValues(alpha: 0.6)
+        : const Color(0xFF1C1C1E).withValues(alpha: 0.5);
     final colorNombre = esBot
-        ? (oscuro ? const Color(0xFFFF8A80) : const Color(0xFFFFB4AB))
+        ? (oscuro ? const Color(0xFFFF5A52) : const Color(0xFFFF4D44))
         : _colorDeUsuario((m['user_id'] as num?)?.toInt() ?? 0);
 
     final censurado = m['censurado'] == true;
@@ -1196,15 +1202,11 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
           bottomLeft: const Radius.circular(14),
           bottomRight: const Radius.circular(14),
         ),
-        border: (esBot || mio)
-            ? null
-            : Border.all(
-                color: oscuro ? const Color(0xFF444852) : colors.divider,
-                width: 0.6),
+        border: borde == null ? null : Border.all(color: borde, width: 0.8),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: oscuro ? 0.35 : 0.06),
-              blurRadius: 2,
+              color: Colors.black.withValues(alpha: oscuro ? 0.35 : 0.07),
+              blurRadius: 4,
               offset: const Offset(0, 1)),
         ],
       ),
@@ -1230,7 +1232,18 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                   ),
                   if (esBot) ...[
                     const SizedBox(width: 3),
-                    Icon(Icons.verified_rounded, size: 14, color: colorNombre),
+                    // Sello de verificado: ✓ en círculo blanco con aro rojo.
+                    Container(
+                      width: 15,
+                      height: 15,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: colorNombre, width: 1.6),
+                      ),
+                      child: const Icon(Icons.check_rounded,
+                          size: 10, color: Color(0xFF1C1C1E)),
+                    ),
                   ],
                 ]),
               ),
@@ -1559,11 +1572,11 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
       final handle = token.substring(1).toLowerCase();
       final uid = porHandle[handle];
       final esBot = handle == 'okventa';
+      // La @mención va del color de esa persona (como su nombre).
+      final colorMencion = uid != null ? _colorDeUsuario(uid) : color;
       final resaltado = TextStyle(
-          fontWeight: FontWeight.w800,
-          color: color,
-          decoration: uid != null ? TextDecoration.underline : null,
-          decorationColor: color);
+          fontWeight: FontWeight.w700,
+          color: colorMencion);
       if (uid != null) {
         spans.add(WidgetSpan(
           alignment: PlaceholderAlignment.baseline,

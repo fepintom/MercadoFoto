@@ -173,3 +173,4 @@ Foto de perfil (nombre de archivo único), dirección manual como fallback, RUT 
 - **Instalación**: el botón 🔧 del detalle solo aparece si el producto requiere instalación; abre el aviso flotante (cotizar con el vendedor / elegir a otra persona en OkServicios).
 - **Filtros redondos**: `FilaConGuia` (flechas ‹ ›, borde que se desvanece y barrita de posición); etiquetas largas se achican o van en 2 líneas.
 - **Resultados en filas**: corazón, carro, instalación y compartir en círculos bajo categoría/ubicación.
+- (13-oct, noche) "Electrodomésticos" se muestra como "Electrohogar" en los botones (`etiquetaCategoria`; el valor guardado no cambia). Radio → ícono radar "Cerca". Filas de botones centradas si caben. Lo más buscado sin llamas (foto en recuadro, nombre, precio en pastilla roja suave). Burbujas como la maqueta: demás blancas (gris 0xFF25272C en oscuro), OkVenta negra con sello ✓, mías verde suave (verde oscuro en oscuro); @menciones del color de la persona.
