@@ -14,6 +14,7 @@ import 'services/session_service.dart';
 import 'services/theme_service.dart';
 import 'services/vista_servicios_service.dart';
 import 'theme/app_theme.dart';
+import 'widgets/boton_ocultar_teclado.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -51,10 +52,15 @@ class MercadoFotoApp extends StatelessWidget {
               themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
               home: const _AuthGate(),
               // Toca cualquier zona fuera del teclado → baja el teclado en toda la app
+              // Además, con el teclado abierto siempre aparece el botón
+              // "Ocultar" (en todas las pantallas).
               builder: (context, child) => GestureDetector(
                 behavior: HitTestBehavior.translucent,
                 onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-                child: child!,
+                child: Stack(fit: StackFit.expand, children: [
+                  child!,
+                  const BotonOcultarTeclado(),
+                ]),
               ),
             );
           },
