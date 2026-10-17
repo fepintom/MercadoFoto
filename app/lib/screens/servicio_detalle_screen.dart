@@ -12,6 +12,9 @@ import '../theme/app_theme.dart';
 import '../widgets/insignia.dart';
 import 'chat_servicio_screen.dart';
 import '../widgets/net_image.dart';
+import '../services/favoritos_service.dart';
+import '../widgets/acciones_servicio.dart';
+import 'soporte_chat_screen.dart';
 class ServicioDetalleScreen extends StatefulWidget {
   final Map<String, dynamic> servicio;
 
@@ -276,6 +279,32 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
   }
 
   // ── Confirmación visual de pago simulado (modo prueba) ───────────────────
+  /// Botón redondo blanco sobre la foto (como en el detalle de producto).
+  Widget _botonCirculo(IconData icono, VoidCallback onTap,
+      {Color? color, String? tooltip}) {
+    final b = GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 38,
+        height: 38,
+        margin: const EdgeInsets.only(left: 6),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.9),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 4,
+                offset: const Offset(0, 1)),
+          ],
+        ),
+        child: Icon(icono, size: 21, color: color ?? const Color(0xFF1C1C1E)),
+      ),
+    );
+    return Center(
+        child: tooltip == null ? b : Tooltip(message: tooltip, child: b));
+  }
+
   @override
   Widget build(BuildContext context) {
     final nombre     = '${_srv['nombre'] ?? ''} ${_srv['apellido'] ?? ''}'.trim();
@@ -293,8 +322,65 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
     final tieneTelefono =
         (_srv['telefono'] ?? _srv['whatsapp'] ?? '').toString().isNotEmpty;
 
+    final esMio = _miUserId != null && _srv['user_id'] == _miUserId;
     return Scaffold(
       backgroundColor: colors.background,
+      // Cotizar siempre a la vista (abajo), como el carro en un producto.
+      bottomNavigationBar: esMio
+          ? null
+          : Container(
+              decoration: BoxDecoration(
+                color: colors.surface,
+                border: Border(
+                    top: BorderSide(color: colors.divider, width: 0.5)),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                  child: Row(children: [
+                    Expanded(
+                      flex: 3,
+                      child: ElevatedButton.icon(
+                        onPressed: _contactar,
+                        icon: const Icon(Icons.request_quote_rounded,
+                            size: 20),
+                        label: const Text('Cotizar'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colors.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          textStyle: const TextStyle(
+                              fontSize: 15.5, fontWeight: FontWeight.w800),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                    if (tieneTelefono) ...[
+                      const SizedBox(width: 10),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton.icon(
+                          onPressed: _llamar,
+                          icon: const Icon(Icons.call, size: 18),
+                          label: const Text('Llamar'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colors.carbon,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ]),
+                ),
+              ),
+            ),
       body: CustomScrollView(
         slivers: [
           // ── AppBar con imagen/foto ──────────────────────────────────────
@@ -308,6 +394,41 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
               onPressed: () => Navigator.pop(context),
             ),
             actions: [
+              // Igual que el detalle de un producto: ayuda, favorito y
+              // compartir, en círculos blancos (siempre a la vista).
+              _botonCirculo(Icons.help_outline_rounded, () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SoporteChatScreen()),
+                );
+              }, tooltip: 'Ayuda'),
+              ValueListenableBuilder<Set<int>>(
+                valueListenable: FavoritosService.idsServicios,
+                builder: (_, __, ___) {
+                  final id = (_srv['id'] as num?)?.toInt();
+                  final fav = FavoritosService.esServicio(id);
+                  return _botonCirculo(
+                    fav ? Icons.favorite : Icons.favorite_border,
+                    () async {
+                      final uid = _miUserId;
+                      if (uid == null || id == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text(
+                                    'Inicia sesión para guardar servicios')));
+                        return;
+                      }
+                      await FavoritosService.alternarServicio(uid, id);
+                    },
+                    color: fav ? colors.primary : null,
+                    tooltip: fav ? 'Quitar de favoritos' : 'Guardar',
+                  );
+                },
+              ),
+              _botonCirculo(Icons.share_outlined,
+                  () => AccionesServicio.compartir(context, _srv),
+                  tooltip: 'Compartir'),
+              const SizedBox(width: 6),
               // Okventin servicios: solo en modo oscuro
               ValueListenableBuilder<bool>(
                 valueListenable: ThemeService.isDarkNotifier,
@@ -513,56 +634,6 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                   _buildCalificacion(rating, numVal),
 
                   const SizedBox(height: 24),
-
-                  // ── Botones de contacto ─────────────────────────────────
-                  Text('Contactar',
-                      style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: colors.textPrimary)),
-                  const SizedBox(height: 12),
-
-                  // Contactar abre el chat: ahí se conversa y se cotiza,
-                  // sin exponer el teléfono de ninguna de las dos partes.
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: _contactar,
-                          icon: const Icon(Icons.chat_bubble_outline_rounded,
-                              size: 18),
-                          label: const Text('Contactar'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: colors.primary,
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                          ),
-                        ),
-                      ),
-                      if (tieneTelefono) ...[
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _llamar,
-                            icon: const Icon(Icons.call, size: 18),
-                            label: const Text('Llamar'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: colors.carbon,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
 
                   const SizedBox(height: 16),
 

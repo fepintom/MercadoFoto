@@ -9,6 +9,7 @@ import 'package:latlong2/latlong.dart' as ll;
 import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/orden_acciones.dart';
 import 'analizar_paquete_screen.dart';
 import 'calificar_vendedor_screen.dart';
 import 'grabar_verificacion_paquete_screen.dart';
@@ -502,125 +503,121 @@ class _MisComprasScreenState extends State<MisComprasScreen>
         (estado == 'pago_confirmado' || estado == 'en_camino');
     final debeConfirmarRecepcion = esCompra && estado == 'entrega_reportada';
 
+    final estadoColor = _estadoColor(estado);
+    // Tarjeta compacta: todo lo importante en dos líneas y las acciones
+    // como pastillitas (cancelar con temporizador, ver pago, compartir).
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: colors.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: colors.divider, width: 0.5),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(10, 9, 10, 9),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header: tipo badge + fecha
             Row(
               children: [
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: tipo == 'producto'
-                        ? colors.carbon.withOpacity(0.1)
-                        : colors.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
+                        ? colors.carbon.withValues(alpha: 0.1)
+                        : colors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(5),
                   ),
                   child: Text(
                     tipo == 'producto' ? 'Producto' : 'Servicio',
                     style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
                         color: tipo == 'producto'
                             ? colors.textPrimary
                             : colors.primary),
                   ),
                 ),
-                const Spacer(),
-                Text(
-                  _formatFecha(fecha),
-                  style: TextStyle(
-                      fontSize: 11, color: colors.grayMid),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(titulo,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: colors.textPrimary)),
                 ),
-              ],
-            ),
-
-            const SizedBox(height: 10),
-
-            // Título
-            Text(
-              titulo,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textPrimary),
-            ),
-
-            const SizedBox(height: 4),
-
-            // Contraparte
-            Row(
-              children: [
-                Icon(
-                  esCompra ? Icons.store_outlined : Icons.person_outline,
-                  size: 13,
-                  color: colors.grayMid,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  contraparte,
-                  style: TextStyle(
-                      fontSize: 12, color: colors.grayMid),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 12),
-            const Divider(height: 1, thickness: 0.5),
-            const SizedBox(height: 12),
-
-            // Monto + estado
-            Row(
-              children: [
+                const SizedBox(width: 6),
                 Text(
                   '\$${monto.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]}.')}',
                   style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
                       color: colors.textPrimary),
                 ),
-                const Spacer(),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(esCompra ? Icons.store_outlined : Icons.person_outline,
+                    size: 12, color: colors.grayMid),
+                const SizedBox(width: 3),
+                Expanded(
+                  child: Text('$contraparte · ${_formatFecha(fecha)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 11.5, color: colors.grayMid)),
+                ),
+                const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                   decoration: BoxDecoration(
-                    color: _estadoColor(estado).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: estadoColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(_estadoIcon(estado),
-                          size: 14, color: _estadoColor(estado)),
-                      const SizedBox(width: 5),
-                      Text(
-                        _estadoLabel(estado),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(_estadoIcon(estado), size: 12, color: estadoColor),
+                    const SizedBox(width: 3),
+                    Text(_estadoLabel(estado),
                         style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: _estadoColor(estado)),
-                      ),
-                    ],
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            color: estadoColor)),
+                  ]),
+                ),
+              ],
+            ),
+            const SizedBox(height: 7),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                // Cancelar solo dentro de la primera hora (con cuenta atrás).
+                if (esCompra && OrdenAcciones.restanteCancelacion(orden) != null)
+                  BotonCancelarOrden(orden: orden, onCancelada: _cargar),
+                if (!esCompra && estado != 'pendiente_pago')
+                  AccionMini(
+                    icono: Icons.account_balance_wallet_outlined,
+                    texto: 'Ver pago',
+                    color: colors.primary,
+                    onTap: () => OrdenAcciones.verPago(context, orden),
                   ),
+                AccionMini(
+                  icono: Icons.ios_share_rounded,
+                  texto: 'Compartir',
+                  onTap: () => OrdenAcciones.compartir(context, orden,
+                      esCompra: esCompra, estadoTexto: _estadoLabel(estado)),
                 ),
               ],
             ),
 
             // Botones de acción (solo comprador, solo si corresponde)
             if (puedeConfirmar) ...[
-              const SizedBox(height: 14),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
@@ -632,7 +629,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
                         padding:
-                            const EdgeInsets.symmetric(vertical: 10),
+                            const EdgeInsets.symmetric(vertical: 8),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10)),
                         textStyle: const TextStyle(
@@ -658,7 +655,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                           side: const BorderSide(
                               color: Colors.red, width: 1),
                           padding:
-                              const EdgeInsets.symmetric(vertical: 10),
+                              const EdgeInsets.symmetric(vertical: 8),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10)),
                           textStyle: const TextStyle(
@@ -674,7 +671,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
             // Doble confirmación: el vendedor reportó la entrega con foto,
             // ahora el comprador confirma (o reporta un problema).
             if (debeConfirmarRecepcion) ...[
-              const SizedBox(height: 14),
+              const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
@@ -685,7 +682,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10)),
                         textStyle: const TextStyle(
@@ -702,7 +699,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.red,
                         side: const BorderSide(color: Colors.red, width: 1),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10)),
                         textStyle: const TextStyle(
@@ -722,7 +719,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
             // El vendedor entrega en persona: ver dónde viene en el mapa.
             if (esCompra && deliveryMethod == 'yo' &&
                 estado == 'en_camino') ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -765,7 +762,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
             // al vendedor. La calificación queda amarrada a esta orden.
             if (esCompra && estado == 'entregado' &&
                 (orden['ya_calificado'] as int? ?? 0) == 0) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(

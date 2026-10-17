@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/orden_acciones.dart';
 import '../utils/format_utils.dart';
 import 'etiqueta_envio_screen.dart';
 import 'producto_detalle_screen.dart';
@@ -607,8 +608,8 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
     final fotoWidget = fotoUrl != null
         ? NetImage(
             fotoUrl.startsWith('http') ? fotoUrl : '${ApiService.baseUrl}$fotoUrl',
-            width: 62,
-            height: 62,
+            width: 52,
+            height: 52,
             fit: BoxFit.cover,
             borderRadius: BorderRadius.circular(8),
           )
@@ -617,7 +618,7 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
     return GestureDetector(
       onTap: venta['publicacion_id'] != null ? _irAPublicacion : null,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
           color: colors.surface,
           borderRadius: BorderRadius.circular(14),
@@ -636,7 +637,7 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -668,7 +669,7 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
                         ),
                     ],
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -750,6 +751,25 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
                   ),
                 ],
               ),
+
+              // ── Ver pago y compartir ─────────────────────────────────
+              const SizedBox(height: 8),
+              Wrap(spacing: 6, runSpacing: 6, children: [
+                if (estado != 'pendiente_pago')
+                  AccionMini(
+                    icono: Icons.account_balance_wallet_outlined,
+                    texto: 'Ver pago',
+                    color: colors.primary,
+                    onTap: () => OrdenAcciones.verPago(context, venta),
+                  ),
+                AccionMini(
+                  icono: Icons.ios_share_rounded,
+                  texto: 'Compartir',
+                  onTap: () => OrdenAcciones.compartir(context, venta,
+                      esCompra: false,
+                      estadoTexto: widget.estadoLabel[estado] ?? estado),
+                ),
+              ]),
 
               // ── Entrega ──────────────────────────────────────────────
               if (estado != 'pendiente_pago') ...[
@@ -875,8 +895,8 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
   }
 
   Widget _iconoFallback() => Container(
-        width: 62,
-        height: 62,
+        width: 52,
+        height: 52,
         decoration: BoxDecoration(
           color: colors.background,
           borderRadius: BorderRadius.circular(8),

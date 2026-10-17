@@ -15,6 +15,9 @@ import '../theme/app_theme.dart';
 import '../widgets/avatar_usuario.dart';
 import '../widgets/net_image.dart';
 import '../widgets/fondo_pixel_okventin.dart';
+import '../widgets/fila_con_guia.dart';
+import 'politicas_comunidad_screen.dart';
+import '../widgets/sticker_okventin.dart';
 import '../widgets/mas_vendidos_franja.dart';
 import '../widgets/compartir_ubicacion.dart';
 import '../widgets/mapa_mini.dart';
@@ -243,6 +246,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     if (widget.activa != old.activa) {
       if (widget.activa) {
         _versionTop++;
+        _revisarPoliticas();
         _refrescarSesion();
         _traerNuevos();
         _programar();
@@ -288,7 +292,10 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     } catch (_) {
       if (mounted) setState(() => _cargando = false);
     }
-    if (widget.activa) _programar();
+    if (widget.activa) {
+      _programar();
+      _revisarPoliticas();
+    }
   }
 
   void _programar() {
@@ -360,11 +367,37 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     });
   }
 
-  Future<void> _enviar() async {
-    final texto = _ctrl.text.trim();
+  /// Manda un sticker de Okventín (sin tocar lo que estaba escribiendo).
+  Future<void> _enviarSticker(TipoSticker t) async {
+    HapticFeedback.selectionClick();
+    await _enviar(textoForzado: StickerOkventin.texto(t));
+  }
+
+  bool _politicasOk = false;
+  bool _pidioPoliticas = false;
+
+  /// La primera vez que se entra a Comunidad hay que aceptar las políticas
+  /// de uso (se pide una vez por sesión si dijo "Ahora no").
+  Future<void> _revisarPoliticas({bool forzar = false}) async {
+    if (_politicasOk) return;
+    _politicasOk = await PoliticasComunidad.aceptadas();
+    if (_politicasOk || !mounted) return;
+    if (_pidioPoliticas && !forzar) return;
+    _pidioPoliticas = true;
+    final ok = await PoliticasComunidad.pedirAceptacion(context);
+    if (mounted) setState(() => _politicasOk = ok);
+  }
+
+  Future<void> _enviar({String? textoForzado}) async {
+    final sticker = textoForzado != null;
+    final texto = textoForzado ?? _ctrl.text.trim();
     if (_miId == null) {
       widget.onPedirLogin?.call();
       return;
+    }
+    if (!_politicasOk) {
+      await _revisarPoliticas(forzar: true);
+      if (!_politicasOk) return;
     }
     if (_enviando || (texto.isEmpty && _anclaElegida == null)) return;
     setState(() => _enviando = true);
@@ -377,13 +410,44 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
       final msg = await ApiService.enviarMensajeComunidad(
         userId: _miId!,
         texto: texto,
-        anclaTipo: _anclaElegida?['tipo'],
-        anclaId: (_anclaElegida?['id'] as num?)?.toInt(),
-        menciones: menciones,
+        anclaTipo: sticker ? null : _anclaElegida?['tipo'],
+        anclaId: sticker ? null : (_anclaElegida?['id'] as num?)?.toInt(),
+        menciones: sticker ? const [] : menciones,
         respondeA: (_respondiendoA?['id'] as num?)?.toInt(),
       );
       if (!mounted) return;
       HapticFeedback.lightImpact();
+      if (msg['censurado'] == true) {
+        final cat = (msg['censura_categoria'] ?? '').toString();
+        final que = {
+              'insultos': 'insultos o groserías',
+              'amenazas': 'amenazas',
+              'drogas': 'temas de drogas',
+            }[cat] ??
+            'contenido no permitido';
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(SnackBar(
+            content: Text('Tu mensaje fue censurado por las políticas de uso '
+                '($que).'),
+            backgroundColor: colors.carbon,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+                label: 'Ver',
+                textColor: Colors.white,
+                onPressed: () => PoliticasComunidad.abrir(context)),
+          ));
+      }
+      if (sticker) {
+        setState(() {
+          if (!_mensajes.any((m) => m['id'] == msg['id'])) _mensajes.add(msg);
+          _respondiendoA = null;
+          _verEmojis = false;
+        });
+        _alFinal();
+        return;
+      }
       setState(() {
         if (!_mensajes.any((m) => m['id'] == msg['id'])) _mensajes.add(msg);
         _ctrl.clear();
@@ -617,12 +681,13 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     return Container(
       color: colors.surface,
       height: 52,
-      child: Row(children: [
-        Expanded(
-          child: ListView(
-            controller: _scrollChips,
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(12, 7, 8, 7),
+      // Con flechitas ‹ › y barrita de posición (como las categorías de
+      // OkMarket): se nota que hay más pastillas hacia el lado.
+      child: FilaConGuia(
+            centrar: false,
+            version: _terminos.length,
+            centroFlechas: 26,
+            padding: const EdgeInsets.fromLTRB(12, 7, 12, 7),
             children: [
               chip(
                   icono: Icons.local_fire_department_rounded,
@@ -663,24 +728,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                     onTap: () => _abrirNubeBusqueda(ctx)),
               ),
             ],
-          ),
-        ),
-        GestureDetector(
-          onTap: () {
-            if (!_scrollChips.hasClients) return;
-            final p = _scrollChips.position;
-            _scrollChips.animateTo(
-                (p.pixels + 160).clamp(0.0, p.maxScrollExtent),
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeOut);
-          },
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(2, 0, 8, 0),
-            child: Icon(Icons.chevron_right_rounded,
-                size: 26, color: colors.textPrimary),
-          ),
-        ),
-      ]),
+      ),
     );
   }
 
@@ -928,46 +976,48 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
 
   Widget _franjaFijados() {
     final items = _itemsFijados;
+    // Mismo tamaño de tarjeta que "Lo más buscado": las dos franjas parejas.
     return Container(
-      color: colors.surface,
-      padding: const EdgeInsets.fromLTRB(12, 0, 0, 8),
+      color: colors.background,
+      padding: const EdgeInsets.only(top: 6, bottom: 6),
       child: SizedBox(
-        height: 66,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.only(right: 12),
-          itemCount: items.length + 1,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
-          itemBuilder: (_, i) {
-            if (i == items.length) {
-              return GestureDetector(
-                onTap: _verTodosFijados,
-                child: Container(
-                  width: 72,
-                  decoration: BoxDecoration(
-                    color: colors.background,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: colors.divider, width: 0.6),
+        height: TarjetaMini.alto,
+        child: LayoutBuilder(builder: (_, c) {
+          final ancho = TarjetaMini.anchoPara(c.maxWidth);
+          return ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            itemCount: items.length + 1,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (_, i) {
+              if (i == items.length) {
+                return GestureDetector(
+                  onTap: _verTodosFijados,
+                  child: Container(
+                    width: 66,
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colors.divider, width: 0.6),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.list_rounded, color: colors.primary),
+                        Text('Ver todos',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: colors.textPrimary)),
+                      ],
+                    ),
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.list_rounded, color: colors.primary),
-                      Text('Ver todos',
-                          style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: colors.textPrimary)),
-                    ],
-                  ),
-                ),
-              );
-            }
-            return SizedBox(
-                width: items[i]['_tipo'] == 'comentario' ? 210 : 180,
-                child: _tarjetaFijado(items[i]));
-          },
-        ),
+                );
+              }
+              return _tarjetaFijado(items[i], ancho: ancho);
+            },
+          );
+        }),
       ),
     );
   }
@@ -988,91 +1038,35 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     }
   }
 
-  Widget _tarjetaFijado(Map<String, dynamic> f) {
+  Widget _tarjetaFijado(Map<String, dynamic> f, {double? ancho}) {
     final comentario = f['_tipo'] == 'comentario';
-    return GestureDetector(
+    final esServicio = f['ancla_tipo'] == 'servicio';
+    return TarjetaMini(
+      ancho: ancho ?? 180,
+      fijado: true,
+      imagenUrl: comentario ? null : f['ancla_imagen']?.toString(),
+      imagen: comentario
+          ? Center(
+              child: f['es_bot'] == true
+                  ? _avatarBot()
+                  : AvatarUsuario(
+                      fotoUrl: f['foto_url']?.toString(),
+                      nombre: (f['nombre'] ?? 'U').toString(),
+                      tamano: 34),
+            )
+          : null,
+      iconoSinFoto:
+          esServicio ? Icons.handyman_outlined : Icons.shopping_bag_outlined,
+      titulo: comentario
+          ? (f['nombre'] ?? 'Comentario').toString()
+          : (f['ancla_titulo'] ?? (esServicio ? 'Servicio' : 'Producto'))
+              .toString(),
+      subtitulo: comentario ? (f['texto'] ?? '').toString() : null,
+      precio: !comentario && f['ancla_precio'] != null
+          ? _precio(f['ancla_precio'])
+          : null,
       onTap: () => _abrirFijado(f),
       onLongPress: comentario ? () => _alternarFijado(f) : null,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(6, 6, 4, 6),
-        decoration: BoxDecoration(
-          color: colors.background,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colors.divider, width: 0.6),
-        ),
-        child: Row(children: [
-          Column(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Icon(Icons.push_pin_rounded, size: 14, color: colors.primary),
-              if (comentario)
-                f['es_bot'] == true
-                    ? _avatarBot()
-                    : AvatarUsuario(
-                        fotoUrl: f['foto_url']?.toString(),
-                        nombre: (f['nombre'] ?? 'U').toString(),
-                        tamano: 26),
-            ],
-          ),
-          const SizedBox(width: 6),
-          if (!comentario) ...[
-            _miniatura(f['ancla_imagen'], 46, f['ancla_tipo'] == 'servicio'),
-            const SizedBox(width: 8),
-          ],
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: comentario
-                  ? [
-                      Row(children: [
-                        Icon(Icons.chat_bubble_outline_rounded,
-                            size: 13, color: colors.textPrimary),
-                        const SizedBox(width: 4),
-                        Text('Comentario',
-                            style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                color: colors.textPrimary)),
-                      ]),
-                      Text((f['nombre'] ?? '').toString(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              fontSize: 10.5, color: colors.grayMid)),
-                      Text((f['texto'] ?? '').toString(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              fontSize: 12, color: colors.textPrimary)),
-                    ]
-                  : [
-                      Text(
-                          f['ancla_tipo'] == 'servicio'
-                              ? 'Servicio'
-                              : 'Producto',
-                          style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: colors.textPrimary)),
-                      Text((f['ancla_titulo'] ?? '').toString(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              fontSize: 11, color: colors.textPrimary)),
-                      if (f['ancla_precio'] != null)
-                        Text(_precio(f['ancla_precio']),
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w900,
-                                color: colors.primary)),
-                    ],
-            ),
-          ),
-          Icon(Icons.chevron_right_rounded,
-              size: 18, color: colors.textPrimary),
-        ]),
-      ),
     );
   }
 
@@ -1131,7 +1125,9 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                             Navigator.pop(ctx);
                             _abrirFijado(f);
                           },
-                          child: AbsorbPointer(child: _tarjetaFijado(f)),
+                          child: AbsorbPointer(
+                              child: _tarjetaFijado(f,
+                                  ancho: double.infinity)),
                         ),
                       );
                     },
@@ -1187,6 +1183,10 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
         : _colorDeUsuario((m['user_id'] as num?)?.toInt() ?? 0);
 
     final censurado = m['censurado'] == true;
+    final sticker = StickerOkventin.deTexto((m['texto'] ?? '').toString());
+    final horaTxt = _hora(m['created_at']);
+    // Ancho del hueco para la hora + ⌄ (fuente de 10 px).
+    final anchoHora = horaTxt.length * 5.6 + 22;
     // Burbujas compactas (como WhatsApp): dejan ver el fondo animado.
     final contenido = Container(
       constraints: BoxConstraints(
@@ -1195,23 +1195,27 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
       decoration: BoxDecoration(
         color: censurado
             ? (oscuro ? const Color(0xFF26272B) : const Color(0xFFE9E9EC))
-            : fondo,
+            : (sticker != null ? Colors.transparent : fondo),
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(!mio && !mismoAutor ? 4 : 14),
           topRight: Radius.circular(mio && !mismoAutor ? 4 : 14),
           bottomLeft: const Radius.circular(14),
           bottomRight: const Radius.circular(14),
         ),
-        border: borde == null ? null : Border.all(color: borde, width: 0.8),
-        boxShadow: [
+        border: borde == null || sticker != null
+            ? null
+            : Border.all(color: borde, width: 0.8),
+        boxShadow: sticker != null ? null : [
           BoxShadow(
               color: Colors.black.withValues(alpha: oscuro ? 0.35 : 0.07),
               blurRadius: 4,
               offset: const Offset(0, 1)),
         ],
       ),
-      child: Column(
+      child: Stack(children: [
+        Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           // Nombre de color, en la burbuja (solo el primero de la tanda y
           // nunca en lo mío, como WhatsApp).
@@ -1248,7 +1252,11 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                 ]),
               ),
             ),
-          if (censurado) _mascaraCensura(oscuro),
+          if (censurado) ...[
+            _mascaraCensura(oscuro,
+                porPolitica: m['censura_tipo'] == 'politica'),
+            const SizedBox(height: 13),
+          ],
           if (!censurado && m['responde_a'] != null) _cita(m, colorTexto),
           if (!censurado && m['ubicacion'] is Map) ...[
             Row(mainAxisSize: MainAxisSize.min, children: [
@@ -1269,33 +1277,45 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
             if ((m['texto'] ?? '').toString().isNotEmpty)
               const SizedBox(height: 6),
           ],
-          if (!censurado && (m['texto'] ?? '').toString().isNotEmpty)
+          if (!censurado && sticker != null)
+            StickerOkventin(tipo: sticker, tam: 110),
+          if (!censurado &&
+              sticker == null &&
+              (m['texto'] ?? '').toString().isNotEmpty)
             _textoConMenciones(m['texto'].toString(), colorTexto,
                 (m['menciones'] as List?) ?? const [],
-                idMsg: (m['id'] as num?)?.toInt()),
+                idMsg: (m['id'] as num?)?.toInt(),
+                relleno: m['ancla_tipo'] == null ? anchoHora : 0),
           if (!censurado && m['ancla_tipo'] != null) ...[
             if ((m['texto'] ?? '').toString().isNotEmpty)
               const SizedBox(height: 6),
             _tarjetaAncla(m),
           ],
-          // Hora abajo a la derecha (y el ⌄ del menú), dentro de la burbuja.
-          Align(
-            alignment: Alignment.centerRight,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => _menuMensaje(m),
-              child: Padding(
-                padding: const EdgeInsets.only(top: 1, left: 10),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text(_hora(m['created_at']),
-                      style: TextStyle(fontSize: 10, color: colorHora)),
-                  Icon(Icons.expand_more_rounded, size: 14, color: colorHora),
-                ]),
-              ),
-            ),
-          ),
+          // Sin texto al final (tarjeta, mapa, sticker): fila para la hora.
+          if (!censurado &&
+              (sticker != null ||
+                  m['ancla_tipo'] != null ||
+                  (m['texto'] ?? '').toString().isEmpty))
+            const SizedBox(height: 13),
         ],
       ),
+        // Hora abajo a la derecha (y el ⌄ del menú), dentro de la burbuja.
+        // Va encima del hueco que deja el texto: así la burbuja queda del
+        // ancho justo de lo escrito.
+        Positioned(
+          right: 0,
+          bottom: 0,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _menuMensaje(m),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Text(horaTxt,
+                  style: TextStyle(fontSize: 10, color: colorHora)),
+              Icon(Icons.expand_more_rounded, size: 14, color: colorHora),
+            ]),
+          ),
+        ),
+      ]),
     );
 
     final idMsg = (m['id'] as num?)?.toInt();
@@ -1327,7 +1347,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
   }
 
   /// Lo que queda de un mensaje denunciado: una máscara con el aviso.
-  Widget _mascaraCensura(bool oscuro) {
+  Widget _mascaraCensura(bool oscuro, {bool porPolitica = false}) {
     final c = oscuro ? Colors.white70 : const Color(0xFF55565C);
     return Padding(
       padding: const EdgeInsets.only(top: 1, bottom: 1),
@@ -1352,8 +1372,11 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
                         color: c)),
                 const SizedBox(height: 2),
                 Text(
-                    'El equipo de OkVenta revisará este mensaje y '
-                    'contactará al vendedor.',
+                    porPolitica
+                        ? 'Este mensaje no cumplía las políticas de uso de '
+                            'OkVenta y fue censurado por el bot.'
+                        : 'El equipo de OkVenta revisará este mensaje y '
+                            'contactará al vendedor.',
                     style: TextStyle(
                         fontSize: 12, height: 1.3, color: c)),
               ],
@@ -1555,7 +1578,7 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
   /// Resalta las @menciones. Las de usuarios reales (las que el servidor
   /// confirmó) se pueden tocar y abren su perfil.
   Widget _textoConMenciones(String texto, Color color, List menciones,
-      {int? idMsg}) {
+      {int? idMsg, double relleno = 0}) {
     final porHandle = <String, int>{
       for (final x in menciones)
         if (x is Map && x['handle'] != null && x['id'] is num)
@@ -1600,6 +1623,11 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
     if (i < texto.length) {
       spans.addAll(_resaltar(texto.substring(i), idMsg, i));
     }
+    // Hueco invisible al final del texto para la hora (como WhatsApp): si
+    // la última línea tiene espacio, la hora va al lado; si no, baja.
+    if (relleno > 0) {
+      spans.add(WidgetSpan(child: SizedBox(width: relleno, height: 10)));
+    }
     return Text.rich(TextSpan(children: spans), style: estilo);
   }
 
@@ -1613,8 +1641,11 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
         : [orig['nombre'], orig['apellido']]
             .where((x) => x != null && '$x'.trim().isNotEmpty)
             .join(' ');
+    final st = StickerOkventin.deTexto((orig['texto'] ?? '').toString());
     final texto = orig['censurado'] == true
         ? '🚫 Censurado'
+        : st != null
+            ? '🎞 Okventín ${StickerOkventin.etiquetas[st]!.toLowerCase()}'
         : (orig['texto'] ?? '').toString().isNotEmpty
             ? orig['texto'].toString()
             : (orig['ancla_titulo'] ?? '📌').toString();
@@ -1944,21 +1975,58 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
   Widget _barraEmojis() {
     return Container(
       color: colors.surface,
-      height: 46,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        itemCount: _kEmojis.length,
-        itemBuilder: (_, i) => InkWell(
-          onTap: () => _insertar(_kEmojis[i]),
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: Center(
-                child: Text(_kEmojis[i], style: const TextStyle(fontSize: 24))),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        // Stickers animados de Okventín: se mandan al tocarlos.
+        SizedBox(
+          height: 76,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(8, 6, 8, 0),
+            children: [
+              for (final t in TipoSticker.values)
+                GestureDetector(
+                  onTap: () => _enviarSticker(t),
+                  child: Container(
+                    width: 64,
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    decoration: BoxDecoration(
+                      color: colors.background,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(children: [
+                      StickerOkventin(tipo: t, tam: 52),
+                      Text(StickerOkventin.etiquetas[t]!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w600,
+                              color: colors.textPrimary)),
+                    ]),
+                  ),
+                ),
+            ],
           ),
         ),
-      ),
+        SizedBox(
+          height: 46,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            itemCount: _kEmojis.length,
+            itemBuilder: (_, i) => InkWell(
+              onTap: () => _insertar(_kEmojis[i]),
+              borderRadius: BorderRadius.circular(20),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Center(
+                    child: Text(_kEmojis[i],
+                        style: const TextStyle(fontSize: 24))),
+              ),
+            ),
+          ),
+        ),
+      ]),
     );
   }
 
@@ -1995,10 +2063,28 @@ class _ComunidadScreenState extends State<ComunidadScreen> {
         color: colors.surface,
         border: Border(top: BorderSide(color: colors.divider, width: 0.5)),
       ),
-      padding: const EdgeInsets.fromLTRB(6, 6, 6, 8),
+      padding: const EdgeInsets.fromLTRB(6, 2, 6, 8),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Políticas de uso siempre a la vista (enlace subrayado).
+          Align(
+            alignment: Alignment.centerRight,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => PoliticasComunidad.abrir(context),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 2, 10, 3),
+                child: Text('Políticas de uso',
+                    style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: colors.textSecondary,
+                        decoration: TextDecoration.underline,
+                        decorationColor: colors.textSecondary)),
+              ),
+            ),
+          ),
           // Sugerencias de @menciones mientras se escribe.
           if (_sugerencias.isNotEmpty)
             SizedBox(

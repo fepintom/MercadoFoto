@@ -10,6 +10,7 @@ import '../services/api_service.dart';
 import '../services/privados_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/orden_acciones.dart';
 import '../widgets/avatar_usuario.dart';
 import '../widgets/compartir_ubicacion.dart';
 import '../widgets/mapa_mini.dart';
@@ -226,6 +227,32 @@ class _ChatPrivadoScreenState extends State<ChatPrivadoScreen> {
     final ubic = m['ubicacion'] as Map?;
     final texto = (m['texto'] ?? '').toString();
     final colorTexto = mio ? Colors.white : colors.textPrimary;
+    // Comprobante de una compra/venta compartido desde Mis órdenes.
+    final comp = OrdenAcciones.deTexto(texto);
+    if (comp != null) {
+      return Align(
+        alignment: mio ? Alignment.centerRight : Alignment.centerLeft,
+        child: Column(
+          crossAxisAlignment:
+              mio ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: TarjetaComprobante(
+                  datos: comp,
+                  ancho: MediaQuery.of(context).size.width * 0.7 > 270
+                      ? 270
+                      : MediaQuery.of(context).size.width * 0.7),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 2, left: 4, right: 4),
+              child: Text(_hora(m['created_at']),
+                  style: TextStyle(fontSize: 9.5, color: colors.textPrimary)),
+            ),
+          ],
+        ),
+      );
+    }
     return Align(
       alignment: mio ? Alignment.centerRight : Alignment.centerLeft,
       child: Column(

@@ -12,6 +12,7 @@ import 'ayuda_chat_screen.dart';
 import 'ayuda_screen.dart';
 import 'favoritos_screen.dart';
 import 'mis_compras_screen.dart';
+import 'mis_direcciones_screen.dart';
 import 'mis_pagos_screen.dart';
 import 'mis_cotizaciones_screen.dart';
 import 'catalogo_screen.dart';
@@ -109,6 +110,98 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
       _fotoUrl = prefs.getString("foto_url") ?? "";
       _userId = prefs.getInt("user_id");
     });
+    _cargarDireccion();
+  }
+
+  /// Dirección principal (la de "Entregar en"), para mostrarla arriba.
+  Map<String, dynamic>? _direccion;
+
+  Future<void> _cargarDireccion() async {
+    final uid = _userId;
+    if (uid == null) return;
+    try {
+      final data = await ApiService.obtenerDirecciones(uid);
+      if (!mounted) return;
+      Map<String, dynamic>? d;
+      for (final x in data) {
+        if ((x['es_principal'] as int? ?? 0) == 1) d = x;
+      }
+      d ??= data.isNotEmpty ? data.first : null;
+      setState(() => _direccion = d);
+    } catch (_) {}
+  }
+
+  Future<void> _editarDireccion() async {
+    final uid = _userId;
+    if (uid == null) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (_) =>
+              MisDireccionesScreen(userId: uid, mostrarBotonMarketplace: true)),
+    );
+    _cargarDireccion();
+  }
+
+  /// Dirección principal en el encabezado, como el aviso "Entregar en" de
+  /// OkMarket: pin rojo, etiqueta (Casa), calle y comuna, y lápiz para
+  /// editar.
+  Widget _direccionEncabezado() {
+    final d = _direccion;
+    final linea = d == null
+        ? ''
+        : [d['direccion'], d['comuna']]
+            .where((x) => x != null && '$x'.trim().isNotEmpty)
+            .join(', ');
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _editarDireccion,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        child: Row(children: [
+          Icon(d == null ? Icons.add_location_alt_outlined
+                  : Icons.location_on_rounded,
+              color: colors.primary, size: 22),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                    d == null
+                        ? 'Agrega tu dirección'
+                        : (d['etiqueta'] ?? 'Mi dirección').toString(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color: colors.textPrimary)),
+                if (linea.isNotEmpty)
+                  Text(linea,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 11.5,
+                          height: 1.2,
+                          color: colors.textPrimary)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 4),
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: colors.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.edit_rounded, size: 16, color: colors.primary),
+          ),
+        ]),
+      ),
+    );
   }
 
   Future<void> guardarDatos() async {
@@ -809,7 +902,12 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                       );
                     },
                   ),
-                  const Spacer(),
+                  // Entre el logo y la foto: la dirección principal.
+                  Expanded(
+                    child: _userId == null
+                        ? const SizedBox.shrink()
+                        : _direccionEncabezado(),
+                  ),
                   _avatar(size: 44),
                 ],
               ),

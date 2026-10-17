@@ -89,7 +89,8 @@ _SELECT = """
     SELECT m.id, m.user_id, m.es_bot, m.texto,
            m.ancla_tipo, m.ancla_id, m.ancla_titulo, m.ancla_precio,
            m.ancla_imagen, m.responde_a, m.created_at, m.menciones,
-           m.ubicacion, m.censurado, u.nombre, u.apellido, u.foto_url
+           m.ubicacion, m.censurado, m.censura_motivo,
+           u.nombre, u.apellido, u.foto_url
     FROM comunidad_mensajes m
     LEFT JOIN users u ON u.id = m.user_id
 """
@@ -117,7 +118,13 @@ def _a_dict(r):
     # Denunciado: el contenido no sale del servidor (queda guardado para
     # que el equipo lo revise), la app dibuja la máscara "Censurado".
     d["censurado"] = bool(d.get("censurado"))
+    # Por qué se tapó: 'politica' (lo censuró el bot por las políticas de
+    # uso) o 'denuncia' (lo denunció alguien). El detalle no se expone.
+    motivo = d.pop("censura_motivo", None) or ""
+    d["censura_tipo"] = None
     if d["censurado"]:
+        d["censura_tipo"] = ("politica" if motivo.startswith("politica")
+                             else "denuncia")
         d["texto"] = ""
         d["menciones"] = []
         d["ubicacion"] = None
@@ -132,7 +139,7 @@ def _a_dict(r):
 
 
 def guardar_mensaje(user_id, texto, es_bot=False, ancla=None, responde_a=None,
-                    menciones=None, ubicacion=None):
+                    menciones=None, ubicacion=None, censura=None):
     """Guarda un mensaje y lo devuelve ya armado como lo lee la app."""
     ancla = ancla or {}
     conn = _conn()
@@ -149,6 +156,9 @@ def guardar_mensaje(user_id, texto, es_bot=False, ancla=None, responde_a=None,
         json.dumps(ubicacion) if ubicacion else None,
     ))
     nuevo_id = cur.lastrowid
+    if censura:
+        conn.execute("UPDATE comunidad_mensajes SET censurado = 1, "
+                     "censura_motivo = ? WHERE id = ?", (censura, nuevo_id))
     conn.commit()
     row = conn.execute(_SELECT + " WHERE m.id = ?", (nuevo_id,)).fetchone()
     conn.close()
@@ -385,3 +395,26 @@ def censurados_para_revisar(limite=100):
     """, (limite,)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def barrer_politicas(limite=1000):
+    """Revisa los últimos mensajes ya guardados y censura los que incumplen
+    las políticas de uso (por si se escribieron antes de que existieran).
+    Devuelve cuántos tapó."""
+    from services.moderacion import revisar
+    conn = _conn()
+    filas = conn.execute(
+        "SELECT id, texto FROM comunidad_mensajes "
+        "WHERE COALESCE(censurado, 0) = 0 AND es_bot = 0 "
+        "ORDER BY id DESC LIMIT ?", (limite,)).fetchall()
+    n = 0
+    for f in filas:
+        cat = revisar(f["texto"] or "")
+        if cat:
+            conn.execute(
+                "UPDATE comunidad_mensajes SET censurado = 1, "
+                "censura_motivo = ? WHERE id = ?", (f"politica:{cat}", f["id"]))
+            n += 1
+    conn.commit()
+    conn.close()
+    return n

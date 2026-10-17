@@ -83,6 +83,10 @@ def asegurar_bienvenida():
 
 def debe_responder(msg: dict) -> bool:
     """¿Le toca hablar al bot después de este mensaje?"""
+    # Stickers de Okventín y mensajes censurados: el bot no contesta.
+    if msg.get("censurado") or re.match(r"^\[okventin:\w+\]$",
+                                        (msg.get("texto") or "").strip()):
+        return False
     if me_mencionan(msg.get("texto")):
         return True
     resp = msg.get("responde_a")
