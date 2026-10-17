@@ -287,7 +287,7 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
       child: Container(
         width: 38,
         height: 38,
-        margin: const EdgeInsets.only(left: 6),
+        margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.9),
           shape: BoxShape.circle,
@@ -385,7 +385,7 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
         slivers: [
           // ── AppBar con imagen/foto ──────────────────────────────────────
           SliverAppBar(
-            expandedHeight: 220,
+            expandedHeight: 300,
             pinned: true,
             backgroundColor: colors.surface,
             leading: IconButton(
@@ -394,8 +394,37 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
               onPressed: () => Navigator.pop(context),
             ),
             actions: [
-              // Igual que el detalle de un producto: ayuda, favorito y
-              // compartir, en círculos blancos (siempre a la vista).
+              // Okventin servicios: solo en modo oscuro
+              ValueListenableBuilder<bool>(
+                valueListenable: ThemeService.isDarkNotifier,
+                builder: (_, isDark, __) {
+                  if (!isDark) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: Center(
+                      child: Image.asset(
+                          'assets/images/okventin_servicios.png',
+                          width: 57,
+                          height: 57),
+                    ),
+                  );
+                },
+              ),
+            ],
+            flexibleSpace: FlexibleSpaceBar(
+              background: Stack(fit: StackFit.expand, children: [
+                fotos.isNotEmpty
+                    ? NetImage(
+                        '${ApiService.baseUrl}${fotos.first}',
+                        fit: BoxFit.cover,
+                      )
+                    : _fotoPlaceholder(fotoUrl, nombre),
+                // Igual que el detalle de un producto: ayuda, favorito y
+                // compartir en una columna vertical sobre la foto.
+                Positioned(
+                  right: 10,
+                  top: MediaQuery.of(context).padding.top + kToolbarHeight + 4,
+                  child: Column(children: [
               _botonCirculo(Icons.help_outline_rounded, () {
                 Navigator.push(
                   context,
@@ -428,31 +457,9 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
               _botonCirculo(Icons.share_outlined,
                   () => AccionesServicio.compartir(context, _srv),
                   tooltip: 'Compartir'),
-              const SizedBox(width: 6),
-              // Okventin servicios: solo en modo oscuro
-              ValueListenableBuilder<bool>(
-                valueListenable: ThemeService.isDarkNotifier,
-                builder: (_, isDark, __) {
-                  if (!isDark) return const SizedBox.shrink();
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: Center(
-                      child: Image.asset(
-                          'assets/images/okventin_servicios.png',
-                          width: 57,
-                          height: 57),
-                    ),
-                  );
-                },
-              ),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: fotos.isNotEmpty
-                  ? NetImage(
-                      '${ApiService.baseUrl}${fotos.first}',
-                      fit: BoxFit.cover,
-                    )
-                  : _fotoPlaceholder(fotoUrl, nombre),
+                  ]),
+                ),
+              ]),
             ),
           ),
 
