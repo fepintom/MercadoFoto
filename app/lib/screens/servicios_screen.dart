@@ -1193,7 +1193,7 @@ class _TarjetaServicioMarket extends StatelessWidget {
               ),
             ]),
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+              padding: const EdgeInsets.fromLTRB(7, 5, 7, 6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

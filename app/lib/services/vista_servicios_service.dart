@@ -14,6 +14,10 @@ class VistaServicios {
   static const String _kPrefColumnas = 'srv_columnas';
   static const String _kPrefComoLista = 'srv_como_lista';
 
+  /// Preferencia de OkMarket: Servicios usa el mismo número de columnas,
+  /// así las tarjetas de los dos lados se ven del mismo tamaño.
+  static const String _kPrefColumnasMarket = 'mkt_columnas';
+
   /// true = "Como lista" (una tarjeta ancha por fila).
   /// false = "Como miniaturas" (grilla de tarjetas compactas).
   static final ValueNotifier<bool> comoListaNotifier =
@@ -37,7 +41,9 @@ class VistaServicios {
       // guardado se traduce a "como lista" con la grilla en su valor por
       // defecto.
       // Por defecto, 2 columnas como OkMarket (antes era la lista).
-      final colGuardadas = prefs.getInt(_kPrefColumnas) ?? 2;
+      // Mismo tamaño que OkMarket: manda lo que eligió allá (si existe).
+      final colGuardadas =
+          prefs.getInt(_kPrefColumnasMarket) ?? prefs.getInt(_kPrefColumnas) ?? 2;
 
       // Ya no hay vista de lista (1 por fila): mínimo 2 columnas.
       comoListaNotifier.value = false;
@@ -63,6 +69,7 @@ class VistaServicios {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(_kPrefColumnas, v);
+      await prefs.setInt(_kPrefColumnasMarket, v);
     } catch (_) {
       // Best-effort.
     }

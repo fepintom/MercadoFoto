@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/format_utils.dart';
 
 import '../services/api_service.dart';
+import '../services/vista_servicios_service.dart';
 import '../services/cart_service.dart';
 import '../services/contenido_oculto_service.dart';
 import '../services/favoritos_service.dart';
@@ -159,6 +160,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     super.initState();
     cargarPublicaciones();
     _cargarColumnas();
+    VistaServicios.columnasNotifier.addListener(_columnasExternas);
     SessionService.obtenerUser().then((id) {
       if (mounted) setState(() => _miUserId = id);
       if (id != null) FavoritosService.cargar(id);
@@ -192,11 +194,18 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     final prefs = await SharedPreferences.getInstance();
     final v = (prefs.getInt(_kColumnasPref) ?? 2).clamp(2, 4);
     if (mounted) setState(() => _columnas = v);
+    if (VistaServicios.columnas != v) VistaServicios.columnasNotifier.value = v;
   }
 
   Future<void> _guardarColumnas(int v) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_kColumnasPref, v);
+    // Compartido con OkServicios (mismo tamaño de tarjetas en los dos).
+    await VistaServicios.setColumnas(v);
+  }
+
+  /// Si cambian las columnas desde OkServicios, OkMarket las sigue.
+  void _columnasExternas() {
+    final v = VistaServicios.columnas.clamp(2, 4);
+    if (mounted && v != _columnas) setState(() => _columnas = v);
   }
 
   void _mostrarControlTamano() {
@@ -309,6 +318,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
 
   @override
   void dispose() {
+    VistaServicios.columnasNotifier.removeListener(_columnasExternas);
     ContenidoOcultoService.publicaciones.removeListener(_refiltrar);
     ContenidoOcultoService.vendedores.removeListener(_refiltrar);
     _searchCtrl.dispose();

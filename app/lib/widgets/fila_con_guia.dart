@@ -21,12 +21,21 @@ class FilaConGuia extends StatefulWidget {
   /// Color del fondo, para el degradado de los bordes.
   final Color? fondo;
 
+  /// Si los botones caben, ¿se centran? (false = pegados a la izquierda).
+  final bool centrar;
+
+  /// Cuando sube (p. ej. se agregó un filtro), la fila se desliza hasta el
+  /// final para mostrar lo nuevo.
+  final int version;
+
   const FilaConGuia({
     super.key,
     required this.children,
     this.padding = const EdgeInsets.fromLTRB(10, 8, 14, 4),
     this.centroFlechas = 32,
     this.fondo,
+    this.centrar = true,
+    this.version = 0,
   });
 
   @override
@@ -49,6 +58,19 @@ class _FilaConGuiaState extends State<FilaConGuia> {
       _revisar();
       _empujoncito();
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant FilaConGuia old) {
+    super.didUpdateWidget(old);
+    if (widget.version > old.version) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_ctrl.hasClients) return;
+        _ctrl.animateTo(_ctrl.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 380),
+            curve: Curves.easeOutCubic);
+      });
+    }
   }
 
   @override
@@ -173,8 +195,12 @@ class _FilaConGuiaState extends State<FilaConGuia> {
                           .clamp(0.0, double.infinity)
                           .toDouble()),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: widget.centrar
+                        ? MainAxisAlignment.center
+                        : MainAxisAlignment.start,
+                    crossAxisAlignment: widget.centrar
+                        ? CrossAxisAlignment.start
+                        : CrossAxisAlignment.center,
                     children: widget.children,
                   ),
                 ),

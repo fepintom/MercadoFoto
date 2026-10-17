@@ -1291,9 +1291,12 @@ class _HomeScreenState extends State<HomeScreen> {
   /// La raíz del navegador de adentro: encabezado (en las secciones de
   /// publicaciones y Comunidad) + las pestañas.
   Widget _raiz() {
+    // Encontrar también lleva el encabezado (logo de OkVenta; Okventín en
+    // modo oscuro), igual que las secciones de publicaciones.
     final conEncabezado = _tab == _kTabOkMarket ||
         _tab == _kTabOkServicios ||
-        _tab == _kTabComunidad;
+        _tab == _kTabComunidad ||
+        _tab == _kTabEncontrar;
     Widget perezosa(int tab, Widget Function() crear) =>
         _visitadas.contains(tab) ? crear() : const SizedBox.shrink();
     return Scaffold(

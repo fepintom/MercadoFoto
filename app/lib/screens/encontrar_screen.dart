@@ -520,7 +520,9 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
 
     return Scaffold(
       backgroundColor: colors.background,
-      appBar: AppBar(
+      // Como pestaña va bajo el encabezado de la app (con el logo): sin
+      // barra propia. Abierta suelta, mantiene su barra con "volver".
+      appBar: widget.esPestana ? null : AppBar(
         backgroundColor: colors.surface,
         elevation: 0,
         automaticallyImplyLeading: false,
@@ -601,7 +603,7 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
           // Capas: se pueden encender las dos. Nunca quedan las dos
           // apagadas: apagar la última enciende la otra.
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+            padding: EdgeInsets.fromLTRB(12, widget.esPestana ? 8 : 4, 12, 8),
             child: Row(
               children: [
                 _interruptorCapa(
@@ -631,6 +633,17 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
                     _selServicio = null;
                   }),
                 ),
+                if (widget.esPestana) ...[
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: _cargarDatos,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(Icons.refresh_rounded,
+                          size: 22, color: colors.textPrimary),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -779,8 +792,8 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
         Marker(
           point: LatLng(
               (s['lat'] as num).toDouble(), (s['lng'] as num).toDouble()),
-          width: 44,
-          height: 50,
+          width: 88,
+          height: 68,
           anchorPos: AnchorPos.align(AnchorAlign.top),
           builder: (_) => _pinServicio(s),
         ),
@@ -938,7 +951,27 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
       }),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.end,
         children: [
+          // Qué servicio es: el título en miniatura sobre el pin.
+          Container(
+            constraints: const BoxConstraints(maxWidth: 86),
+            margin: const EdgeInsets.only(bottom: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+            decoration: BoxDecoration(
+              color: (sel ? colors.primary : colors.carbon)
+                  .withValues(alpha: 0.92),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text((s['titulo'] ?? 'Servicio').toString(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    height: 1.15,
+                    fontWeight: FontWeight.w700)),
+          ),
           Stack(
             clipBehavior: Clip.none,
             children: [

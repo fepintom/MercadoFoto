@@ -124,8 +124,10 @@ def enviar(data: MensajePrivado, tareas: BackgroundTasks):
     fila = conn.execute("SELECT * FROM mensajes_privados WHERE id = ?",
                         (cur.lastrowid,)).fetchone()
     conn.close()
-    tareas.add_task(_avisar, usuarios[data.de_id], data.para_id,
-                    texto or "📍 Te compartió su ubicación")
+    aviso = texto or "📍 Te compartió su ubicación"
+    if texto.startswith("[comprobante]"):
+        aviso = "🧾 Te compartió un comprobante de OkVenta"
+    tareas.add_task(_avisar, usuarios[data.de_id], data.para_id, aviso)
     return _dict(fila)
 
 

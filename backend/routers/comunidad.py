@@ -27,6 +27,7 @@ from pydantic import BaseModel
 
 from database import comunidad as db
 from services import comunidad_bot as bot
+from services import moderacion
 
 router = APIRouter()
 
@@ -144,6 +145,17 @@ def enviar(data: MensajeComunidad, tareas: BackgroundTasks):
         # dirección exacta de la casa a todo el chat.
         ubicacion = {"lat": round(data.lat, 3), "lng": round(data.lng, 3)}
 
+    # Políticas de uso: el bot de OkVenta revisa el mensaje antes de que lo
+    # vea nadie. Insultos, amenazas o drogas → se guarda ya censurado (el
+    # equipo lo puede revisar en /admin/comunidad/censurados).
+    falta = moderacion.revisar(texto)
+    if falta:
+        msg = db.guardar_mensaje(data.user_id, texto, ancla=ancla,
+                                 responde_a=responde_a, ubicacion=ubicacion,
+                                 censura=f"politica:{falta}")
+        msg["censura_categoria"] = falta  # solo para quien lo escribió
+        return msg
+
     msg = db.guardar_mensaje(data.user_id, texto, ancla=ancla,
                              menciones=mencionados, responde_a=responde_a,
                              ubicacion=ubicacion)
@@ -168,6 +180,18 @@ def denunciar(mensaje_id: int, data: DenunciaComunidad):
     if not db.censurar_mensaje(mensaje_id, data.user_id, data.motivo):
         raise HTTPException(404, "Mensaje no encontrado")
     return {"ok": True, "censurado": True}
+
+
+@router.get("/comunidad/politicas")
+def politicas():
+    """Texto de las políticas de uso (la app también lo trae incluido)."""
+    return {"version": 1, "prohibido": list(moderacion.CATEGORIAS.keys())}
+
+
+@router.post("/admin/comunidad/barrer")
+def admin_barrer(token: str):
+    _token_ok(token)
+    return {"censurados": db.barrer_politicas()}
 
 
 @router.get("/comunidad/censurados")
