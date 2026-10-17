@@ -341,6 +341,20 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
 
   // ── Carga (siempre todos, el filtro de categoría es client-side) ──────────
 
+  /// Todo lo publicado (la búsqueda en vivo filtra sobre esto).
+  List<Map<String, dynamic>> _todasCompletas = [];
+
+  static String _sinTildes(String t) {
+    const de = 'áéíóúüñÁÉÍÓÚÜÑ';
+    const a = 'aeiouunAEIOUUN';
+    final b = StringBuffer();
+    for (final c in t.split('')) {
+      final i = de.indexOf(c);
+      b.write(i >= 0 ? a[i] : c);
+    }
+    return b.toString().toLowerCase();
+  }
+
   Future<void> cargarPublicaciones() async {
     HistoriasService.cargarActivos();
     setState(() { _loading = true; _errorConexion = false; });
@@ -352,6 +366,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
       if (!mounted) return;
       setState(() {
         _todas = List<Map<String, dynamic>>.from(data);
+        _todasCompletas = _todas;
         _aplicarFiltros();
         _loading = false;
       });
@@ -390,12 +405,17 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     }
 
     // Texto
-    final q = _searchCtrl.text.trim().toLowerCase();
-    if (q.isNotEmpty) {
+    // Cada palabra escrita (aunque esté a medias) tiene que aparecer en el
+    // título, la descripción o la categoría; sin importar tildes.
+    final palabras = _sinTildes(_searchCtrl.text.trim())
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty)
+        .toList();
+    if (palabras.isNotEmpty) {
       lista = lista.where((p) {
-        final titulo = (p['titulo'] ?? '').toString().toLowerCase();
-        final desc   = (p['descripcion'] ?? '').toString().toLowerCase();
-        return titulo.contains(q) || desc.contains(q);
+        final texto = _sinTildes('${p['titulo'] ?? ''} ${p['descripcion'] ?? ''} '
+            '${p['categoria'] ?? ''} ${p['subcategoria'] ?? ''}');
+        return palabras.every(texto.contains);
       }).toList();
     }
 
@@ -1343,9 +1363,13 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     ),
                     child: TextField(
                       controller: _searchCtrl,
+                      // Filtra mientras se escribe (no hace falta la
+                      // palabra completa); Enter busca en el servidor.
                       onChanged: (v) {
-                        if (v.trim().isEmpty) setState(() => cargarPublicaciones());
+                        if (_todasCompletas.isNotEmpty) _todas = _todasCompletas;
+                        setState(_aplicarFiltros);
                       },
+                      textInputAction: TextInputAction.search,
                       onSubmitted: _buscarEnBackend,
                       decoration: InputDecoration(
                         hintText: "Buscar productos...",

@@ -608,7 +608,8 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
               children: [
                 _interruptorCapa(
                   texto: 'Productos',
-                  icono: Icons.shopping_cart_outlined,
+                  // Caja: "productos" (el carro se confunde con comprar).
+                  icono: Icons.inventory_2_rounded,
                   n: nProd,
                   activo: _verProductos,
                   color: colors.primary,
@@ -622,7 +623,7 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
                 const SizedBox(width: 8),
                 _interruptorCapa(
                   texto: 'Servicios',
-                  icono: Icons.handyman_outlined,
+                  icono: Icons.handyman_rounded,
                   n: nServ,
                   activo: _verServicios,
                   color: colors.carbon,
@@ -633,24 +634,14 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
                     _selServicio = null;
                   }),
                 ),
-                if (widget.esPestana) ...[
-                  const Spacer(),
-                  GestureDetector(
-                    onTap: _cargarDatos,
-                    child: Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Icon(Icons.refresh_rounded,
-                          size: 22, color: colors.textPrimary),
-                    ),
-                  ),
-                ],
+
               ],
             ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 2),
             child: Container(
-              height: 38,
+              height: 40,
               decoration: BoxDecoration(
                 color: colors.background,
                 borderRadius: BorderRadius.circular(10),
@@ -665,6 +656,7 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
                   hintStyle: TextStyle(color: colors.grayMid, fontSize: 13),
                   prefixIcon:
                       Icon(Icons.search_rounded, size: 21, color: colors.primary),
+                  // Con texto: borrar. Sin texto: recargar el mapa.
                   suffixIcon: _query.isNotEmpty
                       ? GestureDetector(
                           onTap: () {
@@ -673,7 +665,10 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
                           },
                           child:
                               Icon(Icons.close, size: 16, color: colors.grayMid))
-                      : null,
+                      : GestureDetector(
+                          onTap: _cargarDatos,
+                          child: Icon(Icons.refresh_rounded,
+                              size: 19, color: colors.grayMid)),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 9),
                 ),
@@ -740,25 +735,34 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          height: 36,
+          height: 40,
           decoration: BoxDecoration(
             color: activo ? color : colors.background,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(20),
             border:
                 Border.all(color: activo ? color : colors.divider, width: 0.8),
+            boxShadow: activo
+                ? [
+                    BoxShadow(
+                        color: color.withValues(alpha: 0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2)),
+                  ]
+                : null,
           ),
           alignment: Alignment.center,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(activo ? Icons.check_rounded : icono,
-                  size: 15, color: activo ? Colors.white : colors.grayMid),
-              const SizedBox(width: 5),
+              Icon(icono,
+                  size: 18,
+                  color: activo ? Colors.white : colors.textPrimary),
+              const SizedBox(width: 7),
               Text(texto,
                   style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: activo ? Colors.white : colors.textSecondary)),
+                      color: activo ? Colors.white : colors.textPrimary)),
               if (activo && !_cargando) ...[
                 const SizedBox(width: 6),
                 Container(

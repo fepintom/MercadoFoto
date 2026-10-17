@@ -357,11 +357,24 @@ class _ListaServiciosState extends State<_ListaServicios> {
           .toList();
     }
     if (_query.isNotEmpty) {
-      final q = _query.toLowerCase();
+      // Filtra mientras se escribe: cada palabra (aunque esté a medias)
+      // en el título, la descripción o la categoría, sin importar tildes.
+      String norm(String t) {
+        const de = 'áéíóúüñ';
+        const a = 'aeiouun';
+        final b = StringBuffer();
+        for (final c in t.toLowerCase().split('')) {
+          final i = de.indexOf(c);
+          b.write(i >= 0 ? a[i] : c);
+        }
+        return b.toString();
+      }
+      final palabras =
+          norm(_query).split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
       lista = lista.where((s) {
-        final titulo = (s['titulo'] ?? '').toString().toLowerCase();
-        final desc   = (s['descripcion'] ?? '').toString().toLowerCase();
-        return titulo.contains(q) || desc.contains(q);
+        final texto = norm('${s['titulo'] ?? ''} ${s['descripcion'] ?? ''} '
+            '${s['categoria'] ?? ''}');
+        return palabras.every(texto.contains);
       }).toList();
     }
 
