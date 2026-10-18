@@ -16,6 +16,7 @@ import '../utils/format_utils.dart';
 import '../utils/regiones_chile.dart';
 import '../widgets/barra_filtros.dart';
 import '../widgets/insignia.dart';
+import '../widgets/okventin_servicio.dart';
 import '../widgets/invitacion_servicio_instalacion.dart'
     show categoriaServicioParaProducto;
 import '../widgets/net_image.dart';
@@ -1347,9 +1348,8 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
   }
 
   Widget _fichaServicio(Map<String, dynamic> s) {
-    final fotos = s['fotos'];
-    final foto =
-        (fotos is List && fotos.isNotEmpty) ? fotos.first.toString() : '';
+    // Sin foto propia: Okventín de oficio.
+    final foto = OkventinServicio.foto(s) ?? '';
     final rating = ((s['rating'] as num?) ?? 0).toDouble();
     final nVal = ((s['num_valoraciones'] as num?) ?? 0).toInt();
     final cert = _si(s['certificado_verificado']);

@@ -19,6 +19,7 @@ import '../widgets/barra_filtros.dart';
 import '../widgets/pastilla_etiqueta.dart';
 import '../widgets/fila_resultado.dart';
 import '../widgets/insignia.dart';
+import '../widgets/okventin_servicio.dart';
 import '../widgets/acciones_servicio.dart';
 import '../widgets/avatar_historia.dart';
 import '../services/favoritos_service.dart';
@@ -754,8 +755,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 6),
                       child: FilaResultado(
-                        imagenUrl:
-                            fotos.isNotEmpty ? fotos.first.toString() : null,
+                        imagenUrl: OkventinServicio.foto(s),
                         iconoSinFoto: Icons.handyman_rounded,
                         titulo: (s['titulo'] ?? '').toString(),
                         precio: valor > 0
@@ -1054,9 +1054,10 @@ class _TarjetaServicioMarket extends StatelessWidget {
           ),
         );
 
-    final foto = fotos.isNotEmpty
-        ? NetImage('${ApiService.baseUrl}${fotos.first}',
-            width: double.infinity, fit: BoxFit.cover)
+    // Sin foto propia: Okventín con las herramientas del oficio.
+    final fotoUrl0 = OkventinServicio.foto(s);
+    final foto = fotoUrl0 != null
+        ? NetImage(fotoUrl0, width: double.infinity, fit: BoxFit.cover)
         : Container(
             color: colors.primary.withValues(alpha: 0.10),
             alignment: Alignment.center,
@@ -1143,6 +1144,12 @@ class _TarjetaServicioMarket extends StatelessWidget {
             // Foto protagonista + acciones a la derecha
             Stack(children: [
               AspectRatio(aspectRatio: ancha ? 16 / 9 : 4 / 5, child: foto),
+              // Con foto propia, Okventín de oficio chiquito en la esquina.
+              Positioned(
+                right: 2,
+                bottom: 2,
+                child: SelloOkventin(servicio: s, tam: angosta ? 42 : 52),
+              ),
               if (((s['vistas'] as num?) ?? 0) > 0)
                 Positioned(
                   left: 5,

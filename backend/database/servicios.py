@@ -34,6 +34,9 @@ def init_servicios_db():
         "ALTER TABLE servicios ADD COLUMN radio_km   REAL DEFAULT 5",
         "ALTER TABLE servicios ADD COLUMN categoria  TEXT DEFAULT 'Otros'",
         "ALTER TABLE servicios ADD COLUMN color_hex  TEXT DEFAULT '#007AFF'",
+        # Okventín del aviso: NULL = se elige solo por título/categoría;
+        # con valor = forzado a mano (ver /admin/servicios/{id}/okventin).
+        "ALTER TABLE servicios ADD COLUMN okventin_kit TEXT",
     ]:
         try:
             c.execute(col_sql)
@@ -141,7 +144,8 @@ _SELECT = """
            s.telefono, s.whatsapp, s.created_at,
            u.nombre, u.apellido, u.foto_url,
            COALESCE(AVG(v.estrellas), 0) AS rating,
-           COUNT(v.id) AS num_val
+           COUNT(v.id) AS num_val,
+           s.okventin_kit
     FROM servicios s
     JOIN users u ON s.user_id = u.id
     LEFT JOIN valoraciones_servicios v ON s.id = v.servicio_id
@@ -283,6 +287,8 @@ def obtener_servicios_usuario_con_contactos(user_id: int) -> list:
             d["fotos"] = json.loads(d.get("fotos") or "[]")
         except (TypeError, ValueError):
             d["fotos"] = []
+        d.update(_okventin(d.get("titulo"), d.get("categoria"),
+                           d.get("descripcion")))
         servicios.append(d)
     return servicios
 
@@ -377,4 +383,28 @@ def _to_dict(row):
         "foto_url":               row[21],
         "rating":                 round(float(row[22] or 0), 1),
         "num_valoraciones":       row[23],
+        **_okventin(row[3], row[14], row[4], row[24] if len(row) > 24 else None),
     }
+
+
+def _okventin(titulo, categoria, descripcion, forzado=None):
+    """Okventín del aviso: el oficio y las URLs de sus dos imágenes
+    (foto de estudio para cuando no hay foto, y sello transparente)."""
+    try:
+        from services import okventin_servicio as ok
+        kit = forzado if forzado in ok.KITS else ok.elegir_kit(
+            titulo or "", categoria or "", descripcion or "")
+        return {"okventin_kit": kit,
+                "okventin_foto": ok.url(kit, "jpg"),
+                "okventin_sello": ok.url(kit, "png")}
+    except Exception:
+        return {}
+
+
+def forzar_okventin(servicio_id, kit):
+    conn = sqlite3.connect(DB)
+    cur = conn.execute("UPDATE servicios SET okventin_kit = ? WHERE id = ?",
+                       (kit, servicio_id))
+    conn.commit()
+    conn.close()
+    return cur.rowcount > 0

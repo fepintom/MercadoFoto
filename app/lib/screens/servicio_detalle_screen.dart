@@ -12,6 +12,7 @@ import '../theme/app_theme.dart';
 import '../widgets/insignia.dart';
 import 'chat_servicio_screen.dart';
 import '../widgets/net_image.dart';
+import '../widgets/okventin_servicio.dart';
 import '../services/favoritos_service.dart';
 import '../widgets/acciones_servicio.dart';
 import 'soporte_chat_screen.dart';
@@ -413,12 +414,18 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
             ],
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(fit: StackFit.expand, children: [
-                fotos.isNotEmpty
+                // Sin foto propia: Okventín con las herramientas del oficio.
+                OkventinServicio.foto(_srv) != null
                     ? NetImage(
-                        '${ApiService.baseUrl}${fotos.first}',
+                        OkventinServicio.foto(_srv)!,
                         fit: BoxFit.cover,
                       )
                     : _fotoPlaceholder(fotoUrl, nombre),
+                Positioned(
+                  left: 12,
+                  bottom: 12,
+                  child: SelloOkventin(servicio: _srv, tam: 76),
+                ),
                 // Igual que el detalle de un producto: ayuda, favorito y
                 // compartir en una columna vertical sobre la foto.
                 Positioned(
