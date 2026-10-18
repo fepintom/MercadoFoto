@@ -851,7 +851,7 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
         }),
       ),
       children: [
-        MapasConfig.capa(),
+        ...MapasConfig.capas(),
         if (_radioAplica && yo != null)
           CircleLayer(circles: [
             CircleMarker(

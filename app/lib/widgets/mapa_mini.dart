@@ -45,7 +45,7 @@ class MapaMini extends StatelessWidget {
               interactiveFlags: InteractiveFlag.none,
             ),
             children: [
-              MapasConfig.capa(),
+              ...MapasConfig.capas(),
               MarkerLayer(markers: [
                 Marker(
                   point: punto,

@@ -1132,7 +1132,7 @@ class _MapaPinPickerScreenState extends State<_MapaPinPickerScreen> {
               onTap: (_, latlng) => setState(() => _pin = latlng),
             ),
             children: [
-              MapasConfig.capa(),
+              ...MapasConfig.capas(),
               MarkerLayer(
                 markers: [
                   Marker(
