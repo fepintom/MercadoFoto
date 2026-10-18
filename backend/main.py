@@ -453,6 +453,14 @@ except Exception as _e:
 init_favoritos_servicios_db()
 init_fotos_estilo_db()
 init_ordenes_extra_db()
+# Okventín de oficio: se arman todas las figuras en segundo plano (así los
+# avisos antiguos y nuevos ya las tienen listas).
+try:
+    import threading as _th
+    from services.okventin_servicio import generar_todos as _okv_todos
+    _th.Thread(target=_okv_todos, daemon=True).start()
+except Exception as _e:
+    print("Okventín servicios:", repr(_e))
 fotos_estilo_auto()
 init_historias_db()
 init_vistas_db()
@@ -2197,6 +2205,37 @@ def contactos_servicio(servicio_id: int, owner_id: int):
     if not srv or srv["user_id"] != owner_id:
         raise HTTPException(status_code=403, detail="Sin permiso")
     return {"contactos": obtener_contactos_servicio(servicio_id)}
+
+
+# ── Okventín de cada servicio ───────────────────────────────────────────────
+
+@app.get("/okventin/servicio/{archivo}")
+def okventin_de_servicio(archivo: str):
+    """Imagen de Okventín con las herramientas del oficio. `archivo` es
+    "<kit>.jpg" (foto de estudio) o "<kit>.png" (sello transparente). Se
+    arma una vez y queda guardada."""
+    from fastapi.responses import FileResponse
+    from services import okventin_servicio as okv
+    kit, _, fmt = archivo.rpartition(".")
+    if fmt not in ("jpg", "png") or kit not in okv.KITS:
+        raise HTTPException(status_code=404, detail="No existe")
+    ruta = okv.ruta_imagen(kit, fmt)
+    return FileResponse(ruta, media_type="image/jpeg" if fmt == "jpg" else "image/png",
+                        headers={"Cache-Control": "public, max-age=604800"})
+
+
+@app.post("/admin/servicios/{servicio_id}/okventin")
+def admin_okventin_servicio(servicio_id: int, kit: str, token: str = ""):
+    """Forzar el oficio de un aviso (kit vacío = vuelve a elegirse solo)."""
+    if token != os.environ.get("ADMIN_TOKEN", "okventa-admin-2026"):
+        raise HTTPException(status_code=403, detail="Token inválido")
+    from services import okventin_servicio as okv
+    from database.servicios import forzar_okventin
+    if kit and kit not in okv.KITS:
+        raise HTTPException(status_code=400, detail=f"Kits: {', '.join(okv.KITS)}")
+    if not forzar_okventin(servicio_id, kit or None):
+        raise HTTPException(status_code=404, detail="Servicio no encontrado")
+    return {"ok": True}
 
 
 @app.get("/servicios/{servicio_id}")
