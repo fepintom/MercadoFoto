@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import '../widgets/medios_pago.dart' show PoliticasServicio;
 import 'package:image_picker/image_picker.dart';
 
 import '../services/api_service.dart';
@@ -28,6 +29,7 @@ class EditarServicioScreen extends StatefulWidget {
 class _EditarServicioScreenState extends State<EditarServicioScreen> {
   late final TextEditingController _tituloCtrl;
   late final TextEditingController _descCtrl;
+  late final TextEditingController _politicasCtrl;
   late final TextEditingController _comunasCtrl;
   late final TextEditingController _valorCtrl;
   late String _modalidad;
@@ -49,6 +51,8 @@ class _EditarServicioScreenState extends State<EditarServicioScreen> {
     _descCtrl =
         TextEditingController(text: (s['descripcion'] ?? '').toString());
     _comunasCtrl = TextEditingController(text: (s['comunas'] ?? '').toString());
+    _politicasCtrl =
+        TextEditingController(text: (s['politicas'] ?? '').toString());
     final valor = (s['valor'] as num?)?.toDouble() ?? 0;
     _valorCtrl =
         TextEditingController(text: valor > 0 ? valor.toStringAsFixed(0) : '');
@@ -88,6 +92,7 @@ class _EditarServicioScreenState extends State<EditarServicioScreen> {
   void dispose() {
     _tituloCtrl.dispose();
     _descCtrl.dispose();
+    _politicasCtrl.dispose();
     _comunasCtrl.dispose();
     _valorCtrl.dispose();
     super.dispose();
@@ -136,6 +141,7 @@ class _EditarServicioScreenState extends State<EditarServicioScreen> {
         modalidad: _modalidad,
         fotosMantener: _fotosExistentes,
         fotosNuevas: _fotosNuevas,
+        politicas: _politicasCtrl.text.trim(),
       );
       if (!mounted) return;
       _aviso('Cambios guardados');
@@ -194,6 +200,8 @@ class _EditarServicioScreenState extends State<EditarServicioScreen> {
           const SizedBox(height: 14),
           _campo('Comunas donde atiendes', _comunasCtrl),
           const SizedBox(height: 14),
+          _campoPoliticas(),
+          const SizedBox(height: 14),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -234,6 +242,37 @@ class _EditarServicioScreenState extends State<EditarServicioScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  /// Políticas del servicio: las escribe el proveedor (garantía propia,
+  /// qué incluye, cancelación). OkVenta suma las suyas en el detalle.
+  Widget _campoPoliticas() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(children: [
+          Expanded(child: _campo('Políticas del servicio', _politicasCtrl,
+              lineas: 5)),
+        ]),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: () {
+              if (_politicasCtrl.text.trim().isEmpty) {
+                setState(() => _politicasCtrl.text = PoliticasServicio.plantilla);
+              }
+            },
+            icon: Icon(Icons.auto_fix_high_rounded,
+                size: 16, color: colors.primary),
+            label: Text('Usar plantilla',
+                style: TextStyle(
+                    fontSize: 12.5,
+                    color: colors.primary,
+                    fontWeight: FontWeight.w600)),
+          ),
+        ),
+      ],
     );
   }
 

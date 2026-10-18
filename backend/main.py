@@ -2081,6 +2081,7 @@ async def crear_servicio_endpoint(
     radio_km:    float = Form(5.0),
     categoria:   str   = Form("Otros"),
     color_hex:   str   = Form("#007AFF"),
+    politicas:   str   = Form(""),
     fotos: Optional[List[UploadFile]] = File(default=None),
 ):
     saved_paths = []
@@ -2101,7 +2102,7 @@ async def crear_servicio_endpoint(
         fotos=saved_paths,
         lat=lat, lng=lng, radio_km=radio_km,
         categoria=categoria, color_hex=color_hex,
-        telefono=telefono, whatsapp=whatsapp,
+        telefono=telefono, whatsapp=whatsapp, politicas=politicas,
     )
     return {"id": sid, "ok": True}
 
@@ -2119,6 +2120,7 @@ async def editar_servicio_endpoint(
     color_hex:   str   = Form(None),
     telefono:    str   = Form(None),
     whatsapp:    str   = Form(None),
+    politicas:   str   = Form(None),
     fotos_mantener: str = Form("[]"),   # JSON con las rutas que se conservan
     fotos: Optional[List[UploadFile]] = File(default=None),
 ):
@@ -2153,7 +2155,7 @@ async def editar_servicio_endpoint(
         descripcion=descripcion, comunas=comunas, valor=valor,
         modalidad=modalidad, fotos=(conservadas + nuevas)[:4],
         categoria=categoria, color_hex=color_hex,
-        telefono=telefono, whatsapp=whatsapp,
+        telefono=telefono, whatsapp=whatsapp, politicas=politicas,
     )
     if not ok:
         raise HTTPException(status_code=403, detail="No autorizado")

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import '../widgets/medios_pago.dart' show PoliticasServicio;
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -42,6 +43,7 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
   final _formKey     = GlobalKey<FormState>();
   final _tituloCtrl  = TextEditingController();
   final _descCtrl    = TextEditingController();
+  final _politicasCtrl = TextEditingController();
   final _comunasCtrl = TextEditingController();
   final _valorCtrl   = TextEditingController();
   final _telefonoCtrl = TextEditingController();
@@ -91,7 +93,7 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
   @override
   void dispose() {
     for (final c in [
-      _tituloCtrl, _descCtrl, _comunasCtrl,
+      _tituloCtrl, _descCtrl, _politicasCtrl, _comunasCtrl,
       _valorCtrl, _telefonoCtrl, _wsCtrl
     ]) { c.dispose(); }
     super.dispose();
@@ -299,6 +301,7 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
       req.fields['tipo']        = _tipo;
       req.fields['titulo']      = _tituloCtrl.text.trim();
       req.fields['descripcion'] = _descCtrl.text.trim();
+      req.fields['politicas']   = _politicasCtrl.text.trim();
       req.fields['comunas']     = _comunasCtrl.text.trim();
       req.fields['valor']       = _valorCtrl.text.trim().isEmpty
           ? '0'
@@ -604,6 +607,32 @@ class _AgregarServicioScreenState extends State<AgregarServicioScreen> {
               _campo(_descCtrl,
                   'Describe qué incluye tu servicio, experiencia, etc.',
                   maxLines: 4),
+
+              const SizedBox(height: 16),
+
+              // ── Políticas del servicio ────────────────────────────────────
+              // Las escribe el proveedor; OkVenta agrega las suyas (pago
+              // protegido, garantía, cancelación) en el detalle.
+              Row(children: [
+                Expanded(child: _label('Políticas del servicio (opcional)')),
+                GestureDetector(
+                  onTap: () {
+                    if (_politicasCtrl.text.trim().isEmpty) {
+                      setState(() =>
+                          _politicasCtrl.text = PoliticasServicio.plantilla);
+                    }
+                  },
+                  child: Text('Usar plantilla',
+                      style: TextStyle(
+                          fontSize: 12.5,
+                          color: colors.primary,
+                          fontWeight: FontWeight.w600)),
+                ),
+              ]),
+              const SizedBox(height: 8),
+              _campo(_politicasCtrl,
+                  'Garantía, qué incluye y qué no, cancelación, visitas…',
+                  maxLines: 5),
 
               const SizedBox(height: 16),
 
