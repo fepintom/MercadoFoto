@@ -221,7 +221,7 @@ class _SeguimientoEntregaScreenState extends State<SeguimientoEntregaScreen> {
                                 InteractiveFlag.drag,
                           ),
                           children: [
-                            MapasConfig.capa(),
+                            ...MapasConfig.capas(),
                             MarkerLayer(markers: [
                               // Mi casa (destino)
                               if (_destino != null)

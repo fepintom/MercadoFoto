@@ -392,7 +392,7 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
                       InteractiveFlag.drag,
                 ),
                 children: [
-                  MapasConfig.capa(),
+                  ...MapasConfig.capas(),
                   MarkerLayer(markers: [
                     Marker(
                       point: ll.LatLng(destinoLat, destinoLng),

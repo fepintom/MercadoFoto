@@ -338,7 +338,7 @@ class _EntregaVendedorScreenState extends State<EntregaVendedorScreen> {
                           InteractiveFlag.pinchZoom | InteractiveFlag.drag,
                     ),
                     children: [
-                      MapasConfig.capa(),
+                      ...MapasConfig.capas(),
                       MarkerLayer(markers: [
                         if (_destino != null)
                           Marker(

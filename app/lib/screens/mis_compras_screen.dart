@@ -1261,7 +1261,7 @@ class _OkdeliveryCompradorPanelState
                     interactiveFlags: InteractiveFlag.none,
                   ),
                   children: [
-                    MapasConfig.capa(),
+                    ...MapasConfig.capas(),
                     MarkerLayer(markers: [
                       Marker(
                         point: ll.LatLng(

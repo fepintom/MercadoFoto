@@ -146,7 +146,7 @@ class _MapaUbicacionPickerScreenState
                 onTap: _onMapTap,
               ),
               children: [
-                MapasConfig.capa(),
+                ...MapasConfig.capas(),
 
                 // Círculo de cobertura
                 if (_pinColocado)
