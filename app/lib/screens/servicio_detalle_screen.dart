@@ -15,6 +15,8 @@ import '../widgets/net_image.dart';
 import '../widgets/okventin_servicio.dart';
 import '../services/favoritos_service.dart';
 import '../widgets/acciones_servicio.dart';
+import '../widgets/medios_pago.dart';
+import 'editar_servicio_screen.dart';
 import 'soporte_chat_screen.dart';
 class ServicioDetalleScreen extends StatefulWidget {
   final Map<String, dynamic> servicio;
@@ -617,6 +619,16 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                     const SizedBox(height: 16),
                   ],
 
+                  // ── Medios de pago + políticas (como en un producto) ──────
+                  const MediosPago(
+                    proteccionTitulo: 'Siempre con Servicio protegido',
+                    proteccionDetalle:
+                        'Pagas dentro de OkVenta y el 20 % queda retenido 30 días como garantía del trabajo.',
+                  ),
+                  const SizedBox(height: 18),
+                  _filaPoliticas(),
+                  const SizedBox(height: 22),
+
                   // ── Fotos adicionales ───────────────────────────────────
                   if (fotos.length > 1) ...[
                     Text('Fotos',
@@ -651,6 +663,9 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
 
                   const SizedBox(height: 16),
 
+                  // ── Solo el titular: editar / eliminar ──────────────────
+                  if (esMio) _botonesTitular(),
+
                   // El botón "Contratar y pagar" se movió al chat del
                   // servicio: primero se contacta, luego se cotiza y recién
                   // ahí se contrata. Acá aparecía antes de hablar con nadie.
@@ -663,6 +678,172 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
         ],
       ),
     );
+  }
+
+  /// "Políticas del servicio | Servicio protegido" (en un producto aquí
+  /// va "Devolución gratis | Compra protegida").
+  Widget _filaPoliticas() {
+    final politicas = (_srv['politicas'] ?? '').toString();
+    return Row(
+      children: [
+        Expanded(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => PoliticasServicio.mostrar(context, politicas),
+            child: Row(
+              children: [
+                Icon(Icons.description_outlined,
+                    size: 20, color: colors.textPrimary),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text('Políticas del servicio',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: 13,
+                          color: colors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                          decorationColor: colors.textPrimary)),
+                ),
+                Icon(Icons.chevron_right_rounded,
+                    size: 18, color: colors.textPrimary),
+              ],
+            ),
+          ),
+        ),
+        Container(
+          width: 1,
+          height: 22,
+          margin: const EdgeInsets.symmetric(horizontal: 10),
+          color: colors.divider,
+        ),
+        GestureDetector(
+          onTap: () => PoliticasServicio.mostrarProteccion(context),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.verified_user_outlined,
+                  size: 20, color: colors.primary),
+              const SizedBox(width: 6),
+              Text('Servicio protegido',
+                  style: TextStyle(
+                      fontSize: 13,
+                      color: colors.primary,
+                      fontWeight: FontWeight.w700,
+                      decoration: TextDecoration.underline,
+                      decorationColor: colors.primary)),
+              Icon(Icons.chevron_right_rounded,
+                  size: 18, color: colors.primary),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Editar / Eliminar: solo los ve el titular de la publicación.
+  Widget _botonesTitular() {
+    final forma = RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12));
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _editar,
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            label: const Text('Editar publicación',
+                style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.carbon,
+              foregroundColor: colors.textOnPrimary,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              shape: forma,
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _eliminar,
+            icon: const Icon(Icons.delete_outline_rounded, size: 18),
+            label: const Text('Eliminar publicación',
+                style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600)),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: colors.primary,
+              side: BorderSide(color: colors.primary, width: 1),
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              shape: forma,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _editar() async {
+    final ok = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+          builder: (_) => EditarServicioScreen(servicio: _srv)),
+    );
+    if (ok != true || !mounted) return;
+    // Recarga la publicación con lo recién guardado.
+    try {
+      final r = await http.get(
+          Uri.parse('${ApiService.baseUrl}/servicios/${_srv['id']}'));
+      if (r.statusCode == 200 && mounted) {
+        final d = jsonDecode(utf8.decode(r.bodyBytes));
+        final nuevo = d is Map && d['servicio'] is Map ? d['servicio'] : d;
+        if (nuevo is Map && nuevo['id'] != null) {
+          setState(() => _srv.addAll(Map<String, dynamic>.from(nuevo)));
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _eliminar() async {
+    final uid = _miUserId;
+    if (uid == null) return;
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: colors.surface,
+        title: Text('Eliminar publicación',
+            style: TextStyle(color: colors.textPrimary)),
+        content: Text(
+            'Se eliminará "${_srv['titulo'] ?? 'este servicio'}". Esta acción no se puede deshacer.',
+            style: TextStyle(color: colors.textPrimary)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('Cancelar',
+                  style: TextStyle(color: colors.textPrimary))),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text('Eliminar',
+                  style: TextStyle(
+                      color: colors.primary, fontWeight: FontWeight.w700))),
+        ],
+      ),
+    );
+    if (confirmar != true || !mounted) return;
+    final nav = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ApiService.eliminarServicio((_srv['id'] as num).toInt(), uid);
+      messenger.showSnackBar(const SnackBar(
+          content: Text('Publicación eliminada'),
+          behavior: SnackBarBehavior.floating));
+      nav.pop(true);
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(
+          content: Text('$e'.replaceFirst('Exception: ', '')),
+          behavior: SnackBarBehavior.floating));
+    }
   }
 
   Widget _buildCalificacion(double rating, int numVal) {

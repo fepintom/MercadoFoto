@@ -1150,6 +1150,7 @@ class ApiService {
     String? categoria,
     String? telefono,
     String? whatsapp,
+    String? politicas,
   }) async {
     final req = http.MultipartRequest(
       'PUT',
@@ -1165,6 +1166,7 @@ class ApiService {
     if (categoria != null) req.fields['categoria'] = categoria;
     if (telefono != null) req.fields['telefono'] = telefono;
     if (whatsapp != null) req.fields['whatsapp'] = whatsapp;
+    if (politicas != null) req.fields['politicas'] = politicas;
     for (final f in fotosNuevas) {
       req.files.add(await http.MultipartFile.fromPath('fotos', f.path));
     }
@@ -1172,6 +1174,15 @@ class ApiService {
     final res = await http.Response.fromStream(streamed);
     if (res.statusCode != 200) {
       throw Exception(_detalle(res.body) ?? 'No se pudo guardar el servicio');
+    }
+  }
+
+  /// Elimina una publicación de servicio (solo su titular).
+  static Future<void> eliminarServicio(int servicioId, int userId) async {
+    final res = await http.delete(Uri.parse(
+        '$baseUrl/servicios/$servicioId?user_id=$userId'));
+    if (res.statusCode != 200) {
+      throw Exception(_detalle(res.body) ?? 'No se pudo eliminar el servicio');
     }
   }
 

@@ -37,6 +37,9 @@ def init_servicios_db():
         # Okventín del aviso: NULL = se elige solo por título/categoría;
         # con valor = forzado a mano (ver /admin/servicios/{id}/okventin).
         "ALTER TABLE servicios ADD COLUMN okventin_kit TEXT",
+        # Políticas del servicio que escribe el proveedor (garantía propia,
+        # cancelación, qué incluye y qué no...). Se muestran en el detalle.
+        "ALTER TABLE servicios ADD COLUMN politicas TEXT",
     ]:
         try:
             c.execute(col_sql)
@@ -76,19 +79,19 @@ def crear_servicio(user_id, tipo, titulo, descripcion, comunas,
                    valor, modalidad, fotos,
                    lat=None, lng=None, radio_km=5.0,
                    categoria="Otros", color_hex="#007AFF",
-                   telefono=None, whatsapp=None):
+                   telefono=None, whatsapp=None, politicas=None):
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("""
         INSERT INTO servicios
             (user_id, tipo, titulo, descripcion, comunas,
              valor, modalidad, fotos, lat, lng, radio_km,
-             categoria, color_hex, telefono, whatsapp)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             categoria, color_hex, telefono, whatsapp, politicas)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (user_id, tipo, titulo, descripcion, comunas,
           valor, modalidad, json.dumps(fotos),
           lat, lng, radio_km, categoria, color_hex,
-          telefono, whatsapp))
+          telefono, whatsapp, (politicas or "")[:3000]))
     sid = c.lastrowid
     conn.commit()
     conn.close()
@@ -97,7 +100,7 @@ def crear_servicio(user_id, tipo, titulo, descripcion, comunas,
 
 def editar_servicio(servicio_id, user_id, titulo, descripcion, comunas,
                     valor, modalidad, fotos, categoria=None, color_hex=None,
-                    telefono=None, whatsapp=None):
+                    telefono=None, whatsapp=None, politicas=None):
     """Actualiza una publicación de servicio. Solo el dueño puede: el
     user_id va en el WHERE, así que si no coincide no toca nada y devuelve
     False. `fotos` es la lista final (las que se conservan + las nuevas)."""
@@ -110,10 +113,13 @@ def editar_servicio(servicio_id, user_id, titulo, descripcion, comunas,
             categoria = COALESCE(?, categoria),
             color_hex = COALESCE(?, color_hex),
             telefono  = COALESCE(?, telefono),
-            whatsapp  = COALESCE(?, whatsapp)
+            whatsapp  = COALESCE(?, whatsapp),
+            politicas = COALESCE(?, politicas)
         WHERE id = ? AND user_id = ?
     """, (titulo, descripcion, comunas, valor, modalidad, json.dumps(fotos),
-          categoria, color_hex, telefono, whatsapp, servicio_id, user_id))
+          categoria, color_hex, telefono, whatsapp,
+          None if politicas is None else politicas[:3000],
+          servicio_id, user_id))
     ok = c.rowcount > 0
     conn.commit()
     conn.close()
@@ -145,7 +151,7 @@ _SELECT = """
            u.nombre, u.apellido, u.foto_url,
            COALESCE(AVG(v.estrellas), 0) AS rating,
            COUNT(v.id) AS num_val,
-           s.okventin_kit
+           s.okventin_kit, s.politicas
     FROM servicios s
     JOIN users u ON s.user_id = u.id
     LEFT JOIN valoraciones_servicios v ON s.id = v.servicio_id
@@ -261,7 +267,7 @@ def obtener_servicios_usuario_con_contactos(user_id: int) -> list:
                s.valor, s.modalidad, s.fotos,
                COALESCE(s.categoria, 'Otros') AS categoria,
                COALESCE(s.color_hex, '#007AFF') AS color_hex,
-               s.created_at,
+               s.created_at, COALESCE(s.politicas, '') AS politicas,
                COALESCE(AVG(v.estrellas), 0) AS rating,
                COUNT(DISTINCT v.id) AS num_valoraciones,
                COUNT(DISTINCT cs.id) AS num_contactos
@@ -383,6 +389,7 @@ def _to_dict(row):
         "foto_url":               row[21],
         "rating":                 round(float(row[22] or 0), 1),
         "num_valoraciones":       row[23],
+        "politicas":              (row[25] if len(row) > 25 else None) or "",
         **_okventin(row[3], row[14], row[4], row[24] if len(row) > 24 else None),
     }
 
