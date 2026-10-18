@@ -140,14 +140,14 @@ jobs:
 
       - name: Build IPA
         working-directory: app
-        # Token público de Mapbox (estilos de mapa día/noche). Si el secreto
-        # no existe, la app usa el mapa abierto de siempre.
+        # Clave de CARTO (mapas Voyager de día / Dark Matter de noche). Si
+        # el secreto no existe, la app usa el mapa abierto de siempre.
         env:
-          MAPBOX_TOKEN: ${{ secrets.MAPBOX_TOKEN }}
+          CARTO_KEY: ${{ secrets.CARTO_KEY }}
         run: |
           flutter build ipa --release \
             --export-options-plist=ios/ExportOptions.plist \
-            --dart-define=MAPBOX_TOKEN=$MAPBOX_TOKEN \
+            --dart-define=CARTO_KEY=$CARTO_KEY \
             --no-tree-shake-icons
 
       # 12. Subir a TestFlight

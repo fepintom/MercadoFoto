@@ -192,6 +192,6 @@ Foto de perfil (nombre de archivo único), dirección manual como fallback, RUT 
 - App: `widgets/okventin_servicio.dart` (OkventinServicio.foto / SelloOkventin) en tarjetas, filas, detalle y Encontrar.
 - Figuras finales por oficio en `backend/assets/okventin/oficios/<kit>.png` (20, del diseño "OK Venta y Servicios"); `figura(kit)` las usa y solo arma con base+accesorios si falta alguna (mudanza/delivery→transporte, refrigeracion→electrodomesticos, celulares→computacion). Sombra difuminada (`con_sombra`) en la foto de estudio y en el sello. VERSION=3.
 
-### Mapas con Mapbox (no Google)
-- `lib/services/mapas_config.dart`: `MapasConfig.capa()` es el fondo de TODOS los FlutterMap. Con `--dart-define=MAPBOX_TOKEN=pk...` (secreto de GitHub `MAPBOX_TOKEN`, lo pasa el workflow) usa Mapbox: día `streets-v12`, noche `navigation-night-v1` (según ThemeService). Sin token, OSM como antes. Crédito "© Mapbox © OpenStreetMap" en Encontrar (`MapasConfig.atribucion()`).
+### Mapas con CARTO
+- `lib/services/mapas_config.dart`: `MapasConfig.capa()` es el fondo de TODOS los FlutterMap. Con `--dart-define=CARTO_KEY=...` (secreto de GitHub `CARTO_KEY`, lo pasa el workflow) usa CARTO raster: día `voyager`, noche `dark_all` (Dark Matter), según ThemeService; gratis comercial hasta 1M cuadritos/mes. Sin clave, OSM como antes. Crédito "© CARTO © OpenStreetMap" en Encontrar. (Se descartó Google Maps y Mapbox por costo.)
 - `widgets/controles_mapa.dart`: + / − y "mi ubicación" (ControlesMapa / ControlesMapa.sobre) en Encontrar, elegir dirección, mis direcciones, entrega del vendedor, seguimiento y OkDelivery. Los mapitas fijos (mapa_mini, tarjeta de compra) no los llevan. La vista inclinada (Mapbox SDK oficial) queda pendiente.
