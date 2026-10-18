@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import '../services/mapas_config.dart';
+import '../widgets/controles_mapa.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart' hide Path;
@@ -1118,7 +1120,10 @@ class _MapaPinPickerScreenState extends State<_MapaPinPickerScreen> {
       ),
       body: Stack(
         children: [
-          FlutterMap(
+          ControlesMapa.sobre(
+                controller: _mapCtrl,
+                alCentro: true,
+                mapa: FlutterMap(
             mapController: _mapCtrl,
             options: MapOptions(
               center: _pin,
@@ -1127,10 +1132,7 @@ class _MapaPinPickerScreenState extends State<_MapaPinPickerScreen> {
               onTap: (_, latlng) => setState(() => _pin = latlng),
             ),
             children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.okventa.app',
-              ),
+              MapasConfig.capa(),
               MarkerLayer(
                 markers: [
                   Marker(
@@ -1147,7 +1149,7 @@ class _MapaPinPickerScreenState extends State<_MapaPinPickerScreen> {
                 ],
               ),
             ],
-          ),
+          )),
 
           // Instrucción centrada arriba
           Positioned(

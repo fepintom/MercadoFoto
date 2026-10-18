@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import '../services/mapas_config.dart';
+import '../widgets/controles_mapa.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../theme/app_theme.dart';
@@ -133,7 +135,10 @@ class _MapaUbicacionPickerScreenState
 
           // Mapa
           Expanded(
-            child: FlutterMap(
+            child: ControlesMapa.sobre(
+                controller: _mapCtrl,
+                alCentro: true,
+                mapa: FlutterMap(
               mapController: _mapCtrl,
               options: MapOptions(
                 center: _pin,
@@ -141,11 +146,7 @@ class _MapaUbicacionPickerScreenState
                 onTap: _onMapTap,
               ),
               children: [
-                TileLayer(
-                  urlTemplate:
-                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.okventa.app',
-                ),
+                MapasConfig.capa(),
 
                 // Círculo de cobertura
                 if (_pinColocado)
@@ -187,7 +188,7 @@ class _MapaUbicacionPickerScreenState
                     ],
                   ),
               ],
-            ),
+            )),
           ),
 
           // Panel inferior: radio + confirmar

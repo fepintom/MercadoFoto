@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import '../services/mapas_config.dart';
+import '../widgets/controles_mapa.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart' as ll;
@@ -323,7 +325,9 @@ class _EntregaVendedorScreenState extends State<EntregaVendedorScreen> {
                 padding: const EdgeInsets.all(16),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(14),
-                  child: FlutterMap(
+                  child: ControlesMapa.sobre(
+                controller: _mapController,
+                mapa: FlutterMap(
                     mapController: _mapController,
                     options: MapOptions(
                       center: _miPos ??
@@ -334,11 +338,7 @@ class _EntregaVendedorScreenState extends State<EntregaVendedorScreen> {
                           InteractiveFlag.pinchZoom | InteractiveFlag.drag,
                     ),
                     children: [
-                      TileLayer(
-                        urlTemplate:
-                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        userAgentPackageName: 'com.okventa.app',
-                      ),
+                      MapasConfig.capa(),
                       MarkerLayer(markers: [
                         if (_destino != null)
                           Marker(
@@ -373,7 +373,7 @@ class _EntregaVendedorScreenState extends State<EntregaVendedorScreen> {
                           ),
                       ]),
                     ],
-                  ),
+                  )),
                 ),
               ),
             ),

@@ -4,6 +4,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import '../services/mapas_config.dart';
+import '../widgets/controles_mapa.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart' hide Path;
 import 'package:url_launcher/url_launcher.dart';
@@ -560,11 +562,28 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
                     : Stack(
                         children: [
                           _mapa(productos, servicios),
+                          // Crédito del mapa (lo piden Mapbox y OSM).
+                          Positioned(
+                            left: 6,
+                            bottom: 4,
+                            child: MapasConfig.atribucion(),
+                          ),
                           if (!hayFicha)
                             Positioned(
                               right: 12,
                               bottom: 16,
-                              child: _botonMiUbicacion(),
+                              // + / − y mi ubicación (iguales en todos
+                              // los mapas de la app).
+                              child: ControlesMapa(
+                                controller: _mapCtrl,
+                                cargandoUbicacion: _buscandoGps,
+                                onMiUbicacion: () async {
+                                  if (_modoZona) {
+                                    setState(() => _modoZona = false);
+                                  }
+                                  await _cargarUbicacion();
+                                },
+                              ),
                             ),
                           if (productos.isEmpty && servicios.isEmpty)
                             Positioned(
@@ -832,10 +851,7 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
         }),
       ),
       children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.okventa.app',
-        ),
+        MapasConfig.capa(),
         if (_radioAplica && yo != null)
           CircleLayer(circles: [
             CircleMarker(

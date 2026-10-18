@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import '../services/mapas_config.dart';
+import '../widgets/controles_mapa.dart';
 import 'package:latlong2/latlong.dart' as ll;
 
 import '../services/api_service.dart';
@@ -206,7 +208,9 @@ class _SeguimientoEntregaScreenState extends State<SeguimientoEntregaScreen> {
                             CircularProgressIndicator(color: colors.primary))
                     : ClipRRect(
                         borderRadius: BorderRadius.circular(14),
-                        child: FlutterMap(
+                        child: ControlesMapa.sobre(
+                controller: _mapController,
+                mapa: FlutterMap(
                           mapController: _mapController,
                           options: MapOptions(
                             center: _vendedorPos ??
@@ -217,11 +221,7 @@ class _SeguimientoEntregaScreenState extends State<SeguimientoEntregaScreen> {
                                 InteractiveFlag.drag,
                           ),
                           children: [
-                            TileLayer(
-                              urlTemplate:
-                                  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                              userAgentPackageName: 'com.okventa.app',
-                            ),
+                            MapasConfig.capa(),
                             MarkerLayer(markers: [
                               // Mi casa (destino)
                               if (_destino != null)
@@ -261,7 +261,7 @@ class _SeguimientoEntregaScreenState extends State<SeguimientoEntregaScreen> {
                                 ),
                             ]),
                           ],
-                        ),
+                        )),
                       ),
               ),
             ),

@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import '../services/mapas_config.dart';
+import '../widgets/controles_mapa.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart' as ll;
@@ -36,6 +38,7 @@ class OkdeliveryActivoScreen extends StatefulWidget {
 }
 
 class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
+  final _mapaCtrl = MapController();
   Map<String, dynamic>? _entrega;
   bool _cargando = true;
   bool _enviando = false;
@@ -378,7 +381,10 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
             borderRadius: BorderRadius.circular(14),
             child: SizedBox(
               height: 240,
-              child: FlutterMap(
+              child: ControlesMapa.sobre(
+                controller: _mapaCtrl,
+                mapa: FlutterMap(
+                mapController: _mapaCtrl,
                 options: MapOptions(
                   center: _miPos ?? ll.LatLng(destinoLat, destinoLng),
                   zoom: 14,
@@ -386,11 +392,7 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
                       InteractiveFlag.drag,
                 ),
                 children: [
-                  TileLayer(
-                    urlTemplate:
-                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.okventa.app',
-                  ),
+                  MapasConfig.capa(),
                   MarkerLayer(markers: [
                     Marker(
                       point: ll.LatLng(destinoLat, destinoLng),
@@ -409,7 +411,7 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
                       ),
                   ]),
                 ],
-              ),
+              )),
             ),
           )
         else
