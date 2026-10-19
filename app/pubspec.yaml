@@ -30,6 +30,10 @@ dependencies:
   # Mapa (OpenStreetMap, sin API key)
   flutter_map: ^4.0.0
   latlong2: ^0.8.2
+  # Mapa vectorial (OpenFreeMap) con estilo propio. Versiones fijas: son
+  # las compatibles con flutter_map 4.
+  vector_map_tiles: 4.0.0
+  vector_tile_renderer: 4.0.0
 
   # Compartir / deep-links (WhatsApp, etc.)
   url_launcher: ^6.3.0
