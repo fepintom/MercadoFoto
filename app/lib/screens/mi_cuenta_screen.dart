@@ -10,6 +10,7 @@ import '../theme/app_theme.dart';
 import 'auth/login_screen.dart';
 import 'ayuda_chat_screen.dart';
 import 'ayuda_screen.dart';
+import 'ajustes_mapa_screen.dart';
 import 'favoritos_screen.dart';
 import 'mis_compras_screen.dart';
 import 'mis_direcciones_screen.dart';
@@ -1188,6 +1189,18 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                               _mostrarChatSoporte),
                           _itemMenu(
                               Icons.dark_mode_outlined, "Modo", _abrirSelectorModo),
+                          // Solo cuentas del equipo OkVenta: probar los
+                          // colores del mapa (claro / oscuro) en vivo.
+                          if (emailCtrl.text.trim().toLowerCase()
+                              .endsWith('@okventa.cl'))
+                            _itemMenu(Icons.map_outlined, "Ajustes del mapa",
+                                () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const AjustesMapaScreen()),
+                              );
+                            }),
                           _itemFaceId(),
                         ],
                       ),
