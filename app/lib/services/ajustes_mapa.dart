@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Ajuste de color de un mapa: se aplica como un filtro sobre los
 /// cuadritos de OpenStreetMap.
 class AjusteMapa {
+  /// Mapa base de CARTO (clave de [MapasCarto.disponibles]).
+  final String mapa;
   final double brillo; // -100 … 100
   final double contraste; // 0.5 … 2.5 (1 = igual)
   final double saturacion; // 0 … 2 (0 = gris, 1 = igual)
@@ -14,6 +16,7 @@ class AjusteMapa {
   final bool invertir; // claro ↔ oscuro
 
   const AjusteMapa({
+    this.mapa = 'voyager',
     this.brillo = 0,
     this.contraste = 1,
     this.saturacion = 1,
@@ -22,6 +25,7 @@ class AjusteMapa {
   });
 
   AjusteMapa copyWith({
+    String? mapa,
     double? brillo,
     double? contraste,
     double? saturacion,
@@ -29,6 +33,7 @@ class AjusteMapa {
     bool? invertir,
   }) =>
       AjusteMapa(
+        mapa: mapa ?? this.mapa,
         brillo: brillo ?? this.brillo,
         contraste: contraste ?? this.contraste,
         saturacion: saturacion ?? this.saturacion,
@@ -37,6 +42,7 @@ class AjusteMapa {
       );
 
   Map<String, dynamic> toJson() => {
+        'mapa': mapa,
         'brillo': double.parse(brillo.toStringAsFixed(0)),
         'contraste': double.parse(contraste.toStringAsFixed(2)),
         'saturacion': double.parse(saturacion.toStringAsFixed(2)),
@@ -45,6 +51,9 @@ class AjusteMapa {
       };
 
   factory AjusteMapa.fromJson(Map<String, dynamic> j) => AjusteMapa(
+        mapa: MapasCarto.disponibles.containsKey(j['mapa'])
+            ? j['mapa'] as String
+            : 'voyager',
         brillo: (j['brillo'] as num?)?.toDouble() ?? 0,
         contraste: (j['contraste'] as num?)?.toDouble() ?? 1,
         saturacion: (j['saturacion'] as num?)?.toDouble() ?? 1,
@@ -128,16 +137,10 @@ class AjustesMapa {
   AjustesMapa._();
 
   // ── Valores definitivos (los que ven todos) ─────────────────────────────
-  static const AjusteMapa claroFijo = AjusteMapa();
-  static const AjusteMapa oscuroFijo = AjusteMapa(
-    invertir: true,
-    tono: 180, // al invertir, devuelve agua azul y parques verdes
-    saturacion: 0.7,
-    contraste: 0.85,
-    brillo: 10, // gris oscuro (no negro): bordes de calles y nombres se leen
-  );
+  static const AjusteMapa claroFijo = AjusteMapa(mapa: 'voyager');
+  static const AjusteMapa oscuroFijo = AjusteMapa(mapa: 'dark_all');
 
-  static const _clave = 'ajustes_mapa_v1';
+  static const _clave = 'ajustes_mapa_v2';
 
   static AjusteMapa claro = claroFijo;
   static AjusteMapa oscuro = oscuroFijo;
@@ -187,4 +190,35 @@ class AjustesMapa {
   /// Texto para copiar y pegar en el chat: así se dejan fijos en la app.
   static String valoresTexto() =>
       jsonEncode({'claro': claro.toJson(), 'oscuro': oscuro.toJson()});
+}
+
+/// Mapas de CARTO que se pueden elegir (todos gratis hasta 1 millón de
+/// cuadritos al mes con la clave CARTO_KEY).
+class MapasCarto {
+  MapasCarto._();
+
+  static const String clave = String.fromEnvironment('CARTO_KEY');
+
+  /// id → (nombre, ruta en basemaps.cartocdn.com)
+  static const Map<String, (String, String)> disponibles = {
+    'voyager': ('Voyager', 'rastertiles/voyager'),
+    'voyager_labels_under':
+        ('Voyager · nombres bajo calles', 'rastertiles/voyager_labels_under'),
+    'voyager_nolabels': ('Voyager · sin nombres', 'rastertiles/voyager_nolabels'),
+    'light_all': ('Positron (claro)', 'light_all'),
+    'light_nolabels': ('Positron · sin nombres', 'light_nolabels'),
+    'dark_all': ('Dark Matter (oscuro)', 'dark_all'),
+    'dark_nolabels': ('Dark Matter · sin nombres', 'dark_nolabels'),
+  };
+
+  static String nombre(String id) => (disponibles[id] ?? disponibles['voyager']!).$1;
+
+  /// Siempre la versión @2x (512 px) mostrada a 256: nítida y con los
+  /// nombres a su tamaño real (sin retinaMode, que en flutter_map 4 los
+  /// achica a la mitad).
+  static String url(String id) {
+    final ruta = (disponibles[id] ?? disponibles['voyager']!).$2;
+    final k = clave.isEmpty ? '' : '?key=$clave';
+    return 'https://{s}.basemaps.cartocdn.com/$ruta/{z}/{x}/{y}@2x.png$k';
+  }
 }

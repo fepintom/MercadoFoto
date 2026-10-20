@@ -8,8 +8,9 @@ import '../services/mapas_config.dart';
 import '../services/theme_service.dart';
 import '../theme/app_theme.dart';
 
-/// Panel para probar el color del mapa en vivo (brillo, contraste,
-/// saturación, tono e invertir), por separado para modo claro y oscuro.
+/// Panel para elegir el mapa de CARTO y probar su color en vivo (brillo,
+/// contraste, saturación, tono e invertir), por separado para modo claro y
+/// oscuro.
 /// Lo que se ajusta aquí aplica solo en este teléfono; con "Copiar
 /// valores" se pegan en el chat para dejarlos fijos para todos.
 class AjustesMapaScreen extends StatefulWidget {
@@ -81,7 +82,36 @@ class _AjustesMapaScreenState extends State<AjustesMapaScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                   children: [
                     _selectorModo(),
+                    const SizedBox(height: 12),
+                    Text('Mapa base',
+                        style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: colors.textPrimary)),
                     const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final id in MapasCarto.disponibles.keys)
+                          ChoiceChip(
+                            label: Text(MapasCarto.nombre(id)),
+                            selected: _a.mapa == id,
+                            selectedColor: colors.primary,
+                            labelStyle: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                                color: _a.mapa == id
+                                    ? Colors.white
+                                    : colors.textPrimary),
+                            onSelected: (_) {
+                              _cambiar(_a.copyWith(mapa: id));
+                              AjustesMapa.guardar();
+                            },
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
                     _deslizador('Brillo', _a.brillo, -100, 100,
                         (v) => _cambiar(_a.copyWith(brillo: v)),
                         decimales: 0),
