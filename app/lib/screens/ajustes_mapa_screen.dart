@@ -134,6 +134,7 @@ class _AjustesMapaScreenState extends State<AjustesMapaScreen> {
                         AjustesMapa.guardar();
                       },
                     ),
+                    if (MapasCarto.tieneNombres(_a.mapa)) _seccionNombres(),
                     const SizedBox(height: 8),
                     Row(children: [
                       Expanded(
@@ -177,6 +178,85 @@ class _AjustesMapaScreenState extends State<AjustesMapaScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  static const _coloresNombres = <(String, int?)>[
+    ('Original', null),
+    ('Blanco', 0xFFFFFFFF),
+    ('Gris claro', 0xFFD3D8DF),
+    ('Negro', 0xFF111111),
+    ('Celeste', 0xFF8EC5FF),
+    ('Amarillo', 0xFFFFD54A),
+    ('Naranjo', 0xFFFF9F43),
+  ];
+
+  /// Color, intensidad y tamaño de los nombres de calles y lugares.
+  Widget _seccionNombres() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 4),
+        Divider(color: colors.divider, height: 20),
+        Text('Nombres de calles y lugares',
+            style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                color: colors.textPrimary)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final (nombre, color) in _coloresNombres)
+              ChoiceChip(
+                avatar: color == null
+                    ? null
+                    : Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: Color(color),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: colors.divider),
+                        ),
+                      ),
+                label: Text(nombre),
+                selected: _a.nombresColor == color,
+                selectedColor: colors.primary,
+                labelStyle: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: _a.nombresColor == color
+                        ? Colors.white
+                        : colors.textPrimary),
+                onSelected: (_) {
+                  _cambiar(color == null
+                      ? _a.copyWith(sinColorNombres: true)
+                      : _a.copyWith(nombresColor: color));
+                  AjustesMapa.guardar();
+                },
+              ),
+          ],
+        ),
+        if (_a.nombresColor != null)
+          _deslizador('Intensidad', _a.nombresIntensidad, 0.5, 2,
+              (v) => _cambiar(_a.copyWith(nombresIntensidad: v))),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text('Nombres grandes',
+              style: TextStyle(fontSize: 14, color: colors.textPrimary)),
+          subtitle: Text('El doble de tamaño (muestra algo menos de nombres)',
+              style: TextStyle(fontSize: 11.5, color: colors.grayMid)),
+          value: _a.nombresGrandes,
+          activeColor: colors.primary,
+          onChanged: (v) {
+            _cambiar(_a.copyWith(nombresGrandes: v));
+            AjustesMapa.guardar();
+          },
+        ),
+        Divider(color: colors.divider, height: 20),
+      ],
     );
   }
 

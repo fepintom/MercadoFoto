@@ -15,6 +15,12 @@ class AjusteMapa {
   final double tono; // -180 … 180 grados
   final bool invertir; // claro ↔ oscuro
 
+  /// Nombres de calles y lugares (capa aparte): color (null = el
+  /// original del mapa), intensidad (0.5 suave … 2 fuerte) y tamaño.
+  final int? nombresColor;
+  final double nombresIntensidad;
+  final bool nombresGrandes;
+
   const AjusteMapa({
     this.mapa = 'voyager',
     this.brillo = 0,
@@ -22,6 +28,9 @@ class AjusteMapa {
     this.saturacion = 1,
     this.tono = 0,
     this.invertir = false,
+    this.nombresColor,
+    this.nombresIntensidad = 1,
+    this.nombresGrandes = false,
   });
 
   AjusteMapa copyWith({
@@ -31,6 +40,10 @@ class AjusteMapa {
     double? saturacion,
     double? tono,
     bool? invertir,
+    int? nombresColor,
+    bool sinColorNombres = false,
+    double? nombresIntensidad,
+    bool? nombresGrandes,
   }) =>
       AjusteMapa(
         mapa: mapa ?? this.mapa,
@@ -39,6 +52,10 @@ class AjusteMapa {
         saturacion: saturacion ?? this.saturacion,
         tono: tono ?? this.tono,
         invertir: invertir ?? this.invertir,
+        nombresColor:
+            sinColorNombres ? null : (nombresColor ?? this.nombresColor),
+        nombresIntensidad: nombresIntensidad ?? this.nombresIntensidad,
+        nombresGrandes: nombresGrandes ?? this.nombresGrandes,
       );
 
   Map<String, dynamic> toJson() => {
@@ -48,6 +65,11 @@ class AjusteMapa {
         'saturacion': double.parse(saturacion.toStringAsFixed(2)),
         'tono': double.parse(tono.toStringAsFixed(0)),
         'invertir': invertir,
+        'nombres_color': nombresColor == null
+            ? null
+            : '#${(nombresColor! & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}',
+        'nombres_intensidad': double.parse(nombresIntensidad.toStringAsFixed(2)),
+        'nombres_grandes': nombresGrandes,
       };
 
   factory AjusteMapa.fromJson(Map<String, dynamic> j) => AjusteMapa(
@@ -59,7 +81,47 @@ class AjusteMapa {
         saturacion: (j['saturacion'] as num?)?.toDouble() ?? 1,
         tono: (j['tono'] as num?)?.toDouble() ?? 0,
         invertir: j['invertir'] == true,
+        nombresColor: _leerColor(j['nombres_color']),
+        nombresIntensidad:
+            (j['nombres_intensidad'] as num?)?.toDouble() ?? 1,
+        nombresGrandes: j['nombres_grandes'] == true,
       );
+
+  static int? _leerColor(dynamic v) {
+    if (v is! String || !v.startsWith('#') || v.length != 7) return null;
+    final n = int.tryParse(v.substring(1), radix: 16);
+    return n == null ? null : 0xFF000000 | n;
+  }
+
+  /// Filtro SOLO para la capa de nombres: el texto queda del color
+  /// elegido y su borde (halo) del contrario, para que siempre se lea.
+  /// Usa los grises del texto y del halo de cada familia de CARTO.
+  ColorFilter? filtroNombres() {
+    final c = nombresColor;
+    if (c == null) return null;
+    final (double lHalo, double lTexto) = mapa.startsWith('dark')
+        ? (45.0, 111.0) // Dark Matter: texto #6f6f6f, halo #2d2d2d
+        : mapa.startsWith('light')
+            ? (247.0, 119.0) // Positron: texto #697b89, halo #f7f7f7
+            : (248.0, 115.0); // Voyager: texto #6a7584, halo #fbf8f3
+    final tr = ((c >> 16) & 0xFF).toDouble();
+    final tg = ((c >> 8) & 0xFF).toDouble();
+    final tb = (c & 0xFF).toDouble();
+    final claro = (0.2126 * tr + 0.7152 * tg + 0.0722 * tb) > 140;
+    final h = claro ? 28.0 : 250.0; // halo opuesto al texto
+    const lr = 0.2126, lg = 0.7152, lb = 0.0722;
+    List<double> fila(double t) {
+      final g = (t - h) * nombresIntensidad / (lTexto - lHalo);
+      return [g * lr, g * lg, g * lb, 0, h - g * lHalo];
+    }
+
+    return ColorFilter.matrix(<double>[
+      ...fila(tr),
+      ...fila(tg),
+      ...fila(tb),
+      0, 0, 0, 1, 0,
+    ]);
+  }
 
   /// Filtro de color: invertir → tono → saturación → contraste → brillo.
   ColorFilter filtro() {
@@ -199,25 +261,37 @@ class MapasCarto {
 
   static const String clave = String.fromEnvironment('CARTO_KEY');
 
-  /// id → (nombre, ruta en basemaps.cartocdn.com)
-  static const Map<String, (String, String)> disponibles = {
-    'voyager': ('Voyager', 'rastertiles/voyager'),
-    'voyager_labels_under':
-        ('Voyager · nombres bajo calles', 'rastertiles/voyager_labels_under'),
-    'voyager_nolabels': ('Voyager · sin nombres', 'rastertiles/voyager_nolabels'),
-    'light_all': ('Positron (claro)', 'light_all'),
-    'light_nolabels': ('Positron · sin nombres', 'light_nolabels'),
-    'dark_all': ('Dark Matter (oscuro)', 'dark_all'),
-    'dark_nolabels': ('Dark Matter · sin nombres', 'dark_nolabels'),
+  /// id → (nombre, dibujo sin nombres, capa de solo nombres o null).
+  /// Los nombres van en una capa aparte para poder cambiarles el color.
+  static const Map<String, (String, String, String?)> disponibles = {
+    'voyager': ('Voyager', 'rastertiles/voyager_nolabels',
+        'rastertiles/voyager_only_labels'),
+    'voyager_nolabels':
+        ('Voyager · sin nombres', 'rastertiles/voyager_nolabels', null),
+    'light_all': ('Positron (claro)', 'light_nolabels', 'light_only_labels'),
+    'light_nolabels': ('Positron · sin nombres', 'light_nolabels', null),
+    'dark_all': ('Dark Matter (oscuro)', 'dark_nolabels', 'dark_only_labels'),
+    'dark_nolabels': ('Dark Matter · sin nombres', 'dark_nolabels', null),
   };
 
-  static String nombre(String id) => (disponibles[id] ?? disponibles['voyager']!).$1;
+  static (String, String, String?) _de(String id) =>
+      disponibles[id] ?? disponibles['voyager']!;
+
+  static String nombre(String id) => _de(id).$1;
+
+  static bool tieneNombres(String id) => _de(id).$3 != null;
+
+  static String urlDibujo(String id) => _url(_de(id).$2);
+
+  static String? urlNombres(String id) {
+    final r = _de(id).$3;
+    return r == null ? null : _url(r);
+  }
 
   /// Siempre la versión @2x (512 px) mostrada a 256: nítida y con los
   /// nombres a su tamaño real (sin retinaMode, que en flutter_map 4 los
   /// achica a la mitad).
-  static String url(String id) {
-    final ruta = (disponibles[id] ?? disponibles['voyager']!).$2;
+  static String _url(String ruta) {
     final k = clave.isEmpty ? '' : '?key=$clave';
     return 'https://{s}.basemaps.cartocdn.com/$ruta/{z}/{x}/{y}@2x.png$k';
   }
