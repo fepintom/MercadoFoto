@@ -153,7 +153,18 @@ class OkMapKitPlugin: NSObject, FlutterPlugin {
     let ventanas = UIApplication.shared.connectedScenes
       .compactMap { $0 as? UIWindowScene }
       .flatMap { $0.windows }
-    for v in ventanas { aplicar(en: v) }
+    for v in ventanas {
+      // La ventana completa toma el modo de OkVenta: el mapa (y la vista
+      // de calle, teclado y hojas del sistema) lo heredan siempre, sin
+      // depender de encontrar el mapa ni de cuándo se monta. La interfaz
+      // de Flutter no cambia: su tema lo decide la app.
+      if let o = oscuro {
+        v.overrideUserInterfaceStyle = o ? .dark : .light
+      } else {
+        v.overrideUserInterfaceStyle = .unspecified
+      }
+      aplicar(en: v)
+    }
   }
 
   private func aplicar(en vista: UIView) {
