@@ -205,4 +205,41 @@ class PinesApple {
     _hechos[clave] = png;
     return png;
   }
+
+  /// Círculo de color con un ícono blanco (repartidor, vendedor, casa).
+  static Future<Uint8List> circulo({
+    required String clave,
+    required IconData icono,
+    required Color color,
+    double tam = 36,
+  }) async {
+    final ya = _hechos[clave];
+    if (ya != null) return ya;
+    const pad = 4.0;
+    final lado = tam + 2 * pad;
+    final png = await _aPng(lado, lado, (c) {
+      final centro = Offset(lado / 2, lado / 2);
+      c.drawCircle(
+          centro + const Offset(0, 2),
+          tam / 2,
+          Paint()
+            ..color = Colors.black.withValues(alpha: 0.28)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3));
+      c.drawCircle(centro, tam / 2, Paint()..color = Colors.white);
+      c.drawCircle(centro, tam / 2 - 3, Paint()..color = color);
+      final t = TextPainter(
+        text: TextSpan(
+            text: String.fromCharCode(icono.codePoint),
+            style: TextStyle(
+                fontFamily: icono.fontFamily,
+                package: icono.fontPackage,
+                fontSize: tam * 0.52,
+                color: Colors.white)),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      t.paint(c, centro - Offset(t.width / 2, t.height / 2));
+    });
+    _hechos[clave] = png;
+    return png;
+  }
 }

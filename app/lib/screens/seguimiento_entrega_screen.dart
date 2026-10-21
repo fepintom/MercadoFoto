@@ -8,6 +8,8 @@ import 'package:latlong2/latlong.dart' as ll;
 
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
+import 'dart:io' show Platform;
+import '../widgets/mapa_entrega_apple.dart';
 
 /// Mapa en tiempo real para el comprador: muestra dónde viene el vendedor
 /// cuando eligió "Lo entrego yo" (estilo Uber, con polling cada 5s).
@@ -72,7 +74,7 @@ class _SeguimientoEntregaScreenState extends State<SeguimientoEntregaScreen> {
       // Centrar en el vendedor la primera vez que aparece
       if (!_centradoInicial && _vendedorPos != null) {
         _centradoInicial = true;
-        _mapController.move(_vendedorPos!, 14);
+        if (!Platform.isIOS) _mapController.move(_vendedorPos!, 14);
       }
     } catch (_) {
       if (mounted) setState(() => _cargando = false);
@@ -208,7 +210,16 @@ class _SeguimientoEntregaScreenState extends State<SeguimientoEntregaScreen> {
                             CircularProgressIndicator(color: colors.primary))
                     : ClipRRect(
                         borderRadius: BorderRadius.circular(14),
-                        child: ControlesMapa.sobre(
+                        child: Platform.isIOS
+                            ? MapaEntregaApple(
+                                origen: _vendedorPos,
+                                destino: _destino,
+                                origenSoyYo: false,
+                                iconoOrigen: Icons.directions_car_rounded,
+                                colorOrigen: Colors.green,
+                                iconoDestino: Icons.home_rounded,
+                              )
+                            : ControlesMapa.sobre(
                 controller: _mapController,
                 mapa: FlutterMap(
                           mapController: _mapController,
