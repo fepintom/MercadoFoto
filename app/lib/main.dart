@@ -13,6 +13,7 @@ import 'services/push_service.dart';
 import 'services/session_service.dart';
 import 'services/theme_service.dart';
 import 'services/ajustes_mapa.dart';
+import 'services/apple_mapkit.dart';
 import 'services/vista_servicios_service.dart';
 import 'theme/app_theme.dart';
 import 'widgets/boton_ocultar_teclado.dart';
@@ -24,6 +25,10 @@ void main() async {
   );
   await ThemeService.init();
   await AjustesMapa.cargar();
+  // Apple Maps sigue el modo claro/oscuro de OkVenta (no el del iPhone).
+  await AppleMapKit.cargarOpciones();
+  AppleMapKit.aplicarEstilo();
+  ThemeService.isDarkNotifier.addListener(AppleMapKit.aplicarEstilo);
   await VistaServicios.init();
   runApp(const MercadoFotoApp());
   // Deep links okventa:// (QRs de la etiqueta de envío)

@@ -15,7 +15,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
 import '../services/apple_mapkit.dart';
-import '../services/theme_service.dart';
 import '../services/session_service.dart';
 import '../services/ubicacion_service.dart';
 import '../theme/app_theme.dart';
@@ -157,20 +156,11 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
     });
     _cargarDatos();
     _cargarUbicacion();
-    if (_apple) {
-      AppleMapKit.cargarOpciones().then((_) {
-        if (mounted) setState(() {});
-        AppleMapKit.aplicarEstilo();
-      });
-      ThemeService.isDarkNotifier.addListener(_temaCambio);
-    }
+    if (_apple) AppleMapKit.aplicarEstilo();
   }
-
-  void _temaCambio() => AppleMapKit.aplicarEstilo();
 
   @override
   void dispose() {
-    if (_apple) ThemeService.isDarkNotifier.removeListener(_temaCambio);
     _esperaBusqueda?.cancel();
     _searchCtrl.dispose();
     super.dispose();
