@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform;
 import 'dart:math' as math;
@@ -13,6 +14,8 @@ import 'package:latlong2/latlong.dart' hide Path;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_service.dart';
+import '../services/apple_mapkit.dart';
+import '../services/theme_service.dart';
 import '../services/session_service.dart';
 import '../services/ubicacion_service.dart';
 import '../theme/app_theme.dart';
@@ -104,6 +107,14 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
   am.AppleMapController? _appleCtrl;
   void Function(am.AppleMapController)? _pendienteApple;
   bool _generandoPines = false;
+
+  // Buscador de Apple (lugares y direcciones), rutas y vista de calle.
+  List<LugarApple> _lugares = [];
+  Timer? _esperaBusqueda;
+  LugarApple? _lugarSel;
+  RutaApple? _ruta;
+  Map<String, dynamic>? _rutaItem;
+  bool _calculandoRuta = false;
   final _searchCtrl = TextEditingController();
 
   // Datos
@@ -146,10 +157,21 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
     });
     _cargarDatos();
     _cargarUbicacion();
+    if (_apple) {
+      AppleMapKit.cargarOpciones().then((_) {
+        if (mounted) setState(() {});
+        AppleMapKit.aplicarEstilo();
+      });
+      ThemeService.isDarkNotifier.addListener(_temaCambio);
+    }
   }
+
+  void _temaCambio() => AppleMapKit.aplicarEstilo();
 
   @override
   void dispose() {
+    if (_apple) ThemeService.isDarkNotifier.removeListener(_temaCambio);
+    _esperaBusqueda?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -456,10 +478,12 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
     final lat = (item['lat'] as num?)?.toDouble();
     final lng = (item['lng'] as num?)?.toDouble();
     if (lat == null || lng == null) return;
+    if (_apple) {
+      _rutaA(Map<String, dynamic>.from(item));
+      return;
+    }
     // Punto aproximado: no se revela la dirección exacta del vendedor.
-    final rng = math.Random();
-    final la = lat + (rng.nextDouble() - 0.5) * 0.002;
-    final ln = lng + (rng.nextDouble() - 0.5) * 0.002;
+    final (la, ln) = _puntoAprox(item);
     final titulo =
         Uri.encodeComponent((item['titulo'] ?? 'OkVenta').toString());
     final apple = Uri.parse('maps://?q=$titulo&ll=$la,$ln');
@@ -650,7 +674,24 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
                                 },
                               ),
                             ),
-                          if (productos.isEmpty && servicios.isEmpty)
+                          if (_apple && _ruta != null)
+                            Positioned(
+                              top: 10,
+                              left: 12,
+                              right: 12,
+                              child: _barraRuta(),
+                            ),
+                          if (_apple && _lugares.isNotEmpty && _query.isNotEmpty)
+                            Positioned(
+                              top: 8,
+                              left: 12,
+                              right: 12,
+                              child: _listaLugares(),
+                            ),
+                          if (productos.isEmpty &&
+                              servicios.isEmpty &&
+                              !(_apple && _lugares.isNotEmpty) &&
+                              _ruta == null)
                             Positioned(
                               top: 12,
                               left: 12,
@@ -734,7 +775,10 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
               ),
               child: TextField(
                 controller: _searchCtrl,
-                onChanged: (v) => setState(() => _query = v.trim()),
+                onChanged: (v) {
+                  setState(() => _query = v.trim());
+                  if (_apple) _buscarLugares(v.trim());
+                },
                 style: const TextStyle(fontSize: 13),
                 decoration: InputDecoration(
                   hintText: 'Buscar en el mapa…',
@@ -746,7 +790,10 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
                       ? GestureDetector(
                           onTap: () {
                             _searchCtrl.clear();
-                            setState(() => _query = '');
+                            setState(() {
+                              _query = '';
+                              _lugares = [];
+                            });
                           },
                           child:
                               Icon(Icons.close, size: 16, color: colors.grayMid))
@@ -1035,13 +1082,40 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
       ));
     }
 
+    final lugar = _lugarSel;
+    if (lugar != null) {
+      anotaciones.add(am.Annotation(
+        annotationId: am.AnnotationId('lugar'),
+        position: am.LatLng(lugar.lat, lugar.lng),
+        icon: am.BitmapDescriptor.markerAnnotation,
+        infoWindow: am.InfoWindow(title: lugar.nombre, snippet: lugar.direccion),
+        zIndex: 2000,
+      ));
+    }
+
     return am.AppleMap(
       initialCameraPosition: am.CameraPosition(
         target: am.LatLng(centro.latitude, centro.longitude),
         zoom: yo != null ? 13.5 : 11,
       ),
+      mapType: const [
+        am.MapType.standard,
+        am.MapType.satellite,
+        am.MapType.hybrid
+      ][AppleMapKit.tipo.clamp(0, 2)],
+      trafficEnabled: AppleMapKit.trafico,
+      polylines: {
+        if (_ruta != null)
+          am.Polyline(
+            polylineId: am.PolylineId('ruta'),
+            points: [for (final (la, ln) in _ruta!.puntos) am.LatLng(la, ln)],
+            color: const Color(0xFF0A84FF),
+            width: 6,
+          ),
+      },
       onMapCreated: (c) {
         _appleCtrl = c;
+        AppleMapKit.aplicarEstilo();
         final pend = _pendienteApple;
         _pendienteApple = null;
         if (pend != null) pend(c);
@@ -1083,6 +1157,22 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
       Material(
         color: colors.surface,
         elevation: 3,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: _opcionesMapa,
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Icon(Icons.layers_outlined,
+                size: 21, color: colors.textPrimary),
+          ),
+        ),
+      ),
+      const SizedBox(height: 10),
+      Material(
+        color: colors.surface,
+        elevation: 3,
         borderRadius: BorderRadius.circular(14),
         clipBehavior: Clip.antiAlias,
         child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -1096,6 +1186,390 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
       const SizedBox(height: 10),
       _botonMiUbicacion(),
     ]);
+  }
+
+  /// Punto aproximado (fijo para cada publicación): no se revela la
+  /// dirección exacta del vendedor.
+  (double, double) _puntoAprox(Map item) {
+    final lat = (item['lat'] as num).toDouble();
+    final lng = (item['lng'] as num).toDouble();
+    final rng = math.Random('${item['id']}${item['titulo']}'.hashCode);
+    return (
+      lat + (rng.nextDouble() - 0.5) * 0.002,
+      lng + (rng.nextDouble() - 0.5) * 0.002,
+    );
+  }
+
+  void _aviso(String t) {
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(
+          content: Text(t), behavior: SnackBarBehavior.floating));
+  }
+
+  // ── Buscador de Apple ──────────────────────────────────────────────────
+
+  void _buscarLugares(String texto) {
+    _esperaBusqueda?.cancel();
+    if (texto.length < 3) {
+      if (_lugares.isNotEmpty) setState(() => _lugares = []);
+      return;
+    }
+    _esperaBusqueda = Timer(const Duration(milliseconds: 450), () async {
+      final yo = _yo;
+      final r = await AppleMapKit.buscar(texto,
+          lat: yo?.lat ?? _kSantiago.latitude,
+          lng: yo?.lng ?? _kSantiago.longitude);
+      if (!mounted || _query != texto) return;
+      setState(() => _lugares = r);
+    });
+  }
+
+  void _irALugar(LugarApple l) {
+    FocusScope.of(context).unfocus();
+    _searchCtrl.clear();
+    setState(() {
+      _query = '';
+      _lugares = [];
+      _lugarSel = l;
+      _selProducto = null;
+      _selServicio = null;
+    });
+    _mover(LatLng(l.lat, l.lng), 16);
+    Future.delayed(const Duration(milliseconds: 700), () {
+      _appleCtrl?.showMarkerInfoWindow(am.AnnotationId('lugar'));
+    });
+  }
+
+  Widget _listaLugares() {
+    final lista = _lugares.take(5).toList();
+    return Material(
+      color: colors.surface,
+      elevation: 6,
+      borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
+            child: Text('Lugares y direcciones',
+                style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: colors.grayMid)),
+          ),
+          for (final l in lista)
+            InkWell(
+              onTap: () => _irALugar(l),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                child: Row(children: [
+                  Icon(
+                      l.categoria.isEmpty
+                          ? Icons.location_on_outlined
+                          : Icons.place_rounded,
+                      size: 20,
+                      color: colors.primary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(l.nombre,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w600,
+                                color: colors.textPrimary)),
+                        if (l.direccion.isNotEmpty && l.direccion != l.nombre)
+                          Text(l.direccion,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: 11.5, color: colors.grayMid)),
+                      ],
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+          const SizedBox(height: 4),
+        ],
+      ),
+    );
+  }
+
+  // ── Rutas ──────────────────────────────────────────────────────────────
+
+  Future<void> _rutaA(Map<String, dynamic> item, {bool? aPie}) async {
+    final yo = _yo;
+    if (yo == null) {
+      _aviso('Activa tu ubicación para calcular la ruta');
+      return;
+    }
+    final (la, ln) = _puntoAprox(item);
+    setState(() {
+      _calculandoRuta = true;
+      _selProducto = null;
+      _selServicio = null;
+    });
+    final r = await AppleMapKit.ruta(
+      desdeLat: yo.lat,
+      desdeLng: yo.lng,
+      hastaLat: la,
+      hastaLng: ln,
+      aPie: aPie ?? (_ruta?.aPie ?? false),
+    );
+    if (!mounted) return;
+    setState(() {
+      _calculandoRuta = false;
+      if (r != null) {
+        _ruta = r;
+        _rutaItem = item;
+      }
+    });
+    if (r == null) {
+      _aviso('No se pudo calcular la ruta');
+      return;
+    }
+    _encajarApple(
+        [for (final (a, b) in r.puntos) LatLng(a, b)], 70);
+  }
+
+  Future<void> _abrirEnMapas() async {
+    final item = _rutaItem;
+    if (item == null) return;
+    final (la, ln) = _puntoAprox(item);
+    final modo = (_ruta?.aPie ?? false) ? 'w' : 'd';
+    await launchUrl(Uri.parse('maps://?daddr=$la,$ln&dirflg=$modo'));
+  }
+
+  Widget _barraRuta() {
+    final r = _ruta!;
+    Widget modo(String t, IconData i, bool aPie) {
+      final sel = r.aPie == aPie;
+      return GestureDetector(
+        onTap: sel || _calculandoRuta
+            ? null
+            : () => _rutaA(_rutaItem!, aPie: aPie),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: sel ? const Color(0xFF0A84FF) : colors.background,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(i, size: 15, color: sel ? Colors.white : colors.textPrimary),
+            const SizedBox(width: 4),
+            Text(t,
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: sel ? Colors.white : colors.textPrimary)),
+          ]),
+        ),
+      );
+    }
+
+    return Material(
+      color: colors.surface,
+      elevation: 6,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 10, 4, 10),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Icon(r.aPie ? Icons.directions_walk : Icons.directions_car,
+                  size: 20, color: const Color(0xFF0A84FF)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _calculandoRuta
+                    ? Text('Calculando…',
+                        style: TextStyle(
+                            fontSize: 14, color: colors.textSecondary))
+                    : Text('${r.tiempo} · ${r.distancia}',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: colors.textPrimary)),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: Icon(Icons.close_rounded,
+                    size: 20, color: colors.grayMid),
+                onPressed: () => setState(() {
+                  _ruta = null;
+                  _rutaItem = null;
+                }),
+              ),
+            ]),
+            Text((_rutaItem?['titulo'] ?? '').toString(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 12, color: colors.grayMid)),
+            const SizedBox(height: 8),
+            Row(children: [
+              modo('Auto', Icons.directions_car, false),
+              const SizedBox(width: 6),
+              modo('A pie', Icons.directions_walk, true),
+              const Spacer(),
+              TextButton.icon(
+                onPressed: _abrirEnMapas,
+                icon: const Icon(Icons.navigation_rounded, size: 16),
+                label: const Text('Ir'),
+                style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF0A84FF),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w700)),
+              ),
+            ]),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Vista de calle ─────────────────────────────────────────────────────
+
+  Future<void> _verCalle(Map item) async {
+    final (la, ln) = _puntoAprox(item);
+    final ok = await AppleMapKit.verCalle(la, ln);
+    if (!ok && mounted) {
+      _aviso('Apple no tiene vista de calle en este lugar');
+    }
+  }
+
+  /// Botón cuadrado con ícono para la ficha (ruta / vista de calle).
+  Widget _iconoFicha(IconData icono, String ayuda, VoidCallback onTap) {
+    return Tooltip(
+      message: ayuda,
+      child: SizedBox(
+        width: 42,
+        height: 38,
+        child: OutlinedButton(
+          onPressed: onTap,
+          style: OutlinedButton.styleFrom(
+            padding: EdgeInsets.zero,
+            foregroundColor: colors.textPrimary,
+            side: BorderSide(color: colors.divider),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10)),
+          ),
+          child: Icon(icono, size: 19),
+        ),
+      ),
+    );
+  }
+
+  // ── Opciones del mapa ──────────────────────────────────────────────────
+
+  void _opcionesMapa() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setHoja) {
+        void cambiar(VoidCallback f) {
+          f();
+          setHoja(() {});
+          setState(() {});
+          AppleMapKit.guardarOpciones();
+          AppleMapKit.aplicarEstilo();
+        }
+
+        Widget opcion(String t, bool sel, VoidCallback onTap) => Expanded(
+              child: GestureDetector(
+                onTap: onTap,
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: sel ? colors.primary : colors.background,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(t,
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: sel ? Colors.white : colors.textPrimary)),
+                ),
+              ),
+            );
+
+        Widget titulo(String t) => Padding(
+              padding: const EdgeInsets.fromLTRB(4, 14, 4, 8),
+              child: Text(t,
+                  style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary)),
+            );
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                        color: colors.divider,
+                        borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                titulo('Tipo de mapa'),
+                Row(children: [
+                  for (final (i, t) in const [
+                    (0, 'Normal'),
+                    (1, 'Satélite'),
+                    (2, 'Híbrido')
+                  ])
+                    opcion(t, AppleMapKit.tipo == i,
+                        () => cambiar(() => AppleMapKit.tipo = i)),
+                ]),
+                titulo('Lugares de Apple (comercios, restaurantes…)'),
+                Row(children: [
+                  for (final (v, t) in const [
+                    ('todos', 'Todos'),
+                    ('utiles', 'Solo útiles'),
+                    ('ninguno', 'Ninguno')
+                  ])
+                    opcion(t, AppleMapKit.lugares == v,
+                        () => cambiar(() => AppleMapKit.lugares = v)),
+                ]),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 6, 4, 0),
+                  child: Text(
+                      '"Solo útiles": metro y buses, estacionamientos, '
+                      'bencineras, farmacias, hospitales, bancos y cajeros.',
+                      style: TextStyle(fontSize: 11.5, color: colors.grayMid)),
+                ),
+                SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                  title: Text('Tráfico en vivo',
+                      style:
+                          TextStyle(fontSize: 14, color: colors.textPrimary)),
+                  value: AppleMapKit.trafico,
+                  activeColor: colors.primary,
+                  onChanged: (v) => cambiar(() => AppleMapKit.trafico = v),
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
+    );
   }
 
   Widget _puntoYo() {
@@ -1435,6 +1909,11 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
           _lineaInstalacion(p),
           const SizedBox(height: 10),
           Row(children: [
+            if (_apple) ...[
+              _iconoFicha(Icons.streetview_rounded, 'Ver la calle',
+                  () => _verCalle(p)),
+              const SizedBox(width: 8),
+            ],
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: () => _comoLlegar(p),
@@ -1666,6 +2145,14 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
           _descripcion(s['descripcion']),
           const SizedBox(height: 10),
           Row(children: [
+            if (_apple && !esMio) ...[
+              _iconoFicha(Icons.streetview_rounded, 'Ver la calle',
+                  () => _verCalle(s)),
+              const SizedBox(width: 8),
+              _iconoFicha(Icons.directions_outlined, 'Cómo llegar',
+                  () => _rutaA(s)),
+              const SizedBox(width: 8),
+            ],
             if (esMio) ...[
               Expanded(
                 child: OutlinedButton(
