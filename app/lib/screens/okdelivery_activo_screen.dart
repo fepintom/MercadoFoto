@@ -11,6 +11,7 @@ import 'package:latlong2/latlong.dart' as ll;
 
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/mapa_entrega_apple.dart';
 
 /// Pantalla del repartidor durante una entrega OkDelivery activa.
 /// El contenido cambia según `entrega['estado']`:
@@ -381,7 +382,12 @@ class _OkdeliveryActivoScreenState extends State<OkdeliveryActivoScreen> {
             borderRadius: BorderRadius.circular(14),
             child: SizedBox(
               height: 240,
-              child: ControlesMapa.sobre(
+              child: Platform.isIOS
+                  ? MapaEntregaApple(
+                      origen: _miPos,
+                      destino: ll.LatLng(destinoLat, destinoLng),
+                    )
+                  : ControlesMapa.sobre(
                 controller: _mapaCtrl,
                 mapa: FlutterMap(
                 mapController: _mapaCtrl,

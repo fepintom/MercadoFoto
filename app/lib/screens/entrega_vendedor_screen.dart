@@ -12,6 +12,7 @@ import 'package:latlong2/latlong.dart' as ll;
 import '../services/api_service.dart';
 import '../services/session_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/mapa_entrega_apple.dart';
 
 /// Pantalla del vendedor cuando eligió "Lo entrego yo".
 ///
@@ -84,7 +85,7 @@ class _EntregaVendedorScreenState extends State<EntregaVendedorScreen> {
     if (!ok) return;
     await _enviarUbicacion();
     // Centrar el mapa en mi posición la primera vez
-    if (_miPos != null && mounted) {
+    if (_miPos != null && mounted && !Platform.isIOS) {
       _mapController.move(_miPos!, 15);
     }
   }
@@ -325,7 +326,10 @@ class _EntregaVendedorScreenState extends State<EntregaVendedorScreen> {
                 padding: const EdgeInsets.all(16),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(14),
-                  child: ControlesMapa.sobre(
+                  // iPhone: Apple Maps con la ruta hasta el destino.
+                  child: Platform.isIOS
+                      ? MapaEntregaApple(origen: _miPos, destino: _destino)
+                      : ControlesMapa.sobre(
                 controller: _mapController,
                 mapa: FlutterMap(
                     mapController: _mapController,
