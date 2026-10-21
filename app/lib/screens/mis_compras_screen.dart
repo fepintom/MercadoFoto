@@ -2,10 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import '../services/mapas_config.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:latlong2/latlong.dart' as ll;
 
 import '../services/api_service.dart';
 import '../services/session_service.dart';
@@ -16,6 +13,7 @@ import 'calificar_vendedor_screen.dart';
 import 'grabar_verificacion_paquete_screen.dart';
 import 'seguimiento_entrega_screen.dart';
 import 'soporte_chat_screen.dart';
+import '../widgets/mapa_mini.dart';
 
 class MisComprasScreen extends StatefulWidget {
   const MisComprasScreen({super.key});
@@ -1247,36 +1245,14 @@ class _OkdeliveryCompradorPanelState
               _tracking!['delivery_lat'] != null &&
               _tracking!['delivery_lng'] != null) ...[
             const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: SizedBox(
-                height: 140,
-                child: FlutterMap(
-                  options: MapOptions(
-                    center: ll.LatLng(
-                      (_tracking!['delivery_lat'] as num).toDouble(),
-                      (_tracking!['delivery_lng'] as num).toDouble(),
-                    ),
-                    zoom: 14,
-                    interactiveFlags: InteractiveFlag.none,
-                  ),
-                  children: [
-                    ...MapasConfig.capas(),
-                    MarkerLayer(markers: [
-                      Marker(
-                        point: ll.LatLng(
-                          (_tracking!['delivery_lat'] as num).toDouble(),
-                          (_tracking!['delivery_lng'] as num).toDouble(),
-                        ),
-                        width: 34,
-                        height: 34,
-                        builder: (_) => const Icon(Icons.two_wheeler_rounded,
-                            color: Colors.green, size: 28),
-                      ),
-                    ]),
-                  ],
-                ),
-              ),
+            MapaMini(
+              lat: (_tracking!['delivery_lat'] as num).toDouble(),
+              lng: (_tracking!['delivery_lng'] as num).toDouble(),
+              alto: 140,
+              zoom: 14,
+              abrirAlTocar: false,
+              icono: Icons.two_wheeler_rounded,
+              colorIcono: Colors.green,
             ),
           ],
 

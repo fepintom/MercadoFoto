@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -142,6 +143,37 @@ class AppleMapKit {
     } catch (_) {
       return null;
     }
+  }
+
+  // ── Foto fija del mapa ───────────────────────────────────────────────────
+
+  static final Map<String, Future<Uint8List?>> _fotos = {};
+
+  /// Imagen PNG del mapa de Apple centrada en un punto (para mapas chicos
+  /// que no se mueven, p. ej. una ubicación compartida en un chat).
+  static Future<Uint8List?> foto(double lat, double lng,
+      {required double ancho, required double alto, double zoom = 15}) {
+    if (!disponible) return Future.value(null);
+    final oscuro = ThemeService.isDarkMode;
+    final k = '${lat.toStringAsFixed(5)},${lng.toStringAsFixed(5)},'
+        '${ancho.round()}x${alto.round()},$zoom,$oscuro,$lugares';
+    return _fotos[k] ??= () async {
+      try {
+        final r = await _canal.invokeMethod<Uint8List>('foto', {
+          'lat': lat,
+          'lng': lng,
+          'ancho': ancho,
+          'alto': alto,
+          'zoom': zoom,
+          'oscuro': oscuro,
+        });
+        if (r == null) _fotos.remove(k); // reintentar la próxima vez
+        return r;
+      } catch (_) {
+        _fotos.remove(k);
+        return null;
+      }
+    }();
   }
 
   // ── Vista de calle ───────────────────────────────────────────────────────

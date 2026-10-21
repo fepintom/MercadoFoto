@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1191,8 +1192,10 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                               Icons.dark_mode_outlined, "Modo", _abrirSelectorModo),
                           // Solo cuentas del equipo OkVenta: probar los
                           // colores del mapa (claro / oscuro) en vivo.
-                          if (emailCtrl.text.trim().toLowerCase()
-                              .endsWith('@okventa.cl'))
+                          // (En iPhone el mapa es Apple Maps: no aplica.)
+                          if (!Platform.isIOS &&
+                              emailCtrl.text.trim().toLowerCase()
+                                  .endsWith('@okventa.cl'))
                             _itemMenu(Icons.map_outlined, "Ajustes del mapa",
                                 () {
                               Navigator.push(

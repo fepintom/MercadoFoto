@@ -40,6 +40,7 @@ class OkMapKitPlugin: NSObject, FlutterPlugin {
     case "buscar": buscar(a, result)
     case "ruta": ruta(a, result)
     case "lookAround": lookAround(a, result)
+    case "foto": foto(a, result)
     case "estilo":
       if let o = a["oscuro"] as? Bool { oscuro = o } else { oscuro = nil }
       lugares = a["lugares"] as? String ?? "todos"
@@ -114,6 +115,40 @@ class OkMapKitPlugin: NSObject, FlutterPlugin {
         "puntos": puntos,
       ]
       DispatchQueue.main.async { result(res) }
+    }
+  }
+
+  // MARK: Foto fija del mapa (mapas chicos en chats y comunidad)
+
+  private func foto(_ a: [String: Any], _ result: @escaping FlutterResult) {
+    guard let c = coord(a, "lat", "lng") else { result(nil); return }
+    let w = (a["ancho"] as? NSNumber)?.doubleValue ?? 300
+    let h = (a["alto"] as? NSNumber)?.doubleValue ?? 140
+    let zoom = (a["zoom"] as? NSNumber)?.doubleValue ?? 15
+    let lonDelta = 360.0 / pow(2.0, zoom) * (w / 256.0)
+    let latDelta = lonDelta * (h / w) * cos(c.latitude * .pi / 180)
+    let opt = MKMapSnapshotter.Options()
+    opt.region = MKCoordinateRegion(
+      center: c, span: MKCoordinateSpan(latitudeDelta: latDelta, longitudeDelta: lonDelta))
+    opt.size = CGSize(width: w, height: h)
+    opt.scale = UIScreen.main.scale
+    if let o = a["oscuro"] as? Bool {
+      opt.traitCollection = UITraitCollection(userInterfaceStyle: o ? .dark : .light)
+    }
+    switch lugares {
+    case "ninguno": opt.pointOfInterestFilter = .excludingAll
+    case "utiles":
+      opt.pointOfInterestFilter = MKPointOfInterestFilter(including: [
+        .publicTransport, .parking, .gasStation, .evCharger, .hospital,
+        .pharmacy, .police, .atm, .bank, .postOffice, .airport,
+      ])
+    default: break
+    }
+    MKMapSnapshotter(options: opt).start { snap, _ in
+      let datos = snap?.image.pngData()
+      DispatchQueue.main.async {
+        result(datos.map { FlutterStandardTypedData(bytes: $0) })
+      }
     }
   }
 

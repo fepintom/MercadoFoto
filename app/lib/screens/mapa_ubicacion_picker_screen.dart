@@ -5,6 +5,8 @@ import '../widgets/controles_mapa.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../theme/app_theme.dart';
+import 'dart:io' show Platform;
+import '../widgets/mapa_apple.dart';
 
 /// Resultado que devuelve esta pantalla al pop
 class UbicacionElegida {
@@ -135,7 +137,19 @@ class _MapaUbicacionPickerScreenState
 
           // Mapa
           Expanded(
-            child: ControlesMapa.sobre(
+            child: Platform.isIOS
+                ? MapaApple(
+                    centro: _pin,
+                    zoom: 13,
+                    pin: _pinColocado ? _pin : null,
+                    radioMetros: _radioKm * 1000,
+                    controlesAlCentro: true,
+                    onTap: (p) => setState(() {
+                      _pin = p;
+                      _pinColocado = true;
+                    }),
+                  )
+                : ControlesMapa.sobre(
                 controller: _mapCtrl,
                 alCentro: true,
                 mapa: FlutterMap(
