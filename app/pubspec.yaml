@@ -30,6 +30,8 @@ dependencies:
   # Mapa (OpenStreetMap, sin API key)
   flutter_map: ^4.0.0
   latlong2: ^0.8.2
+  # Apple Maps nativo (solo iPhone) para Encontrar.
+  apple_maps_flutter: ^1.4.0
 
   # Compartir / deep-links (WhatsApp, etc.)
   url_launcher: ^6.3.0
