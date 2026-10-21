@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:apple_maps_flutter/apple_maps_flutter.dart' as am;
 import 'package:flutter_map/flutter_map.dart';
 import '../services/mapas_config.dart';
 import '../widgets/controles_mapa.dart';
@@ -22,6 +24,7 @@ import '../widgets/okventin_servicio.dart';
 import '../widgets/invitacion_servicio_instalacion.dart'
     show categoriaServicioParaProducto;
 import '../widgets/net_image.dart';
+import '../widgets/pines_apple.dart';
 import 'mapa_ubicacion_picker_screen.dart';
 import 'producto_detalle_screen.dart';
 import 'servicio_detalle_screen.dart';
@@ -94,6 +97,13 @@ final _kSantiago = LatLng(-33.4489, -70.6693);
 
 class _EncontrarScreenState extends State<EncontrarScreen> {
   final _mapCtrl = MapController();
+
+  /// En iPhone el mapa es Apple Maps (nativo: nítido, modo oscuro y
+  /// lugares). En Android sigue el mapa de CARTO.
+  static bool get _apple => Platform.isIOS;
+  am.AppleMapController? _appleCtrl;
+  void Function(am.AppleMapController)? _pendienteApple;
+  bool _generandoPines = false;
   final _searchCtrl = TextEditingController();
 
   // Datos
@@ -237,6 +247,10 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
     if (puntos.length < 2) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      if (_apple) {
+        _encajarApple(puntos, 60);
+        return;
+      }
       try {
         _mapCtrl.fitBounds(
           LatLngBounds.fromPoints(puntos),
@@ -245,6 +259,39 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
         );
       } catch (_) {}
     });
+  }
+
+  /// Ejecuta [accion] en el mapa de Apple apenas exista.
+  void _conApple(void Function(am.AppleMapController) accion) {
+    final c = _appleCtrl;
+    if (c != null) {
+      try {
+        accion(c);
+      } catch (_) {}
+    } else {
+      _pendienteApple = accion;
+    }
+  }
+
+  void _encajarApple(List<LatLng> puntos, double margen) {
+    var s = puntos.first.latitude, n = s;
+    var o = puntos.first.longitude, e = o;
+    for (final p in puntos) {
+      s = math.min(s, p.latitude);
+      n = math.max(n, p.latitude);
+      o = math.min(o, p.longitude);
+      e = math.max(e, p.longitude);
+    }
+    // Muy juntos: no acercar de más.
+    if ((n - s) < 0.004 && (e - o) < 0.004) {
+      _conApple((c) => c.animateCamera(am.CameraUpdate.newLatLngZoom(
+          am.LatLng((s + n) / 2, (o + e) / 2), 15)));
+      return;
+    }
+    _conApple((c) => c.animateCamera(am.CameraUpdate.newLatLngBounds(
+        am.LatLngBounds(
+            southwest: am.LatLng(s, o), northeast: am.LatLng(n, e)),
+        margen)));
   }
 
   double _distCuadrada(LatLng a, LatLng b) {
@@ -256,6 +303,11 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
   void _mover(LatLng p, double zoom) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      if (_apple) {
+        _conApple((c) => c.animateCamera(am.CameraUpdate.newLatLngZoom(
+            am.LatLng(p.latitude, p.longitude), zoom)));
+        return;
+      }
       try {
         _mapCtrl.move(p, zoom);
       } catch (_) {}
@@ -271,6 +323,10 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
     if (puntos.isEmpty) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      if (_apple) {
+        _encajarApple(puntos, 40);
+        return;
+      }
       try {
         _mapCtrl.fitBounds(
           LatLngBounds.fromPoints(puntos),
@@ -561,14 +617,23 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
                     ? _vistaError()
                     : Stack(
                         children: [
-                          _mapa(productos, servicios),
-                          // Crédito del mapa (lo piden Mapbox y OSM).
-                          Positioned(
-                            left: 6,
-                            bottom: 4,
-                            child: MapasConfig.atribucion(),
-                          ),
-                          if (!hayFicha)
+                          _apple
+                              ? _mapaApple(productos, servicios)
+                              : _mapa(productos, servicios),
+                          // Crédito del mapa (Apple pone el suyo).
+                          if (!_apple)
+                            Positioned(
+                              left: 6,
+                              bottom: 4,
+                              child: MapasConfig.atribucion(),
+                            ),
+                          if (!hayFicha && _apple)
+                            Positioned(
+                              right: 12,
+                              bottom: 16,
+                              child: _controlesApple(),
+                            ),
+                          if (!hayFicha && !_apple)
                             Positioned(
                               right: 12,
                               bottom: 16,
@@ -866,6 +931,171 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
         MarkerLayer(markers: markers),
       ],
     );
+  }
+
+  // ── Apple Maps (iPhone) ──────────────────────────────────────────────────
+
+  String _claveP(Map p, bool sel) =>
+      'p${p['id']}_${sel ? 1 : 0}_${p['precio']}_${colors.primary.toARGB32()}';
+  String _claveS(Map s, bool sel) =>
+      's${s['id']}_${sel ? 1 : 0}_${s['titulo']}_${colors.primary.toARGB32()}';
+
+  /// Dibuja los pins que faltan (en segundo plano) y refresca el mapa.
+  void _prepararPines(List<Map<String, dynamic>> productos,
+      List<Map<String, dynamic>> servicios) {
+    if (_generandoPines) return;
+    final faltan = <Future<void> Function()>[];
+    for (final p in productos) {
+      final sel = _selProducto?['id'] == p['id'];
+      final k = _claveP(p, sel);
+      if (PinesApple.listo(k) == null) {
+        final img = (p['imagen_url'] ?? '').toString();
+        faltan.add(() => PinesApple.producto(
+              clave: k,
+              fotoUrl: img.isEmpty ? null : _url(img),
+              precio: formatPrecio(p['precio']),
+              sel: sel,
+              colorPrecio: colors.primaryDark,
+              colorSel: colors.primary,
+              fondoFoto: colors.background,
+              iconoVacio: colors.primary,
+            ));
+      }
+    }
+    for (final sv in servicios) {
+      final sel = _selServicio?['id'] == sv['id'];
+      final k = _claveS(sv, sel);
+      if (PinesApple.listo(k) == null) {
+        faltan.add(() => PinesApple.servicio(
+              clave: k,
+              titulo: (sv['titulo'] ?? 'Servicio').toString(),
+              sel: sel,
+              colorBase: colors.carbon,
+              colorSel: colors.primary,
+            ));
+      }
+    }
+    if (faltan.isEmpty) return;
+    _generandoPines = true;
+    () async {
+      // De a varios a la vez (las fotos se descargan en paralelo).
+      for (var i = 0; i < faltan.length; i += 8) {
+        await Future.wait(faltan.skip(i).take(8).map((f) async {
+          try {
+            await f();
+          } catch (_) {}
+        }));
+        if (mounted) setState(() {});
+      }
+      _generandoPines = false;
+      if (mounted) setState(() {});
+    }();
+  }
+
+  Widget _mapaApple(List<Map<String, dynamic>> productos,
+      List<Map<String, dynamic>> servicios) {
+    final yo = _yo;
+    final centro = yo != null ? LatLng(yo.lat, yo.lng) : _kSantiago;
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _prepararPines(productos, servicios));
+
+    final anotaciones = <am.Annotation>{};
+    for (final sv in servicios) {
+      final sel = _selServicio?['id'] == sv['id'];
+      final png = PinesApple.listo(_claveS(sv, sel));
+      if (png == null) continue;
+      anotaciones.add(am.Annotation(
+        annotationId: am.AnnotationId('s${sv['id']}'),
+        position: am.LatLng(
+            (sv['lat'] as num).toDouble(), (sv['lng'] as num).toDouble()),
+        icon: am.BitmapDescriptor.fromBytes(png),
+        anchor: const Offset(0.5, 1.0),
+        zIndex: sel ? 1000 : 2,
+        onTap: () => setState(() {
+          _selProducto = null;
+          _selServicio = sel ? null : sv;
+        }),
+      ));
+    }
+    for (final p in productos) {
+      final sel = _selProducto?['id'] == p['id'];
+      final png = PinesApple.listo(_claveP(p, sel));
+      if (png == null) continue;
+      anotaciones.add(am.Annotation(
+        annotationId: am.AnnotationId('p${p['id']}'),
+        position: am.LatLng(
+            (p['lat'] as num).toDouble(), (p['lng'] as num).toDouble()),
+        icon: am.BitmapDescriptor.fromBytes(png),
+        anchor: const Offset(0.5, 1.0),
+        zIndex: sel ? 1000 : 1,
+        onTap: () => setState(() {
+          _selServicio = null;
+          _selProducto = sel ? null : p;
+        }),
+      ));
+    }
+
+    return am.AppleMap(
+      initialCameraPosition: am.CameraPosition(
+        target: am.LatLng(centro.latitude, centro.longitude),
+        zoom: yo != null ? 13.5 : 11,
+      ),
+      onMapCreated: (c) {
+        _appleCtrl = c;
+        final pend = _pendienteApple;
+        _pendienteApple = null;
+        if (pend != null) pend(c);
+      },
+      myLocationEnabled: true,
+      compassEnabled: false,
+      pitchGesturesEnabled: true,
+      rotateGesturesEnabled: true,
+      annotations: anotaciones,
+      circles: {
+        if (_radioAplica && yo != null)
+          am.Circle(
+            circleId: am.CircleId('radio'),
+            center: am.LatLng(yo.lat, yo.lng),
+            radius: _radioKm * 1000,
+            fillColor: colors.primary.withValues(alpha: 0.06),
+            strokeColor: colors.primary.withValues(alpha: 0.5),
+            strokeWidth: 2,
+          ),
+      },
+      onTap: (_) => setState(() {
+        _selProducto = null;
+        _selServicio = null;
+      }),
+    );
+  }
+
+  /// + / − y mi ubicación sobre Apple Maps (mismo diseño que el resto).
+  Widget _controlesApple() {
+    Widget boton(IconData icono, VoidCallback onTap) => InkWell(
+          onTap: onTap,
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Icon(icono, size: 22, color: colors.textPrimary),
+          ),
+        );
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      Material(
+        color: colors.surface,
+        elevation: 3,
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          boton(Icons.add_rounded,
+              () => _conApple((c) => c.animateCamera(am.CameraUpdate.zoomIn()))),
+          Container(width: 28, height: 0.6, color: colors.divider),
+          boton(Icons.remove_rounded,
+              () => _conApple((c) => c.animateCamera(am.CameraUpdate.zoomOut()))),
+        ]),
+      ),
+      const SizedBox(height: 10),
+      _botonMiUbicacion(),
+    ]);
   }
 
   Widget _puntoYo() {
