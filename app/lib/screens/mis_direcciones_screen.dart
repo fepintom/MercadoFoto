@@ -10,6 +10,8 @@ import 'package:latlong2/latlong.dart' hide Path;
 
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
+import 'dart:io' show Platform;
+import '../widgets/mapa_apple.dart';
 
 class MisDireccionesScreen extends StatefulWidget {
   final int userId;
@@ -1120,7 +1122,15 @@ class _MapaPinPickerScreenState extends State<_MapaPinPickerScreen> {
       ),
       body: Stack(
         children: [
-          ControlesMapa.sobre(
+          Platform.isIOS
+              ? MapaApple(
+                  centro: _pin,
+                  zoom: 15,
+                  pin: _pin,
+                  controlesAlCentro: true,
+                  onTap: (p) => setState(() => _pin = p),
+                )
+              : ControlesMapa.sobre(
                 controller: _mapCtrl,
                 alCentro: true,
                 mapa: FlutterMap(
