@@ -145,6 +145,19 @@ class AppleMapKit {
     }
   }
 
+  // ── Dirección de un punto ────────────────────────────────────────────────
+
+  /// "Av. Providencia 1234, Providencia" (o null si Apple no la sabe).
+  static Future<String?> direccion(double lat, double lng) async {
+    if (!disponible) return null;
+    try {
+      return await _canal
+          .invokeMethod<String>('direccion', {'lat': lat, 'lng': lng});
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ── Foto fija del mapa ───────────────────────────────────────────────────
 
   static final Map<String, Future<Uint8List?>> _fotos = {};

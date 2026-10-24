@@ -41,6 +41,7 @@ class OkMapKitPlugin: NSObject, FlutterPlugin {
     case "ruta": ruta(a, result)
     case "lookAround": lookAround(a, result)
     case "foto": foto(a, result)
+    case "direccion": direccion(a, result)
     case "estilo":
       if let o = a["oscuro"] as? Bool { oscuro = o } else { oscuro = nil }
       lugares = a["lugares"] as? String ?? "todos"
@@ -115,6 +116,25 @@ class OkMapKitPlugin: NSObject, FlutterPlugin {
         "puntos": puntos,
       ]
       DispatchQueue.main.async { result(res) }
+    }
+  }
+
+  // MARK: Dirección de un punto (para "¿Cómo llegar aquí?")
+
+  private func direccion(_ a: [String: Any], _ result: @escaping FlutterResult) {
+    guard let c = coord(a, "lat", "lng") else { result(nil); return }
+    CLGeocoder().reverseGeocodeLocation(
+      CLLocation(latitude: c.latitude, longitude: c.longitude),
+      preferredLocale: Locale(identifier: "es_CL")
+    ) { marcas, _ in
+      var texto: String? = nil
+      if let p = marcas?.first {
+        var calle = p.thoroughfare ?? p.name ?? ""
+        if let n = p.subThoroughfare, !calle.isEmpty { calle += " \(n)" }
+        let partes = [calle, p.locality ?? p.subLocality ?? ""].filter { !$0.isEmpty }
+        texto = partes.isEmpty ? nil : partes.joined(separator: ", ")
+      }
+      DispatchQueue.main.async { result(texto) }
     }
   }
 

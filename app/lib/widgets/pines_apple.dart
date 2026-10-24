@@ -242,4 +242,47 @@ class PinesApple {
     _hechos[clave] = png;
     return png;
   }
+
+  /// Gota (pin clásico) de color con borde blanco y un ícono blanco: se usa
+  /// para los lugares encontrados con el buscador de Apple (azul, tiendita).
+  static Future<Uint8List> gota({
+    required String clave,
+    required Color color,
+    required IconData icono,
+  }) async {
+    final ya = _hechos[clave];
+    if (ya != null) return ya;
+    const r = 15.0, pad = 5.0;
+    const ancho = 2 * r + 2 * pad;
+    const alto = 2 * r + 16 + 2 * pad;
+    final png = await _aPng(ancho, alto, (c) {
+      const cx = ancho / 2, cy = pad + r;
+      Path forma(double rr, double punta) => Path()
+        ..addOval(Rect.fromCircle(center: const Offset(cx, cy), radius: rr))
+        ..moveTo(cx - rr * 0.75, cy + rr * 0.6)
+        ..lineTo(cx + rr * 0.75, cy + rr * 0.6)
+        ..lineTo(cx, cy + rr + punta)
+        ..close();
+      c.drawPath(
+          forma(r + 2, 14).shift(const Offset(0, 2)),
+          Paint()
+            ..color = Colors.black.withValues(alpha: 0.3)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3));
+      c.drawPath(forma(r + 2, 14), Paint()..color = Colors.white);
+      c.drawPath(forma(r, 11.5), Paint()..color = color);
+      final t = TextPainter(
+        text: TextSpan(
+            text: String.fromCharCode(icono.codePoint),
+            style: TextStyle(
+                fontFamily: icono.fontFamily,
+                package: icono.fontPackage,
+                fontSize: 17,
+                color: Colors.white)),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      t.paint(c, Offset(cx - t.width / 2, cy - t.height / 2));
+    });
+    _hechos[clave] = png;
+    return png;
+  }
 }
