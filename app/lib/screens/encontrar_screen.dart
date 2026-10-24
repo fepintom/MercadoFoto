@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:apple_maps_flutter/apple_maps_flutter.dart' as am;
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import '../services/mapas_config.dart';
 import '../widgets/controles_mapa.dart';
 import 'package:http/http.dart' as http;
@@ -113,7 +114,20 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
   List<LugarApple> _lugares = [];
   Timer? _esperaBusqueda;
   LugarApple? _lugarSel;
-  RutaApple? _ruta;
+  // Ruta en auto y a pie (se calculan las dos para mostrar ambos tiempos).
+  RutaApple? _rutaAuto;
+  RutaApple? _rutaPie;
+  bool _aPie = false;
+  RutaApple? get _ruta => _aPie ? (_rutaPie ?? _rutaAuto) : (_rutaAuto ?? _rutaPie);
+
+  // "Ir": navegación dentro de la app (sigue tu posición + cronómetro).
+  bool _navegando = false;
+  bool _llegaste = false;
+  DateTime? _inicioNav;
+  Duration _transcurrido = Duration.zero;
+  Timer? _cronometro;
+  StreamSubscription<Position>? _posNav;
+  LatLng? _origenRutaNav;
   Map<String, dynamic>? _rutaItem;
   bool _calculandoRuta = false;
 
@@ -173,6 +187,8 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
   @override
   void dispose() {
     _esperaBusqueda?.cancel();
+    _cronometro?.cancel();
+    _posNav?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -682,7 +698,7 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
                               right: 12,
                               child: _barraRuta(),
                             ),
-                          if (_apple && _hayResultados)
+                          if (_apple && _hayResultados && !_navegando)
                             Positioned(
                               top: 8,
                               left: 12,
@@ -1109,7 +1125,6 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
         zIndex: 3000,
         infoWindow: am.InfoWindow(
           title: '¿Cómo llegar aquí?',
-          snippet: _marcadoDir ?? 'Punto marcado',
           onTap: _rutaAlMarcado,
         ),
       ));
@@ -1126,6 +1141,9 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
         am.MapType.hybrid
       ][AppleMapKit.tipo.clamp(0, 2)],
       trafficEnabled: AppleMapKit.trafico,
+      trackingMode: _navegando
+          ? am.TrackingMode.followWithHeading
+          : am.TrackingMode.none,
       polylines: {
         if (_ruta != null)
           am.Polyline(
@@ -1512,7 +1530,8 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
 
   // ── Rutas ──────────────────────────────────────────────────────────────
 
-  Future<void> _rutaA(Map<String, dynamic> item, {bool? aPie}) async {
+  /// Calcula la ruta en auto y a pie (en paralelo) y la dibuja.
+  Future<void> _rutaA(Map<String, dynamic> item) async {
     final yo = _yo;
     if (yo == null) {
       _aviso('Activa tu ubicación para calcular la ruta');
@@ -1523,61 +1542,220 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
       _calculandoRuta = true;
       _selProducto = null;
       _selServicio = null;
+      _rutaItem = item;
     });
-    final r = await AppleMapKit.ruta(
-      desdeLat: yo.lat,
-      desdeLng: yo.lng,
-      hastaLat: la,
-      hastaLng: ln,
-      aPie: aPie ?? (_ruta?.aPie ?? false),
-    );
+    final rs = await Future.wait([
+      AppleMapKit.ruta(
+          desdeLat: yo.lat, desdeLng: yo.lng, hastaLat: la, hastaLng: ln),
+      AppleMapKit.ruta(
+          desdeLat: yo.lat,
+          desdeLng: yo.lng,
+          hastaLat: la,
+          hastaLng: ln,
+          aPie: true),
+    ]);
     if (!mounted) return;
     setState(() {
       _calculandoRuta = false;
-      if (r != null) {
-        _ruta = r;
-        _rutaItem = item;
-      }
+      _rutaAuto = rs[0];
+      _rutaPie = rs[1];
+      // Si no hay ruta en auto (p. ej. muy cerca), mostrar la de a pie.
+      if (_rutaAuto == null && _rutaPie != null) _aPie = true;
     });
+    final r = _ruta;
     if (r == null) {
+      _rutaItem = null;
       _aviso('No se pudo calcular la ruta');
       return;
     }
-    _encajarApple(
-        [for (final (a, b) in r.puntos) LatLng(a, b)], 70);
+    _encajarApple([for (final (a, b) in r.puntos) LatLng(a, b)], 70);
   }
 
-  Future<void> _abrirEnMapas() async {
+  void _cerrarRuta() {
+    _terminarNavegacion();
+    setState(() {
+      _rutaAuto = null;
+      _rutaPie = null;
+      _rutaItem = null;
+      _marcado = null;
+    });
+  }
+
+  // ── Navegación dentro de la app ("Ir") ─────────────────────────────────
+
+  Future<void> _ir() async {
+    final yo = _yo;
+    if (_rutaItem == null || yo == null) return;
+    _posNav?.cancel();
+    _cronometro?.cancel();
+    setState(() {
+      _navegando = true;
+      _llegaste = false;
+      _inicioNav = DateTime.now();
+      _transcurrido = Duration.zero;
+      _origenRutaNav = LatLng(yo.lat, yo.lng);
+    });
+    _conApple((c) => c.animateCamera(
+        am.CameraUpdate.newLatLngZoom(am.LatLng(yo.lat, yo.lng), 17)));
+    // Cronómetro: cuenta hacia arriba desde que tocas "Ir".
+    _cronometro = Timer.periodic(const Duration(seconds: 1), (_) {
+      final i = _inicioNav;
+      if (!mounted || i == null || _llegaste) return;
+      setState(() => _transcurrido = DateTime.now().difference(i));
+    });
+    // Tu posición se actualiza mientras te mueves.
+    try {
+      _posNav = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.bestForNavigation,
+          distanceFilter: 8,
+        ),
+      ).listen(_alMoverme);
+    } catch (_) {}
+  }
+
+  Future<void> _alMoverme(Position pos) async {
+    if (!mounted || !_navegando) return;
+    final aqui = LatLng(pos.latitude, pos.longitude);
+    setState(() => _yo = Coordenadas(pos.latitude, pos.longitude));
     final item = _rutaItem;
     if (item == null) return;
     final (la, ln) = _puntoAprox(item);
-    final modo = (_ruta?.aPie ?? false) ? 'w' : 'd';
-    await launchUrl(Uri.parse('maps://?daddr=$la,$ln&dirflg=$modo'));
+    // ¿Llegaste? (a menos de 35 m del destino)
+    if (_dist(pos.latitude, pos.longitude, la, ln) * 1000 < 35) {
+      _posNav?.cancel();
+      setState(() => _llegaste = true);
+      return;
+    }
+    // Recalcular la ruta cada ~50 m recorridos.
+    final o = _origenRutaNav;
+    if (o != null &&
+        _dist(o.latitude, o.longitude, aqui.latitude, aqui.longitude) * 1000 <
+            50) {
+      return;
+    }
+    _origenRutaNav = aqui;
+    final r = await AppleMapKit.ruta(
+        desdeLat: aqui.latitude,
+        desdeLng: aqui.longitude,
+        hastaLat: la,
+        hastaLng: ln,
+        aPie: _aPie);
+    if (!mounted || r == null || !_navegando) return;
+    setState(() {
+      if (_aPie) {
+        _rutaPie = r;
+      } else {
+        _rutaAuto = r;
+      }
+    });
+  }
+
+  void _terminarNavegacion() {
+    _posNav?.cancel();
+    _posNav = null;
+    _cronometro?.cancel();
+    _cronometro = null;
+    if (_navegando) {
+      setState(() {
+        _navegando = false;
+        _llegaste = false;
+      });
+    }
+  }
+
+  static String _fmtCrono(Duration d) {
+    String dos(int n) => n.toString().padLeft(2, '0');
+    final h = d.inHours, m = d.inMinutes % 60, s = d.inSeconds % 60;
+    return h > 0 ? '$h:${dos(m)}:${dos(s)}' : '${dos(m)}:${dos(s)}';
   }
 
   Widget _barraRuta() {
     final r = _ruta!;
-    Widget modo(String t, IconData i, bool aPie) {
-      final sel = r.aPie == aPie;
-      return GestureDetector(
-        onTap: sel || _calculandoRuta
-            ? null
-            : () => _rutaA(_rutaItem!, aPie: aPie),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: sel ? const Color(0xFF0A84FF) : colors.background,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(i, size: 15, color: sel ? Colors.white : colors.textPrimary),
-            const SizedBox(width: 4),
-            Text(t,
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: sel ? Colors.white : colors.textPrimary)),
+    const azul = Color(0xFF0A84FF);
+
+    // ── Navegando: cronómetro + lo que falta ──
+    if (_navegando) {
+      return Material(
+        color: colors.surface,
+        elevation: 6,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+          child: Row(children: [
+            Icon(
+                _llegaste
+                    ? Icons.flag_rounded
+                    : (_aPie ? Icons.directions_walk : Icons.directions_car),
+                size: 26,
+                color: _llegaste ? Colors.green : azul),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_fmtCrono(_transcurrido),
+                      style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          fontFeatures: const [ui.FontFeature.tabularFigures()],
+                          color: colors.textPrimary)),
+                  Text(
+                      _llegaste
+                          ? '¡Llegaste!'
+                          : 'Faltan ${r.distancia} · aprox. ${r.tiempo}',
+                      style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                          color: _llegaste
+                              ? Colors.green
+                              : colors.textSecondary)),
+                ],
+              ),
+            ),
+            ElevatedButton(
+              onPressed: _llegaste ? _cerrarRuta : _terminarNavegacion,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              child: Text(_llegaste ? 'Cerrar' : 'Terminar'),
+            ),
           ]),
+        ),
+      );
+    }
+
+    // ── Antes de salir: tiempo en auto y a pie ──
+    Widget modo(IconData i, RutaApple? ruta, bool aPie) {
+      final sel = _aPie == aPie;
+      final hay = ruta != null;
+      return Expanded(
+        child: GestureDetector(
+          onTap: !hay || sel ? null : () => setState(() => _aPie = aPie),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: sel ? azul : colors.background,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(i, size: 18, color: sel ? Colors.white : colors.textPrimary),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(hay ? ruta.tiempo : '—',
+                    maxLines: 1,
+                    style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: sel ? Colors.white : colors.textPrimary)),
+              ),
+            ]),
+          ),
         ),
       );
     }
@@ -1587,53 +1765,47 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
       elevation: 6,
       borderRadius: BorderRadius.circular(14),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 10, 4, 10),
+        padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              Icon(r.aPie ? Icons.directions_walk : Icons.directions_car,
-                  size: 20, color: const Color(0xFF0A84FF)),
-              const SizedBox(width: 8),
               Expanded(
-                child: _calculandoRuta
-                    ? Text('Calculando…',
-                        style: TextStyle(
-                            fontSize: 14, color: colors.textSecondary))
-                    : Text('${r.tiempo} · ${r.distancia}',
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: colors.textPrimary)),
+                child: Text(
+                    _calculandoRuta
+                        ? 'Calculando ruta…'
+                        : '${r.distancia} · ${(_rutaItem?['titulo'] ?? '').toString()}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: colors.textSecondary)),
               ),
               IconButton(
                 visualDensity: VisualDensity.compact,
-                icon: Icon(Icons.close_rounded,
-                    size: 20, color: colors.grayMid),
-                onPressed: () => setState(() {
-                  _ruta = null;
-                  _rutaItem = null;
-                }),
+                icon: Icon(Icons.close_rounded, size: 20, color: colors.grayMid),
+                onPressed: _cerrarRuta,
               ),
             ]),
-            Text((_rutaItem?['titulo'] ?? '').toString(),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, color: colors.grayMid)),
-            const SizedBox(height: 8),
             Row(children: [
-              modo('Auto', Icons.directions_car, false),
+              modo(Icons.directions_car, _rutaAuto, false),
               const SizedBox(width: 6),
-              modo('A pie', Icons.directions_walk, true),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: _abrirEnMapas,
-                icon: const Icon(Icons.navigation_rounded, size: 16),
+              modo(Icons.directions_walk, _rutaPie, true),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: _calculandoRuta ? null : _ir,
+                icon: const Icon(Icons.navigation_rounded, size: 17),
                 label: const Text('Ir'),
-                style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF0A84FF),
-                    textStyle: const TextStyle(fontWeight: FontWeight.w700)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
               ),
             ]),
           ],
