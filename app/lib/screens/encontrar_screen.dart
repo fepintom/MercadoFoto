@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform;
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:apple_maps_flutter/apple_maps_flutter.dart' as am;
 import 'package:flutter_map/flutter_map.dart';
 import '../services/mapas_config.dart';
@@ -114,6 +116,12 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
   RutaApple? _ruta;
   Map<String, dynamic>? _rutaItem;
   bool _calculandoRuta = false;
+
+  // "¿Cómo llegar aquí?": punto marcado manteniendo presionado el mapa.
+  LatLng? _marcado;
+  String? _marcadoDir;
+  static Uint8List? _pinOkventin; // Okventín pixel art dentro del pin
+  static Uint8List? _pinLugar; // gota azul con tiendita (lugares de Apple)
   final _searchCtrl = TextEditingController();
 
   // Datos
@@ -156,7 +164,10 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
     });
     _cargarDatos();
     _cargarUbicacion();
-    if (_apple) AppleMapKit.aplicarEstilo();
+    if (_apple) {
+      AppleMapKit.aplicarEstilo();
+      _cargarPinesFijos();
+    }
   }
 
   @override
@@ -671,16 +682,16 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
                               right: 12,
                               child: _barraRuta(),
                             ),
-                          if (_apple && _lugares.isNotEmpty && _query.isNotEmpty)
+                          if (_apple && _hayResultados)
                             Positioned(
                               top: 8,
                               left: 12,
                               right: 12,
-                              child: _listaLugares(),
+                              child: _listaResultados(),
                             ),
                           if (productos.isEmpty &&
                               servicios.isEmpty &&
-                              !(_apple && _lugares.isNotEmpty) &&
+                              !(_apple && _hayResultados) &&
                               _ruta == null)
                             Positioned(
                               top: 12,
@@ -1077,9 +1088,30 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
       anotaciones.add(am.Annotation(
         annotationId: am.AnnotationId('lugar'),
         position: am.LatLng(lugar.lat, lugar.lng),
-        icon: am.BitmapDescriptor.markerAnnotation,
+        icon: _pinLugar != null
+            ? am.BitmapDescriptor.fromBytes(_pinLugar!)
+            : am.BitmapDescriptor.markerAnnotation,
+        anchor: const Offset(0.5, 1.0),
         infoWindow: am.InfoWindow(title: lugar.nombre, snippet: lugar.direccion),
         zIndex: 2000,
+      ));
+    }
+
+    final marcado = _marcado;
+    if (marcado != null) {
+      anotaciones.add(am.Annotation(
+        annotationId: am.AnnotationId('marcado'),
+        position: am.LatLng(marcado.latitude, marcado.longitude),
+        icon: _pinOkventin != null
+            ? am.BitmapDescriptor.fromBytes(_pinOkventin!)
+            : am.BitmapDescriptor.markerAnnotation,
+        anchor: const Offset(0.5, 1.0),
+        zIndex: 3000,
+        infoWindow: am.InfoWindow(
+          title: '¿Cómo llegar aquí?',
+          snippet: _marcadoDir ?? 'Punto marcado',
+          onTap: _rutaAlMarcado,
+        ),
       ));
     }
 
@@ -1129,7 +1161,9 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
       onTap: (_) => setState(() {
         _selProducto = null;
         _selServicio = null;
+        _marcado = null;
       }),
+      onLongPress: _marcar,
     );
   }
 
@@ -1183,6 +1217,7 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
   (double, double) _puntoAprox(Map item) {
     final lat = (item['lat'] as num).toDouble();
     final lng = (item['lng'] as num).toDouble();
+    if (item['_exacto'] == true) return (lat, lng);
     final rng = math.Random('${item['id']}${item['titulo']}'.hashCode);
     return (
       lat + (rng.nextDouble() - 0.5) * 0.002,
@@ -1222,6 +1257,7 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
       _query = '';
       _lugares = [];
       _lugarSel = l;
+      _marcado = null;
       _selProducto = null;
       _selServicio = null;
     });
@@ -1231,65 +1267,247 @@ class _EncontrarScreenState extends State<EncontrarScreen> {
     });
   }
 
-  Widget _listaLugares() {
-    final lista = _lugares.take(5).toList();
-    return Material(
-      color: colors.surface,
-      elevation: 6,
-      borderRadius: BorderRadius.circular(14),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
-            child: Text('Lugares y direcciones',
+  // ── Resultados del buscador: primero OkVenta, después Apple ─────────────
+
+  static String _sinTildes(String t) {
+    const de = 'áéíóúüñÁÉÍÓÚÜÑ';
+    const a = 'aeiouunAEIOUUN';
+    final b = StringBuffer();
+    for (final ch in t.split('')) {
+      final i = de.indexOf(ch);
+      b.write(i >= 0 ? a[i] : ch);
+    }
+    return b.toString().toLowerCase();
+  }
+
+  /// Productos y servicios de OkVenta que coinciden con lo escrito (todas
+  /// las palabras, sin importar tildes), aunque su capa esté apagada. Los
+  /// más cercanos primero.
+  List<Map<String, dynamic>> get _resultadosOkventa {
+    if (_query.length < 2) return const [];
+    final palabras =
+        _sinTildes(_query).split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
+    bool calza(Map m) {
+      final t = _sinTildes([
+        m['titulo'],
+        m['categoria'],
+        m['subcategoria'],
+        m['descripcion'],
+      ].where((x) => x != null).join(' '));
+      return palabras.every(t.contains);
+    }
+
+    final out = <Map<String, dynamic>>[
+      for (final s in _servicios)
+        if (calza(s)) {...s, '_tipo': 'servicio'},
+      for (final p in _productos)
+        if (calza(p)) {...p, '_tipo': 'producto'},
+    ]..sort((a, b) => _km(a).compareTo(_km(b)));
+    return out.take(6).toList();
+  }
+
+  bool get _hayResultados =>
+      _query.length >= 2 &&
+      (_lugares.isNotEmpty || _resultadosOkventa.isNotEmpty);
+
+  void _irAResultado(Map<String, dynamic> m) {
+    FocusScope.of(context).unfocus();
+    _searchCtrl.clear();
+    final esServicio = m['_tipo'] == 'servicio';
+    final item = Map<String, dynamic>.from(m)..remove('_tipo');
+    final original = (esServicio ? _servicios : _productos)
+        .firstWhere((x) => x['id'] == item['id'], orElse: () => item);
+    setState(() {
+      _query = '';
+      _lugares = [];
+      _marcado = null;
+      if (esServicio) {
+        _verServicios = true;
+        _selProducto = null;
+        _selServicio = original;
+      } else {
+        _verProductos = true;
+        _selServicio = null;
+        _selProducto = original;
+      }
+    });
+    _mover(
+        LatLng((item['lat'] as num).toDouble(),
+            (item['lng'] as num).toDouble()),
+        16);
+  }
+
+  Widget _tituloSeccion(String t) => Padding(
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
+        child: Text(t,
+            style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                color: colors.grayMid)),
+      );
+
+  Widget _filaResultado({
+    required Widget icono,
+    required String titulo,
+    String? detalle,
+    String? derecha,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 7, 12, 7),
+        child: Row(children: [
+          SizedBox(width: 30, child: Center(child: icono)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(titulo,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: colors.textPrimary)),
+                if (detalle != null && detalle.isNotEmpty)
+                  Text(detalle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 11.5, color: colors.grayMid)),
+              ],
+            ),
+          ),
+          if (derecha != null && derecha.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Text(derecha,
                 style: TextStyle(
                     fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                    color: colors.grayMid)),
-          ),
-          for (final l in lista)
-            InkWell(
-              onTap: () => _irALugar(l),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                child: Row(children: [
-                  Icon(
-                      l.categoria.isEmpty
-                          ? Icons.location_on_outlined
-                          : Icons.place_rounded,
-                      size: 20,
-                      color: colors.primary),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(l.nombre,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                fontSize: 13.5,
-                                fontWeight: FontWeight.w600,
-                                color: colors.textPrimary)),
-                        if (l.direccion.isNotEmpty && l.direccion != l.nombre)
-                          Text(l.direccion,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                  fontSize: 11.5, color: colors.grayMid)),
-                      ],
-                    ),
-                  ),
-                ]),
-              ),
-            ),
-          const SizedBox(height: 4),
-        ],
+                    fontWeight: FontWeight.w600,
+                    color: colors.textSecondary)),
+          ],
+        ]),
       ),
     );
+  }
+
+  Widget _listaResultados() {
+    final ok = _resultadosOkventa;
+    final apple = _lugares.take(5).toList();
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.5),
+      child: Material(
+        color: colors.surface,
+        elevation: 6,
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.only(bottom: 6),
+          children: [
+            if (ok.isNotEmpty) ...[
+              _tituloSeccion('En OkVenta'),
+              for (final m in ok)
+                _filaResultado(
+                  icono: m['_tipo'] == 'servicio'
+                      ? Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                              color: colors.carbon, shape: BoxShape.circle),
+                          child: const Icon(Icons.handyman_rounded,
+                              size: 15, color: Colors.white),
+                        )
+                      : Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                              color: colors.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(7)),
+                          child: Icon(Icons.shopping_cart_outlined,
+                              size: 15, color: colors.primary),
+                        ),
+                  titulo: (m['titulo'] ?? '').toString(),
+                  detalle: m['_tipo'] == 'servicio'
+                      ? [
+                          'Servicio',
+                          if (((m['rating'] as num?) ?? 0) > 0)
+                            '★ ${((m['rating'] as num).toDouble()).toStringAsFixed(1)}',
+                          (m['categoria'] ?? '').toString(),
+                        ].where((x) => x.isNotEmpty).join(' · ')
+                      : formatPrecio(m['precio']),
+                  derecha: _fmtKm(_km(m)),
+                  onTap: () => _irAResultado(m),
+                ),
+            ],
+            if (apple.isNotEmpty) ...[
+              if (ok.isNotEmpty) Divider(height: 8, color: colors.divider),
+              _tituloSeccion('Lugares y direcciones'),
+              for (final l in apple)
+                _filaResultado(
+                  icono: const Icon(Icons.storefront_rounded,
+                      size: 20, color: Color(0xFF0A84FF)),
+                  titulo: l.nombre,
+                  detalle: l.direccion != l.nombre ? l.direccion : null,
+                  onTap: () => _irALugar(l),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── "¿Cómo llegar aquí?" ───────────────────────────────────────────────
+
+  Future<void> _cargarPinesFijos() async {
+    try {
+      _pinOkventin ??= (await rootBundle
+              .load('assets/images/okventin_pin_mapa.png'))
+          .buffer
+          .asUint8List();
+      _pinLugar ??= await PinesApple.gota(
+          clave: 'lugar_apple',
+          color: const Color(0xFF0A84FF),
+          icono: Icons.storefront_rounded);
+      if (mounted) setState(() {});
+    } catch (_) {}
+  }
+
+  void _marcar(am.LatLng p) {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _marcado = LatLng(p.latitude, p.longitude);
+      _marcadoDir = null;
+      _selProducto = null;
+      _selServicio = null;
+    });
+    AppleMapKit.direccion(p.latitude, p.longitude).then((d) {
+      if (!mounted || _marcado == null) return;
+      setState(() => _marcadoDir = d);
+      _mostrarBurbuja();
+    });
+    _mostrarBurbuja();
+  }
+
+  void _mostrarBurbuja() {
+    Future.delayed(const Duration(milliseconds: 350), () {
+      _appleCtrl?.showMarkerInfoWindow(am.AnnotationId('marcado'));
+    });
+  }
+
+  void _rutaAlMarcado() {
+    final m = _marcado;
+    if (m == null) return;
+    _rutaA({
+      'id': 'marcado',
+      'titulo': _marcadoDir ?? 'Punto marcado',
+      'lat': m.latitude,
+      'lng': m.longitude,
+      '_exacto': true,
+    });
   }
 
   // ── Rutas ──────────────────────────────────────────────────────────────

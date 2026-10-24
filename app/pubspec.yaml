@@ -80,6 +80,7 @@ flutter:
     - assets/images/okventin_vender.png
     - assets/images/okventin_chat.png
     - assets/images/okventin_servicios.png
+    - assets/images/okventin_pin_mapa.png
     - assets/images/okventin_compra.png
     - assets/images/mensajes.png
     - assets/images/chekin.png
