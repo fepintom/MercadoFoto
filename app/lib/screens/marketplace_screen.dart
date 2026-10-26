@@ -26,6 +26,7 @@ import '../utils/regiones_chile.dart';
 import 'perfil_publico_screen.dart';
 import 'producto_detalle_screen.dart';
 import '../widgets/net_image.dart';
+import '../widgets/insignia_comercio.dart';
 
 // ── Modelo de categoría (movido aquí desde home_screen) ───────────────────────
 class Categoria {
@@ -1069,6 +1070,10 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                                   categoria.toString(),
                                   conIcono: false)),
                         ],
+                        // Comercio verificado: pastilla azul (toca → perfil).
+                        InsigniaComercio(
+                            userId: item['user_id'],
+                            margen: const EdgeInsets.only(left: 4)),
                       ],
                     ),
                     const SizedBox(height: 3),

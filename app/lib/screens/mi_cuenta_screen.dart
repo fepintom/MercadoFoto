@@ -26,6 +26,8 @@ import 'subir_historia_screen.dart';
 import '../services/historias_service.dart';
 import '../widgets/avatar_historia.dart';
 import '../widgets/destacadas_fila.dart';
+import '../services/comercio_service.dart';
+import 'verificar_comercio_screen.dart';
 
 class MiCuentaScreen extends StatefulWidget {
   /// true = pestaña "Mi OkVenta" del menú: sin flecha de volver.
@@ -217,6 +219,10 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
     await prefs.setString("ciudad", ciudadCtrl.text);
     await prefs.setString("tipo_usuario", tipoUsuario);
     await prefs.setString("razon_social", razonSocialCtrl.text);
+    final uidGiro = prefs.getInt("user_id");
+    if (uidGiro != null) {
+      ComercioService.guardarGiro(uidGiro, tipoUsuario == "empresa");
+    }
     await prefs.setString("banco", bancoCtrl.text);
     await prefs.setString("tipo_cuenta", tipoCuentaCtrl.text);
     await prefs.setString("numero_cuenta", numeroCuentaCtrl.text);
@@ -355,7 +361,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
       children: [
         Expanded(child: _selectorBtn("persona", "Persona")),
         const SizedBox(width: 8),
-        Expanded(child: _selectorBtn("empresa", "Empresa")),
+        Expanded(child: _selectorBtn("empresa", "Con giro")),
       ],
     );
   }
@@ -385,6 +391,43 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// Acceso al formulario "Verificar mi comercio" (personas con giro).
+  Widget _botonVerificarComercio() {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const VerificarComercioScreen()),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE8F1FD),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Row(children: [
+          Icon(Icons.verified_rounded, color: Color(0xFF1E88E5)),
+          SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Verificar mi comercio',
+                    style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF1C1C1E))),
+                Text('Obtén la insignia "Verificado" para tu negocio',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF3A3A3C))),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right_rounded, color: Color(0xFF1E88E5)),
+        ]),
       ),
     );
   }
@@ -454,6 +497,8 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
           ],
 
           if (tipoUsuario == "empresa") ...[
+            _botonVerificarComercio(),
+            const SizedBox(height: 12),
             _input(
                 label: "RUT Empresa",
                 icon: Icons.business_outlined,
@@ -1188,6 +1233,16 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                           _itemMenu(
                               Icons.support_agent_rounded, "Obtener ayuda",
                               _mostrarChatSoporte),
+                          if (tipoUsuario == "empresa")
+                            _itemMenu(Icons.verified_outlined,
+                                "Verificar mi comercio", () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        const VerificarComercioScreen()),
+                              );
+                            }),
                           _itemMenu(
                               Icons.dark_mode_outlined, "Modo", _abrirSelectorModo),
                           // Solo cuentas del equipo OkVenta: probar los
