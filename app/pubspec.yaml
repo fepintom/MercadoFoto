@@ -81,6 +81,8 @@ flutter:
     - assets/images/okventin_chat.png
     - assets/images/okventin_servicios.png
     - assets/images/okventin_pin_mapa.png
+    - assets/images/logo_okventa.png
+    - assets/images/logo_okventa_blanco.png
     - assets/images/okventin_compra.png
     - assets/images/mensajes.png
     - assets/images/chekin.png

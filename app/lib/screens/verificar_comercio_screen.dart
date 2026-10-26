@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../services/apple_mapkit.dart';
 import '../services/comercio_service.dart';
 import '../services/session_service.dart';
+import '../services/theme_service.dart';
 import '../services/ubicacion_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/mapa_mini.dart';
@@ -313,7 +314,11 @@ class _VerificarComercioScreenState extends State<VerificarComercioScreen> {
         elevation: 0,
         foregroundColor: colors.textPrimary,
         centerTitle: true,
-        title: Image.asset('assets/images/logo.png', height: 38),
+        title: Image.asset(
+            ThemeService.isDarkMode
+                ? 'assets/images/logo_okventa_blanco.png'
+                : 'assets/images/logo_okventa.png',
+            height: 34),
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline_rounded),

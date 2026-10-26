@@ -55,10 +55,9 @@ class MapaMini extends StatelessWidget {
     if (i != null) {
       return Icon(i, color: colorIcono ?? Colors.green, size: 28);
     }
-    return const Icon(Icons.location_on_rounded,
-        color: Color(0xFFE53935),
-        size: 34,
-        shadows: [Shadow(color: Colors.black38, blurRadius: 4)]);
+    // El mismo pin de Okventín (pixel art) que se usa en Encontrar.
+    return Image.asset('assets/images/okventin_pin_mapa.png',
+        width: 44, height: 44, filterQuality: FilterQuality.none);
   }
 
   Widget _apple() {
@@ -87,7 +86,7 @@ class MapaMini extends StatelessWidget {
                   Align(
                     alignment: Alignment.center,
                     child: Transform.translate(
-                      offset: Offset(0, icono == null ? -15 : 0),
+                      offset: Offset(0, icono == null ? -22 : 0),
                       child: _pin(),
                     ),
                   ),
@@ -114,8 +113,8 @@ class MapaMini extends StatelessWidget {
           MarkerLayer(markers: [
             Marker(
               point: punto,
-              width: 34,
-              height: 34,
+              width: 44,
+              height: 44,
               anchorPos: icono == null
                   ? AnchorPos.align(AnchorAlign.top)
                   : AnchorPos.align(AnchorAlign.center),
