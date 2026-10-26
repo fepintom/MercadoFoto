@@ -30,6 +30,7 @@ import '../widgets/pastilla_etiqueta.dart';
 import 'servicios_screen.dart';
 import '../widgets/descripcion_formato.dart';
 import '../widgets/reputacion_vendedor.dart';
+import '../widgets/insignia_comercio.dart';
 
 // ── Modelo para opciones de compartir (fácil de extender) ─────────────────
 class _OpcionCompartir {
@@ -2013,6 +2014,9 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                             children: [
                               PastillaEtiqueta.condicion(
                                   condicion == 'nuevo',
+                                  grande: true),
+                              InsigniaComercio(
+                                  userId: widget.producto['user_id'],
                                   grande: true),
                               if (categoria != null &&
                                   categoria.toString().isNotEmpty)

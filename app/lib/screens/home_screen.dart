@@ -31,6 +31,8 @@ import 'borradores_screen.dart';
 import '../services/borradores_service.dart';
 import 'mis_direcciones_screen.dart';
 import '../widgets/registro_form_widget.dart';
+import '../services/eventos_service.dart';
+import 'tipo_cuenta_screen.dart';
 
 // ---------------------------------------------------------------------------
 // HOME SCREEN
@@ -76,6 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
   static const int _kNavOkMarket = 5;
   static const int _kNavOkServicios = 6;
   int? userId;
+  bool _giroPreguntado = false;
   String nombreUsuario = "";
   int _notifCount = 0;
   Timer? _notifTimer;
@@ -118,6 +121,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _inicializar() async {
     await _iniciarSesion();
     await _cargarUsuario();
+    // Al crear el perfil: ¿vende como persona o con giro comercial?
+    final uid = userId;
+    if (uid != null && mounted && !_giroPreguntado) {
+      _giroPreguntado = true;
+      Future.delayed(const Duration(milliseconds: 900), () {
+        if (mounted) TipoCuentaScreen.preguntarSiFalta(context, uid);
+      });
+    }
     _notifTimer = Timer.periodic(
       const Duration(seconds: 30),
       (_) => _cargarNotifCount(),
@@ -395,6 +406,15 @@ class _HomeScreenState extends State<HomeScreen> {
       _tab = tab;
       _visitadas.add(tab);
     });
+    const nombres = {
+      _kTabOkMarket: 'OkMarket',
+      _kTabAlertas: 'Alertas',
+      _kTabOkServicios: 'OkServicios',
+      _kTabComunidad: 'Comunidad',
+      _kTabEncontrar: 'Encontrar',
+      _kTabCuenta: 'Mi OkVenta',
+    };
+    EventosService.registrar('pestana', detalle: nombres[tab]);
   }
 
   void _onNavTap(int index) {

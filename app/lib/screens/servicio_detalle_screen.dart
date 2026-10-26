@@ -18,6 +18,7 @@ import '../widgets/acciones_servicio.dart';
 import '../widgets/medios_pago.dart';
 import 'editar_servicio_screen.dart';
 import 'soporte_chat_screen.dart';
+import '../widgets/insignia_comercio.dart';
 class ServicioDetalleScreen extends StatefulWidget {
   final Map<String, dynamic> servicio;
 
@@ -504,11 +505,20 @@ class _ServicioDetalleScreenState extends State<ServicioDetalleScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(nombre,
-                                style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 15,
-                                    color: colors.textPrimary)),
+                            Row(children: [
+                              Flexible(
+                                child: Text(nombre,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 15,
+                                        color: colors.textPrimary)),
+                              ),
+                              InsigniaComercio(
+                                  userId: _srv['user_id'],
+                                  margen: const EdgeInsets.only(left: 6)),
+                            ]),
                             Row(
                               children: [
                                 Container(

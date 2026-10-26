@@ -28,6 +28,7 @@ import '../utils/format_utils.dart';
 import 'perfil_publico_screen.dart';
 import '../utils/regiones_chile.dart';
 import '../widgets/net_image.dart';
+import '../widgets/insignia_comercio.dart';
 class ServiciosScreen extends StatefulWidget {
   /// Texto con el que abrir el buscador ya escrito.
   ///
@@ -1225,6 +1226,9 @@ class _TarjetaServicioMarket extends StatelessWidget {
                           child: PastillaEtiqueta.categoria(categoria,
                               conIcono: false)),
                     ],
+                    InsigniaComercio(
+                        userId: s['user_id'],
+                        margen: const EdgeInsets.only(left: 4)),
                   ]),
                   const SizedBox(height: 3),
                   Text(titulo,

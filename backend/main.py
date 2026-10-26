@@ -270,6 +270,8 @@ from routers.vistas import router as vistas_router, init_vistas_db, agregar_vist
 from routers.privados import router as privados_router, init_privados_db
 from routers.favoritos_servicios import router as favoritos_servicios_router, init_favoritos_servicios_db
 from routers.ordenes_extra import router as ordenes_extra_router, init_ordenes_extra_db
+from routers.verificacion_comercio import router as verificacion_comercio_router, init_verificacion_comercio_db
+from routers.kpis import router as kpis_router, init_kpis_db
 from routers.fotos_estilo import router as fotos_estilo_router, init_fotos_estilo_db, lanzar_en_segundo_plano as fotos_estilo_auto
 from database.ordenes import (
     liberar_inicial as ordenes_liberar_inicial,
@@ -453,6 +455,8 @@ except Exception as _e:
 init_favoritos_servicios_db()
 init_fotos_estilo_db()
 init_ordenes_extra_db()
+init_verificacion_comercio_db()
+init_kpis_db()
 # Okventín de oficio: se arman todas las figuras en segundo plano (así los
 # avisos antiguos y nuevos ya las tienen listas).
 try:
@@ -504,6 +508,8 @@ app.include_router(vistas_router)
 app.include_router(privados_router)
 app.include_router(fotos_estilo_router)
 app.include_router(ordenes_extra_router)
+app.include_router(verificacion_comercio_router)
+app.include_router(kpis_router)
 
 # --------------------------------------------------
 # MODELOS

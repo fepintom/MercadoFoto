@@ -14,9 +14,14 @@ import 'services/session_service.dart';
 import 'services/theme_service.dart';
 import 'services/ajustes_mapa.dart';
 import 'services/apple_mapkit.dart';
+import 'services/comercio_service.dart';
+import 'services/eventos_service.dart';
 import 'services/vista_servicios_service.dart';
 import 'theme/app_theme.dart';
 import 'widgets/boton_ocultar_teclado.dart';
+
+// ignore: unused_element
+AppLifecycleListener? _ciclo;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,6 +36,14 @@ void main() async {
   ThemeService.isDarkNotifier.addListener(AppleMapKit.aplicarEstilo);
   await VistaServicios.init();
   runApp(const MercadoFotoApp());
+  // KPIs: apertura de la app (y al volver desde segundo plano) + insignias
+  // de comercio verificado.
+  EventosService.appAbierta();
+  ComercioService.cargarVerificados();
+  _ciclo = AppLifecycleListener(onResume: () {
+    EventosService.appAbierta();
+    ComercioService.cargarVerificados();
+  });
   // Deep links okventa:// (QRs de la etiqueta de envío)
   DeepLinkService.init();
 }
