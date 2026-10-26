@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:apple_maps_flutter/apple_maps_flutter.dart' as am;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:latlong2/latlong.dart' as ll;
 
 import '../services/apple_mapkit.dart';
@@ -39,6 +42,20 @@ class MapaApple extends StatefulWidget {
 class _MapaAppleState extends State<MapaApple> {
   am.AppleMapController? _ctrl;
   bool _buscando = false;
+
+  // Pin de Okventín (el mismo de Encontrar).
+  static Uint8List? _pinOkventin;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_pinOkventin == null) {
+      rootBundle.load('assets/images/okventin_pin_mapa.png').then((b) {
+        _pinOkventin = b.buffer.asUint8List();
+        if (mounted) setState(() {});
+      }).catchError((_) {});
+    }
+  }
 
   Future<void> _miUbicacion() async {
     setState(() => _buscando = true);
@@ -116,7 +133,10 @@ class _MapaAppleState extends State<MapaApple> {
             am.Annotation(
               annotationId: am.AnnotationId('pin'),
               position: am.LatLng(pin.latitude, pin.longitude),
-              icon: am.BitmapDescriptor.markerAnnotation,
+              icon: _pinOkventin != null
+                  ? am.BitmapDescriptor.fromBytes(_pinOkventin!)
+                  : am.BitmapDescriptor.markerAnnotation,
+              anchor: const Offset(0.5, 1.0),
             ),
         },
         circles: {
