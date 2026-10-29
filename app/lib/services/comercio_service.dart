@@ -58,6 +58,17 @@ class ComercioService {
     } catch (_) {}
   }
 
+  /// Tipo de contribuyente: 'persona' | 'giro' | 'empresa'.
+  static Future<void> guardarTipoRut(int userId, String tipo) async {
+    try {
+      await http.put(
+        Uri.parse('${ApiService.baseUrl}/usuarios/$userId/giro'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'tipo_rut': tipo}),
+      );
+    } catch (_) {}
+  }
+
   /// {tiene_giro, verificado, estado: ninguna|pendiente|aprobada|rechazada,
   ///  motivo_rechazo, datos}
   static Future<Map<String, dynamic>?> estado(int userId) async {

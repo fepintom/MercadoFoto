@@ -5,6 +5,7 @@ import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../widgets/net_image.dart';
+import '../widgets/refresco_ok.dart';
 
 /// Mis pagos: la bitácora de lo que el usuario ha recibido como vendedor o
 /// proveedor.
@@ -98,7 +99,7 @@ class _MisPagosScreenState extends State<MisPagosScreen> {
     final resumen = Map<String, dynamic>.from(_data!['resumen'] ?? {});
     final movs = List<Map<String, dynamic>>.from(_data!['movimientos'] ?? []);
 
-    return RefreshIndicator(
+    return RefrescoOk(
       color: colors.primary,
       onRefresh: _cargar,
       child: ListView(

@@ -9,6 +9,7 @@ import '../services/session_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../widgets/net_image.dart';
+import '../widgets/refresco_ok.dart';
 
 /// Catálogo de tienda del vendedor.
 ///
@@ -125,7 +126,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
   Future<void> _eliminar() async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dlgCtx) => AlertDialog(
         backgroundColor: colors.surface,
         title: Text('Quitar catálogo',
             style: TextStyle(color: colors.textPrimary)),
@@ -135,10 +136,10 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
             style: TextStyle(color: colors.textSecondary)),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(dlgCtx, false),
               child: const Text('Cancelar')),
           TextButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => Navigator.pop(dlgCtx, true),
               child: Text('Quitar', style: TextStyle(color: colors.primary))),
         ],
       ),
@@ -189,7 +190,7 @@ class _CatalogoScreenState extends State<CatalogoScreen> {
               ? _mensajeCentrado(
                   Icons.lock_outline_rounded,
                   'Inicia sesión para publicar tu catálogo.')
-              : RefreshIndicator(
+              : RefrescoOk(
                   color: colors.primary,
                   onRefresh: _cargar,
                   child: ListView(

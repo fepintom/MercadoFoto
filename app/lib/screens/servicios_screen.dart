@@ -29,6 +29,7 @@ import 'perfil_publico_screen.dart';
 import '../utils/regiones_chile.dart';
 import '../widgets/net_image.dart';
 import '../widgets/insignia_comercio.dart';
+import '../widgets/refresco_ok.dart';
 class ServiciosScreen extends StatefulWidget {
   /// Texto con el que abrir el buscador ya escrito.
   ///
@@ -567,7 +568,7 @@ class _ListaServiciosState extends State<_ListaServicios> {
     // CustomScrollView y no Column: es lo que permite que el banner se vaya
     // con el scroll mientras el buscador queda clavado arriba, igual que en
     // el home. Con un Column el banner ocuparía pantalla siempre.
-    return RefreshIndicator(
+    return RefrescoOk(
       onRefresh: widget.onRefresh,
       color: colors.primary,
       child: CustomScrollView(
@@ -1374,7 +1375,7 @@ class _DeliveryTabState extends State<_DeliveryTab> {
       children: [
         _botonRegistro(),
         Expanded(
-          child: RefreshIndicator(
+          child: RefrescoOk(
       onRefresh: widget.onRefresh,
       color: colors.primary,
       child: ListView.separated(

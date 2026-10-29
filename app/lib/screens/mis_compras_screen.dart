@@ -14,6 +14,7 @@ import 'grabar_verificacion_paquete_screen.dart';
 import 'seguimiento_entrega_screen.dart';
 import 'soporte_chat_screen.dart';
 import '../widgets/mapa_mini.dart';
+import '../widgets/refresco_ok.dart';
 
 class MisComprasScreen extends StatefulWidget {
   const MisComprasScreen({super.key});
@@ -1001,7 +1002,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                   controller: _tab,
                   children: [
                     // Compras
-                    RefreshIndicator(
+                    RefrescoOk(
                       onRefresh: _cargar,
                       color: colors.primary,
                       child: _compras.isEmpty
@@ -1017,7 +1018,7 @@ class _MisComprasScreenState extends State<MisComprasScreen>
                     ),
 
                     // Ventas
-                    RefreshIndicator(
+                    RefrescoOk(
                       onRefresh: _cargar,
                       color: colors.primary,
                       child: _ventas.isEmpty

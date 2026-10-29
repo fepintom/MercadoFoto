@@ -108,16 +108,16 @@ class _AyudaChatScreenState extends State<AyudaChatScreen> {
     if (_userId == null) return;
     final confirmar = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dlgCtx) => AlertDialog(
         title: const Text('¿Marcar como resuelto?'),
         content: const Text(
             'Cerrarás esta consulta. ¿El problema fue solucionado?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(dlgCtx, false),
               child: const Text('No')),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dlgCtx, true),
             style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white),

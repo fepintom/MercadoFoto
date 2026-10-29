@@ -11,6 +11,7 @@ import 'home_screen.dart';
 import 'producto_detalle_screen.dart';
 import 'editar_publicacion_screen.dart';
 import '../widgets/item_producto_widget.dart';
+import '../widgets/refresco_ok.dart';
 
 class MisPublicacionesScreen extends StatefulWidget {
   const MisPublicacionesScreen({super.key});
@@ -691,7 +692,7 @@ class _MisPublicacionesScreenState extends State<MisPublicacionesScreen> {
                             ],
                           ),
                         )
-                      : RefreshIndicator(
+                      : RefrescoOk(
                           color: colors.primary,
                           onRefresh: cargarPublicaciones,
                           child: ListView.builder(

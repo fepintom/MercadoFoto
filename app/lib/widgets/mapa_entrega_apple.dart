@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:apple_maps_flutter/apple_maps_flutter.dart' as am;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:latlong2/latlong.dart' as ll;
 
 import '../services/apple_mapkit.dart';
@@ -72,10 +73,18 @@ class _MapaEntregaAppleState extends State<MapaEntregaApple> {
   }
 
   Future<void> _prepararPines() async {
-    final d = await PinesApple.circulo(
-        clave: 'entrega_dest_${widget.iconoDestino.codePoint}_${colors.primary.toARGB32()}',
-        icono: widget.iconoDestino,
-        color: colors.primary);
+    // Destino: el pin de Okventín (el mismo de Encontrar y ubicaciones).
+    Uint8List? d;
+    try {
+      d = (await rootBundle.load('assets/images/okventin_pin_mapa.png'))
+          .buffer
+          .asUint8List();
+    } catch (_) {
+      d = await PinesApple.circulo(
+          clave: 'entrega_dest_${widget.iconoDestino.codePoint}',
+          icono: widget.iconoDestino,
+          color: colors.primary);
+    }
     Uint8List? o;
     if (!widget.origenSoyYo) {
       o = await PinesApple.circulo(
@@ -188,7 +197,7 @@ class _MapaEntregaAppleState extends State<MapaEntregaApple> {
                 icon: _pinDestino != null
                     ? am.BitmapDescriptor.fromBytes(_pinDestino!)
                     : am.BitmapDescriptor.markerAnnotation,
-                anchor: const Offset(0.5, 0.5),
+                anchor: const Offset(0.5, 1.0),
               ),
             if (o != null && !widget.origenSoyYo)
               am.Annotation(

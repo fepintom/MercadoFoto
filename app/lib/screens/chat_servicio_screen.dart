@@ -388,7 +388,7 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
         if (!mounted) return;
         await showDialog(
           context: context,
-          builder: (_) => AlertDialog(
+          builder: (dlgCtx) => AlertDialog(
             backgroundColor: colors.surface,
             title: Text('Servicio contratado',
                 style: TextStyle(color: colors.textPrimary)),
@@ -400,7 +400,7 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
             ),
             actions: [
               TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => Navigator.pop(dlgCtx),
                   child: const Text('Entendido')),
             ],
           ),
@@ -446,7 +446,7 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
         if (!mounted) return;
         await showDialog(
           context: context,
-          builder: (_) => AlertDialog(
+          builder: (dlgCtx) => AlertDialog(
             backgroundColor: colors.surface,
             title: Text('Servicio contratado',
                 style: TextStyle(color: colors.textPrimary)),
@@ -458,7 +458,7 @@ class _ChatServicioScreenState extends State<ChatServicioScreen> {
             ),
             actions: [
               TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () => Navigator.pop(dlgCtx),
                   child: const Text('Entendido')),
             ],
           ),

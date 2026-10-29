@@ -8,6 +8,7 @@ import 'chat_servicio_screen.dart';
 import 'editar_servicio_screen.dart';
 import 'agregar_servicio_screen.dart';
 import 'home_screen.dart';
+import '../widgets/refresco_ok.dart';
 
 class MisServiciosScreen extends StatefulWidget {
   const MisServiciosScreen({super.key});
@@ -256,7 +257,7 @@ class _ListaServicios extends StatelessWidget {
       );
     }
 
-    return RefreshIndicator(
+    return RefrescoOk(
       color: colors.primary,
       onRefresh: () async => onRefresh(),
       child: ListView.builder(

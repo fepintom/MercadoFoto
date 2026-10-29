@@ -11,6 +11,7 @@ import 'etiqueta_envio_screen.dart';
 import 'producto_detalle_screen.dart';
 import 'seleccionar_entrega_screen.dart';
 import '../widgets/net_image.dart';
+import '../widgets/refresco_ok.dart';
 
 class MisVentasScreen extends StatefulWidget {
   const MisVentasScreen({super.key});
@@ -161,7 +162,7 @@ class _MisVentasScreenState extends State<MisVentasScreen> {
                       child: CircularProgressIndicator(color: colors.primary))
                   : _ventas.isEmpty
                       ? _buildVacio()
-                      : RefreshIndicator(
+                      : RefrescoOk(
                           onRefresh: _cargar,
                           color: colors.primary,
                           child: ListView.builder(
@@ -405,16 +406,16 @@ class _TarjetaVentaState extends State<_TarjetaVenta> {
     if (id == null || _accionando) return;
     final confirmar = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dlgCtx) => AlertDialog(
         title: const Text('¿No se puede reparar?'),
         content: const Text(
             'Se cancelará la venta y se reembolsará al comprador. Esta acción no se puede deshacer.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(dlgCtx, false),
               child: const Text('Cancelar')),
           TextButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => Navigator.pop(dlgCtx, true),
               child: const Text('Confirmar cancelación',
                   style: TextStyle(color: Colors.red))),
         ],

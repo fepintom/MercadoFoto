@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/comercio_service.dart';
+import '../widgets/tipo_rut.dart';
 import '../theme/app_theme.dart';
 import 'verificar_comercio_screen.dart';
 
@@ -23,6 +24,8 @@ class TipoCuentaScreen extends StatefulWidget {
       if (e != null && (e['tiene_giro'] == true || e['estado'] != 'ninguna')) {
         await p.setBool(clave(uid), true);
         await p.setString('tipo_usuario', 'empresa');
+        final t = e['tipo_rut'];
+        if (t is String && t.isNotEmpty) await p.setString('tipo_rut', t);
         return;
       }
       if (!context.mounted) return;
@@ -40,22 +43,22 @@ class TipoCuentaScreen extends StatefulWidget {
 }
 
 class _TipoCuentaScreenState extends State<TipoCuentaScreen> {
-  bool? _conGiro;
+  String? _tipo;
+  bool? get _conGiro => _tipo == null ? null : _tipo != TipoRut.persona;
 
-  Future<void> _guardar(bool conGiro) async {
-    setState(() => _conGiro = conGiro);
+  Future<void> _guardar(String tipo) async {
+    setState(() => _tipo = tipo);
     final p = await SharedPreferences.getInstance();
     await p.setBool(TipoCuentaScreen.clave(widget.userId), true);
-    await p.setString('tipo_usuario', conGiro ? 'empresa' : 'persona');
-    await ComercioService.guardarGiro(widget.userId, conGiro);
+    await TipoRut.guardar(tipo);
     if (!mounted) return;
-    if (!conGiro) Navigator.pop(context);
+    if (tipo == TipoRut.persona) Navigator.pop(context);
   }
 
-  Widget _opcion(IconData i, String t, String d, bool conGiro) {
-    final sel = _conGiro == conGiro;
+  Widget _opcion(IconData i, String t, String d, String tipo) {
+    final sel = _tipo == tipo;
     return GestureDetector(
-      onTap: () => _guardar(conGiro),
+      onTap: () => _guardar(tipo),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         margin: const EdgeInsets.only(bottom: 12),
@@ -127,11 +130,8 @@ class _TipoCuentaScreenState extends State<TipoCuentaScreen> {
             Text('Así mostramos tu perfil como corresponde.',
                 style: TextStyle(fontSize: 14.5, color: colors.textSecondary)),
             const SizedBox(height: 22),
-            _opcion(Icons.person_outline_rounded, 'Como persona',
-                'Vendo cosas propias, sin giro comercial.', false),
-            _opcion(Icons.storefront_rounded, 'Con giro comercial',
-                'Soy pyme o empresa (tengo RUT de empresa o inicio de actividades).',
-                true),
+            for (final (id, titulo, detalle, icono) in TipoRut.opciones)
+              _opcion(icono, titulo, detalle, id),
             if (_conGiro == true) ...[
               const SizedBox(height: 10),
               Container(
