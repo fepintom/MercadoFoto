@@ -5,6 +5,7 @@ import '../services/notification_router.dart';
 import '../theme/app_theme.dart';
 import '../widgets/barra_filtros.dart';
 import 'oferta_screen.dart';
+import '../widgets/refresco_ok.dart';
 
 /// Pestaña "Alertas": todas las notificaciones en pantalla completa (antes
 /// era una hoja que subía hasta la mitad).
@@ -375,7 +376,7 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     }
     final lista = _visibles;
     if (lista.isEmpty) {
-      return RefreshIndicator(
+      return RefrescoOk(
         color: colors.primary,
         onRefresh: _cargar,
         child: ListView(children: [
@@ -413,7 +414,7 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
       filas.add(_fila(n, d));
     }
 
-    return RefreshIndicator(
+    return RefrescoOk(
       color: colors.primary,
       onRefresh: _cargar,
       child: ListView(

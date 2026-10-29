@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -96,6 +97,174 @@ class _EtiquetaEnvioScreenState extends State<EtiquetaEnvioScreen> {
     }
   }
 
+  // ── Sellos adicionales ────────────────────────────────────────────────────
+
+  String _codigoExtra(int n) => 'EXT-${widget.ordenId}-$n';
+
+  /// PDF (A4) con los 4 sellos extra (5 a 8), de 6 × 6 cm, con el código
+  /// de la orden. Se puede generar las veces que se quiera.
+  Future<pw.Document> _pdfSellosExtra() async {
+    final imgs = <pw.MemoryImage>[];
+    for (var n = 5; n <= 8; n++) {
+      final b = await rootBundle.load('assets/images/sellos/sello_seguridad_$n.png');
+      imgs.add(pw.MemoryImage(b.buffer.asUint8List()));
+    }
+    final doc = pw.Document();
+    const lado = 6 * PdfPageFormat.cm;
+    doc.addPage(pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(1.5 * PdfPageFormat.cm),
+      build: (_) => pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text('OkVenta · Sellos de seguridad adicionales',
+              style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 4),
+          pw.Text('Orden #${widget.ordenId}. Recorta por la línea y pega un '
+              'sello en cada cierre que lo necesite.',
+              style: const pw.TextStyle(fontSize: 10)),
+          pw.SizedBox(height: 18),
+          pw.Wrap(
+            spacing: 1 * PdfPageFormat.cm,
+            runSpacing: 1 * PdfPageFormat.cm,
+            children: [
+              for (var i = 0; i < 4; i++)
+                pw.Container(
+                  padding: const pw.EdgeInsets.all(4),
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(
+                        color: PdfColors.grey500,
+                        width: 0.6,
+                        style: pw.BorderStyle.dashed),
+                  ),
+                  child: pw.Column(children: [
+                    pw.Image(imgs[i], width: lado, height: lado),
+                    pw.SizedBox(height: 4),
+                    pw.Text(_codigoExtra(i + 5),
+                        style: const pw.TextStyle(fontSize: 9)),
+                  ]),
+                ),
+            ],
+          ),
+        ],
+      ),
+    ));
+    return doc;
+  }
+
+  Future<void> _descargarSellosExtra({bool imprimir = false}) async {
+    try {
+      final doc = await _pdfSellosExtra();
+      final bytes = await doc.save();
+      if (imprimir) {
+        await Printing.layoutPdf(onLayout: (_) => bytes);
+      } else {
+        await Printing.sharePdf(
+            bytes: bytes,
+            filename: 'sellos_extra_orden_${widget.ordenId}.pdf');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('No se pudo generar el PDF: $e'),
+          behavior: SnackBarBehavior.floating));
+    }
+  }
+
+  void _masSellos() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: colors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                      color: colors.divider,
+                      borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text('4 sellos adicionales',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textPrimary)),
+              const SizedBox(height: 4),
+              Text(
+                  'Para cajas con más cierres o si se rompió uno. Descárgalos '
+                  'en PDF las veces que quieras e imprímelos.',
+                  style: TextStyle(
+                      fontSize: 13, height: 1.35, color: colors.textSecondary)),
+              const SizedBox(height: 14),
+              GridView.count(
+                crossAxisCount: 4,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: 0.78,
+                children: [
+                  for (var n = 5; n <= 8; n++)
+                    Column(children: [
+                      Image.asset('assets/images/sellos/sello_seguridad_$n.png'),
+                      const SizedBox(height: 3),
+                      Text(_codigoExtra(n),
+                          style: TextStyle(
+                              fontSize: 8.5, color: colors.grayMid)),
+                    ]),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _descargarSellosExtra(imprimir: true),
+                    icon: const Icon(Icons.print_rounded, size: 17),
+                    label: const Text('Imprimir'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.primary,
+                      side: BorderSide(color: colors.primary.withOpacity(0.5)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _descargarSellosExtra(),
+                    icon: const Icon(Icons.download_rounded, size: 18),
+                    label: const Text('Descargar PDF'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+              ]),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _compartir() async {
     if (_exportando) return;
     setState(() => _exportando = true);
@@ -171,6 +340,31 @@ class _EtiquetaEnvioScreenState extends State<EtiquetaEnvioScreen> {
                                 child: _labelCard(),
                               ),
                               const SizedBox(height: 16),
+                              // ¿Se acabaron o se rompieron? 4 sellos más,
+                              // descargables como PDF las veces que quiera.
+                              SizedBox(
+                                width: double.infinity,
+                                child: TextButton.icon(
+                                  onPressed: _masSellos,
+                                  icon: const Icon(
+                                      Icons.add_box_outlined, size: 19),
+                                  label: const Text('¿Necesitas más sellos?'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: colors.primary,
+                                    backgroundColor:
+                                        colors.primary.withOpacity(0.08),
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12),
+                                    textStyle: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(10)),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
                               Row(
                                 children: [
                                   Expanded(

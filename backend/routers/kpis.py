@@ -311,7 +311,7 @@ def kpi_diario(token: str, dias: int = 180):
 
 _EXPORTS = {
     "usuarios": ("users", [
-        "id", "nombre", "comuna", "ciudad", "created_at", "tiene_giro",
+        "id", "nombre", "comuna", "ciudad", "created_at", "tiene_giro", "tipo_rut",
         "comercio_verificado", "comercio_verificado_en", "nombre_comercial"]),
     "ordenes": ("ordenes", [
         "id", "comprador_id", "vendedor_id", "tipo", "publicacion_id",

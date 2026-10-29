@@ -928,7 +928,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
   Future<void> _mostrarConfirmacionTestMode() {
     return showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dlgCtx) => AlertDialog(
         backgroundColor: colors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
@@ -945,7 +945,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dlgCtx),
             child: const Text('Entendido'),
           ),
         ],
@@ -958,7 +958,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     _ofertaController.clear();
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dlgCtx) => AlertDialog(
         backgroundColor: colors.surface,
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -1023,7 +1023,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dlgCtx),
             child: Text("Cancelar",
                 style: TextStyle(color: colors.grayMid)),
           ),
@@ -1033,7 +1033,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
               if (t.isEmpty) return;
               final oferta = double.tryParse(t);
               if (oferta == null || oferta <= 0) return;
-              Navigator.pop(context);
+              Navigator.pop(dlgCtx);
               try {
                 await http.post(
                   Uri.parse("${ApiService.baseUrl}/ofertar"),
@@ -1077,8 +1077,8 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
     showDialog(
       context: context,
       barrierColor: colors.carbon.withOpacity(0.4),
-      builder: (_) => GestureDetector(
-        onTap: () => Navigator.pop(context),
+      builder: (dlgCtx) => GestureDetector(
+        onTap: () => Navigator.pop(dlgCtx),
         child: Material(
           color: Colors.transparent,
           child: Center(
@@ -1096,7 +1096,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                     try {
                       await AuthService.registrarConEmail(email, password);
                       if (!mounted) return;
-                      Navigator.pop(context);
+                      Navigator.pop(dlgCtx);
                       await _cargarSesion();
                     } catch (e) {
                       final msg = AuthService.mensajeError(e);
@@ -1114,7 +1114,7 @@ class _ProductoDetalleScreenState extends State<ProductoDetalleScreen> {
                     try {
                       await AuthService.loginConGoogle();
                       if (!mounted) return;
-                      Navigator.pop(context);
+                      Navigator.pop(dlgCtx);
                       await _cargarSesion();
                     } catch (e) {
                       final msg = AuthService.mensajeError(e);

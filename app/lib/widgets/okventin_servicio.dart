@@ -53,11 +53,15 @@ class SelloOkventin extends StatelessWidget {
     }
     // El servidor ya lo entrega dentro del marco rojo con estrellas, con
     // fondo claro y sombra suave: aquí solo se muestra.
+    // 65 % de transparencia: el sello acompaña sin tapar la foto.
     return IgnorePointer(
-      child: SizedBox(
-        width: tam,
-        height: tam,
-        child: NetImage(url, fit: BoxFit.contain),
+      child: Opacity(
+        opacity: 0.35,
+        child: SizedBox(
+          width: tam,
+          height: tam,
+          child: NetImage(url, fit: BoxFit.contain),
+        ),
       ),
     );
   }

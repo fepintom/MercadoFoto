@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import 'okdelivery_activo_screen.dart';
+import '../widgets/refresco_ok.dart';
 
 /// Pantalla del repartidor: lista de entregas OkDelivery disponibles cerca
 /// de él (dentro de su radio configurado) para aceptar.
@@ -135,7 +136,7 @@ class _OkdeliveryPendientesScreenState
                           CircularProgressIndicator(color: colors.primary))
                   : _pendientes.isEmpty
                       ? _buildVacio()
-                      : RefreshIndicator(
+                      : RefrescoOk(
                           onRefresh: _cargar,
                           color: colors.primary,
                           child: ListView.builder(

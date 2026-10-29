@@ -57,16 +57,16 @@ class _MisDireccionesScreenState extends State<MisDireccionesScreen> {
   Future<void> _eliminar(int id) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dlgCtx) => AlertDialog(
         title: const Text('Eliminar dirección',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         content: const Text('¿Estás seguro de que deseas eliminar esta dirección?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(dlgCtx, false),
               child: Text('Cancelar', style: TextStyle(color: colors.grayMid))),
           TextButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => Navigator.pop(dlgCtx, true),
               child: Text('Eliminar', style: TextStyle(color: colors.primary))),
         ],
       ),

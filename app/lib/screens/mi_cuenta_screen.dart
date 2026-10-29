@@ -26,8 +26,9 @@ import 'subir_historia_screen.dart';
 import '../services/historias_service.dart';
 import '../widgets/avatar_historia.dart';
 import '../widgets/destacadas_fila.dart';
-import '../services/comercio_service.dart';
 import 'verificar_comercio_screen.dart';
+import '../widgets/refresco_ok.dart';
+import '../widgets/tipo_rut.dart';
 
 class MiCuentaScreen extends StatefulWidget {
   /// true = pestaña "Mi OkVenta" del menú: sin flecha de volver.
@@ -105,6 +106,8 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
       comunaCtrl.text = prefs.getString("comuna") ?? "";
       ciudadCtrl.text = prefs.getString("ciudad") ?? "";
       tipoUsuario = prefs.getString("tipo_usuario") ?? "persona";
+      _tipoRut = prefs.getString("tipo_rut") ??
+          (tipoUsuario == "empresa" ? TipoRut.giro : TipoRut.persona);
       razonSocialCtrl.text = prefs.getString("razon_social") ?? "";
       bancoCtrl.text = prefs.getString("banco") ?? "";
       tipoCuentaCtrl.text = prefs.getString("tipo_cuenta") ?? "";
@@ -219,9 +222,12 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
     await prefs.setString("ciudad", ciudadCtrl.text);
     await prefs.setString("tipo_usuario", tipoUsuario);
     await prefs.setString("razon_social", razonSocialCtrl.text);
-    final uidGiro = prefs.getInt("user_id");
-    if (uidGiro != null) {
-      ComercioService.guardarGiro(uidGiro, tipoUsuario == "empresa");
+    // Mantener el "tipo de contribuyente" coherente con Persona / Con giro.
+    final tipoActual = await TipoRut.actual();
+    if (tipoUsuario == "persona" && tipoActual != TipoRut.persona) {
+      await TipoRut.guardar(TipoRut.persona);
+    } else if (tipoUsuario == "empresa" && tipoActual == TipoRut.persona) {
+      await TipoRut.guardar(TipoRut.giro);
     }
     await prefs.setString("banco", bancoCtrl.text);
     await prefs.setString("tipo_cuenta", tipoCuentaCtrl.text);
@@ -392,6 +398,49 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  String _tipoRut = TipoRut.persona;
+
+  /// "Tipo de contribuyente": persona natural / con giro / pyme o empresa.
+  Widget _itemTipoRut() {
+    return Column(
+      children: [
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          onTap: () async {
+            await TipoRut.abrir(context);
+            await cargarDatos();
+          },
+          leading: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: colors.background,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.badge_outlined,
+                color: colors.textPrimary, size: 20),
+          ),
+          title: Text(
+            "Tipo de contribuyente",
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: colors.textPrimary,
+            ),
+          ),
+          subtitle: Text(TipoRut.nombre(_tipoRut),
+              style: TextStyle(fontSize: 12.5, color: colors.grayMid)),
+          trailing: Icon(
+            Icons.arrow_forward_ios_rounded,
+            size: 14,
+            color: colors.grayMid,
+          ),
+        ),
+        const Divider(height: 1, thickness: 0.5),
+      ],
     );
   }
 
@@ -962,7 +1011,14 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
 
             // Contenido
             Expanded(
-              child: SingleChildScrollView(
+              child: RefrescoOk(
+                onRefresh: () async {
+                  await cargarDatos();
+                  await HistoriasService.cargarActivos();
+                },
+                child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics()),
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1233,6 +1289,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                           _itemMenu(
                               Icons.support_agent_rounded, "Obtener ayuda",
                               _mostrarChatSoporte),
+                          _itemTipoRut(),
                           if (tipoUsuario == "empresa")
                             _itemMenu(Icons.verified_outlined,
                                 "Verificar mi comercio", () {
@@ -1265,6 +1322,7 @@ class _MiCuentaScreenState extends State<MiCuentaScreen> {
                     ),
                   ],
                 ),
+              ),
               ),
             ),
 

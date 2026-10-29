@@ -102,7 +102,9 @@ def init_verificacion_comercio_db():
     for col in ("tiene_giro INTEGER DEFAULT 0",
                 "comercio_verificado INTEGER DEFAULT 0",
                 "comercio_verificado_en TIMESTAMP",
-                "nombre_comercial TEXT"):
+                "nombre_comercial TEXT",
+                # persona | giro (persona natural con giro) | empresa (pyme)
+                "tipo_rut TEXT DEFAULT 'persona'"):
         try:
             c.execute(f"ALTER TABLE users ADD COLUMN {col}")
         except sqlite3.OperationalError:
@@ -168,20 +170,31 @@ def _url_foto(user_id: int, fn: Optional[str]) -> Optional[str]:
 
 # ── Giro comercial ───────────────────────────────────────────────────────────
 
+_TIPOS_RUT = ("persona", "giro", "empresa")
+
+
 class GiroData(BaseModel):
-    tiene_giro: bool
+    tiene_giro: Optional[bool] = None
+    # persona | giro | empresa ("tipo de contribuyente" en Mi OkVenta)
+    tipo_rut: Optional[str] = None
 
 
 @router.put("/usuarios/{user_id}/giro")
 def guardar_giro(user_id: int, data: GiroData):
+    tipo = (data.tipo_rut or "").strip().lower() or None
+    if tipo is not None and tipo not in _TIPOS_RUT:
+        raise HTTPException(400, "Tipo de RUT inválido")
+    if tipo is None:
+        tipo = "giro" if data.tiene_giro else "persona"
+    tiene = 0 if tipo == "persona" else 1
     c = _conn()
     try:
-        c.execute("UPDATE users SET tiene_giro = ? WHERE id = ?",
-                  (1 if data.tiene_giro else 0, user_id))
+        c.execute("UPDATE users SET tiene_giro = ?, tipo_rut = ? WHERE id = ?",
+                  (tiene, tipo, user_id))
         c.commit()
     finally:
         c.close()
-    return {"ok": True, "tiene_giro": data.tiene_giro}
+    return {"ok": True, "tiene_giro": bool(tiene), "tipo_rut": tipo}
 
 
 # ── Estado para la app ───────────────────────────────────────────────────────
@@ -190,8 +203,8 @@ def guardar_giro(user_id: int, data: GiroData):
 def estado_verificacion(user_id: int):
     c = _conn()
     try:
-        u = c.execute("SELECT tiene_giro, comercio_verificado FROM users "
-                      "WHERE id = ?", (user_id,)).fetchone()
+        u = c.execute("SELECT tiene_giro, comercio_verificado, tipo_rut "
+                      "FROM users WHERE id = ?", (user_id,)).fetchone()
         v = _ultima(c, user_id)
     finally:
         c.close()
@@ -201,6 +214,8 @@ def estado_verificacion(user_id: int):
         estado = v["estado"]
     return {
         "tiene_giro": bool(u and u["tiene_giro"]),
+        "tipo_rut": (u["tipo_rut"] if u else None) or
+                    ("giro" if u and u["tiene_giro"] else "persona"),
         "verificado": bool(u and u["comercio_verificado"]),
         "estado": estado,
         "motivo_rechazo": v["motivo_rechazo"] if v else None,

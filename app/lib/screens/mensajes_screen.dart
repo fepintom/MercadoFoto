@@ -12,6 +12,7 @@ import '../theme/app_theme.dart';
 import 'chat_screen.dart';
 import 'chat_servicio_screen.dart';
 import '../widgets/net_image.dart';
+import '../widgets/refresco_ok.dart';
 class MensajesScreen extends StatefulWidget {
   const MensajesScreen({super.key});
 
@@ -171,7 +172,7 @@ class _MensajesScreenState extends State<MensajesScreen> {
       );
     }
 
-    return RefreshIndicator(
+    return RefrescoOk(
       color: colors.primary,
       onRefresh: _cargar,
       child: ListView.separated(

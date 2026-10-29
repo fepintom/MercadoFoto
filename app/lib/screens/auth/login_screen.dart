@@ -112,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final emailCtrl = TextEditingController(text: _emailCtrl.text.trim());
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dlgCtx) => AlertDialog(
         title: const Text('Restablecer contraseña'),
         content: TextField(
           controller: emailCtrl,
@@ -124,11 +124,11 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dlgCtx, false),
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dlgCtx, true),
             style: ElevatedButton.styleFrom(
                 backgroundColor: colors.primary),
             child: const Text('Enviar',
@@ -162,14 +162,14 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dlgCtx) => AlertDialog(
         title: const Text('Revisa tu correo'),
         content: const Text(
           'Si el correo está registrado, recibirás un enlace para crear una nueva contraseña.\n\nRevisa también la carpeta de spam.',
         ),
         actions: [
           ElevatedButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dlgCtx),
             style: ElevatedButton.styleFrom(
               backgroundColor: colors.primary,
               foregroundColor: Colors.white,

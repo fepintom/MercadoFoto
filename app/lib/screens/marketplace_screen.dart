@@ -27,6 +27,7 @@ import 'perfil_publico_screen.dart';
 import 'producto_detalle_screen.dart';
 import '../widgets/net_image.dart';
 import '../widgets/insignia_comercio.dart';
+import '../widgets/refresco_ok.dart';
 
 // ── Modelo de categoría (movido aquí desde home_screen) ───────────────────────
 class Categoria {
@@ -1517,7 +1518,12 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
       ));
     }
 
-    return CustomScrollView(
+    return RefrescoOk(
+      onRefresh: cargarPublicaciones,
+      child: CustomScrollView(
+      // Siempre se puede tirar hacia abajo para actualizar.
+      physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics()),
       slivers: [
         // ── Banner (se desvanece al hacer scroll) ────────────────────────────
         if (widget.banner != null)
@@ -1626,6 +1632,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                   ),
           ),
       ],
+    ),
     );
   }
 }
